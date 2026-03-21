@@ -73,6 +73,11 @@ Each skill can be invoked directly for standalone use — see the linked READMEs
 
 ## Installation
 
+```bash
+git clone https://github.com/zarlor/bmad-suno-band-manager
+cd bmad-suno-band-manager
+```
+
 **Requires [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.2.0+).**
 
 1. Run the BMad installer:

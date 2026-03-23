@@ -335,6 +335,8 @@ A band profile is the sonic equivalent of a brand book. It captures the DNA of a
 - Capture slider values and exclusions that work for you
 - Preserve your writing voice when Mac transforms lyrics
 
+**A note on vocal consistency:** Band profiles maintain consistency in your *prompts* -- genre, style, exclusions, and vocal direction. However, Suno interprets the same style prompt differently on every generation. The only way to get a truly consistent vocal identity across songs is with the **Persona** feature (Pro/Premier plans), which locks in a specific vocal character from a source song. Without a Persona, you are relying on descriptive prompt language, which gets you in the right neighborhood but not an exact match. If consistent vocal identity across an album or project matters to you, a Pro plan with Personas is strongly recommended.
+
 ### Creating Your First Profile
 
 Through Mac's menu, select **MB** (Manage Bands), or say "I want to create a band profile."

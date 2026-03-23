@@ -33,6 +33,8 @@ After you try the output on Suno, Mac helps you refine through a structured feed
 4. **Try it on Suno** — Paste into Suno's Custom Mode fields
 5. **Come back and refine** — Tell Mac what worked and what didn't
 
+For detailed documentation on all features, interaction modes, band profiles, the feedback loop, direct skill access, and headless/automation modes, see the [Usage Guide](USAGE.md).
+
 ## Architecture
 
 Mac is an orchestrating agent that coordinates four specialized skills:
@@ -56,8 +58,11 @@ Mac is an orchestrating agent that coordinates four specialized skills:
                          └──────────────────┘
 ```
 
-| Skill | Purpose | Key Scripts |
-|-------|---------|-------------|
+The orchestrating agent and each skill have their own documentation:
+
+| Component | Purpose | Key Scripts |
+|-----------|---------|-------------|
+| [**Mac (Band Manager)**](src/skills/bmad-suno-agent-band-manager/README.md) | Orchestrating agent — guides the full song creation workflow across all skills | `pre-activate.py`, `validate-path.py`, `check-memory-health.py` |
 | [**Band Profile Manager**](src/skills/bmad-suno-band-profile-manager/README.md) | CRUD for band identity profiles, writer voice analysis, tier feature awareness | `validate-profile.py`, `list-profiles.py`, `tier-features.py`, `diff-profiles.py` |
 | [**Style Prompt Builder**](src/skills/bmad-suno-style-prompt-builder/README.md) | Model-aware style prompt generation with creativity modes and wild card variants | `validate-prompt.py` |
 | [**Lyric Transformer**](src/skills/bmad-suno-lyric-transformer/README.md) | Poem/text to Suno-ready structured lyrics with metatags and cliché detection | `validate-lyrics.py`, `cliche-detector.py`, `syllable-counter.py`, `analyze-input.py`, `section-length-checker.py`, `lyrics-diff.py` |

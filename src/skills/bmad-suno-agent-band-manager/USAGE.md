@@ -365,7 +365,9 @@ After discovery, Mac:
 
 ### Writer Voice Analysis
 
-If you choose to analyze your writing voice, provide 3-5 writing samples (poems, lyrics, prose -- 10-40 lines each). Pick pieces that feel most like you.
+If you choose to analyze your writing voice, provide 3 or more writing samples (poems, lyrics, prose -- 10 lines or more each). The more samples you provide, the more accurate the analysis. Pick pieces that feel most like you.
+
+You can paste samples directly into the conversation, or point Mac to files on disk -- a text file, a PDF, a folder of poems. Mac will read and analyze them.
 
 Mac extracts patterns across:
 - **Vocabulary preferences** -- formal/casual, abstract/concrete

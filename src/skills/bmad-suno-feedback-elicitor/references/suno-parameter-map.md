@@ -6,6 +6,26 @@
 
 Maps feedback dimensions and emotional vocabulary to concrete Suno parameter adjustments.
 
+## Style Prompt Mechanics
+
+### Genre Keyword Ordering
+
+Front-loaded terms in the style prompt dominate generation output — the first ~200 characters are the critical zone. When feedback suggests a genre element is too dominant, move that keyword later in the prompt rather than removing it. For secondary influences, use softening formulations like "with [genre] accents" or "[genre] undertones" to reduce their weight without eliminating them.
+
+### Dynamic Arc Mismatch
+
+When the user reports that the ending or energy arc doesn't match their intent, the style prompt likely contains unidirectional language that only describes one direction of movement. The style prompt must describe the full arc.
+
+| Feedback Pattern | Style Prompt Problem | Fix |
+|-----------------|---------------------|-----|
+| "Too loud at the end" | "crescendo dynamics" or similar build-only language | Replace with "dynamic shifts loud to quiet" |
+| "Builds but doesn't resolve" | "build to climax" with no release language | Replace with "slow build then fade" |
+| "All one energy level" | No dynamic language at all | Add explicit dynamic descriptors: "dynamic shifts", "quiet verses explosive chorus", etc. |
+
+### Word Density as Primary Tempo Control
+
+When the user reports tempo issues, adjusting lyric line density is more reliable than BPM tags. Suno infers pacing from how much text it needs to deliver per section. Sparse, long lines push toward slower delivery; short, packed lines push toward faster delivery. Try restructuring the lyrics before adding tempo descriptors to the style prompt.
+
 ## Style Prompt Adjustment Patterns
 
 ### Instrumentation & Arrangement
@@ -20,6 +40,7 @@ Maps feedback dimensions and emotional vocabulary to concrete Suno parameter adj
 | "Too acoustic" | "electronic elements, synth textures, modern production" | — |
 | "Drums overpower" | "soft percussion, gentle drums, restrained beat" | "no heavy drums, no pounding drums" |
 | "Needs more drums" | "driving drums, prominent beat, rhythmic" | — |
+| "Second line drums sound like hip-hop" | "second line drums" only produces NOLA parade groove when the surrounding context is up-tempo + energetic + celebratory. Without that context, Suno defaults to hip-hop patterns. Add "New Orleans parade", "celebratory", "up-tempo" to the style prompt. | — |
 | "Piano feels wrong" | — | "no piano" (or specify: "no classical piano") |
 | "Bass too heavy" | "light bass, subtle low end" | "no heavy bass, no bass drops" |
 
@@ -41,8 +62,8 @@ Maps feedback dimensions and emotional vocabulary to concrete Suno parameter adj
 
 | Feedback | Add to Style Prompt | Slider Adjustment |
 |----------|--------------------|--------------------|
-| "Too fast" | "slow tempo, laid-back, relaxed groove" | — |
-| "Too slow" | "uptempo, driving rhythm, energetic pace" | — |
+| "Too fast" | "slow tempo, laid-back, relaxed groove" (also try longer lyric lines — see Word Density above) | — |
+| "Too slow" | "uptempo, driving rhythm, energetic pace" (also try shorter, denser lyric lines — see Word Density above) | — |
 | "Not energetic enough" | "high energy, powerful, dynamic, driving" | Style Influence ↓ (loosen) |
 | "Too intense" | "gentle, soft, understated, subtle" | — |
 | "Energy is flat" | "building energy, dynamic shifts, crescendo" | Weirdness ↑ slightly |
@@ -92,6 +113,18 @@ Prioritize 2-3 specific exclusions over filling the space. Supported syntax: 'no
 - Higher values (70+) have not been tested and may produce interesting results for experimental work
 - These observations are from v5 Pro with Style Influence 70 — results may differ on other models
 - **Sliders don't control tempo, dynamics, or vocal delivery** — they control predictability (Weirdness) and prompt adherence (Style Influence). Don't recommend them as solutions for tempo/vocal issues.
+
+**Confirmed slider combinations by song type (from production use):**
+
+| Song Type | Weirdness | Style Influence | Notes |
+|-----------|-----------|-----------------|-------|
+| Structured songs (chorus, clear sections) | 50-55 | 75-80 | Higher SI keeps sections well-defined |
+| Through-composed with tempo shifts | 55-60 | 70-75 | Slightly looser to allow tempo variation |
+| Funk-forward | 60 | 65-70 | Funk needs room to breathe |
+| Post-metal / atmospheric | 60-65 | 65 | Balanced exploration with genre grounding |
+| Prog with odd time signatures | 65-75 | 65 | High Weirdness helps with non-standard meters |
+| Circular / agitated | 75 | 65 | Near the structural ceiling — use [End] tags |
+| Bass prominence attempts | Any | High SI (85) did not force bass prominence; low Audio Influence (15%) slightly shifted era feel instead | Bass-forward rock/metal remains a Suno limitation |
 
 **Upper limit findings (from live testing):**
 - Weirdness 75 is the practical ceiling for structured songs — still experimental but respects section boundaries and [End] tags

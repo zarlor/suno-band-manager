@@ -62,6 +62,19 @@
 
 **Action:** Route to Suno Studio features (Replace Section, Warp Markers, Remove FX) or regeneration. These issues are typically generation-specific, not prompt-specific — try regenerating 3-5 times before modifying the prompt. See suno-parameter-map.md "Audio Quality & Artifacts" and "Suno Studio Resolution Paths" sections.
 
+### Production Diagnostic Patterns
+
+Common feedback patterns with non-obvious root causes. When you hear these, check the indicated sources before adjusting the style prompt.
+
+| Feedback Pattern | Check First | Root Cause & Fix |
+|-----------------|-------------|-----------------|
+| "Guitar dominates / bass not prominent enough" | Genre context (rock/metal?) + instrumental sections | Bass prominence is a known Suno limitation in rock/metal. Try: remove "guitar" mentions from style prompt, add guitar to exclusions, use `[Instrument: bass]` tags (unreliable but worth trying). Bass-forward rock/metal is currently not achievable reliably. |
+| "Ending is too loud / song doesn't come down" | Style prompt for unidirectional build language ("crescendo dynamics", "build to crushing climax") | The style prompt must describe the full arc, not just the build. Replace with `slow build then fade` or `dynamic shifts loud to quiet`. |
+| "Wrong bass tone" | Whether "funk" appears in style prompt | "Funk" triggers slap/pop bass (Flea/Claypool style). For overdriven fingerstyle bass (Geddy Lee style), remove "funk" entirely. |
+| "Song sounds too modern / wrong era" | Whether a Persona is loaded | Personas anchor sound to the era of the source song. Reduce Audio Influence to 10-15% or generate without Persona for era-specific pieces. |
+| "Vocals are screaming when they shouldn't be" | Style prompt for `metal`, `sludge`, `doom`; lyrics for `!` or ALL CAPS | These are scream triggers. Fix: add explicit positive vocal instructions (e.g., "clean vocals, melodic singing"), remove triggers, use `[Vocal Style: whispered]` to reset after aggressive sections. |
+| "Song loops / too much instrumental" | Source text length (under 15 lines?) + style prompt for `instrumental breaks` | Short lyrics cause looping and filler instrumentals. Suggest: double the delivery (repeat verses with variation), extract and repeat chorus, or place a hard `[End]` tag. |
+
 ---
 
 ## Elicitation Techniques

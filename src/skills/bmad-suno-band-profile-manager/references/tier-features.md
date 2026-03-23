@@ -18,6 +18,7 @@
 | **Weirdness Slider** | No | Yes (0-100) | Yes (0-100) |
 | **Style Influence Slider** | No | Yes (0-100) | Yes (0-100) |
 | **Audio Influence Slider** | No | Yes (0-100, with audio upload) | Yes (0-100, with audio upload) |
+| | | *10-15% reduces persona era-anchoring* | *10-15% reduces persona era-anchoring* |
 | **Add Vocals/Instrumental** | No | Yes | Yes |
 | **Stems** | No | Up to 12 | Up to 12 |
 | **Audio Upload** | 1 min | 8 min | 8 min |
@@ -57,9 +58,16 @@
 - Set Weirdness and Style Influence sliders
 - Reference Suno Personas for vocal consistency
 - Use crisp, descriptor-focused style for v5 Pro
+- Use Audio Influence slider to manage persona era-anchoring (reduce to 10-15% when the persona's source era conflicts with the desired sound)
 
 **Premier tier profiles can:**
 - Everything Pro can do, plus Studio features
 - Set studio_preferences (BPM, key, time signature)
 - Stems separation for production work
 - MIDI export for DAW integration
+
+## Production Notes
+
+**Audio Influence as Era Control (Pro/Premier):** When a persona's era-anchoring conflicts with the desired era for a track, reducing Audio Influence from the default 25% to 10-15% helps pull the sound away from the persona's source era. This doesn't fully eliminate the anchoring — for strong era shifts, consider generating without a persona or creating an era-specific persona from an era-appropriate source song.
+
+**Exclude Styles — Known Limitations:** The Exclude Styles field helps shape tone but does not reliably remove instruments entirely. For example, even with "guitar" in Exclude Styles, Suno still produces guitar in rock/metal contexts. Treat Exclude Styles as a nudge toward the desired balance rather than a hard instrument filter.

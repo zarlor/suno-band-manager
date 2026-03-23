@@ -42,6 +42,10 @@ vocal:
   diction: "clear, slightly slurred on emotional peaks"
   persona_reference: ""    # Suno Persona name, if exists
   persona_source_song: ""  # Song the Persona was derived from (for recreation)
+  # NOTE: Personas pull the sound toward the era/style of the source song.
+  # Audio Influence at 10-15% reduces this era-anchoring but doesn't fully
+  # overcome it. For era-specific pieces, consider generating without a persona,
+  # or creating era-specific personas from era-appropriate source songs.
 
 # Creative Settings
 creativity_default: "balanced"  # conservative | balanced | experimental
@@ -67,6 +71,23 @@ writer_voice:
   metaphor_style: ""       # extended/quick, conventional/surprising, frequency
   repetition_patterns: ""  # anaphora, refrains, echo structures
   sample_quotes: []        # representative lines from analyzed samples
+
+# Known Working Prompt Patterns (optional — prompt formulations that reliably produce good results)
+known_working_patterns: []
+  # Per-profile list of prompt patterns proven to work well for this band's sound.
+  # Record specific formulations that nail the identity, especially when blending genres.
+  # Examples:
+  #   - "'atmospheric swamp metal accents' — best formulation for keeping band identity when another genre leads"
+  #   - "'progressive heavy groove with post-rock dynamics' — captures heaviness without triggering screaming"
+
+# Known Limitations (optional — things Suno can't reliably do for this sound)
+known_limitations: []
+  # Per-profile list of known limitations or failure modes for this band's genre/style.
+  # Saves time by documenting dead ends and workaround-required areas.
+  # Examples:
+  #   - "Bass-forward rock/metal is not reliably achievable — Suno defaults to guitar-forward mixes"
+  #   - "'funk metal' triggers slap/pop bass, not overdriven fingerstyle — avoid this term"
+  #   - "Even with 'guitar' in Exclude Styles, Suno still produces guitar in rock/metal context"
 
 # Generation Learnings (optional — what prompt language triggers what behavior)
 generation_learnings:
@@ -117,6 +138,8 @@ generation_history: []
 | `studio_preferences.key` | No | string | Default key/scale. Only valid for premier tier |
 | `studio_preferences.time_signature` | No | string | Default time signature. Only valid for premier tier |
 | `writer_voice.*` | No | string/list | All writer_voice fields are optional |
+| `known_working_patterns` | No | list of strings | Prompt formulations proven to reliably produce good results for this band's sound. Record specific wording that nails the identity. |
+| `known_limitations` | No | list of strings | Known failure modes or dead ends for this band's genre/style in Suno. Saves time by documenting things that don't work. |
 | `generation_learnings` | No | list of strings | Accumulated observations about what prompt language triggers what Suno behavior for this band's genre/style. Updated from testing and feedback sessions. |
 | `generation_history` | No | list of objects | Max 10 entries. Each entry: date, style_prompt, model, sliders, note |
 
@@ -145,3 +168,5 @@ generation_history: []
 - **Lyric Transformer** reads: `writer_voice`, `language`
 - **Feedback Elicitor** reads: `style_baseline`, `sliders`, `model_preference`; writes to `generation_history` via headless:edit
 - When a Persona is active, its style auto-populates the Style of Music field — keep additional style modifications simple (1-2 genres, 1 mood, 2-4 instruments max)
+- **Persona Era-Anchoring:** Personas pull the sound toward the era/style of the source song. Audio Influence at 10-15% reduces this but doesn't eliminate it. For era-specific pieces, generate without a persona or create era-specific personas from era-appropriate source songs.
+- **Inspo Playlist Guidance:** Using your own songs as Inspo homogenizes the catalog sound. Drop Inspo when a song needs its own identity within the same band — let the style prompt and persona do the work instead.

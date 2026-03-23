@@ -123,6 +123,123 @@ Straightforward genre + mood + basic production notes. Less nuanced than v4.5+ m
 8. **Comma separation works across all models** — consistent delimiter
 9. **Describe, don't command** — "dreamy shoegaze with female vocals" over "Create a dreamy shoegaze song." (v4.5 examples use "Create a..." which matches Suno's own v4.5 docs, but descriptive style generally works better.)
 
+## Genre Keyword Ordering
+
+Front-loaded terms dominate the generation. Whatever genre term appears first in the style prompt sets the primary sound — Suno treats it as the anchor, and everything after it is progressively more "flavoring."
+
+When a genre should act as a secondary influence rather than the core sound, append qualifier words like "accents" or "undertones" to push it into the background. For example, `atmospheric swamp metal accents` tells Suno to use swamp metal as coloring rather than the main genre.
+
+**Practical rule:** Put your dominant genre first. Demote secondary genres with "accents," "undertones," "influences," or "elements."
+
+### Genre Term Behavior Table
+
+Specific genre terms produce specific results. This table documents what Suno actually generates for common genre keywords, based on production testing.
+
+| Genre Term(s) | What Suno Produces | Notes |
+|---|---|---|
+| `progressive metal` | Dream Theater-style technical shred | Avoid unless you specifically want technical wankery |
+| `progressive groove metal` | Mastodon-adjacent pocket grooves | Better choice for most prog-metal needs |
+| `prog rock` | Softer, more atmospheric progressive sound | Good for builds, dynamics, and patient arrangements |
+| `heavy swamp metal` | Down/Crowbar-style low-end weight | Reliable for southern heaviness |
+| `post-metal, post-hardcore` | Isis/Cult of Luna patient builds | Adding post-hardcore introduces off-tempo, prog-adjacent moments |
+| `speed metal` | Fast, aggressive, thrash-adjacent | Straightforward — does what it says |
+| `hard rock` | Straightforward driving energy | Clean, uncomplicated rock foundation |
+| `hard rock` + `NOLA second line groove` + `brass band accents` | NOLA parade groove with rock weight | The combination pulls toward parade-style rhythms |
+| `crushing slow heavy swamp metal` + `pounding heartbeat kick drum` | Heavy, deliberate, single-tempo weight | Stacking slow/heavy modifiers locks Suno into a plodding pace |
+| `prog rock` + `slow build then fade` | Atmospheric with proper decrescendo | One of the few reliable ways to get Suno to actually come back down |
+
+## Vocal Behavior and Triggers
+
+### Scream/Harsh Vocal Triggers
+
+Certain words reliably trigger unwanted screaming or harsh vocals, even when the intent is melodic:
+
+- `metal` on its own (without melodic vocal guidance)
+- `sludge`
+- `doom`
+- `!` in lyrics (exclamation marks push vocal delivery toward shouting/screaming)
+
+**Fix:** Always pair heavy genre terms with explicit positive vocal instructions. For example, `heavy swamp metal, raw melodic singing` or `sludge metal, gritty male vocals, no screaming` (plus "screaming" in Exclude Styles). Telling Suno what you DO want from the vocals is more reliable than only excluding what you don't.
+
+### "Technical" as a Modifier
+
+The word "technical" behaves differently depending on what it modifies:
+
+- `technical guitar riffs` → produces shreddy, noodly guitar work
+- `rocking guitar riffs` → better choice for most heavy songs that need energy without wankery
+- `driving technical bass` → produces slightly more interesting bass lines without going overboard; worth including as a standard ingredient in bass-heavy arrangements
+
+## Instrument-Specific Guidance
+
+### Drum Programming
+
+Drum descriptors are highly context-dependent — the same term produces different results depending on surrounding genre and energy keywords.
+
+- **"Second line" drums** shift meaning based on context: paired with slow + atmospheric terms, they produce a hip-hop pocket feel; paired with up-tempo + energetic + hard rock terms, they produce a NOLA parade groove
+- **Splitting funk from drums:** To get funky bass and guitars without funk drums, describe the funk in the bass/guitar descriptors and keep the drum descriptors in metal territory (e.g., `funky bass groove, driving metal drums`)
+- **Swing and groove patterns:**
+  - `swinging drums` + `blues-metal intensity` → Bill Ward-style groove (loose, behind-the-beat swagger)
+  - `pounding drums` → rigid, mechanical, metronomic feel (use when you want deliberate, machine-like precision)
+
+### Bass Prominence (Known Limitation)
+
+Suno cannot reliably produce bass-forward rock or metal mixes. This has been tested extensively:
+
+- Requesting "bass-forward" or "prominent bass" in the style prompt produces marginal results at best — bass remains buried in the mix
+- `bass and drums only, no guitar` combined with guitar in the Exclude Styles field was the most effective approach found, but this requires removing guitar entirely rather than simply featuring bass
+- `funk metal` as a genre term triggers slap/pop bass (Flea-style), NOT overdriven fingerstyle (Geddy Lee-style) — there is currently no reliable way to get prominent overdriven bass in a full-band rock/metal context
+
+**Treat bass-forward rock/metal as a known platform limitation.** If a song concept depends on prominent bass, consider the "bass and drums only" approach or accept that bass will sit in a typical supporting-instrument position in the mix.
+
+## Dynamic Control via Style Prompt
+
+Style prompt directives for energy and dynamics override lyric-level energy tags (like `[Building]` or `[Fade]`). This is powerful but requires careful handling.
+
+### Build and Climax
+
+- `slow massive build to crushing climax` makes Suno build ALL the way through the song, steadily increasing intensity. It will ignore any fade or cooldown tags in the lyrics — the style prompt's arc instruction wins.
+
+### Decrescendo and Comedowns
+
+Getting Suno to bring energy back down is harder than building up. Patterns that work:
+
+- `slow build then fade` — tells Suno the arc goes up AND comes back down
+- `dynamic shifts loud to quiet` — encourages contrast rather than one-directional energy
+- `prog rock` + `slow build then fade` — the prog rock genre context supports patient dynamics, making the fade instruction more effective
+
+**Key insight:** If a song needs to come DOWN after a peak, the decrescendo instruction must be in the style prompt. Lyric tags alone are not enough to counteract a style prompt that implies continuous build.
+
+## Slider Guidelines
+
+### Weirdness and Style Influence by Song Type
+
+These are starting-point ranges based on production testing. Adjust per song, but these give a reliable baseline.
+
+| Song Type | Weirdness | Style Influence | Notes |
+|---|---|---|---|
+| Structured songs (verse-chorus) | 50-55 | 75-80 | Higher Style Influence keeps structure tight |
+| Through-composed | 55-60 | 70-75 | Slightly looser to allow organic flow |
+| Funk-forward | 60 | 65-70 | Weirdness adds rhythmic surprise; lower SI lets funk breathe |
+| Post-metal | 60-65 | 65 | Needs room for patient builds and textural exploration |
+| Prog | 65-75 | 65 | Higher Weirdness encourages unexpected transitions |
+| Circular / agitated | 75 | 65 | High Weirdness for unsettling, looping energy |
+
+**General principle:** Weirdness adds unpredictability and non-obvious choices. Style Influence controls how tightly Suno follows the prompt versus doing its own thing. For conventional songs, keep SI high. For experimental work, back SI off and let Weirdness drive.
+
+## Persona and Inspo Playlist Behavior
+
+### Inspo Playlist Warning
+
+Using your own songs as Inspo playlist entries homogenizes the sound across generations. Suno pulls tonal and structural patterns from Inspo tracks, which flattens out the distinctiveness of new songs. **Drop Inspo when a song needs its own identity** — particularly for songs that are meant to stand apart from the rest of a catalog.
+
+### Persona / Audio Influence on Era
+
+Personas pull the overall sound toward the era of the source song used to create them. A persona built from a 70s-sounding track will drag new generations toward 70s production aesthetics, even when the style prompt targets a different era.
+
+- Reducing Audio Influence to 10-15% helps but does not fully overcome the era pull
+- For era-specific pieces where production style matters, consider generating without a persona entirely
+- Alternatively, create era-specific personas — a "modern" persona and a "vintage" persona, for example — rather than fighting a single persona's baked-in era bias
+
 ## Iteration Best Practices
 
 - **Generate 3-5 versions** per prompt before modifying — v5 produces more varied results than v4.5, and the desired result often appears on the 2nd or 3rd generation

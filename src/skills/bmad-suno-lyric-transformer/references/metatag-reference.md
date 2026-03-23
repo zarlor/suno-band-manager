@@ -131,6 +131,23 @@ Provide guidance to Suno's interpretation. Keep text short: 1-3 words.
 
 **Mood word effectiveness:** Vivid, visceral words work better than polite ones. `[Mood: Mardi Gras]`, `[Mood: wild, party]`, `[Mood: dark, haunting]` are more effective than `[Mood: festive]` or `[Mood: celebratory]`. Suno responds to emotional intensity in tag language.
 
+### Energy Tags — Production-Confirmed Behavior
+These energy and vocal style descriptors have been tested in production and produce reliable results:
+
+| Tag | Observed Effect |
+|-----|-----------------|
+| `[Energy: stripped, minimal]` | Reliably reduces instrumentation |
+| `[Energy: massive]` | Reliably adds full band weight |
+| `[Energy: building]` | Works for gradual intensity increase |
+| `[Vocal Style: whispered]` | More reliably quiet than `[Vocal Style: clean, distant]` — use as the go-to for quiet sections |
+| `[Vocal Style: acapella]` | Sometimes works, sometimes Suno adds light instrumentation anyway |
+
+### Dual Vocals — What Works and What Doesn't
+- `dual male vocals harmonized and gritty` in the style prompt produces harmony/doubling on choruses — confirmed working.
+- `dual vocals trading` does NOT reliably make two voices trade lines.
+- True call-and-response between distinct voices is not reliably achievable through tags alone.
+- The best dual-voice effect comes from using parenthetical backing vocals (see Parentheses section below).
+
 ## Dynamic & Transition Tags
 
 Tags that control energy flow and transitions within the song.
@@ -225,20 +242,29 @@ These are NOT metatags but critical formatting techniques that directly control 
 | Character | Effect | Guidance |
 |-----------|--------|----------|
 | `,` (comma) | Breath pause | Use to shape natural phrasing |
-| `—` / `--` (dash) | Extended syllable linkage between words | Creates connected delivery |
-| `...` (ellipsis) | Micro-pause / held moment | Excessive ellipses make prosody unpredictable — use sparingly |
-| `!` (exclamation) | **BARK/ATTACK TRIGGER** | Tells Suno's vocal engine to attack/bark that word. Bleeds forward into subsequent sections. **NEVER use in sections that should be clean/quiet.** Use sparingly even in aggressive sections. Flag in metal/heavy genres. |
+| `—` / `--` (dash) | Hard pause / extended syllable linkage | Creates a harder pause than comma or ellipsis |
+| `...` (ellipsis) | Micro-pause / trailing delivery | Suggests trailing off — more subtle than a dash |
+| `!` (exclamation) | **BARK/ATTACK TRIGGER** | Tells Suno's vocal engine to attack/bark that word. Bleeds forward into subsequent sections. **NEVER use in sections that should be clean/quiet.** Use sparingly even in aggressive sections. Avoid in metal context — bleeds forward aggressively. |
+| `?` (question mark) | Interrogative delivery | Generally respected — Suno lifts intonation at the end |
+| No punctuation | Suno decides phrasing | Can be useful for intentional ambiguity — let the model choose |
 
 ### Capitalization Effects
 | Style | Effect | Guidance |
 |-------|--------|----------|
 | Sentence case | Normal delivery | Use throughout as baseline |
-| ALL CAPS | **Loudness ceiling** | If you cap words in Verse 1, you've already hit the ceiling — nowhere to build. Save caps for the absolute peak moment only (one word, one line, in the climax). |
+| ALL CAPS | **Loudness ceiling** | Confirmed: ALL CAPS words are sung with more passion/volume. If you cap words in Verse 1, you've already hit the ceiling — nowhere to build. Save caps for the absolute peak moment only (one word, one line, in the climax). |
 
 ### Parentheses
 | Format | Effect |
 |--------|--------|
 | `(words in parentheses)` | Interpreted as **backing vocals/texture**, not lead melody. Useful for dual vocal interplay: lead line with (backing harmonies). |
+
+**Parenthetical Backing Vocals — Production-Tested Details:**
+- No space before opening paren tightens coupling: `word(echo)` not `word (echo)`.
+- Build echo density as intensity climbs — selective use beats every-line use.
+- Works best as single-word echoes in early verses, full-phrase echoes in later verses.
+- Confirmed working: Suno rendered `(blasting)` as a distinct backing vocal layer.
+- This is the most reliable way to get a dual-voice effect (more reliable than `[Duet]` or style prompt dual vocals).
 
 ### Line Density as Tempo Control
 This is the **PRIMARY mechanism** for controlling perceived tempo in Suno-generated vocals.
@@ -246,10 +272,12 @@ This is the **PRIMARY mechanism** for controlling perceived tempo in Suno-genera
 | Technique | Effect | Example |
 |-----------|--------|---------|
 | Short fragmented lines (1-3 words) | Slower delivery — each line gets its own phrase | `Fall` / `apart` / `slowly` |
+| Single words on their own line | Slows and strips down — creates dramatic pauses | `Gone` |
 | Long packed lines (many syllables) | Faster delivery — Suno compresses to fit | `Running through the city streets with nothing left to lose tonight` |
+| Sparse words, long lines | Slow, spacious feel | `Drifting... on... the... tide` |
 | Line breaks | Musical breaths — write breaks where you want the singer to breathe | |
 
-**Key insight:** Energy metatags alone (`[Energy: high]`) do NOT reliably drive actual BPM shifts. They signal intensity but not tempo. Must be combined with line density strategy and style prompt priming with "tempo changes" for multi-tempo songs.
+**Key insight:** Word density is more reliable than BPM tags for tempo control. Energy metatags alone (`[Energy: high]`) do NOT reliably drive actual BPM shifts. They signal intensity but not tempo. Must be combined with line density strategy and style prompt priming with "tempo changes" for multi-tempo songs.
 
 **Recommended multi-technique approach for tempo contrast (from v5 Pro testing):**
 The most effective tempo contrast uses ALL of these together — no single technique is reliable alone:
@@ -269,11 +297,31 @@ Once Suno enters aggressive/scream mode, it tends to carry that energy forward i
 3. Never use `!` or ALL CAPS in sections immediately following an aggressive section
 4. Consider adding a `[Break]` or `[Instrumental]` buffer between aggressive and clean sections
 
-### Vowel Stretching
+### Vowel Stretching & Syllable Manipulation
 | Technique | Effect |
 |-----------|--------|
 | `loooove`, `feeeel` | Nudges cadence — extended vowels suggest held/sustained delivery |
+| `to-o-o-lling` | Hyphenated vowel extension can stretch a word for dramatic effect — results vary |
 | Use sparingly | Test iteratively — results are inconsistent |
+
+### Pronunciation / Phonetics
+Suno has no dictionary — it guesses pronunciation from spelling patterns. This creates problems with homographs and unusual words.
+
+- **Homographs are the biggest problem:** `lives` (verb "he lives" vs noun "our lives"), `read`, `lead` — Suno picks one pronunciation and may guess wrong.
+- **Context from surrounding words does NOT reliably help** Suno pick the right pronunciation.
+- **Phonetic spelling fixes:** `through` to `thru`, `lives` (verb) to `livz`, `Breaths` (verb) to `Breethz`.
+- **Hyphenation forces syllable breaks:** `to-night`, `liv-uz`.
+- **Only use phonetic spelling where a word has more than one valid reading** — don't phonetically spell unambiguous words.
+- **Keep original spelling in the songbook** and note the phonetic substitution in the Suno lyrics version.
+- **Post-generation lyric editing works** for pronunciation fixes — generate, listen, then fix spellings and re-generate if needed.
+
+### Open-Ended Instrumental Sections Are Dangerous
+Instrumental tags without clear boundaries cause Suno to generate excessive instrumental content:
+
+- `[Guitar Solo]` works if followed by more vocals or `[End]`.
+- `[Instrumental section — full prog, complex]` = Suno noodles indefinitely.
+- Multiple `[Instrumental break]` tags = the song becomes mostly instrumental.
+- **Always put `[End]` hard after the final vocal section or solo** to prevent trailing generation.
 
 ## Placement Rules
 

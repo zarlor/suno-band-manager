@@ -79,9 +79,13 @@ Where each component of Mac's output package goes in Suno's Custom Mode:
 - **Negative/exclusion prompts go in the Exclude Styles field**, not in the main style prompt
 - **Style prompt sets ONE overall mood** -- it cannot describe a tempo journey ("halftime to double-time" gets averaged). Use metatags in lyrics for section-level changes.
 - **Negative prompts are unreliable** -- "no screaming" in the style prompt often gets ignored. Use the Exclude Styles field (Pro/Premier) or translate to positive instructions ("clean singing with grit on peaks").
-- **Genre words trigger specific behaviors** -- "metal" triggers screaming, "sludge" triggers harsh vocals. Use alternatives ("progressive heavy groove") when screaming is not desired.
+- **Genre keyword ordering matters** -- front-loaded terms dominate. Whatever appears first sets the primary sound. When a genre should be secondary/flavoring, use "accents" or "undertones": e.g., `atmospheric swamp metal accents`.
+- **Genre words trigger specific behaviors** -- "metal" alone triggers screaming, "sludge" triggers harsh vocals, "doom" risks harsh vocals. Always pair heavy genre terms with explicit positive vocal instructions ("clean singing with grit", "raw melodic singing"). Use alternatives ("progressive heavy groove") when screaming is not desired.
+- **Style prompt controls the full dynamic arc** -- `slow massive build to crushing climax` makes Suno build ALL the way through, ignoring quiet tags at the end. If the song needs to come down, the style prompt MUST acknowledge the descent: `slow build then fade`, `dynamic shifts loud to quiet`.
 - **Rhythm nouns beat tempo adjectives** -- "halftime", "shuffle", "breakbeat" lock feel better than "slow" or "fast".
 - **Instrument ordering matters** -- instruments in the first ~200 chars appear globally; instruments at the end of the prompt are more section-specific when reinforced with `[Instrument: ...]` metatags in lyrics.
+- **Bass-forward rock/metal is a known limitation** -- Suno cannot reliably produce bass-led sound in rock/metal context. Even "bass and drums only, no guitar" with guitar in excludes still produces guitar. "Funk metal" triggers slap/pop bass (Flea), not overdriven fingerstyle (Geddy Lee).
+- **Personas anchor to their source era** -- a persona sourced from a modern song will pull "late 1970s" prompts toward a modern sound. Reduce Audio Influence to 10-15% or generate without a persona for era-specific pieces.
 
 ### Exclude Styles (Pro/Premier)
 

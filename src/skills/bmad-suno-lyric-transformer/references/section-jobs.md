@@ -51,6 +51,30 @@ Verse 2 (second half of poem)
 Chorus
 ```
 
+### Very Short Poem (under 15 lines)
+Poems under 15 lines need special handling — Suno fills short content with looping instrumental, producing a song that feels empty or aimless. Strategies:
+
+**Double delivery:** Deliver the poem twice with different energy. Clean/quiet first pass, then heavy/intense second pass. The repetition is intentional — the same words change meaning through musical recontextualization. This works when the poem's meaning deepens or shifts under a different emotional lens.
+```
+Verse 1 (full poem, clean delivery)
+Chorus (extracted hook)
+Verse 2 (full poem, heavy delivery)
+Final Chorus
+```
+
+**Chorus extraction:** Pull the poem's strongest, most repeatable lines into a standalone chorus. This gives Suno enough structural repetition to build a full song around limited source text.
+
+**Thesis isolation:** Build through the poem, add a guitar solo or instrumental break, then deliver ONLY the final thesis statement as its own section. Powerful when the poem has a clear thesis line that deserves to land in isolation.
+```
+Verse 1
+Verse 2
+Guitar Solo
+Outro (thesis line only)
+[End]
+```
+
+**What NOT to do:** Do not pad short poems with `[Instrumental break]` tags in the lyrics — this literally asks Suno to noodle and produces a song that is mostly instrumental filler.
+
 ### Medium Poem (16-30 lines)
 ```
 Verse 1
@@ -88,5 +112,14 @@ Verse 2
 Bridge
 Verse 3
 Outro
+[End]
 ```
 Use descriptor metatags to guide energy changes instead of relying on chorus repetition.
+
+### Through-Composed Structure — Production Notes
+Through-composed (no repeating chorus) works well when:
+- The poem has a clear arc: building tension, climax, resolution.
+- Word density naturally drives dynamic shifts — dense lines for intensity, sparse lines for breathing room.
+- The style prompt supports the dynamic range needed (e.g., a style prompt that includes both quiet and heavy descriptors).
+
+Critical requirement: always place a hard `[End]` tag after the final delivery to prevent Suno from looping or generating trailing instrumental. Without `[End]`, through-composed songs are especially prone to meandering because Suno has no chorus to signal "this is the structure repeating."

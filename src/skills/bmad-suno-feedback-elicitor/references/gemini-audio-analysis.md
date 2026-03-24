@@ -50,6 +50,16 @@ ChatGPT can analyze uploaded MP3 files. Key workflow difference from Gemini:
 
 **BPM comparison:** ChatGPT's BPM estimates are rough (120-125 range estimates vs. librosa's precise 123.0). Use librosa for BPM, LLMs for subjective qualities.
 
+#### ChatGPT Reliability Warning
+
+**ChatGPT audio analysis is inconsistent across tracks.** In testing:
+- On one track (southern rock/blues), blind analysis was accurate — correctly identified genre, instruments, and bass technique where Gemini hallucinated from the style prompt.
+- On another track (brass-metal fusion), blind analysis completely failed — described "alternative rock, indie, hip-hop groove, synth pads" with no brass, no metal, and 94 BPM on a 184 BPM track. Did not hear the audio file correctly.
+
+**Possible causes:** Free-tier ChatGPT may not reliably process all audio uploads. Track complexity, length, or encoding may affect analysis quality. More testing is needed to identify when ChatGPT audio analysis can be trusted.
+
+**Recommendation:** Treat ChatGPT audio analysis as a supplementary data point, not a reliable source. Cross-reference with Gemini and librosa. When ChatGPT's blind analysis agrees with librosa's objective measurements, it's likely accurate. When it diverges significantly (wrong genre family, wrong BPM by >30%), discard it. The blind analysis technique remains valuable in principle — just verify the output makes basic sense before acting on it.
+
 ### Gemini 3.1 Audio Analysis
 
 ### Setup

@@ -603,6 +603,18 @@ For detailed audio analysis of Suno output, three complementary tools are availa
 
 See the Feedback Elicitor's audio-analysis-workflow reference for detailed setup and prompting guidance.
 
+### Improving Your Suno Prompting with A/B Testing
+
+For users who want to systematically improve their style prompts, Gemini audio analysis enables a powerful A/B testing workflow:
+
+1. Generate 2-3 versions of a song on Suno
+2. Run each through Gemini blind (no style prompt provided) at 0.5 temp
+3. Compare what Gemini hears to what you prompted
+4. Change ONE variable (word position, tag, slider value), regenerate, and analyze again
+5. Document what moved and what didn't
+
+This replaces gut-feel prompt tweaking with systematic iteration. Mac can suggest this as an optional step after presenting a Suno package — just ask "can we A/B test this prompt?"
+
 ### Playlist Sequencing
 
 Mac can assist with playlist/album ordering using both data and creative judgment. The workflow combines:

@@ -121,8 +121,25 @@ A/B testing on the same track (brass-metal fusion) with blind prompts at differe
 - A/B prompt testing: change one variable, generate both, analyze both, compare. Quantifies what prompt changes actually do.
 - Batch analysis for playlist ordering: BPM, key, and dynamic arc data across catalog enables data-informed playlist decisions
 
+### Gemini as Suno Prompt Engineering Feedback Loop
+
+The highest-value use of Gemini audio analysis is **real-time A/B testing of Suno prompts during song creation**, not retrospective catalog analysis. Retrospective analysis of already-published songs is limited — you have one audio snapshot per song and no controlled comparison. The real power is testing prompt changes as you make them.
+
+**Recommended workflow for prompt improvement:**
+1. Write style prompt + lyrics package
+2. Generate 2-3 versions on Suno
+3. Run each through Gemini blind at 0.5 temp (NO style prompt in the analysis request)
+4. Compare what Gemini hears across versions to what was prompted
+5. Identify what the prompt actually controlled vs. what Suno ignored
+6. Adjust ONE variable (word position, tag, slider value), regenerate, analyze again
+7. Document what moved and what didn't in the songbook generation log
+
+**A/B testing discipline:** Change ONE variable per test. Move "art rock" from position 1 to position 3? Generate both, analyze both, compare. Add "driving technical bass"? Generate with and without, analyze both. This is the only way to systematically learn what Suno actually responds to vs. what it ignores.
+
+**Why Gemini's strengths align with this workflow:** It reliably detects instrument presence, dynamic arc, mood/energy, and stereo placement — exactly the things prompt changes are trying to influence. Its weaknesses (BPM, bass technique, endings) don't matter for A/B comparisons because they'd be equally wrong on both versions.
+
 ### Preferred Workflow
-Opus 4.6 (Claude) as primary prompter/orchestrator, Gemini 3.1 as audio analysis assistant. Claude builds Suno packages, Gemini analyzes resulting audio, Claude interprets analysis to inform next iteration.
+Opus 4.6 (Claude) as primary prompter/orchestrator, Gemini 3.1 as audio analysis assistant. Claude builds Suno packages, Gemini analyzes resulting audio, Claude interprets analysis to inform next iteration. Mac can suggest A/B testing as an optional step after presenting a Suno package: "Want to test this prompt? Generate 2-3 versions, run them through Gemini, and I'll tell you what landed and what didn't."
 
 ---
 

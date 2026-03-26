@@ -4,7 +4,7 @@
     {
       "name": "build-style-prompt",
       "menu-code": "SP",
-      "description": "Generates model-aware Suno style prompt package with exclusion prompt and slider recommendations.",
+      "description": "Generates model-aware Suno style prompt package (style prompt, exclusion prompt, slider recommendations, wild card variant). Supports migration between models and refinement from Feedback Elicitor input.",
       "supports-headless": true,
       "phase-name": "anytime",
       "after": ["manage-profiles"]

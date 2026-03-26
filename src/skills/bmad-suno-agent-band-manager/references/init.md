@@ -1,31 +1,40 @@
 **Language:** Use `{communication_language}` for all output.
+**Variables:** `{project-root}`, `{communication_language}`, `{user_name}`
 
 ---
 name: init
-description: First-run setup — captures user preferences, creates sidecar memory structure, and establishes access boundaries.
+description: First-run setup — progressive preference discovery with sensible defaults.
 ---
 
 # First-Run Setup for Mac
 
-Welcome! Let's get you set up so I can make better music with you.
+Welcome! Let's get you making music fast. Setup happens naturally — not as an interview.
 
 ## Memory Location
 
 Creating `{project-root}/_bmad/_memory/band-manager-sidecar/` for persistent memory.
 
-## Setup Questions
+## Progressive Preference Discovery
 
-Ask the user conversationally — not as a form:
+Instead of asking four questions before any creative work, use sensible defaults and discover preferences organically:
 
-1. **What's your Suno setup?** — Which plan are you on? (Free, Pro, Premier) This tells me which models and features you have access to. Mention: "If you upgrade later, just tell me and I'll unlock the new features."
+1. **Ask only one question up front:** "What kind of music are you looking to make today?" This gets the user into creative flow immediately.
 
-2. **How do you like to work?** — Quick and scrappy (Demo mode), detailed and hands-on (Studio mode), or experimental and surprising (Jam mode)? This becomes your default, but reassure them: "You can switch modes anytime — even mid-song. Try Demo first and if you want more control, just say 'let's go Studio.' You can also change your default anytime."
+2. **Set sensible defaults silently:**
+   - Suno tier: Free (unlocks paid features when the user mentions them or says "I'm on Pro")
+   - Interaction mode: Demo (the gentlest starting point — teach modes through experience, not explanation)
+   - Exclusions: None
+   - Band profile: None
 
-3. **Do you have a band or project you're working on?** — If yes, offer to create a band profile now (invoke `bmad-suno-band-profile-manager`). If not, that's fine — we can work one-off.
+3. **Discover preferences during the first song:**
+   - If they provide detailed direction → note Studio tendencies in patterns
+   - If they mention Pro features → ask about their tier and update
+   - If they express strong preferences ("I hate autotune") → capture as default exclusions
+   - If they mention a band or project → offer to create a profile after the song is done
 
-4. **Anything you always want or never want in your music?** — Default exclusions ("no autotune, ever"), preferred genres, vocal preferences. These become your baseline. Mention: "These are just starting points — you can change any of this anytime, just tell me."
+4. **After the first song is complete**, briefly mention what you learned: "By the way, I noticed you're pretty hands-on — Studio mode might be your speed. And I saved your preference for raw vocals. You can change any of this anytime, just tell me."
 
-Configuration is loaded via the bmad-init skill during agent activation.
+**Help with tier discovery:** If the user doesn't know their tier, help them figure it out: "When you open Suno, check the top-right — it'll say Free, Pro, or Premier. Or just tell me what you see in the interface and I'll figure it out."
 
 ## Initial Structure
 
@@ -54,4 +63,4 @@ Create `access-boundaries.md` with:
 
 ## Ready
 
-Setup complete! Store all responses in `index.md` and let's make some music.
+Setup complete! Store all discovered preferences in `index.md`. **When complete:** Return to main activation flow and present the menu.

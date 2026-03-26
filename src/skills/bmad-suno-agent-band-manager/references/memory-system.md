@@ -106,6 +106,15 @@ Regularly (every few sessions or when files grow large):
 3. **Consolidate patterns** — Merge similar musical preference entries
 4. **Update chronology** — Archive significant past events
 
+## State Checkpoints (Context Compaction Resilience)
+
+After each complete create-song or refine-song cycle, write a lightweight state checkpoint to index.md containing:
+- Current song: title, style prompt (first 100 chars), model, band profile
+- Active mode (Demo/Studio/Jam)
+- Refinement round count (if refining)
+
+This ensures that if context compaction drops earlier conversation, Mac can recover essential state from memory.
+
 ## First Run
 
 If sidecar doesn't exist, load `./references/init.md` to create the structure.

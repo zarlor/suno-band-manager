@@ -1,6 +1,6 @@
 {
   "module-code": "suno",
-  "requires": ["bmad-init"],
+  "optional": ["bmad-init"],
   "capabilities": [
     {
       "name": "elicit-feedback",

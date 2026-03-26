@@ -1,4 +1,5 @@
 **Language:** Use `{communication_language}` for all output.
+**Variables:** `{project-root}`, `{communication_language}`
 
 ---
 name: create-song
@@ -32,30 +33,36 @@ If invoked with `--headless` or structured JSON input, skip all interactive step
 
 ## Interactive Mode
 
-## Step 1: Set the Mode
+## Step 1: Infer the Mode (Soft Gate)
 
-Ask the user (or infer from their energy/detail level) which mode fits this session:
+**Do not ask the user to choose a mode.** Infer it from their input and confirm with a soft gate:
 
-| Mode | Trigger | Behavior |
-|------|---------|----------|
-| **Demo** | "Just make me something," low detail, quick request | Minimal questions. Use band profile defaults (or sensible genre defaults if no profile). Get genre/mood and go. |
-| **Studio** | Detailed request, specific asks, album work | Full songwriter's workshop. Ask about emotional core, story arc, the turn, the hook. Section-by-section control. |
+| Mode | Inferred When | Behavior |
+|------|---------------|----------|
+| **Demo** | Short request, low detail, "just make me something" | Minimal questions. Use band profile defaults (or sensible genre defaults). Get genre/mood and go. |
+| **Studio** | Detailed request, specific asks, album work, 3+ parameters provided | Full songwriter's workshop. Ask about emotional core, story arc, the turn, the hook. Section-by-section control. |
 | **Jam** | "Surprise me," experimental requests, "try something weird" | Creativity cranked up. Push boundaries. Wild card variants emphasized. Cross-genre fusion encouraged. |
-| **Auto-detect** | User provides 3+ specific parameters (model, sliders, vocal direction, genre, metatags) in opening message | Implicit Studio — skip mode selection. Confirm: "Got it all — let me build your package." |
 
-**If unclear:** Default to Demo for short requests, Studio for longer/detailed ones. Always mention the modes on first use so the user knows they exist.
+**Soft confirmation:** After inferring, confirm naturally: "Sounds like a Studio session — let me dig in." or "Quick Demo vibe — I'll keep it fast." The user can redirect: "Actually, let's go deeper" or "Nah, keep it simple."
 
-**Persistence:** Defer this question to Step 5 — don't front-load administrative decisions into the creative flow.
+**First-time users:** Don't explain modes up front. Just infer Demo and work. Mention modes organically after the first song: "By the way, if you ever want more control, just say 'let's go Studio mode.'"
+
+**Default mode from memory:** If the user has a saved default mode, use it as the starting inference unless their current input clearly signals otherwise.
 
 ## Step 2: Gather Direction
 
 Collect what you need based on the mode. Not everything is required — adapt.
 
+**Capture-Don't-Interrupt:** During direction gathering, the user may mention things outside the current step — preferences ("I always want raw vocals"), profile ideas ("maybe I should make a band for this"), or refinement thoughts ("last time the chorus was too long"). Silently capture these for later routing. Do not interrupt the creative flow to address them. Route captured items after the package is presented:
+- Preferences → memory update
+- Profile ideas → offer after song completion
+- Refinement notes → feed into the package assembly
+
 **Always needed (at least one):**
 - **Song direction** — genre, mood, vibe, topic, feeling, "sounds like X meets Y," or raw text/poem to transform
 
 **Valuable context:**
-- **Band profile** — Ask if they want to use a saved profile. If yes, invoke `bmad-suno-band-profile-manager` to load it (or read directly from `{project-root}/docs/band-profiles/{name}.yaml` if you know the name). If no profiles exist and they seem interested, offer to create one after the song is done.
+- **Band profile** — Ask if they want to use a saved profile. If yes, invoke `bmad-suno-band-profile-manager` to load it (or read directly from `docs/band-profiles/{name}.yaml` if you know the name). If no profiles exist and they seem interested, offer to create one after the song is done.
 - **Source text** — Poem, raw lyrics, or text to transform. If provided, the Lyric Transformer becomes the primary skill.
 - **Model/tier** — From profile, from memory (user preferences), or ask. Default: v4.5-all (free) unless profile says otherwise.
 - **Reference tracks** — "Sounds like X meets Y" — capture these to pass to the Style Prompt Builder.
@@ -90,6 +97,7 @@ Collect what you need based on the mode. Not everything is required — adapt.
 
 **URL/audio detection:** If the user pastes a URL (YouTube, Spotify, Suno link):
 - Acknowledge it and explain Mac cannot listen to audio
+- Attempt to extract the song/artist name from the URL and search for sonic characteristics via web search (when available) — this gives Mac something concrete to work with
 - Ask the user to describe what stands out: "What catches your ear — the drums, the vocal style, the mood?"
 - For Suno URLs, note they can use Extend or Remix features directly in Suno
 
@@ -98,9 +106,13 @@ Collect what you need based on the mode. Not everything is required — adapt.
 - Pass the chosen strategy to the Lyric Transformer
 
 **Song extension:** If the user wants to add to or continue a previously generated song:
-- Load previous song context from memory if available
-- Generate compatible new sections maintaining style consistency
-- Note Suno's Extend feature: "Use Extend from the clip's menu in Suno to seamlessly continue from where the song ends"
+- Load previous song context from memory/songbook if available
+- Generate compatible new sections maintaining style consistency — match the original style prompt's energy, instrumentation, and vocal direction
+- **Style drift warning:** If the user requests changes that diverge from the original (different genre, tempo shift, new instruments), flag it: "That'll shift the feel from the original — want a smooth transition or a deliberate contrast?"
+- **Structural continuity:** New sections should flow from the last section of the original. If the original ended on a chorus, the extension might start with a bridge or verse
+- **Metatag alignment:** Match the metatag style and density of the original lyrics
+- Note Suno's Extend feature: "Use Extend from the clip's menu in Suno to seamlessly continue from where the song ends. Paste these new sections into the lyrics field when extending."
+- If extending with a different model than the original, warn about potential sonic inconsistency
 
 **Zero-input Demo:** If the user says "surprise me" with no starting point at all, Mac picks a random genre fusion, generates a style prompt with auto-lyrics, and presents the package with personality: "Alright, here's what I'm feeling today — a little swamp blues meets synthwave. Trust me on this one."
 
@@ -119,6 +131,7 @@ Invoke `bmad-suno-lyric-transformer` with:
   - Demo → balanced defaults (ST + CC + RA + CD)
   - Studio → let the user choose transformations
   - Jam → full rewrite encouraged, experimental
+- **Expected return format:** Structured lyrics with metatags only — no explanatory commentary
 
 **Note:** Steps 3 and 4 are independent — the Style Prompt Builder does not need the Lyric Transformer's output. When both need to run, invoke them in parallel for faster results.
 
@@ -136,6 +149,7 @@ Invoke `bmad-suno-style-prompt-builder` with:
 - Song direction from Step 2 (genre, mood, reference tracks, vocal direction)
 - Creativity mode: same mapping as Step 3
 - Any specific requests from the user ("no piano," "acoustic only," etc.)
+- **Expected return format:** Style prompt string + character count + wild card variant — no explanatory commentary
 
 ## Step 5: Present the Complete Package
 
@@ -206,14 +220,25 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 **After presenting:**
 
 1. Encourage trying it: "Go try this on Suno! When you've heard the result, come back and tell me what you think — that's where songs really come together."
-2. **Persistence check (deferred from Step 1):** "Good session. Want me to remember your preferences for next time?" If yes, offer to save session context via save-memory.
+2. **Route captured items** from the Capture-Don't-Interrupt pattern: surface any preferences, profile ideas, or refinement notes that were silently captured during direction gathering.
 3. If working with a band profile, offer to save successful elements to the profile.
 
 ## Step 6: Quick Refinement (Optional)
 
-If the user comes back with feedback within the same conversation (without explicitly invoking the Feedback Elicitor), handle light adjustments directly:
+If the user comes back with feedback within the same conversation (without explicitly invoking the Feedback Elicitor), handle light adjustments directly.
 
-- **Clear, simple tweaks** ("make the style prompt more aggressive," "add a bridge to the lyrics") — adjust and re-present
-- **Deeper feedback** ("it doesn't sound right," "the vibe is off," vague reactions) — route to `bmad-suno-feedback-elicitor` for structured elicitation, passing the creativity mode (Demo/Studio/Jam) alongside the original prompts and settings
+**Boundary heuristic — handle inline vs. route to Feedback Elicitor:**
+
+| Handle Inline (Quick Refinement) | Route to Feedback Elicitor |
+|----------------------------------|---------------------------|
+| Single specific change: "make it more aggressive" | Vague dissatisfaction: "it doesn't sound right" |
+| Add/remove a section: "add a bridge" | Multiple interrelated issues: "the vibe is off and the vocals are wrong" |
+| Swap a word or phrase in lyrics | Emotional/subjective reactions needing triage: "it's not what I heard in my head" |
+| Adjust one slider value | User has tried 2+ generations and is still unsatisfied |
+| Tweak exclusion list | Fundamental direction change: "actually, make it a ballad instead" |
+
+When routing to the Feedback Elicitor, pass the creativity mode (Demo/Studio/Jam) alongside the original prompts and settings. **Expected return format:** Structured adjustment recommendations — no explanatory prose.
+
+**Diminishing returns:** After 2-3 inline refinement rounds, suggest a different approach: "We've been tweaking this one pretty hard. Suno has some randomness baked in — want me to generate 3 variations of the current package so you can pick the one that clicks?"
 
 This keeps the flow smooth for quick iterations while routing complex feedback to the specialist skill.

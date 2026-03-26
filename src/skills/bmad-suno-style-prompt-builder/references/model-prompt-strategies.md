@@ -216,6 +216,16 @@ Suno cannot reliably produce bass-forward rock or metal mixes. This has been tes
 
 **Treat bass-forward rock/metal as a known platform limitation.** If a song concept depends on prominent bass, consider the "bass and drums only" approach or accept that bass will sit in a typical supporting-instrument position in the mix.
 
+### Instrument Bleed-Through
+
+The style prompt sets a GLOBAL instrument palette. Instruments mentioned anywhere in the style prompt bleed into ALL sections regardless of section-level `[Instrument: ...]` tags. This is a fundamental Suno limitation:
+
+- Section-level `[Instrument: ...]` tags CANNOT introduce instruments not in the style prompt — they can only emphasize instruments already in the palette
+- Adding "accents" after instrument names (e.g., "brass accents") reduces but does not eliminate bleed
+- Placing section-specific instruments at the very END of the prompt minimizes but does not prevent bleed
+- **Recommended workflow for section-specific instrumentation:** (1) Generate with all instruments in the prompt (accepting bleed), (2) Extract stems (Suno Pro splits into up to 12 stems including a dedicated brass stem), (3) Mute/remove unwanted instrument stems per section in a DAW like Audacity
+- **Note:** External DAW editing is a one-way operation — once you edit outside Suno, you lose Suno's editing capabilities on that version
+
 ## Dynamic Control via Style Prompt
 
 Style prompt directives for energy and dynamics override lyric-level energy tags (like `[Building]` or `[Fade]`). This is powerful but requires careful handling.

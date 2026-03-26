@@ -1,4 +1,5 @@
 **Language:** Use `{communication_language}` for all output.
+**Variables:** `{project-root}`, `{communication_language}`
 
 ---
 name: refine-song
@@ -20,7 +21,8 @@ Check what you already know from the current session or memory:
 - Song direction and intent
 
 **If starting fresh (user came directly to refine):**
-- Ask what they generated and what prompts they used
+- **Auto-lookup first:** Before asking the user for technical details, check `docs/songbook/` and `{project-root}/_bmad/_memory/band-manager-sidecar/chronology.md` for the most recent song package. If found, confirm: "Is this the one you're refining? {song title / style prompt preview}"
+- If no match found, ask what they generated and what prompts they used
 - Ask which model and settings
 - Ask what they were going for
 
@@ -44,7 +46,7 @@ Invoke `bmad-suno-feedback-elicitor` with:
 - What they were going for (intent summary)
 - Previous iteration log (if this is a repeat refinement round)
 
-Let the Feedback Elicitor run its full triage and elicitation process. It will return structured adjustment recommendations across: style prompt, exclusion prompt, sliders, lyrics, Studio feature suggestions, and possibly a model suggestion.
+**Expected return format:** Structured adjustment recommendations (style prompt deltas, lyric changes, slider adjustments, model suggestions) — no explanatory prose. The Feedback Elicitor runs its full triage and elicitation process and returns structured recommendations across: style prompt, exclusion prompt, sliders, lyrics, Studio feature suggestions, and possibly a model suggestion.
 
 ## Step 3: Route Adjustments
 
@@ -103,3 +105,5 @@ If yes: invoke `bmad-suno-band-profile-manager` to edit the relevant profile fie
 ## Loop
 
 The user can keep refining. Each time they return with feedback, loop back to Step 2. The Feedback Elicitor handles fresh triage each round — adjustments compound and the song converges on their vision.
+
+**Diminishing returns:** After 2-3 refinement rounds on the same song, gently suggest a different approach: "We've been dialing this in for a few rounds — Suno's got some randomness baked in. Want me to generate a few variations of the current package so you can pick the one that clicks? Sometimes the best move is casting a wider net."

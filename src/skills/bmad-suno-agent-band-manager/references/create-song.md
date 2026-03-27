@@ -20,7 +20,7 @@ If invoked with `--headless` or structured JSON input, skip all interactive step
 {
   "source_text": "optional — poem or text to transform",
   "genre_mood": "required — genre, mood, vibe description",
-  "model": "optional — default v4.5-all",
+  "model": "optional — default v4.5-all (also: v5 Pro, v5.5)",
   "band_profile": "optional — profile name to load",
   "creativity_mode": "optional — conservative|balanced|experimental, default balanced",
   "instrumental": "optional — true for instrumental-only",
@@ -64,7 +64,8 @@ Collect what you need based on the mode. Not everything is required — adapt.
 **Valuable context:**
 - **Band profile** — Ask if they want to use a saved profile. If yes, invoke `bmad-suno-band-profile-manager` to load it (or read directly from `docs/band-profiles/{name}.yaml` if you know the name). If no profiles exist and they seem interested, offer to create one after the song is done.
 - **Source text** — Poem, raw lyrics, or text to transform. If provided, the Lyric Transformer becomes the primary skill.
-- **Model/tier** — From profile, from memory (user preferences), or ask. Default: v4.5-all (free) unless profile says otherwise.
+- **Model/tier** — From profile, from memory (user preferences), or ask. Default: v4.5-all (free) unless profile says otherwise. Available models: v4.5-all (free), v5 Pro (paid), v5.5 (paid).
+- **Voice / Custom Model** — If user is on v5.5, check whether they have a Voice or Custom Model configured. If so, note it for Step 4 (style prompt building) and Step 5 (package presentation). A Voice replaces the need for gender descriptors in the style prompt; a Custom Model replaces generic production descriptors the model already encodes.
 - **Reference tracks** — "Sounds like X meets Y" — capture these to pass to the Style Prompt Builder.
 
 **Studio mode additional questions (songwriter's workshop):**
@@ -151,6 +152,11 @@ Invoke `bmad-suno-style-prompt-builder` with:
 - Any specific requests from the user ("no piano," "acoustic only," etc.)
 - **Expected return format:** Style prompt string + character count + wild card variant — no explanatory commentary
 
+**v5.5 prompt adjustments:**
+- If user has a **Voice** configured → instruct the builder to drop gender descriptors (male/female vocal, vocal gender) from the style prompt. Note the active Voice in the package.
+- If user has a **Custom Model** → instruct the builder to drop generic production descriptors the model already handles (e.g., if the Custom Model encodes "lo-fi tape warmth," do not repeat that in the prompt). Focus prompt tokens on what is new or different from the model's baseline.
+- **v5.5 rewards specificity** — encourage more nuanced, specific descriptors over broad genre labels. "Fingerpicked nylon guitar with room reverb" outperforms "acoustic guitar" on v5.5.
+
 ## Step 5: Present the Complete Package
 
 Assemble everything into a single, copy-paste-ready output. **Present items in the order they appear in Suno's UI** so the user can work top-to-bottom without jumping around.
@@ -158,10 +164,21 @@ Assemble everything into a single, copy-paste-ready output. **Present items in t
 ```
 ## Your Suno Package
 
-{If Pro/Premier and Persona applies:}
+{If v5.5 and Voice applies:}
+### Voice
+{voice_name}
+Note: Voice handles vocal identity — gender descriptors have been omitted from the style prompt below.
+
+{If v5.5 and Custom Model applies:}
+### Custom Model
+{custom_model_name}
+Note: Production descriptors covered by this model have been omitted from the style prompt below. Prompt focuses on song-specific direction.
+
+{If pre-v5.5 Pro/Premier and Persona applies:}
 ### Persona
 {persona_name} (from: {source_song})
 Note: This auto-populates the Style of Music field. Keep style modifications simple below.
+Note: In v5.5, Personas have been replaced by Voices.
 
 {If v4.5+ Pro and Inspo applies:}
 ### Inspo
@@ -210,18 +227,20 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 ```
 
 **First-use Suno guidance (show on first song or Demo mode):**
-"**How to use this in Suno:** Switch to Custom Mode. Work through the settings top-to-bottom: select your Persona (if any), paste Lyrics, paste the Style Prompt into 'Style of Music', add Exclude Styles as a comma-separated list, set sliders under More Options, add your Song Title, then hit Create. Generate 3-5 versions — Suno interprets the same inputs differently each time."
+"**How to use this in Suno:** Switch to Custom Mode. Work through the settings top-to-bottom: select your Voice (v5.5) or Persona (pre-v5.5) if any, select your Custom Model (v5.5) if any, paste Lyrics, paste the Style Prompt into 'Style of Music', add Exclude Styles as a comma-separated list, set sliders under More Options, add your Song Title, then hit Create. Generate 3-5 versions — Suno interprets the same inputs differently each time. Listen through all versions, then use section replacement for targeted fixes rather than full regeneration."
 
 **Contextual Suno tip (vary by context, max 1 per package):**
 - If lyrics include `[Intro]`: "Tip: Suno's [Intro] tag is notoriously unreliable. If the intro sounds off, try regenerating just the first 10 seconds."
 - If model is v5 Pro: "Tip: v5 Pro's section editor lets you fine-tune individual sections without regenerating the whole song."
+- If model is v5.5: "Tip: v5.5 responds well to specific, nuanced descriptors. Try 'dusty Rhodes piano with spring reverb' instead of just 'electric piano.' Also consider section replacement for targeted fixes rather than full regeneration."
 - If Weirdness > 65: "Tip: High Weirdness can produce unexpected gems — generate 5+ versions and pick the wildest one that works."
 
 **After presenting:**
 
-1. Encourage trying it: "Go try this on Suno! When you've heard the result, come back and tell me what you think — that's where songs really come together."
-2. **Route captured items** from the Capture-Don't-Interrupt pattern: surface any preferences, profile ideas, or refinement notes that were silently captured during direction gathering.
-3. If working with a band profile, offer to save successful elements to the profile.
+1. Encourage trying it with the **generate → inspect → refine** paradigm: "Go try this on Suno — generate 3-5 versions and listen through them. Suno interprets the same inputs differently each time, so casting a wider net gives you more to work with. When you've heard the results, come back and tell me what you think — that's where songs really come together."
+2. **Suggest section replacement over full regeneration:** If the user finds a version that is mostly right but has a weak section, suggest using section replacement (available in v5 Pro and v5.5) to fix the targeted area rather than regenerating the entire song. "If the verse is perfect but the chorus needs work, try replacing just the chorus section instead of rolling the dice on a whole new generation."
+3. **Route captured items** from the Capture-Don't-Interrupt pattern: surface any preferences, profile ideas, or refinement notes that were silently captured during direction gathering.
+4. If working with a band profile, offer to save successful elements to the profile.
 
 ## Step 6: Quick Refinement (Optional)
 

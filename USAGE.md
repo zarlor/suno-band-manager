@@ -34,7 +34,7 @@ Mac asks these conversationally -- not as a form:
 
 | # | Question | Why It Matters |
 |---|----------|----------------|
-| 1 | **What's your Suno setup?** (Free, Pro, Premier) | Determines which models, sliders, and features Mac can recommend. Free users get v4.5-all only; Pro/Premier unlock v5 Pro, Weirdness/Style Influence sliders, Personas, and more. If you upgrade later, just tell Mac. |
+| 1 | **What's your Suno setup?** (Free, Pro, Premier) | Determines which models, sliders, and features Mac can recommend. Free users get v4.5-all only; Pro/Premier unlock v5 Pro, v5.5, Weirdness/Style Influence sliders, Voices, Custom Models, and more. If you upgrade later, just tell Mac. |
 | 2 | **How do you like to work?** (Demo, Studio, Jam) | Sets your default interaction mode. You can switch modes anytime -- even mid-song. Try Demo first and explore from there. You can change your default anytime by telling Mac. |
 | 3 | **Do you have a band or project?** | If yes, Mac offers to create a band profile right away. If not, you can work one-off. |
 | 4 | **Anything you always want or never want?** | Captures your baseline exclusions ("no autotune, ever"), preferred genres, and vocal preferences. These are just starting points -- you can change any of this anytime. |
@@ -126,7 +126,7 @@ Mac: Alright, here's what I'm feeling today -- a little swamp blues meets synthw
 If your opening message includes 3 or more specific parameters (model, sliders, vocal direction, genre, metatags), Mac skips mode selection and goes straight to Studio mode:
 
 ```
-You: I need a v5 Pro style prompt for a dreamy indie folk song with breathy female vocals,
+You: I need a v5.5 style prompt for a dreamy indie folk song with breathy vocals,
      acoustic guitar, and lo-fi tape saturation. Weirdness around 45.
 Mac: Got it all -- let me build your package.
 ```
@@ -145,7 +145,7 @@ You can update any preference by telling Mac during conversation. Changes take e
 
 | Change | What to Say | What Mac Does |
 |--------|------------|---------------|
-| **Upgrade tier** | "I upgraded to Pro" | Updates memory, announces newly available features, offers to update band profiles |
+| **Upgrade tier** | "I upgraded to Pro" | Updates memory, announces newly available features (including v5.5 Voices, Custom Models, My Taste), offers to update band profiles |
 | **Change default mode** | "Make Studio my default" | Updates memory immediately |
 | **Add exclusions** | "I never want autotune" | Updates memory, notes if band profiles are affected |
 | **Remove exclusions** | "Stop excluding piano" | Updates memory |
@@ -310,14 +310,16 @@ For a field-by-field mapping of where each component goes in Suno's UI, see [Sun
 Mac includes this guidance on your first song or in Demo mode:
 
 1. Switch to **Custom Mode** in Suno
-2. Select your **Persona** (if recommended, Pro/Premier only)
-3. Set **Inspo** playlist (if recommended, v4.5+ Pro only)
-4. Paste **Lyrics** into the Lyrics field (set Lyrics Mode to Manual)
-5. Paste the **Style Prompt** into the "Style of Music" field
-6. Add **Exclude Styles** as a comma-separated list (Pro/Premier)
-7. Under **More Options**, set Vocal Gender and sliders (if on Pro/Premier)
-8. Add your **Song Title**
-9. Hit **Create** and generate **3-5 versions** -- Suno interprets the same inputs differently each time
+2. Select your **Voice** (v5.5, Pro/Premier) or **Persona** (pre-v5.5, Pro/Premier) if recommended
+3. Select your **Custom Model** (v5.5, Pro/Premier) if recommended
+4. Set **Inspo** playlist (if recommended, v4.5+ Pro only)
+5. Paste **Lyrics** into the Lyrics field (set Lyrics Mode to Manual)
+6. Paste the **Style Prompt** into the "Style of Music" field
+7. Add **Exclude Styles** as a comma-separated list (Pro/Premier)
+8. Under **More Options**, set Vocal Gender and sliders (if on Pro/Premier)
+9. Add your **Song Title**
+10. Hit **Create** and generate **3-5 versions** -- Suno interprets the same inputs differently each time
+11. **Inspect results** -- listen through all versions before deciding. If a version is mostly right but one section is weak, try **section replacement** (v5 Pro / v5.5) to fix the targeted area rather than regenerating the whole song
 
 **A note on tempo control:** BPM tags in lyrics (e.g., `[Verse: 65 BPM]`) have no detectable effect on Suno's output -- confirmed by librosa analysis across multiple songs. Perceived tempo is actually controlled through how lyrics are written: short fragmented lines feel slow, packed lines feel fast, and line breaks control where the singer breathes. For drum feel changes, use metatags like `[Heavy: halftime]` rather than BPM values. Mac handles this automatically when building your lyrics package.
 
@@ -337,7 +339,9 @@ A band profile is the sonic equivalent of a brand book. It captures the DNA of a
 - Capture slider values and exclusions that work for you
 - Preserve your writing voice when Mac transforms lyrics
 
-**A note on vocal consistency:** Band profiles maintain consistency in your *prompts* -- genre, style, exclusions, and vocal direction. However, Suno interprets the same style prompt differently on every generation. The only way to get a truly consistent vocal identity across songs is with the **Persona** feature (Pro/Premier plans), which locks in a specific vocal character from a source song. Without a Persona, you are relying on descriptive prompt language, which gets you in the right neighborhood but not an exact match. If consistent vocal identity across an album or project matters to you, a Pro plan with Personas is strongly recommended.
+**A note on vocal consistency:** Band profiles maintain consistency in your *prompts* -- genre, style, exclusions, and vocal direction. However, Suno interprets the same style prompt differently on every generation. The only way to get a truly consistent vocal identity across songs is with the **Voice** feature (Pro/Premier plans on v5.5), which locks in a specific vocal character. Without a Voice, you are relying on descriptive prompt language, which gets you in the right neighborhood but not an exact match. If consistent vocal identity across an album or project matters to you, a Pro plan with Voices is strongly recommended.
+
+**Personas to Voices (v5.5):** If you previously used Personas, note that v5.5 replaces them with Voices. Voices serve the same purpose -- consistent vocal identity -- but are a distinct feature in the v5.5 interface. Mac handles this transition automatically when you update your model selection.
 
 ### Creating Your First Profile
 
@@ -355,7 +359,7 @@ Mac (via the Band Profile Manager skill) walks you through a conversational disc
 8. **Style prompt baseline** -- Built from your answers. Mac shows a draft and iterates with you.
 9. **Exclusion defaults** -- What should never appear? Max 5 recommended.
 10. **Creative settings** -- Conservative/balanced/experimental. Slider preferences if on a paid tier.
-11. **Persona reference** -- Do you have an existing Suno Persona to link?
+11. **Voice / Persona reference** -- Do you have an existing Suno Voice (v5.5) or Persona (pre-v5.5) to link? Do you have a Custom Model (v5.5)?
 12. **Writer voice** -- Optional. Analyze your writing style now or skip for later.
 
 Between sections, Mac asks "Anything else to add, or move on?" -- he does not auto-advance.
@@ -695,7 +699,7 @@ All skills support headless (non-interactive) operation for scripting, batch pro
 {
   "source_text": "optional -- poem or text to transform",
   "genre_mood": "required -- genre, mood, vibe description",
-  "model": "optional -- default v4.5-all",
+  "model": "optional -- default v4.5-all (also: v5 Pro, v5.5)",
   "band_profile": "optional -- profile name to load",
   "creativity_mode": "optional -- conservative|balanced|experimental, default balanced",
   "instrumental": "optional -- true for instrumental-only",
@@ -766,6 +770,7 @@ Headless modes enable batch workflows. Example: generate style prompts for multi
 | Mac does not ask enough questions | You are in Demo mode | Say "let's go Studio mode" for the full songwriter's workshop. |
 | Mac forgot my preferences | Session was not saved | Select SM (Save Memory) before ending your session. |
 | Profile says wrong tier | Your Suno plan changed | Tell Mac "I upgraded to Pro" -- he updates memory and offers to update your profiles. Mac also detects tier drift when loading profiles. |
+| Profile references Personas but I'm on v5.5 | Personas replaced by Voices in v5.5 | Tell Mac your model version -- he handles the Persona-to-Voice transition and updates your profiles. |
 | Mutually exclusive transformation error | Selected FR + WF or other conflicts | Full Rewrite and Word Fidelity cannot be used together. Chorus Extraction is skipped if Full Rewrite is selected. |
 
 ### What to Do When Skills Are Unavailable

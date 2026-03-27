@@ -97,19 +97,24 @@ Guide the user through building a complete band profile conversationally. Load `
    - After decomposition, prompt: "Does that breakdown match what you hear in those tracks? Anything I missed or got wrong?"
 5. **Language** — What language will the lyrics be in? Default to English if not specified.
 6. **Model & tier** — Which Suno model/plan do they use? Run `./scripts/tier-features.py` with their tier to show what's available.
-7. **Vocal direction** (skip if instrumental) — Gender, tone, delivery, energy, diction. Be specific: "warm, breathy female vocal with indie folk phrasing" not just "female vocals." If they have a Suno Persona, capture both the name and the source song it was derived from.
+7. **Vocal direction** (skip if instrumental) — Gender, tone, delivery, energy, diction. Be specific: "warm, breathy female vocal with indie folk phrasing" not just "female vocals." If they have a Suno Persona (v4.5/v5), capture both the name and the source song it was derived from. If they have a Suno Voice (v5.5), capture the voice_id instead — note that Voices replaced Personas in v5.5.
    - Draw out detail: "Close your eyes and hear your singer. Are they whispering in your ear or commanding a stadium? Smooth or rough around the edges? What emotion hits you first?"
-8. **Style prompt baseline** — Build the default style prompt from their genre/mood/vocal/reference answers. Front-load essentials in the first 200 characters. Show them the draft and prompt: "Read this like a recipe for your sound — does every ingredient belong? Anything missing?"
-9. **Exclusion defaults** — What should never appear? ("no autotune, no screaming"). Keep entries concise and specific; recommend max 5.
+   - **Voice configured?** If a Voice is set, flag that gender vocal descriptors should be omitted from the style baseline — the Voice defines the vocal identity.
+8. **Voices & Custom Models** (Pro/Premier only, skip for Free tier) — If the user is on Pro or Premier:
+   - Ask if they have a Suno Voice (v5.5 voice cloning from a 15s-4min audio sample). If so, capture the `voice_id`. Explain that Voices replaced Personas in v5.5 and that gender vocal descriptors will be omitted from style prompts when a Voice is active.
+   - Ask if they have a Suno Custom Model (trained on 6+ original tracks). If so, capture the `custom_model_id` and ask them to describe what it was trained on and what production style it provides (`custom_model_notes`).
+   - If they use v4.5/v5 models with a Persona, that still works — Voices are v5.5 only.
+9. **Style prompt baseline** — Build the default style prompt from their genre/mood/vocal/reference answers. Front-load essentials in the first 200 characters. Show them the draft and prompt: "Read this like a recipe for your sound — does every ingredient belong? Anything missing?"
+10. **Exclusion defaults** — What should never appear? ("no autotune, no screaming"). Keep entries concise and specific; recommend max 5.
    - Tell the user: "I'll save these exclusions, but when I build your style prompts I'll also phrase them positively — Suno responds better to what you DO want than what you don't."
    - **Technical context (do not share verbatim):** Suno does not reliably process negative prompts. Exclusion defaults are stored for reference and the Exclude Styles field, but the Style Prompt Builder translates them into positive style prompt language (e.g., "no screaming" becomes "clean singing with grit on peaks").
-10. **Creative settings** — Creativity mode preference (conservative/balanced/experimental). If on a paid tier, discuss Weirdness and Style Influence slider preferences (0-100, default 50). Explain what they do if the user is unsure.
-11. **Persona reference** — Do they have an existing Suno Persona to link? (Name it clearly.) Note the source song for recreation.
-12. **Writer voice** — Optional. Ask if they'd like to analyze their writing style now (→ Analyze Writer Voice) or skip for later.
+11. **Creative settings** — Creativity mode preference (conservative/balanced/experimental). If on a paid tier, discuss Weirdness and Style Influence slider preferences (0-100, default 50). Explain what they do if the user is unsure.
+12. **Persona reference** (v4.5/v5 users only) — Do they have an existing Suno Persona to link? (Name it clearly.) Note the source song for recreation. Skip if already covered in step 8 with a Voice (v5.5). Note: Personas still work on v4.5/v5 models but are replaced by Voices in v5.5.
+13. **Writer voice** — Optional. Ask if they'd like to analyze their writing style now (→ Analyze Writer Voice) or skip for later.
 
 Between sections, ask: "Anything else to add, or move on?" — do not auto-advance without user confirmation.
 
-**Progressive YAML assembly:** After steps 4, 8, and 12, assemble the profile YAML collected so far into a fenced code block in your response. This checkpoints progress — structured YAML survives context compaction far better than scattered conversational fragments.
+**Progressive YAML assembly:** After steps 4, 9, and 13, assemble the profile YAML collected so far into a fenced code block in your response. This checkpoints progress — structured YAML survives context compaction far better than scattered conversational fragments.
 
 **Creative Scratch Pad:** Maintain a running list of non-profile items the user mentions during discovery — song concepts, lyric fragments, production experiments, genre tangents. Do not interrupt the flow to discuss them. At session end: "I also captured these ideas you mentioned — want me to save them for when you create songs?"
 

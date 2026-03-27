@@ -2,9 +2,75 @@
 
 > **Critical zone:** The first ~200 characters of a style prompt carry disproportionate influence on generation. When recommending additions, prioritize the most impactful descriptors for the critical zone. Supplementary descriptors go after.
 >
-> **Last validated:** March 2026 (Suno v5, v4.5-all). Recommendations are based on these model versions — newer models may respond differently.
+> **Last validated:** March 2026 (Suno v5.5, v5, v4.5-all). Recommendations are based on these model versions — newer models may respond differently.
 
 Maps feedback dimensions and emotional vocabulary to concrete Suno parameter adjustments.
+
+## Voices & Custom Models
+
+### Voices (User-Uploaded Vocal Identity)
+
+When the user has a Voice active, the Voice provides the vocal identity (timbre, character, tone). Vocal *delivery* adjustments should use **delivery metatags** in the lyrics field, NOT style prompt vocal descriptors.
+
+| Adjustment | Use This (Delivery Metatag) | NOT This (Style Prompt) |
+|------------|----------------------------|------------------------|
+| Softer delivery | `[Whispered]`, `[Soft]` | "whispered vocals" in style prompt |
+| Powerful delivery | `[Belted]`, `[Powerful]` | "powerful singing" in style prompt |
+| Emotional delivery | `[Tender]`, `[Yearning]` | "emotional vocals" in style prompt |
+| Aggressive delivery | `[Aggressive]`, `[Screamed]` | "aggressive vocal style" in style prompt |
+
+**Audio Influence with Voices:** The sweet spot is ~40%. Higher values increase voice fidelity but may reduce overall generation quality. Lower values reduce voice consistency — the output may drift from the uploaded vocal identity. Start at 40% and adjust in 5-10% increments based on feedback.
+
+### Custom Models (User-Trained Production Models)
+
+When the user has a Custom Model active, the model has learned a production DNA from its training catalog. Generic production adjustments (e.g., "polished production," "raw mix") may have little effect because the model defaults to its trained production style.
+
+| Feedback | Standard Approach (May Not Work) | Custom Model Approach |
+|----------|----------------------------------|-----------------------|
+| "Production is too heavy" | "lighter production" | Name the specific element: "reduce distorted guitar layers, more acoustic presence" |
+| "Mix sounds wrong" | "better mix" | Target specifics: "push vocals forward, pull back drum room reverb" |
+| "Doesn't sound like my style" | Adjust style prompt broadly | Retrain model with better-curated catalog; use more specific prompt overrides |
+
+**Key principle:** Adjustments need to be MORE specific to override a Custom Model's defaults. Generic descriptors get absorbed by the model's learned tendencies.
+
+### Voice + Custom Model Combined
+
+When both a Voice and a Custom Model are active, change **ONE variable at a time** to isolate what moved. Changing the style prompt, Voice delivery metatags, and Audio Influence simultaneously makes it impossible to determine which change caused the result.
+
+**Isolation sequence:**
+1. Adjust delivery metatags first (least disruptive — only changes vocal performance)
+2. Then adjust Audio Influence if voice fidelity is the issue
+3. Then adjust style prompt if the production/arrangement needs changing
+4. Regenerate and evaluate after each single change
+
+## v5.5 Workflow Paradigm
+
+v5.5 favors an iterative **generate -> inspect -> section replace -> refine** workflow over full regeneration. This preserves good material and spends fewer credits.
+
+### Recommended v5.5 Workflow
+
+1. **Generate** the initial output from the song package
+2. **Inspect** the full result — evaluate structure, melody, emotional angle, and production
+3. **Section replace** any sections that need work (preserve sections that are good)
+4. **Refine** with targeted adjustments (delivery metatags, slider tweaks, specific prompt edits)
+
+### Critical Checkpoint Questions
+
+Before spending credits on regeneration or further iteration, ask:
+
+- **Is the structure correct?** If yes, do NOT regenerate from scratch — use section replacement.
+- **Is the melody usable?** A good melody with flawed production is worth refining. A bad melody needs regeneration.
+- **Does the emotional angle justify more credits?** If the song is fundamentally heading in the right direction, refine. If the emotional core is wrong, regenerate.
+
+### When to Use Section Replacement vs. Full Regeneration
+
+| Situation | Recommendation |
+|-----------|---------------|
+| Structure and melody are good, one section has bad vocals | Section replacement |
+| Structure is good, multiple sections need different fixes | Sequential section replacements |
+| Melody is wrong throughout | Full regeneration |
+| Overall vibe/genre is off | Full regeneration with revised style prompt |
+| Good material but wrong emotional direction | Full regeneration — emotional direction is global |
 
 ## Style Prompt Mechanics
 
@@ -356,6 +422,14 @@ When feedback maps to Studio features rather than prompt changes.
 | "The vocal melody is great but the lyrics are wrong" | Add Vocals | Re-record vocals over the existing instrumental |
 | "I need the instrumental without vocals" | Stems | Extract up to 12 stems including isolated instrumental |
 | "The song is great but I want to try different words" | Replace Section + Lyrics edit | Change lyrics for specific sections while preserving melody |
+
+### Additional Studio Capabilities (v5.5)
+
+| Feature | What It Does | Key Limitation |
+|---------|-------------|----------------|
+| Warp Markers | Fix timing post-generation without pitch shift — correct rushed or dragging sections | Timing adjustment only; does not affect pitch or melody |
+| Remove FX | Strip reverb/delay from the generation for external DAW processing | One-way: stripping FX in Suno is for export purposes; re-adding FX requires regeneration or external processing |
+| Time Signature | Available in the editor interface | Editing-only — does NOT affect the generative model. The model generates in whatever time signature it interprets from the style prompt and genre context. |
 
 **Note:** Studio features are available on Premier tier. Some features (Replace Section, Add Vocals) are available on Pro tier. Always check the user's tier before recommending Studio workflows.
 

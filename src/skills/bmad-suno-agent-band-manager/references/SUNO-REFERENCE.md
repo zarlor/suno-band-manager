@@ -13,6 +13,7 @@ Quick-reference for Suno models, plans, parameters, metatags, and common pitfall
 | **v4.5 Pro** | Conversational descriptions | 1,000 | Intelligent prompts, narrative style | Paid |
 | **v4.5+ Pro** | Conversational descriptions | 1,000 | Advanced creation methods | Paid |
 | **v5 Pro** | Crisp film-brief (4-7 descriptors) | 1,000 | Authentic vocals, superior audio quality, section editing | Paid |
+| **v5.5 Pro** | Crisp film-brief (4-7 descriptors) | 1,000 | Most expressive model, better subtle descriptor handling, Voices, Custom Models, My Taste | Paid |
 
 **Character limit details:**
 - **v4 Pro:** 200 chars (hard limit, silently truncated)
@@ -30,6 +31,23 @@ Quick-reference for Suno models, plans, parameters, metatags, and common pitfall
 - Composition-aware architecture -- uses early style/genre info for coherent section transitions
 - Existing v4 prompts often work "even better" on v5
 
+**v5.5-specific behaviors (additive update over v5):**
+- Same audio engine, metatags, and character limits as v5 -- all v5 prompts work identically, often with better results
+- 48kHz sample rate, up to 8 min generation, internal codename "chirp-crow"
+- Most expressive model yet -- better at interpreting subtle and nuanced descriptors
+- More varied output per generation -- generate 3-5 versions and pick the standout
+- v5.5-optimized prompts can be more specific: "deep sub 808s, glitchy hi-hat rolls, pitched vocal chops" where v5 would use simpler "808s, hi-hats"
+- **Voices** (replaces Personas): actual voice cloning with anti-deepfake verification, 15s-4min audio sample required. Pro/Premier only.
+- **Custom Models**: train on 6+ original tracks, 2-5 min training time, up to 3 custom models. Pro/Premier only.
+- **My Taste**: passive personalization that shapes generation defaults based on your listening/generation history. All tiers. Takes 20-30 generations to settle.
+- **Workflow paradigm shift:** v5.5 encourages generate -> inspect -> replace sections -> refine (not regenerate from scratch)
+
+**v5.5 Personalization Stack** (layers from broadest to most specific):
+1. **My Taste** -- shapes generation defaults passively
+2. **Custom Model** -- sets production DNA and sonic identity
+3. **Voice** -- applies a specific vocal tone and character
+4. **Prompt** -- steers the specific song (always the most important layer)
+
 ---
 
 ## Plan Comparison
@@ -45,7 +63,10 @@ Quick-reference for Suno models, plans, parameters, metatags, and common pitfall
 | **Exclude Styles field** | No | Yes (Early Access Beta) | Yes (Early Access Beta) |
 | **Inspo** | No | Yes (v4.5+ Pro) | Yes |
 | **Legacy Editor** | No | Yes (section replace, rearrange, crop, fade) | Yes |
-| **Personas** | No | Yes | Yes |
+| **Personas** | No | Yes (v4.5/v5) | Yes (v4.5/v5) |
+| **Voices** | No | Yes (v5.5, replaces Personas) | Yes (v5.5, replaces Personas) |
+| **Custom Models** | No | Yes (up to 3) | Yes (up to 3) |
+| **My Taste** | Yes (passive) | Yes (passive) | Yes (passive) |
 | **Stems** | No | Up to 12 | Up to 12 |
 | **Audio upload** | 1 min | 8 min | 8 min |
 | **Add Vocals/Instrumental** | No | Yes | Yes |
@@ -58,6 +79,8 @@ Free-tier "More Options" includes: Vocal Gender, Manual/Auto Lyrics mode, Song T
 Pro/Premier "More Options" additionally includes: Weirdness slider, Style Influence slider, Audio Influence slider (with Persona or audio upload), Exclude Styles, Personas, Inspo, and the Legacy Editor for section-level editing.
 
 **Vocal consistency across songs:** Suno interprets the same style prompt differently on every generation. Descriptive prompt language (e.g., "breathy female vocal with indie folk phrasing") gets you in the right neighborhood but not an exact match. The **Persona** feature (Pro/Premier) is the only reliable way to lock in a consistent vocal identity across songs -- it reuses the vocal character from a source generation. If you are working on an album or project where songs need to sound like the same singer, Personas are essential.
+
+**Voices (v5.5, replaces Personas):** In v5.5, the **Voices** feature replaces Personas for vocal consistency. Key differences: Voices is actual voice cloning (from a 15s-4min audio sample with anti-deepfake verification), while Personas was style essence capture from a source generation. Personas still work on v4.5/v5, but Voices is the v5.5 successor and provides more precise vocal identity matching. Pro/Premier only.
 
 ---
 

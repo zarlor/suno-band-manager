@@ -1,6 +1,6 @@
 # Model-Specific Prompt Strategies
 
-> **Last validated:** March 26, 2026 (Suno v5 Pro, v4.5-all, v4.5 Pro, v4.5+ Pro, v4 Pro). Updated with community research findings on character limits, descriptor effects, and v5-specific behaviors. Suno updates models and prompt behavior frequently — use web search to verify strategies against current documentation when uncertain.
+> **Last validated:** March 26, 2026 (Suno v5.5 Pro, v5 Pro, v4.5-all, v4.5 Pro, v4.5+ Pro, v4 Pro). Updated with v5.5 features (Voices, Custom Models, My Taste), community research findings on character limits, descriptor effects, and v5/v5.5-specific behaviors. Suno updates models and prompt behavior frequently — use web search to verify strategies against current documentation when uncertain.
 
 ## Quick Reference
 
@@ -10,6 +10,7 @@
 | v4.5 Pro | Conversational + nuanced | Like v4.5-all with more detail responsiveness | Intelligent prompt enhancement |
 | v4.5+ Pro | Advanced conversational | More control over structure | Advanced creation methods |
 | v5 Pro | Crisp film-brief | 4-7 descriptors, emotional > technical | Natural vocals, instrument separation, polish |
+| v5.5 Pro | Crisp film-brief (same as v5) | 4-7 descriptors, can be more granular | Most expressive, Voices, Custom Models, My Taste |
 | v4 Pro | Simple descriptors | Keep it straightforward | Improved sound quality over v3 |
 
 ## v4.5 Family (v4.5-all, v4.5 Pro, v4.5+ Pro)
@@ -123,6 +124,60 @@ This separates concerns and prevents overloading any single input field.
 - "Odd time signatures" is consistently ignored in 4/4 rock/metal context — the strong 4/4 pull of rock and metal genres overrides time signature instructions
 - Suno adds unscripted guitar solos regularly — expect them even when not requested, especially in rock/metal genres
 - Structural/section directions embedded in long style prompts are largely ignored — Suno treats the style prompt as a tonal palette, not a roadmap. Use metatags and the editor for structural control, not the style prompt.
+
+## v5.5 Pro
+
+### Prompt Style: Same as v5 Pro — Crisp Film-Brief
+
+v5.5 is an additive update over v5. It uses the same audio engine, metatags, and character limits. All v5 prompts work identically on v5.5, often with better results. No migration required.
+
+### What Changed
+
+- **Most expressive model yet** -- better at interpreting subtle, nuanced descriptors that v5 would flatten or ignore
+- **More varied output** per generation -- generate 3-5 versions and pick the standout; the spread between "best" and "average" is wider
+- **v5.5-optimized prompts can be more specific:** where v5 would use simpler terms like "808s, hi-hats," v5.5 responds well to granular detail: "deep sub 808s, glitchy hi-hat rolls, pitched vocal chops"
+- 48kHz sample rate, up to 8 min generation, internal codename "chirp-crow"
+- **Workflow paradigm shift:** v5.5 encourages generate -> inspect -> replace sections -> refine (not regenerate from scratch)
+
+### v5.5 New Features
+
+**Voices (replaces Personas):**
+- Actual voice cloning from a 15s-4min audio sample with anti-deepfake verification
+- Pro/Premier only
+- Drop gender descriptors ("male vocals", "female singer") when using Voices -- the Voice already defines these, freeing characters for production detail
+- Audio Influence ~40% is the sweet spot for Voices (higher than the 25% default for Personas)
+- Pairs well with delivery metatags (`[Whispered]`, `[Belted]`, `[Breathy]`, `[Raspy]` etc.) -- Voice sets *who* sings, metatags set *how*
+- Personas still work on v4.5/v5 but Voices is the v5.5 successor. Key difference: Voices is actual voice cloning, Personas was style essence capture.
+
+**Custom Models:**
+- Train on 6+ original tracks, 2-5 min training time, up to 3 custom models per account
+- Pro/Premier only
+- Drop generic production descriptors your model already knows -- if your Custom Model was trained on lo-fi indie tracks, you don't need "lo-fi warmth" in every prompt
+- Think of Custom Model as "producer" and the prompt as "songwriter" -- the model brings the sonic palette, the prompt brings the creative direction
+- Train separate models for separate styles -- mixing genres in training data confuses the model
+- **Voice + Custom Model is the most powerful combo:** who sings (Voice) + what style (Custom Model) + detailed prompt (creative direction)
+
+**My Taste:**
+- Passive personalization that shapes generation defaults based on your listening/generation history
+- All tiers
+- Takes 20-30 generations to settle
+- No direct user control -- it learns from what you generate and interact with
+
+### v5.5 Personalization Stack
+
+Layers from broadest to most specific:
+1. **My Taste** -- shapes generation defaults passively
+2. **Custom Model** -- sets production DNA and sonic identity
+3. **Voice** -- applies a specific vocal tone and character
+4. **Prompt** -- steers the specific song (always the most important layer)
+
+### Tips
+
+- All v5 Pro tips above still apply -- v5.5 is additive, not a replacement
+- Lean into specificity: replace broad descriptors with granular ones where you have a clear sonic vision
+- When using Voices, reallocate the characters you save from dropping gender/vocal descriptors toward production detail
+- When using Custom Models, reallocate the characters you save from dropping generic production descriptors toward song-specific creative direction
+- The generate -> replace sections -> refine loop is more efficient than regenerating from scratch on v5.5
 
 ## v4 Pro
 
@@ -322,6 +377,23 @@ The Persona auto-populates the Style of Music field. Song-specific prompts shoul
 - **Change ONE variable at a time** — adjust either the music direction OR the Persona settings, not both simultaneously. This isolates what's working vs. what's not.
 - **Mental model:** Persona = artist identity (vocals, character); Style prompt = producer brief (sonic direction for this specific song).
 
+### Voices Interaction Guidelines (v5.5, replaces Personas)
+
+In v5.5, **Voices** replaces Personas for vocal identity. Voices is actual voice cloning (from a 15s-4min audio sample with anti-deepfake verification), while Personas was style essence capture from a source generation. Personas still work on v4.5/v5.
+
+- **Drop gender descriptors when using Voices** — "male vocals", "female singer", etc. are redundant because the Voice already defines these. This frees characters for production detail.
+- **Audio Influence ~40% is the sweet spot for Voices** — higher than the 25% Persona default, because Voices needs more influence to apply the cloned vocal tone accurately.
+- **Pairs well with delivery metatags** — `[Whispered]`, `[Belted]`, `[Breathy]`, `[Raspy]` etc. Voice sets *who* sings, metatags set *how* they deliver each section.
+- **15s-4min audio sample required** plus anti-deepfake verification (you must prove you own or have rights to the voice).
+
+### Custom Model Interaction Guidelines (v5.5)
+
+Custom Models let you train Suno on your own tracks to establish a production DNA. Think of the Custom Model as "producer" and the prompt as "songwriter."
+
+- **Drop generic production descriptors your model already knows** — if your Custom Model was trained on lo-fi indie tracks, "lo-fi warmth" is redundant in every prompt. Use those characters for song-specific direction instead.
+- **Train separate models for separate styles** — mixing genres in training data confuses the model. A "dark electronic" model and an "acoustic folk" model will each outperform a single model trained on both.
+- **Voice + Custom Model is the most powerful combo** — who sings (Voice) + what style (Custom Model) + detailed prompt (creative direction). This is the full v5.5 personalization stack in action.
+
 ## Cover Feature
 
 Cover re-performs an existing song in a new style — it preserves the melody, lyrics, and structure while changing genre, instrumentation, vocal character, and production. Cover prompts use production language, clear genre descriptors, and specific instrumentation.
@@ -341,6 +413,8 @@ Personas pull the overall sound toward the era of the source song used to create
 - Reducing Audio Influence to 10-15% helps but does not fully overcome the era pull
 - For era-specific pieces where production style matters, consider generating without a persona entirely
 - Alternatively, create era-specific personas — a "modern" persona and a "vintage" persona, for example — rather than fighting a single persona's baked-in era bias
+
+**Note on Voices (v5.5):** Voices replaces Personas in v5.5. Because Voices is actual voice cloning rather than style essence capture, it carries less era bias than Personas -- the Voice contributes vocal tone without dragging production aesthetics from a source song. This makes Voices more flexible for era-specific work.
 
 ### Audio Influence Slider Behavior
 

@@ -110,27 +110,15 @@ These are optional — the full song creation and refinement workflow works with
 
 ## Updating
 
-To reconfigure after a module update, run the setup skill again:
+If you installed via symlinks (the default), `git pull` is all you need — your symlinks pick up all changes automatically, including the new setup skill.
+
+To reconfigure settings or migrate legacy config to the new format, run:
 
 ```
 /bmad-suno-setup
 ```
 
-Existing settings are preserved as defaults — just confirm or change what you need.
-
-### Migrating from BMad Method Installer (pre-v1.4.0)
-
-If you previously installed this module via `npx bmad-method install`, the setup skill handles migration automatically:
-
-1. Copy the new skill folders from `src/skills/` into `.claude/skills/`, replacing any old copies.
-2. Remove the old symlinks at `_bmad/suno/skills/` and `_bmad/_config/custom/suno/` if they exist — skills now live in `.claude/skills/`.
-3. Run `/bmad-suno-setup`. The setup skill will:
-   - Detect your existing config at `_bmad/suno/config.yaml` and use your saved values as defaults
-   - Write config in the new format (`_bmad/config.yaml` + `_bmad/config.user.yaml`)
-   - Register capabilities in the new `_bmad/module-help.csv` format
-   - Clean up the legacy `_bmad/suno/` directory after a successful migration
-
-Your preferences, band profiles, songbook, and memory are all preserved — only the config format changes.
+The setup skill detects any existing config (including from the old `npx bmad-method install` format at `_bmad/suno/config.yaml`) and uses your saved values as defaults. Your preferences, band profiles, songbook, and memory are all preserved.
 
 ## Suno Model Compatibility
 

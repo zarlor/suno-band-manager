@@ -118,6 +118,20 @@ To reconfigure after a module update, run the setup skill again:
 
 Existing settings are preserved as defaults — just confirm or change what you need.
 
+### Migrating from BMad Method Installer (pre-v1.4.0)
+
+If you previously installed this module via `npx bmad-method install`, the setup skill handles migration automatically:
+
+1. Copy the new skill folders from `src/skills/` into `.claude/skills/`, replacing any old copies.
+2. Remove the old symlinks at `_bmad/suno/skills/` and `_bmad/_config/custom/suno/` if they exist — skills now live in `.claude/skills/`.
+3. Run `/bmad-suno-setup`. The setup skill will:
+   - Detect your existing config at `_bmad/suno/config.yaml` and use your saved values as defaults
+   - Write config in the new format (`_bmad/config.yaml` + `_bmad/config.user.yaml`)
+   - Register capabilities in the new `_bmad/module-help.csv` format
+   - Clean up the legacy `_bmad/suno/` directory after a successful migration
+
+Your preferences, band profiles, songbook, and memory are all preserved — only the config format changes.
+
 ## Suno Model Compatibility
 
 Mac supports Suno models from v4 through v5.5 Pro, with model-specific prompt optimization and character limit enforcement. See the [Suno Reference](SUNO-REFERENCE.md) for models, plans, and prompting, and the [Studio & Editor Reference](STUDIO-EDITOR-REFERENCE.md) for post-generation editing (Legacy Editor, Studio, Stems, Warp Markers, and more).

@@ -6,7 +6,7 @@
 """Pre-activation script for Band Manager agent.
 
 Checks first-run status, scaffolds sidecar directory if needed, and
-renders the capability menu from bmad-manifest.json.
+renders the capability menu from module-help.csv.
 
 Usage:
     python3 scripts/pre-activate.py <project-root> [--scaffold] [-o OUTPUT]
@@ -21,9 +21,15 @@ Options:
 """
 
 import argparse
+import csv
 import json
 import sys
+from io import StringIO
 from pathlib import Path
+
+AGENT_SKILL_NAME = "bmad-suno-agent-band-manager"
+SETUP_SKILL_NAME = "bmad-suno-setup"
+MODULE_CODE = "BMad Suno Band Manager"
 
 
 def check_first_run(project_root: Path) -> bool:
@@ -69,35 +75,69 @@ def scaffold_sidecar(project_root: Path) -> dict:
     return {"scaffolded": True, "files_created": created, "sidecar_path": str(sidecar)}
 
 
-def render_menu(manifest_path: Path) -> str:
-    """Render capability menu from bmad-manifest.json."""
-    with open(manifest_path) as f:
-        manifest = json.load(f)
+def find_module_csv(project_root: Path, skill_dir: Path) -> Path | None:
+    """Find module-help.csv — installed location first, then setup skill assets."""
+    # Installed location
+    installed = project_root / "_bmad" / "module-help.csv"
+    if installed.is_file():
+        return installed
+
+    # Setup skill assets (sibling directory)
+    skills_dir = skill_dir.parent
+    setup_csv = skills_dir / SETUP_SKILL_NAME / "assets" / "module-help.csv"
+    if setup_csv.is_file():
+        return setup_csv
+
+    return None
+
+
+def parse_csv(csv_path: Path) -> list[dict]:
+    """Parse module-help.csv and return rows for this module (excluding setup)."""
+    with open(csv_path, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        rows = []
+        for row in reader:
+            # Skip the setup skill's own entry
+            if row.get("skill", "").strip() == SETUP_SKILL_NAME:
+                continue
+            rows.append(row)
+    return rows
+
+
+def render_menu(csv_path: Path) -> str:
+    """Render capability menu from module-help.csv."""
+    rows = parse_csv(csv_path)
 
     lines = ["What would you like to do today?\n"]
-    for i, cap in enumerate(manifest.get("capabilities", []), 1):
-        code = cap.get("menu-code", "??")
-        desc = cap.get("description", "No description")
-        lines.append(f"{i}. [{code}] {desc}")
+    for i, row in enumerate(rows, 1):
+        code = row.get("menu-code", "??").strip()
+        display = row.get("display-name", "").strip()
+        desc = row.get("description", "No description").strip()
+        lines.append(f"{i}. [{code}] {display} — {desc}")
 
     return "\n".join(lines)
 
 
-def build_routing_table(manifest_path: Path) -> dict:
+def build_routing_table(csv_path: Path) -> dict:
     """Build menu-code to capability routing table."""
-    with open(manifest_path) as f:
-        manifest = json.load(f)
+    rows = parse_csv(csv_path)
 
     table = {}
-    for i, cap in enumerate(manifest.get("capabilities", []), 1):
-        code = cap.get("menu-code", "")
-        entry = {"name": cap.get("name", "")}
-        if "prompt" in cap:
+    for i, row in enumerate(rows, 1):
+        code = row.get("menu-code", "").strip()
+        skill = row.get("skill", "").strip()
+        action = row.get("action", "").strip()
+
+        entry = {"name": action}
+        if skill == AGENT_SKILL_NAME:
+            # Agent's own capabilities — load reference prompt
             entry["type"] = "prompt"
-            entry["target"] = cap["prompt"]
-        elif "skill-name" in cap:
+            entry["target"] = f"./references/{action}.md"
+        else:
+            # External skill capabilities
             entry["type"] = "skill"
-            entry["target"] = cap["skill-name"]
+            entry["target"] = skill
+
         table[code] = entry
         table[str(i)] = entry
 
@@ -113,12 +153,19 @@ def main():
 
     project_root = Path(args.project_root)
     skill_dir = Path(__file__).parent.parent
-    manifest_path = skill_dir / "bmad-manifest.json"
+
+    csv_path = find_module_csv(project_root, skill_dir)
+    if csv_path is None:
+        print(json.dumps({
+            "error": True,
+            "message": "module-help.csv not found. Run the setup skill first.",
+        }))
+        sys.exit(1)
 
     result = {
         "first_run": check_first_run(project_root),
-        "menu": render_menu(manifest_path),
-        "routing_table": build_routing_table(manifest_path),
+        "menu": render_menu(csv_path),
+        "routing_table": build_routing_table(csv_path),
     }
 
     if args.scaffold and result["first_run"]:

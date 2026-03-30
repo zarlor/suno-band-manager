@@ -72,8 +72,8 @@ Each skill can be invoked directly for standalone use — see the linked READMEs
 
 ## Prerequisites
 
-- **Claude Code** with a model that supports tool use (Claude Sonnet 3.5+, Claude Opus 4+)
-- **BMad Method (BMB module)** installed — Mac is built as a BMad skill
+- **Claude Code** with a model that supports tool use (Claude Sonnet 4+, Claude Opus 4+)
+- **BMad Method (BMB module)** installed — Mac is built as a BMad module
 - **Suno account** (free tier works; Pro/Premier unlocks additional features)
 
 ### Optional: Audio Analysis
@@ -88,44 +88,35 @@ These are optional — the full song creation and refinement workflow works with
 
 ## Installation
 
-```bash
-git clone https://github.com/zarlor/bmad-suno-band-manager
-cd bmad-suno-band-manager
-```
-
 **Requires [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.2.0+).**
 
-1. Run the BMad installer:
+1. Copy the skill folders from `src/skills/` into your project's `.claude/skills/` directory (or use your preferred installation method).
 
-```bash
-npx bmad-method install
+2. Run the setup skill to configure the module:
+
+```
+/bmad-suno-setup
 ```
 
-2. When prompted for custom modules, select **"Add new custom modules"** and provide the path to this module's `src/` directory.
-
-3. The installer will ask you to configure:
+3. The setup skill will ask you to configure:
    - **Suno tier** — Free, Pro, or Premier (determines available features)
    - **Default interaction mode** — Demo, Studio, or Jam
    - **Band profiles folder** — Where to store band identity files
    - **Songbook folder** — Where to store saved songs
 
-4. The installer registers all skills with your IDE and creates the necessary directories.
+4. The setup skill registers all capabilities with the help system and creates the necessary directories.
 
 5. On first activation, Mac will greet you and confirm your setup. All preferences are changeable anytime through conversation — just tell Mac "I upgraded to Pro" or "make Studio my default mode."
 
 ## Updating
 
-To re-register skills after a module update (preserves your existing settings):
+To reconfigure after a module update, run the setup skill again:
 
-```bash
-npx bmad-method install --action quick-update
+```
+/bmad-suno-setup
 ```
 
-For a full update that lets you review and change configuration:
-
-```bash
-npx bmad-method install --action update
-```
+Existing settings are preserved as defaults — just confirm or change what you need.
 
 ## Suno Model Compatibility
 
@@ -134,27 +125,37 @@ Mac supports Suno models from v4 through v5.5 Pro, with model-specific prompt op
 ## File Structure
 
 ```
-bmad-suno-agent-band-manager/
-├── SKILL.md                    # Agent persona, activation, orchestration
-├── bmad-manifest.json          # Capability registry
-├── references/
-│   ├── create-song.md          # Main song creation workflow
-│   ├── refine-song.md          # Post-generation refinement loop
-│   ├── browse-songbook.md      # Creative history browsing
-│   ├── save-memory.md          # Session persistence
-│   ├── init.md                 # First-run setup
-│   ├── README.md               # Skill documentation
-│   ├── USAGE.md                # Detailed usage guide
-│   ├── SUNO-REFERENCE.md       # Suno platform reference
-│   └── memory-system.md        # Memory discipline and structure
-└── scripts/
-    ├── pre-activate.py         # First-run detection, scaffolding, menu rendering
-    ├── validate-path.py        # Access boundary enforcement
-    ├── check-memory-health.py  # Memory file size monitoring
-    └── tests/
-        ├── test-pre-activate.py
-        ├── test-validate-path.py
-        └── test-check-memory-health.py
+src/skills/
+├── bmad-suno-setup/                # Module setup and configuration
+│   ├── SKILL.md                    # Setup skill — config collection and registration
+│   ├── assets/
+│   │   ├── module.yaml             # Module metadata and config variables
+│   │   └── module-help.csv         # Capability registry (v1.4.0 format)
+│   └── scripts/
+│       ├── merge-config.py         # Config file merge
+│       ├── merge-help-csv.py       # Help CSV merge
+│       └── cleanup-legacy.py       # Legacy file cleanup
+├── bmad-suno-agent-band-manager/   # Mac — orchestrating agent
+│   ├── SKILL.md                    # Agent persona, activation, orchestration
+│   ├── bmad-skill-manifest.yaml    # Skill type identifier
+│   ├── references/
+│   │   ├── create-song.md          # Main song creation workflow
+│   │   ├── refine-song.md          # Post-generation refinement loop
+│   │   ├── browse-songbook.md      # Creative history browsing
+│   │   ├── save-memory.md          # Session persistence
+│   │   ├── init.md                 # First-run setup
+│   │   ├── memory-system.md        # Memory discipline and structure
+│   │   ├── SUNO-REFERENCE.md       # Suno platform reference
+│   │   └── STUDIO-EDITOR-REFERENCE.md
+│   └── scripts/
+│       ├── pre-activate.py         # First-run detection, scaffolding, menu rendering
+│       ├── validate-path.py        # Access boundary enforcement
+│       └── check-memory-health.py  # Memory file size monitoring
+├── bmad-suno-band-profile-manager/ # Band profile CRUD and writer voice analysis
+├── bmad-suno-style-prompt-builder/ # Model-aware style prompt generation
+├── bmad-suno-lyric-transformer/    # Poem/text to Suno-ready lyrics
+├── bmad-suno-feedback-elicitor/    # Post-generation feedback refinement
+└── _shared/                        # Shared Python utilities
 ```
 
 ## License

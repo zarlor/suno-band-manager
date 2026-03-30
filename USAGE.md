@@ -561,11 +561,12 @@ Round 3: "That's it." → Save successful elements to profile
 Mac orchestrates four specialized skills. You can use them directly through Mac's menu or invoke them independently via slash commands.
 
 **Slash commands:**
+- `/bmad-suno-setup` -- Install or reconfigure the module
 - `/bmad-suno-agent-band-manager` -- Talk to Mac (the orchestrating agent)
 - `/bmad-suno-band-profile-manager` -- Manage band profiles directly
 - `/bmad-suno-style-prompt-builder` -- Build style prompts directly
 - `/bmad-suno-lyric-transformer` -- Transform lyrics directly
-- `/bmad-suno-feedback-elicitor` -- Feedback analysis directly
+- `/bmad-suno-feedback-elicitor` -- Feedback loop directly
 
 ### When to Use Skills Directly vs. Through Mac
 
@@ -582,8 +583,11 @@ Mac orchestrates four specialized skills. You can use them directly through Mac'
 |-----------|-------|-------------------|
 | **SP** | [Style Prompt Builder](src/skills/bmad-suno-style-prompt-builder/references/README.md) | You already have lyrics and just need the sound description |
 | **TL** | [Lyric Transformer](src/skills/bmad-suno-lyric-transformer/references/README.md) | You have text to convert and don't need a style prompt |
-| **FE** | [Feedback Elicitor](src/skills/bmad-suno-feedback-elicitor/references/README.md) | You want structured feedback handling without Mac's full orchestration |
+| **FL** | [Feedback Elicitor](src/skills/bmad-suno-feedback-elicitor/references/README.md) | You want structured feedback handling without Mac's full orchestration |
 | **MB** | [Band Profile Manager](src/skills/bmad-suno-band-profile-manager/references/README.md) | You want to create, edit, list, duplicate, or delete profiles directly |
+| **WV** | [Band Profile Manager](src/skills/bmad-suno-band-profile-manager/references/README.md) | You want to analyze writer voice patterns from writing samples |
+| **HC** | [Band Profile Manager](src/skills/bmad-suno-band-profile-manager/references/README.md) | You want to assess a profile's completeness and quality |
+| **AL** | [Lyric Transformer](src/skills/bmad-suno-lyric-transformer/references/README.md) | You want to analyze text for song structure potential without transforming it |
 
 ### Lyric Transformer Options
 
@@ -793,20 +797,24 @@ For detailed troubleshooting of Suno platform issues (prompt formatting, audio q
 If you are not sure what to do:
 - Say "help" or describe what you are trying to accomplish -- Mac redirects gracefully
 - If Mac seems confused about your intent, try stating it differently: "I want to make a new song" vs. "I want to refine an existing one"
-- Check the menu -- select a capability by its code (CS, RS, MB, SP, TL, FE, SB, SM)
+- Check the menu -- select a capability by its code (CS, RS, MB, SP, TL, FL, SB, SM)
 - For Suno-specific questions Mac cannot answer, consult [Suno's help center](https://help.suno.com)
 
 ---
 
 ## Quick Reference: Menu Codes
 
-| Code | Capability | Description |
-|------|-----------|-------------|
-| **CS** | Create Song | Full song creation workflow |
-| **RS** | Refine Song | Post-generation refinement |
-| **SM** | Save Memory | Save session context |
-| **MB** | Manage Bands | Band profile CRUD |
-| **SP** | Build Prompt | Direct style prompt generation |
-| **TL** | Transform Lyrics | Direct lyric transformation |
-| **FE** | Elicit Feedback | Direct feedback analysis |
-| **SB** | Browse Songbook | Browse past songs and history |
+| Code | Capability | Skill | Description |
+|------|-----------|-------|-------------|
+| **SU** | Setup Module | Setup | Install or reconfigure the Suno module |
+| **CS** | Create Song | Band Manager (Mac) | Full song creation workflow |
+| **RS** | Refine Song | Band Manager (Mac) | Post-generation refinement via Mac |
+| **SB** | Browse Songbook | Band Manager (Mac) | Browse past songs and creative history |
+| **SM** | Save Memory | Band Manager (Mac) | Save session context |
+| **MB** | Manage Bands | Profile Manager | Band profile CRUD |
+| **WV** | Analyze Writer Voice | Profile Manager | Extract writing voice patterns from samples |
+| **HC** | Profile Health Check | Profile Manager | Assess profile completeness and quality |
+| **SP** | Build Style Prompt | Style Prompt Builder | Model-aware style prompt generation |
+| **TL** | Transform Lyrics | Lyric Transformer | Poem/text to Suno-ready lyrics |
+| **AL** | Analyze Lyrics | Lyric Transformer | Analyze text for song structure potential |
+| **FL** | Feedback Loop | Feedback Elicitor | Guided feedback refinement |

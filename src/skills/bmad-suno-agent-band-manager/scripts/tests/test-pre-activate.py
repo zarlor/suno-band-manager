@@ -22,6 +22,14 @@ spec = spec_from_file_location(
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+SAMPLE_CSV = (
+    "module,skill,display-name,menu-code,description,action,args,phase,after,before,required,output-location,outputs\n"
+    'BMad Suno Band Manager,bmad-suno-setup,Setup Suno Module,SU,"Install or update config.",configure,,anytime,,,false,,\n'
+    'BMad Suno Band Manager,bmad-suno-agent-band-manager,Create Song,CS,"Create a song package.",create-song,,anytime,,,false,,song package\n'
+    'BMad Suno Band Manager,bmad-suno-agent-band-manager,Refine Song,RS,"Refine a song.",refine-song,,anytime,,,false,,\n'
+    'BMad Suno Band Manager,bmad-suno-band-profile-manager,Manage Bands,MB,"Manage band profiles.",manage-profiles,,anytime,,,false,,\n'
+)
+
 
 def test_check_first_run_true(tmp_path):
     """First run when sidecar doesn't exist."""
@@ -62,37 +70,98 @@ def test_scaffold_idempotent(tmp_path):
     assert (sidecar / "patterns.md").read_text() == "custom content"
 
 
+def _write_csv(tmp_path, content=SAMPLE_CSV):
+    """Helper to write a test CSV file."""
+    csv_path = tmp_path / "module-help.csv"
+    csv_path.write_text(content)
+    return csv_path
+
+
 def test_render_menu(tmp_path):
-    """Menu renders correctly from manifest."""
-    manifest = {
-        "capabilities": [
-            {"menu-code": "CS", "description": "Create a song"},
-            {"menu-code": "RS", "description": "Refine a song"},
-        ]
-    }
-    manifest_path = tmp_path / "bmad-manifest.json"
-    manifest_path.write_text(json.dumps(manifest))
+    """Menu renders correctly from module-help.csv."""
+    csv_path = _write_csv(tmp_path)
 
-    menu = mod.render_menu(manifest_path)
-    assert "1. [CS] Create a song" in menu
-    assert "2. [RS] Refine a song" in menu
-    assert "prompt" not in menu.lower() or "prompt" in "Create a song".lower()
+    menu = mod.render_menu(csv_path)
+    # Setup skill entry should be excluded
+    assert "Setup" not in menu
+    # Agent and external skill entries should appear
+    assert "[CS]" in menu
+    assert "[RS]" in menu
+    assert "[MB]" in menu
+    assert "Create Song" in menu
 
 
-def test_build_routing_table(tmp_path):
-    """Routing table maps codes and numbers correctly."""
-    manifest = {
-        "capabilities": [
-            {"name": "create-song", "menu-code": "CS", "prompt": "create-song.md"},
-            {"name": "manage-bands", "menu-code": "MB", "skill-name": "bmad-suno-band-profile-manager"},
-        ]
-    }
-    manifest_path = tmp_path / "bmad-manifest.json"
-    manifest_path.write_text(json.dumps(manifest))
+def test_render_menu_excludes_setup(tmp_path):
+    """Menu does not include the setup skill entry."""
+    csv_path = _write_csv(tmp_path)
+    menu = mod.render_menu(csv_path)
+    assert "[SU]" not in menu
 
-    table = mod.build_routing_table(manifest_path)
+
+def test_build_routing_table_agent_capabilities(tmp_path):
+    """Agent's own capabilities route to prompt references."""
+    csv_path = _write_csv(tmp_path)
+
+    table = mod.build_routing_table(csv_path)
     assert table["CS"]["type"] == "prompt"
-    assert table["CS"]["target"] == "create-song.md"
-    assert table["1"]["type"] == "prompt"
+    assert table["CS"]["target"] == "./references/create-song.md"
+    assert table["RS"]["type"] == "prompt"
+    assert table["RS"]["target"] == "./references/refine-song.md"
+
+
+def test_build_routing_table_external_skills(tmp_path):
+    """External skill capabilities route to skill invocation."""
+    csv_path = _write_csv(tmp_path)
+
+    table = mod.build_routing_table(csv_path)
     assert table["MB"]["type"] == "skill"
     assert table["MB"]["target"] == "bmad-suno-band-profile-manager"
+
+
+def test_build_routing_table_numeric_keys(tmp_path):
+    """Routing table includes numeric keys for positional access."""
+    csv_path = _write_csv(tmp_path)
+
+    table = mod.build_routing_table(csv_path)
+    # First non-setup entry is CS at position 1
+    assert table["1"]["name"] == "create-song"
+    assert table["2"]["name"] == "refine-song"
+    assert table["3"]["name"] == "manage-profiles"
+
+
+def test_find_module_csv_installed(tmp_path):
+    """Finds CSV at installed location."""
+    bmad_dir = tmp_path / "_bmad"
+    bmad_dir.mkdir()
+    csv_file = bmad_dir / "module-help.csv"
+    csv_file.write_text(SAMPLE_CSV)
+
+    skill_dir = tmp_path / "skills" / "bmad-suno-agent-band-manager"
+    skill_dir.mkdir(parents=True)
+
+    result = mod.find_module_csv(tmp_path, skill_dir)
+    assert result == csv_file
+
+
+def test_find_module_csv_setup_assets(tmp_path):
+    """Falls back to setup skill assets when not installed."""
+    skills_dir = tmp_path / "skills"
+    setup_assets = skills_dir / "bmad-suno-setup" / "assets"
+    setup_assets.mkdir(parents=True)
+    csv_file = setup_assets / "module-help.csv"
+    csv_file.write_text(SAMPLE_CSV)
+
+    skill_dir = skills_dir / "bmad-suno-agent-band-manager"
+    skill_dir.mkdir(parents=True)
+
+    result = mod.find_module_csv(tmp_path, skill_dir)
+    assert result == csv_file
+
+
+def test_find_module_csv_not_found(tmp_path):
+    """Returns None when CSV is not found."""
+    skill_dir = tmp_path / "skills" / "bmad-suno-agent-band-manager"
+    skill_dir.mkdir(parents=True)
+
+    result = mod.find_module_csv(tmp_path, skill_dir)
+    assert result is None

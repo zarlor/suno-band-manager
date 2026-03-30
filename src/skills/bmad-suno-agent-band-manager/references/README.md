@@ -57,45 +57,29 @@ Mac is an orchestrating agent that coordinates four specialized skills:
 
 ## Prerequisites
 
-- **Claude Code** with a model that supports tool use (Claude Sonnet 3.5+, Claude Opus 4+)
-- **BMad Method (BMB module)** installed — Mac is built as a BMad skill
+- **Claude Code** with a model that supports tool use (Claude Sonnet 4+, Claude Opus 4+)
+- **BMad Method (BMB module)** installed — Mac is built as a BMad module
 - **Suno account** (free tier works; Pro/Premier unlocks additional features)
 
 ## Installation
 
 **Requires [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.2.0+).**
 
-1. Run the BMad installer:
+1. Copy the skill folders from `src/skills/` into your project's `.claude/skills/` directory.
 
-```bash
-npx bmad-method install
+2. Run the setup skill to configure the module:
+
+```
+/bmad-suno-setup
 ```
 
-2. When prompted for custom modules, select **"Add new custom modules"** and provide the path to this module's `src/` directory.
+3. The setup skill collects your preferences (Suno tier, default mode, folder paths) and registers all capabilities with the help system.
 
-3. The installer will ask you to configure:
-   - **Suno tier** — Free, Pro, or Premier (determines available features)
-   - **Default interaction mode** — Demo, Studio, or Jam
-   - **Band profiles folder** — Where to store band identity files
-   - **Songbook folder** — Where to store saved songs
-
-4. The installer registers all skills with your IDE and creates the necessary directories.
-
-5. On first activation, Mac will greet you and confirm your setup. All preferences are changeable anytime through conversation — just tell Mac "I upgraded to Pro" or "make Studio my default mode."
+4. On first activation, Mac will greet you and confirm your setup. All preferences are changeable anytime through conversation.
 
 ## Updating
 
-To re-register skills after a module update (preserves your existing settings):
-
-```bash
-npx bmad-method install --action quick-update
-```
-
-For a full update that lets you review and change configuration:
-
-```bash
-npx bmad-method install --action update
-```
+To reconfigure after a module update, run `/bmad-suno-setup` again. Existing settings are preserved as defaults.
 
 ## Quick Start
 
@@ -121,7 +105,7 @@ npx bmad-method install --action update
 ```
 bmad-suno-agent-band-manager/
 ├── SKILL.md                    # Agent persona, activation, orchestration
-├── bmad-manifest.json          # Capability registry
+├── bmad-skill-manifest.yaml    # Skill type identifier
 ├── references/
 │   ├── browse-songbook.md      # Creative history browsing
 │   ├── create-song.md          # Main song creation workflow
@@ -131,7 +115,7 @@ bmad-suno-agent-band-manager/
 │   ├── refine-song.md          # Post-generation refinement loop
 │   ├── save-memory.md          # Session persistence
 │   ├── SUNO-REFERENCE.md       # Suno platform reference
-│   └── USAGE.md                # Detailed usage guide
+│   └── STUDIO-EDITOR-REFERENCE.md
 └── scripts/
     ├── pre-activate.py         # First-run detection, scaffolding, menu rendering
     ├── validate-path.py        # Access boundary enforcement

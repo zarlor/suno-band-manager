@@ -1,6 +1,14 @@
 code: suno
 name: "BMad Suno Band Manager"
 description: "AI-powered music production assistant for creating Suno-ready song packages with style prompts, lyrics, and band identity management"
+module_version: 1.0.0
+default_selected: false
+module_greeting: >
+  Mac is tuned up and ready to jam! Your Suno Band Manager module is installed.
+  Run this setup again any time to reconfigure settings.
+
+  Get started by talking to Mac (your Band Manager) or jump straight into any skill:
+  Create a song, manage band profiles, build style prompts, transform lyrics, or refine your Suno output.
 
 # Variables from Core Config inserted:
 ## user_name

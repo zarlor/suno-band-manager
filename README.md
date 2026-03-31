@@ -90,35 +90,80 @@ These are optional — the full song creation and refinement workflow works with
 
 **Requires [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.2.0+).**
 
-1. Copy the skill folders from `src/skills/` into your project's `.claude/skills/` directory (or use your preferred installation method).
+### 1. Clone the repository
 
-2. Run the setup skill to configure the module:
+```bash
+git clone https://github.com/zarlor/bmad-suno-band-manager.git
+cd bmad-suno-band-manager
+```
+
+### 2. Install BMad Method (if not already installed)
+
+```bash
+npx bmad-method@next install
+```
+
+Select the modules you need (BMad Core is always included). BMad Builder is recommended if you plan to customize skills.
+
+### 3. Link the Suno skills
+
+Claude Code discovers skills from `.claude/skills/`. Run the included script to create symlinks:
+
+```bash
+./link-skills.sh
+```
+
+This links each skill from `src/skills/` into `.claude/skills/`. Symlinks let `git pull` update your skills in place — no re-copying needed. The script is idempotent; running it again skips skills that are already linked.
+
+### 4. Run setup
 
 ```
 /bmad-suno-setup
 ```
 
-3. The setup skill will ask you to configure:
-   - **Suno tier** — Free, Pro, or Premier (determines available features)
-   - **Default interaction mode** — Demo, Studio, or Jam
-   - **Band profiles folder** — Where to store band identity files
-   - **Songbook folder** — Where to store saved songs
+The setup skill will ask you to configure:
+- **Suno tier** — Free, Pro, or Premier (determines available features)
+- **Default interaction mode** — Demo, Studio, or Jam
+- **Band profiles folder** — Where to store band identity files
+- **Songbook folder** — Where to store saved songs
 
-4. The setup skill registers all capabilities with the help system and creates the necessary directories.
+It registers all capabilities with the help system and creates the necessary directories.
 
-5. On first activation, Mac will greet you and confirm your setup. All preferences are changeable anytime through conversation — just tell Mac "I upgraded to Pro" or "make Studio my default mode."
+### 5. Start using Mac
+
+On first activation, Mac will greet you and confirm your setup. All preferences are changeable anytime through conversation — just tell Mac "I upgraded to Pro" or "make Studio my default mode."
 
 ## Updating
 
-If you installed via symlinks (the default), `git pull` is all you need — your symlinks pick up all changes automatically, including the new setup skill.
+### Updating the Suno module
 
-To reconfigure settings or migrate legacy config to the new format, run:
+```bash
+git pull
+```
+
+That's it. Your symlinks point into `src/skills/`, so changes are picked up immediately. If the update includes new config options or a version bump, re-run setup to apply them:
 
 ```
 /bmad-suno-setup
 ```
 
-The setup skill detects any existing config (including from the old `npx bmad-method install` format) and uses your saved values as defaults. It writes both the shared config format (`_bmad/config.yaml`) and per-module config files (`_bmad/core/config.yaml`, `_bmad/suno/config.yaml`) that `bmad-init` reads at runtime. Your preferences, band profiles, songbook, and memory are all preserved.
+The setup skill detects your existing config and uses your saved values as defaults. Your preferences, band profiles, songbook, and memory are all preserved.
+
+### After a BMad Method upgrade
+
+Running `npx bmad-method@next install` replaces the contents of `.claude/skills/` with BMad's own skills. This removes the Suno symlinks but does **not** affect your module source, config, or data.
+
+To restore the Suno skills:
+
+```bash
+./link-skills.sh
+```
+
+Then re-run setup to ensure help entries and config are current:
+
+```
+/bmad-suno-setup
+```
 
 ## Suno Model Compatibility
 

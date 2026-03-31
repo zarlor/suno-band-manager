@@ -30,6 +30,46 @@ from pathlib import Path
 AGENT_SKILL_NAME = "bmad-suno-agent-band-manager"
 SETUP_SKILL_NAME = "bmad-suno-setup"
 MODULE_CODE = "BMad Suno Band Manager"
+VOICE_FILE_PREFIX = "voice-context-"
+VOICE_FILE_SUFFIX = ".md"
+
+
+def normalize_username(name: str) -> str:
+    """Normalize a user name for use in filenames: lowercase, spaces to hyphens."""
+    return name.strip().lower().replace(" ", "-")
+
+
+def detect_voice_files(project_root: Path, user_name: str | None) -> dict:
+    """Detect voice/context files in the docs/ directory.
+
+    Scans for files matching voice-context-*.md and checks if one matches
+    the current user_name from config.
+
+    Returns:
+        Dict with voice_files (list of relative paths), matched_file
+        (relative path or None), and normalized user_name.
+    """
+    docs_dir = project_root / "docs"
+    result: dict = {
+        "voice_files": [],
+        "matched_file": None,
+        "expected_filename": None,
+    }
+
+    if user_name:
+        normalized = normalize_username(user_name)
+        result["expected_filename"] = f"{VOICE_FILE_PREFIX}{normalized}{VOICE_FILE_SUFFIX}"
+
+    if not docs_dir.is_dir():
+        return result
+
+    for path in sorted(docs_dir.glob(f"{VOICE_FILE_PREFIX}*{VOICE_FILE_SUFFIX}")):
+        rel_path = str(path.relative_to(project_root))
+        result["voice_files"].append(rel_path)
+        if result["expected_filename"] and path.name == result["expected_filename"]:
+            result["matched_file"] = rel_path
+
+    return result
 
 
 def check_first_run(project_root: Path) -> bool:
@@ -52,9 +92,11 @@ def scaffold_sidecar(project_root: Path) -> dict:
             "# Access Boundaries for Mac\n\n"
             "## Read Access\n"
             "- docs/band-profiles/\n"
+            "- docs/voice-context-*.md\n"
             "- {project-root}/_bmad/_memory/band-manager-sidecar/\n\n"
             "## Write Access\n"
-            "- {project-root}/_bmad/_memory/band-manager-sidecar/\n\n"
+            "- {project-root}/_bmad/_memory/band-manager-sidecar/\n"
+            "- docs/voice-context-{user}.md (current user's file only)\n\n"
             "## Deny Zones\n"
             "- All other directories\n"
         )
@@ -148,6 +190,7 @@ def main():
     parser = argparse.ArgumentParser(description="Band Manager pre-activation checks")
     parser.add_argument("project_root", help="Project root directory")
     parser.add_argument("--scaffold", action="store_true", help="Create sidecar if missing")
+    parser.add_argument("--user-name", help="Current user name (for voice file matching)")
     parser.add_argument("-o", "--output", help="Output file path")
     args = parser.parse_args()
 
@@ -166,6 +209,7 @@ def main():
         "first_run": check_first_run(project_root),
         "menu": render_menu(csv_path),
         "routing_table": build_routing_table(csv_path),
+        "voice_context": detect_voice_files(project_root, args.user_name),
     }
 
     if args.scaffold and result["first_run"]:

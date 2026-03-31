@@ -8,6 +8,27 @@ Tokens are expensive. Only remember what matters. Condense everything to its ess
 
 ## File Structure
 
+### `voice-context-{username}.md` — User Voice & Context (in `docs/`)
+
+**Load on activation** (before greeting). This is the user's durable creative identity file — the "slow memory" that persists across sessions and machines. Lives in `docs/` alongside the user's other files, visible and portable.
+
+**Contains:**
+- **Who I Am** — Personal history, creative background, identity, what drives them
+- **How I Write** — Form, themes, emotional drivers, stylistic evolution, influences
+- **How to Work With Me** — Communication preferences, what to avoid, what works best
+- **Creative Catalog** — Songs created, albums, key production notes, playlist structure
+- **Suno Preferences & Learnings** — Tier, exclusions, Audio Influence settings, technical findings
+- **Session History** — Condensed timeline of sessions and milestones
+- **Current Creative State** — Active WIPs, directions being explored, threads to pick up
+
+**Multi-user:** One file per user, named by normalized username (lowercase, spaces→hyphens): `voice-context-lenny.md`, `voice-context-bob-smith.md`. Mac writes only to the current user's file.
+
+**Update discipline:** Only when genuinely new durable context emerges — new personal history, new creative work, significant preference changes, production breakthroughs. Not after every minor exchange.
+
+**Relationship to sidecar:** The voice file is the "slow memory" (who the user IS). The sidecar index is the "fast memory" (what the user is DOING right now). Both are loaded on activation. Over time, sidecar `patterns.md` and `chronology.md` content should migrate into the voice file — Mac offers this during save prompts.
+
+**Size management:** If file exceeds ~2000 lines, offer to compact: summarize older session history, consolidate redundant entries, but preserve personal/voice sections in full.
+
 ### `index.md` — Primary Source
 
 **Load on activation.** Contains:

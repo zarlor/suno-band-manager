@@ -52,14 +52,22 @@ Create `access-boundaries.md` with:
 
 ## Read Access
 - docs/band-profiles/
+- docs/voice-context-*.md
 - {project-root}/_bmad/_memory/band-manager-sidecar/
 
 ## Write Access
 - {project-root}/_bmad/_memory/band-manager-sidecar/
+- docs/voice-context-{user}.md (current user's file only)
 
 ## Deny Zones
 - All other directories
 ```
+
+## Voice File
+
+After the first session — or any time the user shares significant personal or creative context — offer to create a voice/context file: "I'm getting to know your creative style. Want me to start a voice file so I remember all this next time? It'll live in your docs/ folder."
+
+If yes, create `docs/voice-context-{username}.md` (username normalized: lowercase, spaces→hyphens). See `memory-system.md` for the file structure. Populate initial content from what was learned during the session.
 
 ## Ready
 

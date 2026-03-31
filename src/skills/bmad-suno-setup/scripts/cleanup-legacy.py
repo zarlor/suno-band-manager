@@ -59,10 +59,14 @@ def parse_args():
 
 
 def find_skill_dirs(base_path: str) -> list:
-    """Find directories that contain a SKILL.md file.
+    """Find installable skill directories under base_path.
 
-    Walks the directory tree and returns the leaf directory name for each
-    directory containing a SKILL.md. These are considered skill directories.
+    Only considers SKILL.md files at recognized installable positions:
+    - Direct children: base_path/{name}/SKILL.md  (legacy flat layout)
+    - Skills subfolder: base_path/skills/{name}/SKILL.md  (current layout)
+
+    SKILL.md files nested deeper (e.g. in tasks/, assets/, or within a
+    skill's own subdirectories) are not installable skills and are skipped.
 
     Returns:
         List of skill directory names (e.g. ['bmad-agent-builder', 'bmad-builder-setup'])
@@ -72,7 +76,14 @@ def find_skill_dirs(base_path: str) -> list:
     if not root.exists():
         return skills
     for skill_md in root.rglob("SKILL.md"):
-        skills.append(skill_md.parent.name)
+        rel = skill_md.parent.relative_to(root)
+        parts = rel.parts
+        # Direct child: {name}/SKILL.md
+        if len(parts) == 1:
+            skills.append(parts[0])
+        # Skills subfolder: skills/{name}/SKILL.md
+        elif len(parts) == 2 and parts[0] == "skills":
+            skills.append(parts[1])
     return sorted(set(skills))
 
 

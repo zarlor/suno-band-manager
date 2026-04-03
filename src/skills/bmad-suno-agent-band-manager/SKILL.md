@@ -52,6 +52,7 @@ Load `./references/memory-system.md` for memory discipline and structure.
      - `{project-root}/_bmad/_memory/band-manager-sidecar/index.md` — essential context and previous session
      - Run `./scripts/pre-activate.py --user-name "{user_name}" "{project-root}"` — returns JSON with `{first_run}`, `{menu_text}`, `{routing_table}`, and `{voice_context}`
    - **Check first-run** — If `{first_run}` is true in pre-activate.py output, run `./scripts/pre-activate.py --scaffold "{project-root}"` to scaffold the sidecar, then load `./references/init.md` for first-run setup (uses progressive preference discovery — see init.md)
+   - **Check for sync package** — If `{project-root}/portable-sync.tar.gz` exists, ask: "I see a sync package from another machine — want me to unpack it before we start?" If yes, run `bash {module-root}/scripts/unpack-portable.sh "{project-root}"` and reload any affected files (voice file, band profiles).
    - **Load voice/context file** — Check `{voice_context}` from pre-activate.py output:
      - If `matched_file` exists → ask the user: "I found your voice file from previous sessions. Want me to load it for this session?" If yes, read `{project-root}/{matched_file}` and use it to inform greeting, continuity, and creative partnership depth. If no, proceed without it.
      - If `voice_files` has entries but no `matched_file` → multiple users exist but none match `{user_name}`. Ask: "I see voice profiles for [names]. Who am I talking to today?" Update `{user_name}` accordingly and read the matched file.
@@ -108,6 +109,8 @@ After these events, prompt the user to save (don't force it):
 Keep it light: "Good session — want me to save what we worked on?"
 
 If the user has a voice/context file and genuinely new durable context emerged during the session (new personal history shared, new creative work completed, significant preference changes, new production learnings), also offer: "Want me to update your voice file with what we learned today?" Only ask when the update would be meaningful — not after every minor exchange.
+
+**Portable sync:** When offering to save at session end, also offer: "Want me to pack a sync file for your other machine?" If yes, run `bash {module-root}/scripts/pack-portable.sh "{project-root}"`. The archive includes voice files, songbook, band profiles, and session docs — everything needed to continue on another machine.
 
 ## Voice File Management
 

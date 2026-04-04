@@ -20,7 +20,26 @@ Immediately persist the current session context to memory.
    - User preferences discovered or changed this session
    - Current interaction mode preference
    - Any band profile updates pending
+   - Production knowledge discovered (see Step 2b)
    - Next steps to continue
+
+   ### Handoff Checkpoint (before writes)
+
+   Before writing to any memory files, surface a brief summary of what will be saved:
+
+   > "Here's what I'd save: **[2-4 bullet summary of changes to index.md, patterns.md, chronology.md]**. Sound right?"
+
+   Wait for confirmation. The user may want to exclude something or add context. This is especially important for patterns.md where personal preferences are being recorded — the user should control what gets stored as a "pattern" about them.
+
+   ### 2b. Production knowledge check
+
+   After create-song or refine-song cycles, check for discoverable production patterns:
+   - Repeated slider settings across successful songs ("You've used Weirdness 55 on your last 3 songs — want me to note that as your sweet spot?")
+   - Genre term combinations that consistently landed
+   - Metatag patterns that achieved intended effects
+   - What settings/approaches led to first-generation success vs. iteration
+
+   Store these in patterns.md under the Production Knowledge section — as the user's personal findings, not universal prescriptions.
 
 3. **Write updated index.md** — Replace content with condensed, current version
 

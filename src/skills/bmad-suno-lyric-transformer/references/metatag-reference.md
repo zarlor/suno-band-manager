@@ -208,11 +208,10 @@ For songs that need to build UP and come back DOWN, place descent tags at the **
 ### Structural Metaphor via Time Signature Changes
 Using different time signatures for different section types creates structural metaphor where musical form embodies lyrical meaning. For example: odd time signatures for verses (chaos, instability) paired with straight 4/4 for choruses (resolution, arrival). This is a powerful technique for prog — the musical structure itself becomes a storytelling device. Implement via experimental time signature tags (e.g., `[Verse 1: 7/8]`, `[Chorus: 4/4]`), acknowledging these are inconsistently respected but worth attempting for the payoff when they land. Note: BPM tags are confirmed ineffective (see Experimental Section Tags), but time signature tags are a separate mechanism worth trying.
 
-### Dual Vocals — What Works and What Doesn't
+### Dual Vocals — What Works and What Doesn't (observed model behavior, 2026-03)
 - `dual male vocals harmonized and gritty` in the style prompt produces harmony/doubling on choruses — confirmed working.
-- `dual vocals trading` does NOT reliably make two voices trade lines.
-- True call-and-response between distinct voices is not reliably achievable through tags alone.
-- The best dual-voice effect comes from using parenthetical backing vocals (see Parentheses section below).
+- **`dual vocals trading` does NOT reliably make two voices trade lines.** True call-and-response between distinct voices is not reliably achievable through tags alone — this is a known Suno model limitation as of v5/v5.5.
+- The best dual-voice effect comes from using parenthetical backing vocals (see Parentheses section below) — significantly more reliable than `[Duet]` or style prompt dual vocals.
 
 ## Dynamic & Transition Tags
 

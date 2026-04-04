@@ -118,17 +118,28 @@ def scaffold_sidecar(project_root: Path) -> dict:
 
 
 def find_module_csv(project_root: Path, skill_dir: Path) -> Path | None:
-    """Find module-help.csv — installed location first, then setup skill assets."""
-    # Installed location
+    """Find module-help.csv — installed location first, then setup skill assets.
+
+    Search order:
+    1. BMad installed location (_bmad/module-help.csv)
+    2. Setup skill assets (sibling of this skill in the discovery directory)
+    3. Setup skill assets (in src/skills/ — standalone/source installs)
+    """
+    # 1. BMad installed location
     installed = project_root / "_bmad" / "module-help.csv"
     if installed.is_file():
         return installed
 
-    # Setup skill assets (sibling directory)
+    # 2. Setup skill assets (sibling directory — works for symlinked and copied skills)
     skills_dir = skill_dir.parent
     setup_csv = skills_dir / SETUP_SKILL_NAME / "assets" / "module-help.csv"
     if setup_csv.is_file():
         return setup_csv
+
+    # 3. Source directory fallback (standalone install without BMad)
+    source_csv = project_root / "src" / "skills" / SETUP_SKILL_NAME / "assets" / "module-help.csv"
+    if source_csv.is_file():
+        return source_csv
 
     return None
 

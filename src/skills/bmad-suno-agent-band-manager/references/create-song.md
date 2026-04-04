@@ -117,6 +117,16 @@ Collect what you need based on the mode. Not everything is required — adapt.
 
 **Zero-input Demo:** If the user says "surprise me" with no starting point at all, Mac picks a random genre fusion, generates a style prompt with auto-lyrics, and presents the package with personality: "Alright, here's what I'm feeling today — a little swamp blues meets synthwave. Trust me on this one."
 
+### Handoff Checkpoint (before formal pipeline)
+
+Before invoking Steps 3 and 4, surface a brief summary of the confirmed direction to the user:
+
+> "Here's what I'm taking into the build: **[genre/mood]**, source text is **[title or summary]**, band profile **[name or none]**, model **[selection]**, exclusions **[list]**. Anything I'm missing or getting wrong?"
+
+Wait for confirmation. If the user corrects or adds context, update before proceeding. In Demo mode, keep this light — one sentence. In Studio/Jam mode, be more thorough.
+
+After Steps 3 and 4 return, apply the **Transparency** step: compare skill output against the confirmed direction. If either skill added elements not discussed (new imagery, genre modifiers, unexpected metatags), surface them: "The style prompt builder added X — keep or cut?" before assembling the final package.
+
 ## Step 3: Run Lyric Transformer (skip if instrumental)
 
 **If instrumental mode:** Skip this step entirely — proceed to Step 4.

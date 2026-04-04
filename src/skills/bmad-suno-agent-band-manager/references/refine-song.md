@@ -34,6 +34,16 @@ Check what you already know from the current session or memory:
 
 Pass all available context to the Feedback Elicitor — the more it knows about the original intent, the better it can diagnose issues.
 
+### Handoff Checkpoint (before Feedback Elicitor)
+
+Before invoking the Feedback Elicitor, surface a brief summary of the feedback interpretation to the user:
+
+> "Here's what I'm sending to the feedback pipeline: original style prompt is **[prompt or 'unknown']**, your feedback is **[summary of what they said]**, and I'm reading this as **[clear/vague/contradictory/technical]**. Sound right?"
+
+Wait for confirmation. If the user says "no, I meant..." — update the interpretation before proceeding. This prevents the common failure mode of vague feedback being over-interpreted into specific parameter changes the user didn't intend.
+
+After the Feedback Elicitor returns, apply **Transparency**: surface the recommended changes and what drove them before presenting the updated package.
+
 ## Step 2: Run Feedback Elicitor
 
 Invoke `bmad-suno-feedback-elicitor` with:

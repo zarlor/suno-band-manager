@@ -72,9 +72,9 @@ Each skill can be invoked directly for standalone use — see the linked READMEs
 
 ## Prerequisites
 
-- **Claude Code** with a model that supports tool use (Claude Sonnet 4+, Claude Opus 4+)
-- **BMad Method (BMB module)** installed — Mac is built as a BMad module
+- **An LLM CLI with skill support** — Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, or OpenCode
 - **Suno account** (free tier works; Pro/Premier unlocks additional features)
+- **BMad Method** (optional) — Mac was built with BMad and can be installed as a BMad module, but runs independently without it
 
 ### Optional: Audio Analysis
 
@@ -88,48 +88,33 @@ These are optional — the full song creation and refinement workflow works with
 
 ## Installation
 
-**Requires [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.2.0+).**
-
-### 1. Clone the repository
+### Standalone (any supported LLM CLI)
 
 ```bash
 git clone https://github.com/zarlor/bmad-suno-band-manager.git
 cd bmad-suno-band-manager
-```
-
-### 2. Install BMad Method (if not already installed)
-
-```bash
-npx bmad-method@next install
-```
-
-Select the modules you need (BMad Core is always included). BMad Builder is recommended if you plan to customize skills.
-
-### 3. Link the Suno skills
-
-Claude Code discovers skills from `.claude/skills/`. Run the included script to create symlinks:
-
-```bash
 ./link-skills.sh
 ```
 
-This links each skill from `src/skills/` into `.claude/skills/`. Symlinks let `git pull` update your skills in place — no re-copying needed. The script is idempotent; running it again skips skills that are already linked.
+The link script creates symlinks in both `.claude/skills/` and `.agents/skills/` — the portable [Agent Skills](https://agentskills.io) standard supported by Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, and OpenCode.
 
-### 4. Run setup
+Then activate Mac using your LLM CLI's skill invocation (e.g., `/bmad-suno-agent-band-manager` in Claude Code). On first run, Mac walks you through setup — Suno tier, interaction mode, preferences.
 
+### With BMad Method
+
+If you use [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.2.0+):
+
+```bash
+npx bmad-method@next install    # Install BMad if not already present
+./link-skills.sh                # Link Suno skills
+/bmad-suno-setup                # Configure via setup skill
 ```
-/bmad-suno-setup
-```
 
-The setup skill will ask you to configure:
-- **Suno tier** — Free, Pro, or Premier (determines available features)
-- **Default interaction mode** — Demo, Studio, or Jam
-- **Band profiles folder** — Where to store band identity files
-- **Songbook folder** — Where to store saved songs
+BMad provides additional module infrastructure (config management, help system registration) but is not required for core functionality.
 
-It registers all capabilities with the help system and creates the necessary directories.
+For detailed installation instructions including per-tool notes, standalone configuration, and troubleshooting, see [INSTALLATION.md](INSTALLATION.md).
 
-### 5. Start using Mac
+### Start using Mac
 
 On first activation, Mac will greet you and confirm your setup. All preferences are changeable anytime through conversation — just tell Mac "I upgraded to Pro" or "make Studio my default mode."
 
@@ -149,21 +134,32 @@ That's it. Your symlinks point into `src/skills/`, so changes are picked up imme
 
 The setup skill detects your existing config and uses your saved values as defaults. Your preferences, band profiles, songbook, and memory are all preserved.
 
-### After a BMad Method upgrade
+### After a BMad Method upgrade (BMad users only)
 
-Running `npx bmad-method@next install` replaces the contents of `.claude/skills/` with BMad's own skills. This removes the Suno symlinks but does **not** affect your module source, config, or data.
+Running `npx bmad-method@next install` replaces the contents of `.claude/skills/` with BMad's own skills. This removes the Suno symlinks but does **not** affect your module source, config, or data. Your `.agents/skills/` symlinks are unaffected.
 
-To restore the Suno skills:
+To restore:
 
 ```bash
-./link-skills.sh
+./link-skills.sh          # Re-creates .claude/skills/ symlinks
+/bmad-suno-setup          # Re-registers help entries if needed
 ```
 
-Then re-run setup to ensure help entries and config are current:
+## Multi-LLM Compatibility
 
-```
-/bmad-suno-setup
-```
+Mac follows the [Agent Skills](https://agentskills.io) open standard. The `link-skills.sh` script creates symlinks in `.agents/skills/` (the portable standard) alongside `.claude/skills/`:
+
+| LLM CLI | Skill Discovery Path | Status |
+|---------|---------------------|--------|
+| Claude Code | `.claude/skills/`, `.agents/skills/` | Fully supported |
+| Gemini CLI | `.agents/skills/`, `.gemini/skills/` | Compatible |
+| Codex CLI | `.agents/skills/` | Compatible |
+| GitHub Copilot | `.agents/skills/`, `.github/skills/` | Compatible |
+| Windsurf | `.agents/skills/`, `.windsurf/skills/` | Compatible |
+| OpenCode | `.agents/skills/`, `.opencode/skills/` | Compatible |
+| Cursor | `.cursor/skills/` (copy, not symlink) | Manual setup required |
+
+Mac was developed and tested primarily on Claude Code. Other LLM CLIs should work with the same SKILL.md format but may have differences in tool permissions, agent spawning, or skill activation UX.
 
 ## Suno Model Compatibility
 
@@ -211,4 +207,4 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ## Credits
 
-Built with the [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) — Build More, Architect Dreams.
+Built with the [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) — Build More, Architect Dreams. Mac's agent architecture, skill structure, and module system are powered by BMad's framework and builder tools. The module runs independently of BMad but owes its DNA to BMad's approach to outcome-driven AI agent design.

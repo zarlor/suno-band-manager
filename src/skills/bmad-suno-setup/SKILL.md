@@ -21,7 +21,10 @@ Both config scripts use an anti-zombie pattern — existing entries for this mod
 ## On Activation
 
 1. Read `./assets/module.yaml` for module metadata and variable definitions (the `code` field is the module identifier)
-2. Check if `{project-root}/_bmad/config.yaml` exists — if a section matching the module's code is already present, inform the user this is an update
+2. **Detect installation mode:**
+   - If `{project-root}/_bmad/config.yaml` exists with a section for this module → this is an **update**
+   - If `{project-root}/_bmad/` exists but no module section → this is a **fresh BMad install**
+   - If `{project-root}/_bmad/` does not exist → this is a **standalone install**. Create `_bmad/` and proceed with defaults. Inform the user: "Setting up standalone — no BMad Method detected, using direct configuration."
 3. Check for per-module configuration at `{project-root}/_bmad/suno/config.yaml` and `{project-root}/_bmad/core/config.yaml`. If either file exists:
    - If `{project-root}/_bmad/config.yaml` does **not** yet have a section for this module: this is a **fresh install**. Inform the user that installer config was detected and values will be consolidated into the new format.
    - If `{project-root}/_bmad/config.yaml` **already** has a section for this module: this is a **legacy migration**. Inform the user that legacy per-module config was found alongside existing config, and legacy values will be used as fallback defaults.

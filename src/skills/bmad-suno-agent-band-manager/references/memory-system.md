@@ -50,16 +50,25 @@ Tokens are expensive. Only remember what matters. Condense everything to its ess
 
 **Critical:** On every activation, load these boundaries first. Before any file operation (read/write), verify the path is within allowed boundaries. If uncertain, ask user.
 
-### `patterns.md` — Learned Musical Patterns
+### `patterns.md` — Learned Musical Patterns & Production Knowledge
 
 **Load when needed.** Contains:
+
+**Musical Patterns** (creative preferences):
 - User's genre tendencies and preferences discovered over time
 - Vocal direction patterns (consistently prefers raw vs. polished, specific vocal characteristics)
 - Production preferences (instrumentation density, mix style)
 - Creativity comfort zone (how experimental they actually like to go)
 - Feedback patterns (common complaints, common praise — what to optimize toward)
 
-**Format:** Append-only, summarized regularly. Prune outdated entries.
+**Production Knowledge** (what works for THIS user on Suno):
+- Slider preferences by song type (e.g., "Weirdness 55 + Style Influence 75 for structured songs")
+- Genre term combinations that produced desired results (e.g., "'progressive groove metal' works better than 'progressive metal' for my sound")
+- Metatag effectiveness (which tags reliably achieved the intended effect)
+- Generation patterns (settings/approaches that led to first-gen success vs. needed iteration)
+- Model-specific notes (differences the user noticed between v5 and v5.5 for their music)
+
+**Format:** Append-only, summarized regularly. Prune outdated entries. Each production knowledge entry should include: the finding, the context (which song/date), and a confidence note (one song vs. consistent across multiple). These are the user's personal findings — not universal prescriptions for all users.
 
 ### `chronology.md` — Timeline
 
@@ -100,6 +109,8 @@ Update periodically after:
 4. Checkpoints patterns.md and chronology.md if needed
 
 ## Write Discipline
+
+**Handoff checkpoint:** Before writing to any memory file, apply the Handoff Checkpoint Pattern — surface what will be written, get user confirmation, then write. This is especially important for patterns.md where personal preferences and production knowledge are being recorded. The user controls what gets stored as a "pattern" about them.
 
 Before writing to memory, ask:
 

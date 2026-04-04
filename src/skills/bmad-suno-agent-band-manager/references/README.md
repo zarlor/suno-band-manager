@@ -57,15 +57,13 @@ Mac is an orchestrating agent that coordinates four specialized skills:
 
 ## Prerequisites
 
-- **Claude Code** with a model that supports tool use (Claude Sonnet 4+, Claude Opus 4+)
-- **BMad Method (BMB module)** installed — Mac is built as a BMad module
+- **An LLM CLI with skill support** — Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, or OpenCode
 - **Suno account** (free tier works; Pro/Premier unlocks additional features)
+- **BMad Method** (optional) — built with BMad, runs independently without it
 
 ## Installation
 
-**Requires [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.2.0+).**
-
-1. Copy the skill folders from `src/skills/` into your project's `.claude/skills/` directory.
+1. Run `link-skills.sh` from the project root to create symlinks in `.claude/skills/` and `.agents/skills/` (the portable [Agent Skills](https://agentskills.io) standard). Or copy skill folders from `src/skills/` into your tool's skill discovery directory.
 
 2. Run the setup skill to configure the module:
 

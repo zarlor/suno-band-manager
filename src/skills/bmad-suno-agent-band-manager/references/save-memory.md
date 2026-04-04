@@ -44,8 +44,10 @@ Immediately persist the current session context to memory.
 3. **Write updated index.md** — Replace content with condensed, current version
 
 4. **Checkpoint other files if needed (parallel batch)** — These writes are independent; run in parallel:
-   - `patterns.md` — Add new musical preferences discovered (genre tendencies, vocal preferences, exclusion patterns, creativity level preferences)
+   - `patterns.md` — Add new musical preferences discovered (genre tendencies, vocal preferences, exclusion patterns, creativity level preferences) and production knowledge (see Step 2b)
    - `chronology.md` — Add session summary if significant work was done
+
+5. **Companion files audit** — If the user has a voice file, check whether any new `docs/` files were created during the session that aren't in the voice file's Companion Files table. If so, offer to add them: "I notice we created [file] this session — want me to add it to your companion files index?" Include: file path, one-line description, and when-to-load trigger phrase.
 
 ## Output
 

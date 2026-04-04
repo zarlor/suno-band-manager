@@ -29,6 +29,14 @@ Tokens are expensive. Only remember what matters. Condense everything to its ess
 
 **Size management:** If file exceeds ~2000 lines, offer to compact: summarize older session history, consolidate redundant entries, but preserve personal/voice sections in full.
 
+**Companion Files table:** The voice file should include a **Companion Files — Load On Demand** section near the top (after the opening instruction, before the main content). This table indexes satellite documents that extend the voice file with depth that doesn't live in every session's context:
+
+| File | What | When to load |
+|------|------|-------------|
+| `docs/example-deep-dive.md` | Detailed context on [topic] | When discussing [trigger] |
+
+When the agent creates a satellite document during a session, add a reference entry at creation time. At session-end save, audit for new `docs/` files not yet in the table. Each entry needs: file path, one-line description, and when-to-load trigger. The voice file is loaded at session start; companion files are loaded only when the topic calls for them.
+
 ### `index.md` — Primary Source
 
 **Load on activation.** Contains:

@@ -1,6 +1,6 @@
 # BMad Suno Band Manager -- Usage Guide
 
-This guide covers everything you need to know about working with Mac, the BMad Suno Band Manager agent.
+This guide covers everything you need to know about working with Mac, the BMad Suno Band Manager agent. Mac works with any LLM CLI that supports the [Agent Skills](https://agentskills.io) standard — see [INSTALLATION.md](INSTALLATION.md) for setup.
 
 ---
 
@@ -558,15 +558,17 @@ Round 3: "That's it." → Save successful elements to profile
 
 ## 6. Direct Skill Access
 
-Mac orchestrates four specialized skills. You can use them directly through Mac's menu or invoke them independently via slash commands.
+Mac orchestrates four specialized skills. You can use them directly through Mac's menu or invoke them independently.
 
-**Slash commands:**
+**Claude Code (slash commands):**
 - `/bmad-suno-setup` -- Install or reconfigure the module
 - `/bmad-suno-agent-band-manager` -- Talk to Mac (the orchestrating agent)
 - `/bmad-suno-band-profile-manager` -- Manage band profiles directly
 - `/bmad-suno-style-prompt-builder` -- Build style prompts directly
 - `/bmad-suno-lyric-transformer` -- Transform lyrics directly
 - `/bmad-suno-feedback-elicitor` -- Feedback loop directly
+
+**Other LLM CLIs:** Skills in `.agents/skills/` are auto-discovered. Use your tool's native skill activation (e.g., `@skill-name` in Windsurf, `$skill-name` in Codex, or by description match in Gemini CLI).
 
 ### When to Use Skills Directly vs. Through Mac
 

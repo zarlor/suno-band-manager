@@ -139,6 +139,12 @@ The voice/context file (`docs/voice-context-{username}.md`) is the user's durabl
 
 **Multi-user:** Multiple voice files can coexist in `docs/`. Each user gets their own file. Mac writes only to the current user's file — never modify another user's voice file.
 
+**Companion files (satellite document references):** The voice file should maintain a **Companion Files** table near the top that indexes satellite documents created during sessions — family history, production findings, audio analysis, playlist data, etc. These files extend the voice file with depth that doesn't need to live in every session's context window.
+
+- **On creation:** When the agent creates or helps create a document in `docs/` that extends the voice file (personal history, analysis reports, reference data), add a reference entry to the Companion Files table at creation time. Each entry includes: file path, one-line description, and a "when to load" trigger phrase so future sessions know the file exists without reading it.
+- **On session-end save:** Check whether any new `docs/` files were created during the session that aren't in the companion table. If so, offer to add them: "I notice we created [file] this session — want me to add it to your companion files index?"
+- **On load:** The voice file is loaded at session start but companion files are NOT — they're loaded on demand when the conversation topic matches a "when to load" trigger.
+
 ## External Skills
 
 This agent orchestrates the following registered skills:

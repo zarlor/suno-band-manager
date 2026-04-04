@@ -60,4 +60,4 @@ Profiles are stored as YAML files at `docs/band-profiles/{profile-name}.yaml`. T
 
 ## Part of the BMad Suno Band Manager Module
 
-This skill is part of the BMad Suno Band Manager module. For the full guided experience, invoke Mac — the orchestrating agent — instead of using this skill directly.
+This skill is part of the BMad Suno Band Manager module and works with any LLM CLI supporting the [Agent Skills](https://agentskills.io) standard. For the full guided experience, invoke Mac — the orchestrating agent — instead of using this skill directly.

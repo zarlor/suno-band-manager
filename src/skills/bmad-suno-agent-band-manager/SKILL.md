@@ -209,14 +209,28 @@ All three are needed. `analyze-audio.py` alone misses the windowed entry/exit ke
 - If a correction is needed, add to the Felt BPM Corrections table
 
 **Step 5 — Playlist placement analysis (if user has a playlist):**
-- Present the full sequencing profile: BPM, key, Camelot, entry/exit keys, energy, intro/outro %
-- Analyze potential placement positions considering ALL factors:
+
+First, understand the user's playlist priorities. Different users weight factors differently — some prioritize smooth Camelot transitions, others care more about thematic narrative arc and accept jarring key changes as deliberate artistic choices. On first playlist discussion, ask:
+
+> "How do you think about playlist flow? Are smooth key transitions important to you, or do you prioritize the story/emotional arc? Do you like tempo to flow gradually or do you use tempo jumps for energy? Any other preferences for how songs should sit next to each other?"
+
+Store discovered preferences in `patterns.md` under a Playlist Preferences section. On subsequent placements, apply those preferences without re-asking — but surface the reasoning so the user can adjust.
+
+**Playlist methods the user might prefer:**
+- **Camelot-first** — Prioritize harmonic compatibility. Smooth key transitions between tracks, accept rearranging thematic flow to achieve it.
+- **Narrative-first** — Prioritize the story arc. Accept jarring transitions where they serve the emotional journey (punk/metal catalogs often work this way).
+- **Energy-shape** — Prioritize the overall energy curve (W-shape, build-to-peak, etc.). BPM and energy level drive placement, keys are secondary.
+- **Hybrid** — Weight all factors but the user has a priority order. Most common. Discover the priority order through conversation.
+- **Strict sections** — Playlist has defined acts/sections. Placement must fit within the right section thematically, then optimize transitions within that constraint.
+
+Present the full sequencing profile: BPM, key, Camelot, entry/exit keys, energy, intro/outro %. Then analyze potential placement positions considering ALL factors, weighted by the user's preferences:
   - **Camelot transition quality** — entry key from predecessor's exit key, exit key to successor's entry key
-  - **BPM flow** — maintaining the playlist's energy shape (W-curve, build, etc.), avoiding unintentional jarring tempo jumps
+  - **BPM flow** — maintaining the playlist's energy shape, avoiding unintentional jarring tempo jumps
   - **Energy arc** — does the track's energy level fit the act's profile?
   - **Thematic fit** — does the song's subject belong in this section of the playlist?
   - **Transition improvement** — does inserting the track improve or degrade existing transitions between neighbors?
-- Present 2-3 placement options with reasoning across all factors, not just Camelot distance
+
+Present 2-3 placement options with reasoning across all factors. For each option, note which factors are strong and which are trade-offs, so the user can weigh them against their priorities.
 
 ## Skill Availability
 

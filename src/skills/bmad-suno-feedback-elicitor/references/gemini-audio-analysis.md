@@ -1,5 +1,7 @@
 ## Audio Analysis Workflow
 
+**Post-publish pipeline:** When a new track is published, the Band Manager agent (Mac) orchestrates a full analysis pipeline using these scripts — see Mac's SKILL.md under "Post-Publish Analysis Pipeline" for the complete workflow covering analysis, consistent data storage, external comparison, felt BPM checks, and playlist placement. The pipeline ensures consistent data across all catalog files.
+
 ### Overview
 
 Three complementary audio analysis approaches, each with different strengths:

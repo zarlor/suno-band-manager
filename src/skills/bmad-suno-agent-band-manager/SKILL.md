@@ -168,9 +168,9 @@ When invoking these skills, pass relevant context (band profile data, model sele
 
 The Feedback Elicitor includes audio analysis scripts that can measure BPM, key, energy arcs, section boundaries, chord progressions, and playlist transition quality from audio files. These require librosa and numpy, which are NOT installed by default.
 
-**When to offer:** When a user provides an audio file, asks about audio characteristics, discusses tempo/key/energy issues, or wants playlist sequencing analysis.
+**When to offer:** When a user provides an audio file, asks about audio characteristics, discusses tempo/key/energy issues, wants playlist sequencing analysis, or **has just published a new track**.
 
-**How to check:** Run any audio script — if dependencies are missing, it returns structured JSON with install instructions (exit code 2). If available, proceed normally.
+**How to check:** Run any audio script — if dependencies are missing, it returns structured JSON with install instructions (exit code 2). If available, proceed normally. Check for a Python venv (`.venv/` in project root) if system Python lacks the packages.
 
 **How to offer:** "I have audio analysis tools that can measure BPM, key, and energy curves from your audio files. They need a quick install: `pip install librosa numpy`. Want me to set that up?"
 
@@ -181,6 +181,42 @@ The Feedback Elicitor includes audio analysis scripts that can measure BPM, key,
 - `tempo-detail.py` — Detailed tempo stability analysis
 - `batch-full-analysis.py` — Comprehensive catalog analysis
 - `playlist-sequencing-data.py` — Playlist sequencing with Camelot transitions (accepts `--playlist` YAML config)
+
+### Post-Publish Analysis Pipeline
+
+**When a user publishes a new track and adds it to the audio folder**, Mac should proactively offer to run the full analysis pipeline — not wait to be asked. This ensures consistent data across all catalog files and enables informed playlist placement.
+
+**Step 1 — Run analysis suite (parallel):**
+- `analyze-audio.py` on the audio directory — BPM, key, confidence, duration in the standard table format
+- `audio-deep-analysis.py` on the single track — energy arc, sections, spectral balance, chord progression
+- `playlist-sequencing-data.py` on the audio directory — entry/exit keys (windowed first/last 30s), Camelot codes, energy level (1-10), intro/outro energy percentages
+
+All three are needed. `analyze-audio.py` alone misses the windowed entry/exit keys that playlist placement requires.
+
+**Step 2 — Store consistently:**
+- Add a row to the user's audio analysis reference file matching the existing table format (track, duration, BPM, key, confidence)
+- Add the full sequencing data to the songbook entry: BPM, key, Camelot, entry key, exit key, energy level, intro%, outro%, energy arc summary
+- Verify the songbook data matches the reference table — flag any discrepancies
+
+**Step 3 — Compare against external analysis (if available):**
+- If Gemini or other LLM analysis was done, compare BPM, key, and duration against librosa
+- Note known misread patterns (BPM doubling on aggressive drums, unreliable duration estimates)
+- Librosa is the source of truth for quantitative measurements; external analysis is useful for qualitative descriptions (genre feel, mood, instrument identification)
+
+**Step 4 — Felt BPM check:**
+- For aggressive, heavy, or tempo-ambiguous tracks, check if librosa BPM seems like a half-time or double-time misread
+- Compare against the user's perception and any external analysis
+- If a correction is needed, add to the Felt BPM Corrections table
+
+**Step 5 — Playlist placement analysis (if user has a playlist):**
+- Present the full sequencing profile: BPM, key, Camelot, entry/exit keys, energy, intro/outro %
+- Analyze potential placement positions considering ALL factors:
+  - **Camelot transition quality** — entry key from predecessor's exit key, exit key to successor's entry key
+  - **BPM flow** — maintaining the playlist's energy shape (W-curve, build, etc.), avoiding unintentional jarring tempo jumps
+  - **Energy arc** — does the track's energy level fit the act's profile?
+  - **Thematic fit** — does the song's subject belong in this section of the playlist?
+  - **Transition improvement** — does inserting the track improve or degrade existing transitions between neighbors?
+- Present 2-3 placement options with reasoning across all factors, not just Camelot distance
 
 ## Skill Availability
 

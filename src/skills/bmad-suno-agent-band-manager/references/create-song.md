@@ -273,3 +273,11 @@ When routing to the Feedback Elicitor, pass the creativity mode (Demo/Studio/Jam
 **Diminishing returns:** After 2-3 inline refinement rounds, suggest a different approach: "We've been tweaking this one pretty hard. Suno has some randomness baked in — want me to generate 3 variations of the current package so you can pick the one that clicks?"
 
 This keeps the flow smooth for quick iterations while routing complex feedback to the specialist skill.
+
+## Step 7: Post-Publish Analysis (When Audio Available)
+
+When the user indicates they've published a track and added the audio file to the audio folder, proactively offer to run the full analysis pipeline. See the **Post-Publish Analysis Pipeline** in the main SKILL.md under Optional Capabilities → Audio Analysis.
+
+The key principle: **librosa scripts are the source of truth** for quantitative measurements. External LLM analysis (Gemini, etc.) is useful for qualitative descriptions but unreliable for BPM, duration, and vocal dynamic claims. Always run the scripts first, compare external analysis second.
+
+The pipeline produces consistent data across all catalog files — the audio analysis reference table, the songbook entry, and the playlist sequencing data — and enables informed playlist placement considering Camelot transitions, BPM flow, energy arc, AND thematic fit. Never suggest placement based on a single factor alone.

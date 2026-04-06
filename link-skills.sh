@@ -20,7 +20,7 @@ for dir in "${SKILL_DIRS[@]}"; do
 done
 
 linked=0
-for skill in src/skills/bmad-suno-*/; do
+for skill in src/skills/suno-*/; do
   name=$(basename "$skill")
   for dir in "${SKILL_DIRS[@]}"; do
     # Compute relative path from target dir to skill source
@@ -45,5 +45,5 @@ else
     echo "  $dir/"
   done
   echo ""
-  echo "Run /bmad-suno-setup to complete configuration (or configure manually — see INSTALLATION.md)."
+  echo "Run /suno-setup to complete configuration (or configure manually — see INSTALLATION.md)."
 fi

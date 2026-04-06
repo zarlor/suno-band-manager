@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = []
+# ///
 """Suno platform constants — single source of truth for all module scripts.
 
 When Suno adds a new model or changes limits, update HERE ONLY.

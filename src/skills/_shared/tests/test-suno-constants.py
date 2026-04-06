@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pytest>=7.0"]
+# ///
 """Tests for shared Suno constants — verify internal consistency."""
 import sys
 from pathlib import Path

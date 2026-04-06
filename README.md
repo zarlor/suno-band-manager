@@ -1,4 +1,4 @@
-# BMad Suno Agent — Mac, the Band Manager
+# Suno Agent — Mac, the Band Manager
 
 An AI-powered music production assistant that helps you create professional Suno-ready song packages through guided creative conversation. Mac orchestrates four specialized skills into a seamless workflow: from initial inspiration to a complete package — style prompt, lyrics, and parameter recommendations — that you can paste directly into Suno.
 
@@ -62,11 +62,11 @@ The orchestrating agent and each skill have their own documentation:
 
 | Component | Purpose | Key Scripts |
 |-----------|---------|-------------|
-| [**Mac (Band Manager)**](src/skills/bmad-suno-agent-band-manager/references/README.md) | Orchestrating agent — guides the full song creation workflow across all skills | `pre-activate.py`, `validate-path.py`, `check-memory-health.py` |
-| [**Band Profile Manager**](src/skills/bmad-suno-band-profile-manager/references/README.md) | CRUD for band identity profiles, writer voice analysis, tier feature awareness | `validate-profile.py`, `list-profiles.py`, `tier-features.py`, `diff-profiles.py` |
-| [**Style Prompt Builder**](src/skills/bmad-suno-style-prompt-builder/references/README.md) | Model-aware style prompt generation with creativity modes and wild card variants | `validate-prompt.py` |
-| [**Lyric Transformer**](src/skills/bmad-suno-lyric-transformer/references/README.md) | Poem/text to Suno-ready structured lyrics with metatags and cliché detection | `validate-lyrics.py`, `cliche-detector.py`, `syllable-counter.py`, `analyze-input.py`, `section-length-checker.py`, `lyrics-diff.py` |
-| [**Feedback Elicitor**](src/skills/bmad-suno-feedback-elicitor/references/README.md) | Post-generation feedback triage and guided refinement with musical vocabulary translation | `parse-feedback.py`, `map-adjustments.py` |
+| [**Mac (Band Manager)**](src/skills/suno-agent-band-manager/references/README.md) | Orchestrating agent — guides the full song creation workflow across all skills | `pre-activate.py`, `validate-path.py`, `check-memory-health.py` |
+| [**Band Profile Manager**](src/skills/suno-band-profile-manager/references/README.md) | CRUD for band identity profiles, writer voice analysis, tier feature awareness | `validate-profile.py`, `list-profiles.py`, `tier-features.py`, `diff-profiles.py` |
+| [**Style Prompt Builder**](src/skills/suno-style-prompt-builder/references/README.md) | Model-aware style prompt generation with creativity modes and wild card variants | `validate-prompt.py` |
+| [**Lyric Transformer**](src/skills/suno-lyric-transformer/references/README.md) | Poem/text to Suno-ready structured lyrics with metatags and cliché detection | `validate-lyrics.py`, `cliche-detector.py`, `syllable-counter.py`, `analyze-input.py`, `section-length-checker.py`, `lyrics-diff.py` |
+| [**Feedback Elicitor**](src/skills/suno-feedback-elicitor/references/README.md) | Post-generation feedback triage and guided refinement with musical vocabulary translation | `parse-feedback.py`, `map-adjustments.py` |
 
 Each skill can be invoked directly for standalone use — see the linked READMEs for details, headless modes, and examples.
 
@@ -91,14 +91,14 @@ These are optional — the full song creation and refinement workflow works with
 ### Standalone (any supported LLM CLI)
 
 ```bash
-git clone https://github.com/zarlor/bmad-suno-band-manager.git
-cd bmad-suno-band-manager
+git clone https://github.com/zarlor/suno-band-manager.git
+cd suno-band-manager
 ./link-skills.sh
 ```
 
 The link script creates symlinks in both `.claude/skills/` and `.agents/skills/` — the portable [Agent Skills](https://agentskills.io) standard supported by Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, and OpenCode.
 
-Then activate Mac using your LLM CLI's skill invocation (e.g., `/bmad-suno-agent-band-manager` in Claude Code). On first run, Mac walks you through setup — Suno tier, interaction mode, preferences.
+Then activate Mac using your LLM CLI's skill invocation (e.g., `/suno-agent-band-manager` in Claude Code). On first run, Mac walks you through setup — Suno tier, interaction mode, preferences.
 
 ### With BMad Method
 
@@ -107,7 +107,7 @@ If you use [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.2.0+
 ```bash
 npx bmad-method@next install    # Install BMad if not already present
 ./link-skills.sh                # Link Suno skills
-/bmad-suno-setup                # Configure via setup skill
+/suno-setup                # Configure via setup skill
 ```
 
 BMad provides additional module infrastructure (config management, help system registration) but is not required for core functionality.
@@ -129,7 +129,7 @@ git pull
 That's it. Your symlinks point into `src/skills/`, so changes are picked up immediately. If the update includes new config options or a version bump, re-run setup to apply them:
 
 ```
-/bmad-suno-setup
+/suno-setup
 ```
 
 The setup skill detects your existing config and uses your saved values as defaults. Your preferences, band profiles, songbook, and memory are all preserved.
@@ -142,7 +142,7 @@ To restore:
 
 ```bash
 ./link-skills.sh          # Re-creates .claude/skills/ symlinks
-/bmad-suno-setup          # Re-registers help entries if needed
+/suno-setup          # Re-registers help entries if needed
 ```
 
 ## Multi-LLM Compatibility
@@ -169,7 +169,7 @@ Mac supports Suno models from v4 through v5.5 Pro, with model-specific prompt op
 
 ```
 src/skills/
-├── bmad-suno-setup/                # Module setup and configuration
+├── suno-setup/                # Module setup and configuration
 │   ├── SKILL.md                    # Setup skill — config collection and registration
 │   ├── assets/
 │   │   ├── module.yaml             # Module metadata and config variables
@@ -178,7 +178,7 @@ src/skills/
 │       ├── merge-config.py         # Config file merge + init-compatible output
 │       ├── merge-help-csv.py       # Help CSV merge
 │       └── cleanup-legacy.py       # Legacy file cleanup
-├── bmad-suno-agent-band-manager/   # Mac — orchestrating agent
+├── suno-agent-band-manager/   # Mac — orchestrating agent
 │   ├── SKILL.md                    # Agent persona, activation, orchestration
 │   ├── bmad-skill-manifest.yaml    # Skill type identifier
 │   ├── references/
@@ -194,10 +194,10 @@ src/skills/
 │       ├── pre-activate.py         # First-run detection, scaffolding, menu rendering
 │       ├── validate-path.py        # Access boundary enforcement
 │       └── check-memory-health.py  # Memory file size monitoring
-├── bmad-suno-band-profile-manager/ # Band profile CRUD and writer voice analysis
-├── bmad-suno-style-prompt-builder/ # Model-aware style prompt generation
-├── bmad-suno-lyric-transformer/    # Poem/text to Suno-ready lyrics
-├── bmad-suno-feedback-elicitor/    # Post-generation feedback refinement
+├── suno-band-profile-manager/ # Band profile CRUD and writer voice analysis
+├── suno-style-prompt-builder/ # Model-aware style prompt generation
+├── suno-lyric-transformer/    # Poem/text to Suno-ready lyrics
+├── suno-feedback-elicitor/    # Post-generation feedback refinement
 └── _shared/                        # Shared Python utilities
 ```
 

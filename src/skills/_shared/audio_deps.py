@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = []
+# ///
 """Optional audio dependency checker for librosa/numpy scripts.
 
 Audio analysis scripts are optional — the rest of the module works without

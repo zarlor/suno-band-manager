@@ -2,7 +2,7 @@
 
 > **Critical zone:** The first ~200 characters of a style prompt carry disproportionate influence on generation. When recommending additions, prioritize the most impactful descriptors for the critical zone. Supplementary descriptors go after.
 >
-> **Last validated:** March 2026 (Suno v5.5, v5, v4.5-all). Recommendations are based on these model versions — newer models may respond differently.
+> **Last validated:** April 6, 2026 (Suno v5.5, v5, v4.5-all). Updated with corrected Voices Audio Influence ranges (JG BeatsLab testing), Weirdness-during-Extend drift finding, callback phrasing for Replace Section, Style Influence plateau note. Recommendations are based on these model versions — newer models may respond differently.
 
 Maps feedback dimensions and emotional vocabulary to concrete Suno parameter adjustments.
 
@@ -21,14 +21,16 @@ When the user has a Voice active, the Voice provides the vocal identity (timbre,
 
 **Audio Influence with Voices — use-case dependent:**
 
+Independent testing (JG BeatsLab, March 2026) found the practical ceiling is lower than Suno's UI range suggests. At 85%, voice resemblance only reached ~70% with increasing shimmer and vocal artifacts. Pushing the slider highest produces worse professional quality, not better.
+
 | Goal | Range | Notes |
 |------|-------|-------|
-| Voice as subtle flavor | 35-45% | Gentle influence, more generation polish |
-| Balanced voice + quality | 55-70% | Default starting point for most songs |
-| Recognizably "me" | 75-85% | Identity-focused, some polish trade-off |
-| Maximum voice fidelity | 85-95% | Identity paramount, may reduce generation quality |
+| Voice as subtle flavor | 30-40% | Gentle influence, maximum generation polish |
+| Balanced voice + quality | 40-60% | **Recommended starting point** — recognizable with manageable artifacts |
+| Identity-focused | 60-70% | Quality trade-off begins here |
+| Maximum fidelity (caution) | 70-80% | Diminishing returns; artifacts increase faster than resemblance |
 
-The sweet spot is personal — adjust up if voice is unrecognizable, down if quality suffers. Start at 55-70% and iterate in 5-10% increments based on feedback.
+Start at 50% and iterate in 5-10% increments based on feedback. Do not exceed 70% without accepting significant quality trade-offs.
 
 ### Custom Models (User-Trained Production Models)
 
@@ -457,17 +459,18 @@ When feedback maps to Studio features rather than prompt changes.
 | "Intro goes on too long" | Shorten or remove `[Intro]` lyrics content; add `[Verse 1]` tag earlier; note: `[Intro]` tag is notoriously unreliable |
 | "Outro cuts off abruptly" | Add explicit `[Outro]` section with 2-4 lines; add `[Fade Out]` descriptor metatag |
 | "Middle section drags" | Add `[Energy: building]` metatags; shorten the dragging section; consider adding a `[Breakdown]` or `[Build-Up]` for variety |
-| "Energy drops in extended sections" | Known limitation — 62% of extended tracks drift from original prompt. Generate shorter and extend carefully, or use v5 Studio section replacement |
+| "Energy drops in extended sections" | Known limitation — 62% of extended tracks drift from original prompt. **Weirdness is strongest during Extend and Bridge generation** — this is the primary drift cause. Keep Weirdness conservative during Extend. Use callback phrasing ("continue same chorus energy") and re-inject genre/mood every 1-2 extends. |
 
 ## Genre Drift & Consistency
 
-Genre drift is one of the most common issues — 62% of extended Suno tracks deviate from the original prompt.
+Genre drift is one of the most common issues — 62% of extended Suno tracks deviate from the original prompt. **The Weirdness slider has the strongest destabilizing effect during Extend and Bridge generation** — high Weirdness during Extend is more disruptive than during initial generation.
 
 | Feedback | Adjustment |
 |----------|-----------|
 | "Style changed mid-song" | Add consistent genre anchoring via `[Mood: ...]` and `[Energy: ...]` metatags before each section in lyrics |
-| "Extended section sounds different" | Regenerate the extension; use v5 Studio Replace Section; or tighten style prompt with repeated key genre terms |
+| "Extended section sounds different" | Regenerate the extension; use v5 Studio Replace Section; keep Weirdness conservative during Extend; use callback phrasing ("continue same chorus energy") and re-inject genre/mood every 1-2 extends |
 | "Genre fusion went wrong" | Simplify to single dominant genre; move secondary genre influence to later in style prompt (after critical zone) |
 | "Sounds like a different band in the second half" | Add `[Vocal Style: ...]` tags before each section; increase Style Influence slider (65-80) for tighter adherence |
+| "Voice/Persona shifted during Replace Section" | Keep Weirdness conservative during Replace operations — high Weirdness can cause Persona/Voice identity shifts |
 
-**Prevention tips:** Front-load genre identity in the first 200 chars of style prompt. Use per-section metatags. Generate 3-5 versions and cherry-pick. For extensions, match the style prompt exactly and keep extensions short (30s-1min increments).
+**Prevention tips:** Front-load genre identity in the first 200 chars of style prompt. Use per-section metatags. Generate 3-5 versions and cherry-pick. For extensions, match the style prompt exactly, keep extensions short (30s-1min increments), and **keep Weirdness lower during Extend than during initial generation**. Use callback phrasing ("continue same chorus energy", "maintain verse mood") to anchor the extension to the existing material.

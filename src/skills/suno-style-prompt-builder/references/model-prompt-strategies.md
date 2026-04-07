@@ -1,5 +1,7 @@
 # Model-Specific Prompt Strategies
 
+> **Related references:** Style prompts work in conjunction with lyric metatags — for the full metatag catalog (section tags, vocal delivery, effects, production tags), see `suno-lyric-transformer/references/metatag-reference.md`. For mapping user feedback to style prompt adjustments, see `suno-feedback-elicitor/references/suno-parameter-map.md`.
+>
 > **Last validated:** April 6, 2026 (Suno v5.5 Pro, v5 Pro, v4.5-all, v4.5 Pro, v4.5+ Pro, v4 Pro). Updated with v5.5 community testing findings: corrected Voices Audio Influence ranges (JG BeatsLab), added Skill Level dropdown, My Taste magic wand/Style Augmentation, Personas/Voices coexistence, HookGenius 1000+ prompt analysis (tag count 5-8, cinematic modifier, production tags, conflicting tags), Weirdness-during-Extend drift finding, spoken word limitations, Custom Model consent. Suno updates models and prompt behavior frequently — use web search to verify strategies against current documentation when uncertain.
 
 ## Quick Reference

@@ -12,8 +12,8 @@ Every song section has a specific job in the emotional arc. Understanding these 
 | **Verse** | Setup / Tell the story | Deliver narrative, build context, paint scenes | 4-8 |
 | **Pre-Chorus** | Lift / Create tension | Transitional energy rise, prepare for payoff | 2-4 |
 | **Chorus** | Payoff / Emotional anchor | Deliver the hook, the core feeling, the thing that sticks | 2-6 |
-| **Bridge** | Contrast / New perspective | Break the pattern, offer a different angle, surprise | 2-6 |
-| **Breakdown** | Breathe / Strip back | Reduce energy, create space, intimate moment | 2-4 |
+| **Bridge** | Something NEW / Contrast | New chords, new melody, new perspective. Introduces harmonic content the song hasn't heard yet | 2-6 |
+| **Breakdown** | Something LESS / Strip back | Subtractive — strips instruments to spotlight vocals or a motif. In metal, forces tempo drop and heavy rhythm. Creates maximum contrast before high-energy sections | 2-4 |
 | **Build-Up** | Escalate / Rising tension | Increasing energy leading to climax | 2-4 |
 | **Outro** | Resolve / Close | Bring it home — resolution, fade, final statement | 2-6 |
 

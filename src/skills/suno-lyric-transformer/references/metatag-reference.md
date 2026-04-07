@@ -2,20 +2,24 @@
 
 Metatags are keywords in square brackets `[ ]` placed in the lyrics field to guide Suno's generation. This reference covers all known working tags as of April 2026. Suno evolves frequently — when uncertain about a tag's effectiveness, use web search to verify against current documentation.
 
+> **Related references:** For how metatags interact with style prompts, see `suno-style-prompt-builder/references/model-prompt-strategies.md`. For mapping user feedback to metatag adjustments, see `suno-feedback-elicitor/references/suno-parameter-map.md`. For section emotional roles and poem-to-song mapping, see `section-jobs.md` (same directory).
+
 **Confidence Levels:** Tags are marked HIGH (multiple sources confirm), MEDIUM/Experimental (1-2 sources, may not work consistently), or unmarked (established/proven). HIGH-confidence new additions from March 2026 research are integrated into existing sections. MEDIUM-confidence tags are marked with "(Experimental)" throughout.
 
 ## Section Structure Tags
 
 Core tags that define song structure. Suno uses these to organize musical sections.
 
+**CRITICAL: Only use recognized tags.** Custom/invented tags like `[The Questions]` or `[Reflection]` are NOT recognized by Suno. At best they are ignored; at worst **Suno sings the tag text as lyrics** ("The Questions" becomes a sung line). Always map sections to recognized tags and use parameterized syntax or descriptor tags to shape the musical feel.
+
 | Tag | Usage | Notes |
 |-----|-------|-------|
 | `[Intro]` | Instrumental or minimal vocal opening | Notoriously unreliable — keep short or omit |
 | `[Verse]` / `[Verse 1]` / `[Verse 2]` | Narrative/story sections | Number if multiple |
-| `[Pre-Chorus]` | Transitional build before chorus | Short — 2-4 lines, creates lift |
+| `[Pre-Chorus]` | Transitional build before chorus | Short — 2-4 lines, creates tension/lift toward chorus |
 | `[Chorus]` | Main hook/payoff section | Short repeated hooks > long novel choruses |
-| `[Post-Chorus]` | Section immediately after chorus | Extends the chorus energy or provides a cooldown |
-| `[Bridge]` | Contrasting section | Usually appears once, offers new perspective |
+| `[Post-Chorus]` | Section immediately after chorus | Extends chorus energy or provides cooldown. Genre-dependent: very effective in pop/EDM, may blend with chorus in rock/metal |
+| `[Bridge]` | Contrasting section — new harmonic content | Introduces NEW chords, melody, perspective. A bridge gives you something the song hasn't heard yet. Usually appears once |
 | `[Outro]` | Closing section | Fade, resolution, or final statement |
 | `[End]` | Hard stop | Use to signal a definitive ending |
 | `[Final Chorus]` | Last chorus iteration | Often bigger/louder than standard chorus |
@@ -28,6 +32,44 @@ Core tags that define song structure. Suno uses these to organize musical sectio
 | `[Build]` | Rising energy section | Shorthand for `[Build-Up]`; confirmed on v5 (HIGH) |
 | `[Big Finish]` | Grand climactic ending section | Signals a big, climactic ending (HIGH) |
 | `[Chorus x2]` | Repeat chorus twice | Chorus doubling without rewriting lyrics (HIGH) |
+
+### [Bridge] vs [Breakdown] — Functional Distinction
+
+These serve fundamentally different purposes:
+
+- **[Bridge]** = **Something NEW.** New chords, new melody, potentially a different key. It repositions the song's narrative and emotional angle. Maintains or shifts energy but does NOT necessarily strip instrumentation. Use for narrative/emotional turns, contrasting perspectives, moments where the song needs to go somewhere it hasn't been.
+
+- **[Breakdown]** = **Something LESS.** Subtractive arrangement — specifically strips instruments (typically drums and/or bass) while spotlighting vocals or a single motif. Use when you want the song to thin out, expose the vocal, create breathing room. In metal/metalcore context, forces a tempo drop and heavy rhythm (genre-aware behavior). Effective for creating maximum contrast before a high-energy section — the stripped-back breakdown makes the next section hit harder.
+
+**Choosing between them:**
+- Song needs a new harmonic direction → `[Bridge]`
+- Song needs to strip down and spotlight the vocal → `[Breakdown]`
+- Song needs both (strip down AND new perspective) → `[Bridge | Half-Time]` + `[Energy: stripped, minimal]`
+
+### [Pre-Chorus] and [Post-Chorus] — Distinct Musical Sections
+
+Both create genuinely distinct musical moments, not just extensions of adjacent sections:
+
+- **[Pre-Chorus]** creates a **tension/lift build** before the chorus. Suno adds percussion, harmony layers, increases vocal intensity. Without this tag, transitional lyrics before a chorus may be sung awkwardly as "an extra line that doesn't fit the meter." Adding the tag signals the break in pattern is intentional. Keep short — 2-4 lines.
+
+- **[Post-Chorus]** creates an **extension or cooldown** after the chorus. Can manifest as a repeated chant, vocal chops, instrumental hook, or response line. Inherits the chorus's energy level but creates a different musical moment. Most effective in pop/EDM; in rock/metal may blend more closely with the chorus.
+
+### [Interlude] — Transitional Palette Cleanser
+
+Defaults to **instrumental** (listed under Instrumental & Solo Section Tags). If lyrics are placed below it, Suno will attempt to sing them but with lighter/transitional musical treatment. Creates a brief palate cleanser between major sections — neutralizes energy rather than dramatically shifting it. Chaining `[Interlude]` with `[Solo]` is effective for changing movement or overall tone.
+
+### Mapping Non-Standard Sections to Recognized Tags
+
+When a song has sections that aren't traditional verse/chorus/bridge (e.g., spoken word passages, interrogative sections, narrative asides), map them to the closest recognized tag and use parameterized syntax to shape the feel:
+
+| Section Intent | Recommended Tag | Why |
+|---|---|---|
+| Interrogative/reflective passage | `[Breakdown: building intensity]` | Strips instrumentation, spotlights vocal, creates contrast with surrounding sections |
+| Spoken word passage | `[Verse X]` + `[Spoken Word]` | Verse structure with delivery override |
+| Energy reset between aggressive sections | `[Break]` or `[Breakdown]` | Creates silence/space to prevent energy bleed |
+| Closing passage that isn't a chorus | `[Outro]` | Suno treats as closing — appropriate energy wind-down |
+| Build toward climax | `[Pre-Chorus]` or `[Build]` | Creates tension/lift |
+| Repeated motif or chant | `[Post-Chorus]` or `[Hook]` | Inherits prior energy, repetition-friendly |
 
 ## Instrumental & Solo Section Tags
 

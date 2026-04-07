@@ -174,29 +174,36 @@ The Exclude Styles field is a dedicated exclusion input separate from the style 
 
 ## Metatag Reference
 
+> This is Mac's quick reference. For comprehensive metatag documentation, consult the Lyric Transformer's detailed references — invoke `suno-lyric-transformer` or read its reference files directly:
+> - **Full metatag catalog:** `suno-lyric-transformer/references/metatag-reference.md` — all known tags with confidence levels, production findings, and detailed usage notes
+> - **Section job framework:** `suno-lyric-transformer/references/section-jobs.md` — what each section does emotionally, poem-to-song mapping guide, structural metaphor techniques
+
 ### Section Tags
+
+**Only use recognized tags.** Custom tags like `[The Questions]` or `[Reflection]` are ignored or **sung as lyrics**. Map non-standard sections to recognized tags and use parameterized syntax to shape the feel.
 
 | Tag | Job |
 |-----|-----|
 | `[Intro]` | Opening (unreliable -- may need regeneration) |
 | `[Verse]` | Setup -- establishes story, scene, or emotion |
-| `[Pre-Chorus]` | Lift -- builds tension before the payoff |
+| `[Pre-Chorus]` | Lift -- builds tension/anticipation before chorus (2-4 lines). Creates a distinct musical moment with added percussion and vocal intensity |
 | `[Chorus]` | Payoff -- the hook, the memorable part |
-| `[Bridge]` | Contrast -- new perspective, musical shift |
-| `[Breakdown]` | Strip-down -- reduces instrumentation |
-| `[Build-Up]` | Escalation -- increases energy toward a peak |
+| `[Post-Chorus]` | Extension or cooldown after chorus. Best in pop/EDM; may blend with chorus in rock/metal |
+| `[Bridge]` | Something NEW -- new chords, new melody, new perspective. Introduces harmonic content the song hasn't heard yet |
+| `[Breakdown]` | Something LESS -- strips instruments, spotlights vocals or a motif. In metal, forces tempo drop and heavy rhythm. Creates maximum contrast before a high-energy section |
+| `[Build-Up]` / `[Build]` | Escalation -- increases energy toward a peak |
 | `[Final Chorus]` | Closing payoff -- often bigger than earlier choruses |
 | `[Outro]` | Resolution -- brings the song to a close |
 | `[Instrumental]` | Instrumental section -- no vocals |
-| `[Interlude]` | Musical bridge between sections |
+| `[Interlude]` | Transitional palette cleanser -- defaults instrumental, lighter treatment if lyrics provided |
 | `[Solo]` / `[Guitar Solo]` | Instrumental solo section |
-| `[Break]` | Brief pause or stripped-back moment |
+| `[Break]` | Brief pause or stripped-back moment. Useful as energy-bleed buffer between aggressive and clean sections |
 | `[Drop]` | Sudden energy release (EDM/electronic) |
-| `[Build]` / `[Build-Up]` | Escalation toward a peak |
 | `[Hook]` | Short catchy phrase or motif |
-| `[Post-Chorus]` | Extends or cools down chorus energy |
 | `[Fade Out]` | Gradual volume decrease |
 | `[End]` | Signal to stop the song |
+
+**Bridge vs Breakdown:** Bridge gives you something NEW (new chords, perspective). Breakdown gives you LESS (strips arrangement). Need both? Use `[Bridge | Half-Time]` + `[Energy: stripped, minimal]`.
 
 ### Parameterized Section Tags
 

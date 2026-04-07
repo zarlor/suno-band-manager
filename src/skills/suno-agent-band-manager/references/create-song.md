@@ -129,6 +129,8 @@ After Steps 3 and 4 return, apply the **Transparency** step: compare skill outpu
 
 ## Step 3: Run Lyric Transformer (skip if instrumental)
 
+> **Reference:** For detailed metatag behavior, section tag selection, and structural decisions, consult `suno-lyric-transformer/references/metatag-reference.md` and `section-jobs.md`. Key: only use recognized section tags (custom tags get sung as lyrics), and understand Bridge (something new) vs Breakdown (something less) when choosing section types.
+
 **If instrumental mode:** Skip this step entirely — proceed to Step 4.
 
 **If the user provided source text (poem, raw lyrics, text):**

@@ -1,5 +1,7 @@
 # Suno Parameter Map
 
+> **Related references:** For the complete delivery metatag catalog, section tag behavior, and experimental tags, see `suno-lyric-transformer/references/metatag-reference.md`. For section emotional roles and poem-to-song structure decisions, see `suno-lyric-transformer/references/section-jobs.md`.
+>
 > **Critical zone:** The first ~200 characters of a style prompt carry disproportionate influence on generation. When recommending additions, prioritize the most impactful descriptors for the critical zone. Supplementary descriptors go after.
 >
 > **Last validated:** April 6, 2026 (Suno v5.5, v5, v4.5-all). Updated with corrected Voices Audio Influence ranges (JG BeatsLab testing), Weirdness-during-Extend drift finding, callback phrasing for Replace Section, Style Influence plateau note. Recommendations are based on these model versions — newer models may respond differently.

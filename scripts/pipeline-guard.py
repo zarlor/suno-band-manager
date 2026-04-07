@@ -50,8 +50,19 @@ def detect_suno_package(message: str) -> bool:
 
 
 def check_skill_invocations(transcript_path: str) -> set[str]:
-    """Read the transcript and find which skills were invoked via the Skill tool."""
+    """Read the transcript and find which skills were invoked.
+
+    Checks both direct Skill tool invocations AND Agent subagent
+    invocations that reference skill names (for parallel execution
+    via the Refine Song workflow).
+    """
     skills = set()
+    skill_names_to_detect = {
+        "suno-style-prompt-builder",
+        "suno-lyric-transformer",
+        "suno-feedback-elicitor",
+        "suno-band-profile-manager",
+    }
     if not transcript_path:
         return skills
     try:
@@ -64,16 +75,27 @@ def check_skill_invocations(transcript_path: str) -> set[str]:
                     entry = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                # Look for Skill tool invocations in tool_use entries
+                # Direct Skill tool invocations
                 if entry.get("type") == "tool_use" and entry.get("name") == "Skill":
                     skill_name = entry.get("input", {}).get("skill", "")
                     if skill_name:
                         skills.add(skill_name)
-                # Also check tool_input format
                 if entry.get("tool_name") == "Skill":
                     skill_name = entry.get("tool_input", {}).get("skill", "")
                     if skill_name:
                         skills.add(skill_name)
+                # Agent subagent invocations that reference skill names
+                # (parallel skill execution via Agent tool)
+                if entry.get("type") == "tool_use" and entry.get("name") == "Agent":
+                    prompt = entry.get("input", {}).get("prompt", "")
+                    for sn in skill_names_to_detect:
+                        if sn in prompt:
+                            skills.add(sn)
+                if entry.get("tool_name") == "Agent":
+                    prompt = entry.get("tool_input", {}).get("prompt", "")
+                    for sn in skill_names_to_detect:
+                        if sn in prompt:
+                            skills.add(sn)
         return skills
     except (OSError, PermissionError):
         return skills

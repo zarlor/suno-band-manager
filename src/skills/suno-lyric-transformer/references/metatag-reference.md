@@ -279,10 +279,10 @@ Tags that control energy flow and transitions within the song.
 | `[Crescendo]` | Building volume/intensity |
 | `[Decrescendo]` | Decreasing volume/intensity |
 | `[Silence]` | Brief moment of silence |
-| `[Stop]` | Abrupt stop |
-| `[End]` | Hard stop — prevents trailing instrumental generation after lyrics |
+| `[Stop]` | **WARNING: Suno VOCALIZES this tag** — sings/yells the word "Stop" instead of treating it as a stop instruction. DO NOT use for ending control. |
+| `[End]` | Hard stop — prevents trailing instrumental generation after lyrics. Most reliable single ending tag, but may still produce 5-15 seconds of trailing instrumental. |
 | `[Soft End]` | Gentle ending variation (HIGH) |
-| `[Dramatic End]` | Dramatic ending variation (HIGH) |
+| `[Dramatic End]` | Dramatic ending variation (HIGH). Production testing (2026-04): did NOT produce abrupt endings on thrash/metal — still trailed instrumental. |
 | `[Big Finish]` | Grand climactic ending (HIGH) — also works as a section tag |
 | `[Instrumental End]` | Finish with instrumentation only, no vocals (HIGH) |
 | `[Slow Fade Out]` | Longer, gentler fade — best for ambient/cinematic (HIGH) |
@@ -295,11 +295,42 @@ Tags that control energy flow and transitions within the song.
 | `[Accelerando]` | Gradually speed up tempo (HIGH) |
 | `[Ritardando]` | Gradually slow down tempo (HIGH) |
 
+### Ending Control — Practical Strategies (2026-04 production testing)
+
+Suno's ending behavior is one of its **least controllable** aspects. No tag combination reliably produces a clean stop immediately after vocals. Strategies ranked by effectiveness:
+
+1. **Crop/trim in the editor** — most reliable. Let Suno generate, then cut at the desired point. Apply a short fade if no natural stopping point exists. This is the recommended approach for precise endings.
+2. **Remove `[Outro]` tag entirely** — `[Outro]` tells Suno "this is a conclusion section, play it out" which generates long instrumental tails. Using `[Final Verse]` instead avoids triggering conclusion behavior and produces shorter tails.
+3. **`[Final Verse]` + `[Unresolved tension]` + `[End]`** — avoids conclusion behavior, avoids tonic resolution (less incentive for Suno to add resolving coda), hard stop. Best combo found in testing.
+4. **"abrupt ending" in style prompt** — small effect but stacks with structural changes. More effective in genres that naturally have short endings (punk, hardcore).
+5. **`[Fade Out]` + `[End]` combo** — documented as "more reliable stop signal than `[End]` alone" but in testing still produced 14 seconds trailing on a thrash track.
+6. **Replace Section on the ending** — regenerate just the tail. Multiple attempts may produce shorter endings stochastically.
+
+**What does NOT work:**
+- `[Stop]` — Suno vocalizes it as a lyric
+- `[Dramatic End]` — does not produce abrupt endings (tested on thrash/metal)
+- Stacking/doubling `[End]` tags — treated same as single `[End]`
+- `[Outro: fading, sparse]` — may actively encourage MORE instrumental by signaling conclusion mode
+
 **Grid-loss warning:** When using `[Accelerando]` or `[Ritardando]`, the AI can lose the rhythmic grid for the remainder of the track. Always provide a 'return to home' command — if you speed up for a Bridge, make the first line of your final Chorus or Outro include a stabilizing tag like `[Tempo: 120 BPM]` or a strong structural tag like `[Chorus]` to force recalibration. BPM tags are normally ineffective for setting tempo, but may serve as 'recalibration anchors' after dynamic tempo disruptions — this warrants further testing.
 
 ## Sound Effect Tags
 
-Environmental and ambient sounds Suno can generate. Use sparingly — these work best as brief textures, not sustained effects.
+**CRITICAL: Sound effects are the LEAST reliable category of metatags.** Multiple sources confirm they "don't work at all, or only work partially, and might play in an unexpected part of a song." Plan for post-production rather than relying on in-lyrics effects.
+
+**Bracket tags near lyrics may be interpreted as VOCAL PROCESSING, not standalone sounds.** `[Static]` placed before a lyric line may apply a static/distortion effect to the vocals rather than producing actual static noise. Tags like `[Distorted Vocals]`, `[Filtered Vocals]`, `[Telephone Effect]` are explicitly vocal effects; environmental tags like `[Static]`, `[Rain]` occupy an ambiguous zone where Suno may treat them as either ambient sounds or vocal treatments depending on context.
+
+### Reliability Tiers
+
+**HIGH — Training-data-derived tags** (appear in real lyric transcriptions from Genius/AZLyrics):
+- `[bleep]` / `[Censored]` — bleep/censor sound
+- `[phone ringing]` — phone ring
+- `[gunshots]` — gunshot sounds
+- `[spoken word]` — switches to spoken delivery
+
+These work because Suno's model learned them from actual song transcriptions.
+
+**LOW — Environmental/ambient tags** (listed in guides but inconsistently recognized):
 
 | Tag | Examples |
 |-----|---------|
@@ -308,18 +339,29 @@ Environmental and ambient sounds Suno can generate. Use sparingly — these work
 | **Human** | `[Applause]`, `[Cheering]`, `[Clapping]`, `[Chuckles]`, `[Giggles]`, `[Sighs]`, `[Screams]`, `[Cough]`, `[Clears Throat]` |
 | **Music** | `[Record Scratch]`, `[Bell Dings]`, `[Fire Crackling]` |
 | **Animals** | `[Barking]`, `[Squawking]`, `[Howling]` |
-| **Meta** | `[Censored]` (bleep sound) |
+
+**Best results:** `[Applause]` at the end of live-sounding tracks, `[Birds Chirping]` at intros for morning ambiance. Most others are unreliable.
 
 ### Asterisk Inline Sound Effects
 
-Suno also recognizes `*text*` as inline sound effect cues within lyrics. Confirmed working examples:
-- `*rainfall*`, `*wind sounds*`, `*ocean waves*`, `*vinyl crackle*`, `*radio static*`
+`*text*` cues are intended for background atmospheric layering, distinct from bracket tags. In practice, Suno may interpret them as percussion/rhythmic patterns rather than true ambient sounds (e.g., `*machinegun fire*` may produce rapid rim-shots rather than actual gunfire sound).
+
+Confirmed working examples (atmosphere, not percussion):
+- `*rainfall*`, `*wind sounds*`, `*ocean waves*`, `*vinyl crackle*`
 - `*distant thunder*`, `*soft whispers*`, `*crowd cheering*`, `*cafe ambience*`
-- Can stack multiple effects in one line
 
-**Limitations:** Overuse clutters tracks; effects may overpower vocals; results are unpredictable — requires experimentation. Use sparingly.
+**Hybrid notation** `(*effect*)` — parentheses wrapping asterisks — may be more reliable for getting actual sound textures when bracket or asterisk notation alone fails.
 
-**Note:** This is the ONE exception to the 'no asterisks in lyrics' rule documented elsewhere. Asterisk-wrapped text is interpreted as sound effect cues, not formatting.
+**Limitations:** Overuse clutters tracks; effects may overpower vocals; results are unpredictable; effects may map to percussion/drum patterns rather than ambient sounds. Use sparingly and plan for post-production.
+
+**Note:** This is the ONE exception to the 'no asterisks in lyrics' rule documented elsewhere.
+
+### Reliable Alternatives to In-Lyrics Sound Effects
+
+1. **Style prompt descriptors** — describe the atmospheric intent in the style prompt ("mechanical, industrial atmosphere") rather than using in-lyrics effect tags
+2. **Suno Sounds** (beta) — separate Suno feature for generating standalone sound effects, instrument samples, and ambient clips as separate audio files. Layer in a DAW.
+3. **Post-production** — generate the song cleanly, then add effects in a DAW. This is the most reliable approach for specific sound design.
+4. **Stems extraction** (Pro/Premier) — separate into up to 12 stems, add effects to individual stems externally
 
 Source: [Suno AI Sound Effects with Asterisks — Jack Righteous](https://jackrighteous.com/en-us/blogs/guides-using-suno-ai-music-creation/suno-ai-sound-effects-asterisks)
 

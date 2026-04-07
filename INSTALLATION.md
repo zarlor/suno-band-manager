@@ -65,6 +65,48 @@ The setup skill configures Suno tier, interaction mode, folder paths, and regist
 
 ---
 
+## Pipeline Guard (Recommended)
+
+The module ships a Stop hook script (`scripts/pipeline-guard.py`) that enforces Mac's mandatory production pipeline. It blocks any response containing a Suno package if `suno-style-prompt-builder` and `suno-lyric-transformer` weren't invoked during the session.
+
+**Why:** Without this guard, the agent may hand-build packages from conversation memory instead of running them through the skills. The skills contain critical guardrails (artist name detection, production descriptor checks, character budget validation, section tag validation) that cannot be replicated from memory.
+
+### Claude Code Setup
+
+Add to your `.claude/settings.local.json` (create if it doesn't exist):
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/_bmad-output/suno-band-manager/scripts/pipeline-guard.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Adjust the path to match where you cloned the module. If using a standalone install, the path would be relative to your project root.
+
+### Standing Order (All Platforms)
+
+For additional reinforcement, add this to your project instruction file (`CLAUDE.md`, `AGENTS.md`, or `GEMINI.md`):
+
+```markdown
+## Suno Pipeline Rule (MANDATORY)
+
+When the suno-agent-band-manager skill is active, NEVER hand-build a Suno package. ALWAYS invoke suno-style-prompt-builder and suno-lyric-transformer via the Skill tool before presenting any style prompt + lyrics + settings package.
+```
+
+---
+
 ## Tool-Specific Notes
 
 ### Claude Code
@@ -74,6 +116,7 @@ Primary development and testing platform. Full feature support including:
 - Sub-agent spawning for parallel skill execution
 - Bash tool for Python script execution (validation, analysis)
 - Full read/write file access for memory, profiles, songbook
+- Pipeline guard Stop hook (see above)
 
 Skills discovered from: `.claude/skills/`, `.agents/skills/`
 

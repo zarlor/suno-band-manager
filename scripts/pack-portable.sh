@@ -8,7 +8,7 @@
 set -euo pipefail
 
 PROJECT_ROOT="${1:-.}"
-ARCHIVE="$PROJECT_ROOT/portable-sync.tar.gz"
+ARCHIVE="$PROJECT_ROOT/docs/portable-sync.tar.gz"
 MANIFEST="$PROJECT_ROOT/portable-manifest.yaml"
 
 # Build file list from manifest if it exists, otherwise use defaults

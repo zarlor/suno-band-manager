@@ -8,10 +8,15 @@
 set -euo pipefail
 
 PROJECT_ROOT="${1:-.}"
-ARCHIVE="$PROJECT_ROOT/portable-sync.tar.gz"
+ARCHIVE="$PROJECT_ROOT/docs/portable-sync.tar.gz"
+
+# Also check project root for backward compatibility
+if [ ! -f "$ARCHIVE" ] && [ -f "$PROJECT_ROOT/portable-sync.tar.gz" ]; then
+    ARCHIVE="$PROJECT_ROOT/portable-sync.tar.gz"
+fi
 
 if [ ! -f "$ARCHIVE" ]; then
-    echo '{"status": "error", "message": "No portable-sync.tar.gz found in project root."}'
+    echo '{"status": "error", "message": "No portable-sync.tar.gz found in docs/ or project root."}'
     exit 1
 fi
 

@@ -25,10 +25,10 @@ FILE_COUNT=$(tar tzf "$ARCHIVE" | wc -l)
 
 # Extract into project root
 cd "$PROJECT_ROOT"
-tar xzf portable-sync.tar.gz
+tar xzf "$ARCHIVE"
 
 echo "{\"status\": \"success\", \"files_unpacked\": $FILE_COUNT}"
-echo "Unpacked $FILE_COUNT files from portable-sync.tar.gz" >&2
+echo "Unpacked $FILE_COUNT files from $ARCHIVE" >&2
 
 # Optionally remove the archive after unpacking
-# rm portable-sync.tar.gz
+# rm "$ARCHIVE"

@@ -19,7 +19,7 @@
 
 4. **Check first-run** — If `{first_run}` is true, run `./scripts/pre-activate.py --scaffold "{project-root}"` to scaffold the sidecar, then load `./references/init.md` for First Breath setup.
 
-5. **Check for sync package** — If `{project-root}/portable-sync.tar.gz` exists, ask: "I see a sync package from another machine — want me to unpack it before we start?" If yes, run `bash {module-root}/scripts/unpack-portable.sh "{project-root}"` and reload affected files.
+5. **Check for sync package** — If `{project-root}/docs/portable-sync.tar.gz` exists (or `{project-root}/portable-sync.tar.gz` for backward compatibility), ask: "I see a sync package from another machine — want me to unpack it before we start?" If yes, run `bash {module-root}/scripts/unpack-portable.sh "{project-root}"` and reload affected files.
 
 6. **Load voice/context file** — Check `{voice_context}` from pre-activate.py output:
    - If `matched_file` exists → ask: "I found your voice file from previous sessions. Want me to load it?" If yes, read and use for greeting warmth and continuity.

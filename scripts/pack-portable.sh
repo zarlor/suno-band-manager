@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pack portable session files for multi-machine sync.
-# Creates portable-sync.tar.gz in the project root.
+# Creates portable-sync.tar.gz in docs/ under the project root.
 #
 # Usage: bash scripts/pack-portable.sh [project-root]
 #   project-root defaults to current directory
@@ -53,9 +53,10 @@ if [ ${#FILES[@]} -eq 0 ]; then
 fi
 
 # Create archive
+mkdir -p "$PROJECT_ROOT/docs"
 cd "$PROJECT_ROOT"
-tar czf portable-sync.tar.gz "${FILES[@]}"
+tar czf "$ARCHIVE" "${FILES[@]}"
 
-echo "{\"status\": \"success\", \"archive\": \"portable-sync.tar.gz\", \"files_packed\": ${#FILES[@]}}"
+echo "{\"status\": \"success\", \"archive\": \"$ARCHIVE\", \"files_packed\": ${#FILES[@]}}"
 echo "Files packed:" >&2
 printf '  %s\n' "${FILES[@]}" >&2

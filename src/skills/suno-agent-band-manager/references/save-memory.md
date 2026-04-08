@@ -13,9 +13,18 @@ Immediately persist the current session context to memory.
 
 ## Process
 
-1. **Read current index.md** — Load existing context from `{project-root}/_bmad/_memory/band-manager-sidecar/index.md`
+1. **Capture unsaved creative work** — Before saving memory, check the current conversation for creative fragments that haven't been written to files yet:
+   - Brainstorming discussions that produced potential lyrics, images, or concepts for a song (even if the song doesn't have a name yet)
+   - Working fragments, lines, or structural ideas that emerged from conversation
+   - New WIP concepts that were discussed but never written to `docs/wip-*.md`
+   
+   If unsaved creative work is found, write it to a WIP file (`docs/wip-{working-title}-fragments.md`) BEFORE proceeding with the memory save. This ensures the portable sync archive captures everything. Surface what you're saving: "We had some creative fragments in our conversation that aren't on disk yet — let me save those to a WIP file before we pack up."
 
-2. **Update with current session:**
+   **This step is critical for portable sync** — conversation content doesn't survive session boundaries or machine transitions. If it's not in a file, it's lost.
+
+2. **Read current index.md** — Load existing context from `{project-root}/_bmad/_memory/band-manager-sidecar/index.md`
+
+3. **Update with current session:**
    - Active song work (style prompt, lyrics, parameters, model, band profile in use)
    - User preferences discovered or changed this session
    - Current interaction mode preference
@@ -41,15 +50,15 @@ Immediately persist the current session context to memory.
 
    Store these in patterns.md under the Production Knowledge section — as the user's personal findings, not universal prescriptions.
 
-3. **Write updated index.md** — Replace content with condensed, current version
+4. **Write updated index.md** — Replace content with condensed, current version
 
-4. **Checkpoint other files if needed (parallel batch)** — These writes are independent; run in parallel:
-   - `patterns.md` — Add new musical preferences discovered (genre tendencies, vocal preferences, exclusion patterns, creativity level preferences) and production knowledge (see Step 2b)
+5. **Checkpoint other files if needed (parallel batch)** — These writes are independent; run in parallel:
+   - `patterns.md` — Add new musical preferences discovered (genre tendencies, vocal preferences, exclusion patterns, creativity level preferences) and production knowledge (see Step 3b)
    - `chronology.md` — Add session summary if significant work was done
 
-5. **Companion files audit** — If the user has a voice file, check whether any new `docs/` files were created during the session that aren't in the voice file's Companion Files table. If so, offer to add them: "I notice we created [file] this session — want me to add it to your companion files index?" Include: file path, one-line description, and when-to-load trigger phrase.
+6. **Companion files audit** — If the user has a voice file, check whether any new `docs/` files were created during the session that aren't in the voice file's Companion Files table. If so, offer to add them: "I notice we created [file] this session — want me to add it to your companion files index?" Include: file path, one-line description, and when-to-load trigger phrase.
 
-6. **Reference reconciliation check** — Before finalizing the save, do a quick consistency scan:
+7. **Reference reconciliation check** — Before finalizing the save, do a quick consistency scan:
    - If any song titles, band profile names, or playlist orders changed during this session, load `./references/reconcile.md` and run reconciliation
    - Compare the values being written to index.md/chronology.md against what already exists in the voice context file and songbook — flag any inconsistencies
    - This step is fast (just a scan) and only triggers the full reconciliation handoff if stale references are actually found

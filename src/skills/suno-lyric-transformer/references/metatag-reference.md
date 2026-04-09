@@ -262,10 +262,40 @@ For songs that need to build UP and come back DOWN, place descent tags at the **
 ### Structural Metaphor via Time Signature Changes
 Using different time signatures for different section types creates structural metaphor where musical form embodies lyrical meaning. For example: odd time signatures for verses (chaos, instability) paired with straight 4/4 for choruses (resolution, arrival). This is a powerful technique for prog — the musical structure itself becomes a storytelling device. Implement via experimental time signature tags (e.g., `[Verse 1: 7/8]`, `[Chorus: 4/4]`), acknowledging these are inconsistently respected but worth attempting for the payoff when they land. Note: BPM tags are confirmed ineffective (see Experimental Section Tags), but time signature tags are a separate mechanism worth trying.
 
-### Dual Vocals — What Works and What Doesn't (observed model behavior, 2026-03)
-- `dual male vocals harmonized and gritty` in the style prompt produces harmony/doubling on choruses — confirmed working.
-- **`dual vocals trading` does NOT reliably make two voices trade lines.** True call-and-response between distinct voices is not reliably achievable through tags alone — this is a known Suno model limitation as of v5/v5.5.
-- The best dual-voice effect comes from using parenthetical backing vocals (see Parentheses section below) — significantly more reliable than `[Duet]` or style prompt dual vocals.
+### Dual Vocals — What Works and What Doesn't (updated 2026-04-09 with community research)
+
+**Bottom line:** There is no fully reliable method in Suno v5/v5.5 to produce two genuinely distinct male voices trading lines in a single generation. Community consensus (Jack Righteous, Suno.wiki, HookGenius, Suno Architect) describes duets as "more of an exploit than a feature." **Same-gender male-male dual voicing is the hardest case** — nearly all working duet techniques rely on male/female gender contrast because gender is the strongest vocal signal the model respects.
+
+**What DOES work reliably:**
+- `dual male vocals harmonized and gritty` in the style prompt produces harmony/doubling on choruses (NOT distinct voices trading — same voice doubled or harmonizing)
+- `[Male]` / `[Female]` per-line — the only reliable duet technique, requires gender contrast
+- `[Clean Vocal]` / `[Harsh Vocal]` — works in metalcore/deathcore/post-hardcore context, produces clean-vs-screaming contrast (not clean-vs-manic-speaking)
+
+**What does NOT work:**
+- `[Voice 1]` / `[Voice 2]` — numbering is ignored
+- `[Male Vocal 1]` / `[Male Vocal 2]` — same-gender numbering ignored
+- `[Lead Vocal]` / `[Response Vocal]` — ignored
+- `[Duet]` alone — unreliable, voices swap roles or collapse into one timbre
+- `dual vocals trading` in style prompt — does not produce trading
+- Same-gender named characters (`[Lazarus]` / `[Mongoose]`) — inconsistent
+- Persona + dual voices — Persona is designed for single-voice consistency, actively fights against vocal variation
+- Describing two equal vocalists in style prompt — model averages conflicting descriptors into one voice
+
+**Workarounds ranked by reliability (for same-gender dual-voice needs):**
+
+1. **Multi-stage Studio Replace Section workflow** (HIGH reliability) — Persona OFF. Generate base track with main voice only. Use Replace Section on each intrusive voice section with a completely different style prompt (different vocal character descriptors, different delivery tags). Iterate section-by-section. Slow but actually works.
+
+2. **Nu-metal/rapcore hybrid framing** (MEDIUM reliability, best aesthetic match for "manic/unhinged" characters) — Frame as "experimental nu-metal with rapid-fire manic spoken interjections" or invoke Mr. Bungle / System of a Down / Mike Patton / Serj Tankian territory. Rap-feature contexts tolerate vocal role-shifting better than straight metal. Model has training data of rapid vocal-character shifts in these genres.
+
+3. **Metalcore clean/harsh framing** (MEDIUM-HIGH reliability, but produces scream not manic) — `[Clean Vocal]` main lines + `[Harsh Vocal]` or `[Shouted]` interjections. Reliably produces contrast, but the harsh voice comes out aggressive/screamed rather than gleeful/unhinged.
+
+4. **Lead + Adlibs pattern** (MEDIUM reliability) — Main voice dominant, intrusive voice as sparse 3-6 word interjections maximum. Use `[adlibs: higher pitched spoken, manic]` inline before interjections. Keep sections to 8-12 lines max. Best fallback when the model keeps collapsing to one timbre.
+
+5. **Separate generations + DAW stitch** (HIGH reliability, external tools) — Generate two full versions (one all-main, one all-intrusive) with different style prompts, then stitch sections manually in a DAW or via Extend.
+
+**Parenthetical backing vocals for dual-voice effect:** Parentheses work as backing vocals reliably in pop/R&B/soul/gospel/hip-hop contexts. In thrash/metal contexts they come in as whispered phrases or ambience rather than true second-voice backing — NOT suitable for rapid intrusive-voice dialogue in those genres.
+
+**Key prerequisite for all dual-voice attempts: Persona OFF.** Personas lock vocal character by design. Band profiles that use a Persona for their main sound must drop it for dual-voice songs and rebuild the sound character in the style prompt.
 
 ## Dynamic & Transition Tags
 
@@ -551,7 +581,7 @@ These are NOT metatags but critical formatting techniques that directly control 
 - Build echo density as intensity climbs — selective use beats every-line use.
 - Works best as single-word echoes in early verses, full-phrase echoes in later verses.
 - Confirmed working: Suno rendered `(blasting)` as a distinct backing vocal layer.
-- This is the most reliable way to get a dual-voice effect (more reliable than `[Duet]` or style prompt dual vocals).
+- **Genre-dependent:** Parentheses produce true backing vocals in pop/R&B/soul/gospel/hip-hop contexts. In thrash/metal they come in as whispered phrases or ambience rather than a second voice. Not suitable for rapid intrusive-voice dialogue in heavy genres — see Dual Vocals section above for genre-appropriate alternatives.
 
 ### Inline Performance Modifiers (HIGH)
 Parenthetical performance cues placed at the END of a lyric line to direct vocal delivery for that specific line. **This is a SEPARATE use of parentheses from backing vocals** — context determines interpretation. Backing vocals typically echo/repeat a word from the line; performance modifiers are delivery instructions.

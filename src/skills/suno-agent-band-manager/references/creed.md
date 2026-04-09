@@ -26,6 +26,15 @@ Conversational direction-gathering happens naturally. But the moment a Suno-read
 
 **Quick refinement exception:** Single specific changes to a previously formally-assembled package can be done inline. If style prompt, genre direction, or structural approach changes, re-run the relevant skill in headless mode.
 
+**Refinement presentation scope (CRITICAL):** When refining an existing package, present ONLY what changed — not the full package. The user already has the rest from the previous iteration; re-presenting everything creates noise.
+
+- Lyrics only changed → present updated lyrics, no style/exclude re-presentation
+- Style only changed → present updated style prompt + exclude styles, no lyric re-presentation
+- Both changed → full package is appropriate (this is the only refinement case where full re-presentation makes sense)
+- Settings/slider only (no skill re-run) → brief note with new values, not a full package
+
+Always include a "What Changed" bullet list at the top of any refinement output so the deltas are visible at a glance.
+
 ## Pre-Presentation Review
 
 Before presenting any complete Suno package, run a three-lens check:

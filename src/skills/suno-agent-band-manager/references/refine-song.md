@@ -86,18 +86,35 @@ Based on the Feedback Elicitor's recommendations, offer to re-run the appropriat
 
 ## Step 4: Present Updated Package
 
-Re-present the complete Suno package (same format as create-song Step 5) with changes highlighted:
+**Present ONLY what changed**, not the full package. The user already has the rest from the previous iteration — re-presenting everything creates noise and makes it harder to spot the actual changes.
 
-Use the same format and field order as create-song Step 5 (Persona, Inspo, Lyrics, Style Prompt, Exclude Styles, Settings, Song Title), with a "What Changed" section at the top:
+**Routing by scope of change:**
+
+- **Lyrics only changed** (Lyric Transformer ran, Style Prompt Builder did not):
+  - Present the updated lyrics block
+  - Present any slider/setting changes if applicable
+  - Do NOT re-present the style prompt, exclude styles, or unchanged settings
+
+- **Style only changed** (Style Prompt Builder ran, Lyric Transformer did not):
+  - Present the updated style prompt, exclude styles, and any slider changes
+  - Do NOT re-present the lyrics or unchanged settings
+
+- **Both changed** (both skills ran):
+  - Present the full updated package (this is the only case where full package is appropriate)
+  - Use the create-song Step 5 format
+
+**Always include a "What Changed" bullet list at the top** regardless of scope, so the user can see the deltas at a glance:
 
 ```
-## Updated Suno Package
+## Schizo Refinement Update
 
 ### What Changed
-{Bullet list of adjustments made and why}
+- {Bullet list of adjustments and why}
 
-{Then present the full package in the same order as create-song Step 5, showing only fields that changed or all fields if the user prefers the complete view}
+{Only the sections that actually changed — lyrics OR style OR both}
 ```
+
+**Settings/slider changes alone** (no skill re-invocation needed) should be presented as a brief note with the slider values, not as a full package re-present.
 
 **After presenting:**
 1. "Give this version a spin on Suno. Each round gets closer to what you hear in your head."

@@ -162,10 +162,34 @@ v5.5 is an additive update over v5. It uses the same audio engine, metatags, and
 - **Style Personas are NOT gone** — they are integrated into the Voices tab in v5.5. The button changed, but both features coexist. Personas still work on v4.5/v5/v5.5. Key difference: Voices is actual voice cloning, Personas is style essence capture.
 
 **Getting the best voice clone:**
-- **Clean recording matters** -- minimal background noise, no heavy reverb. The cleaner the input, the better the clone.
-- **Provide vocal range** -- include both lower and higher register in your sample. Monotone input = monotone output.
-- **Natural delivery** -- Suno captures your natural vocal tone, not a performance. Sing or speak normally.
-- **Multiple samples help** -- one clip works, but three clips across different moods works better for capturing range and character.
+- **Clean recording matters more than expensive hardware** -- minimal background noise, no heavy reverb. A quiet room with a decent mic beats a studio mic in a noisy space. No compression, no background music. 44.1kHz minimum sample rate. The cleaner the input, the better the clone.
+- **Consistency WITHIN a single clip wins** -- pick a part of your recording where you sound most like a single, stable version of yourself. No style switching, no big dynamic swings, no mixed energy levels within ONE sample. JG BeatsLab day-one testing found consistency dramatically outperformed mixed-register clips: "longer, more varied recordings underperformed compared to shorter, focused clips every time."
+- **Optimal length is 20-30 seconds of clean consistent content per clip** -- longer samples (3+ min) actively underperformed in testing. Focus beats breadth within a single clip.
+- **Variety across MULTIPLE clips, not within one** -- one clip works, three clips across different moods works better for capturing range and character. The resolution to the apparent consistency-vs-variety tension: each clip should be internally consistent (one stable character sustained), variety lives at the profile level by uploading multiple Voice profiles (e.g., "Narrative Rock," "Ballad Intimate," "Speak-Sing Confessional"). When a song is built, pick the Voice profile that matches the target vibe.
+- **Natural delivery, not performance** -- Suno captures your natural vocal tone, not a performance. Sing or speak normally. First-take recordings that lean operatic, theatrical, or "poetry-voice" are a documented failure mode — the model captures the affect as character, and Voice generations will deliver that affect back on every generated song. Re-record if the first take feels performative.
+- **Preserve vocal quirks, don't smooth them out** -- slight rasp, slide between notes, natural vibrato, sibilant character — the model captures character, and character is what makes a voice recognizable. Don't try to sound "cleaner" than you naturally do. (Sibilance is largely a mic technique issue, not a voice issue — angling the mic 15-30 degrees off-axis reduces direct sibilant hits without changing the voice itself. A pop filter placed further back also helps.)
+- **Skill Level: Professional, always** -- JG BeatsLab testing was emphatic: "Professional produced the most stable, most consistent, most usable results across every test. The difference between Beginner and Professional is substantial — it actively reshapes how your voice is interpreted by the model. Set it to Professional. Every time." Not cosmetic. Not optional. Cannot be changed after recording — re-record if your Voice wasn't set to Professional the first time.
+- **Range considerations** -- the Voice captures your current range, not your historical peak. If your range has narrowed, song selection for Voice tracks should work within current comfort. Most heartland rock / Americana / singer-songwriter territory doesn't require wide range anyway — it requires conviction.
+
+**The v5.5 Voice Gravity Principle** (validated April 2026):
+
+v5.5 Voice clones carry **trained genre gravity** — the Voice isn't genre-neutral. It was trained on material with a particular vocal character and pulls generations toward that baseline on its own. When the target genre differs from the Voice's trained direction, the style prompt must **actively fight against that gravity**, not just describe the target.
+
+**Practical rules when the target genre differs from the Voice's trained baseline:**
+
+1. **Drop descriptors that duplicate what the Voice already delivers** — wasted budget and potential conflict. If the Voice is a soft-rock/folk clone, don't add "clean vocals," "vulnerable storytelling vocal," "warm delivery," "intimate male vocal" to the style prompt; the Voice already does all that. Explicit descriptors that duplicate the Voice's natural character can actively fight the Voice.
+
+2. **Load descriptors that pull AGAINST the Voice's natural direction** — this is where the style prompt earns its characters. For a rock song with a folk-leaning Voice, lean hard into "overdriven," "crunch," "driving groove," "rock urgency," "heartland southern rock." For a ballad with a rock-leaning Voice, lean into "intimate acoustic," "warm folk-rock," "stripped-down." The prompt is a counterweight to the Voice's gravity, not a redundant label.
+
+3. **Keep Style Influence tight (65+)** so the prompt leads firmly against the Voice's pull. When the Voice and target genre align closely, Style Influence 55-60 is acceptable.
+
+4. **Never specify Vocal Gender when a Voice is active** — Voice defines it. Leaving Vocal Gender empty lets the Voice do its job; specifying can fight it.
+
+5. **Voice-aware exclusion strategy** — when the Voice physically cannot produce harsh/screamed vocals (most clean-voice Voice clones can't), harsh-vocal exclusions are wasted Exclude Styles space. Focus exclusions on production and genre-direction protection (`heavy metal, heavy distortion, steel guitar, autotune, pop sheen`) instead of vocal protection. The clean Voice IS the natural guardrail against harsh vocals — trust it and reclaim the exclusion budget for what actually needs protection.
+
+6. **Audio Influence floor caution** — the 30-40% "subtle flavor" range in the table above works with Professional-level Voices. For non-Professional Voices, dropping below ~40% can trigger a robotic-timbre failure mode where Suno's default interpretation bleeds into the Voice character and lands in uncanny valley. If a Voice wasn't set to Professional at recording time, keep Audio Influence at 50%+ until re-recording.
+
+**Validated case study:** A song written for a folk-leaning Voice clone ("Lenny") but styled as heartland southern rock. First attempt used "warm vocals, vulnerable storytelling, clean male delivery" in the style prompt — all descriptors the Voice already delivered — plus "gentle Wurlitzer touches" and Audio Influence 20% (a Persona genre-departure setting, wrong for Voices). Result: robotic timbre, keyboards dominated the mix, too laid-back for the intended rock urgency. Fixed by: (1) dropping all vocal descriptors the Voice already delivered, (2) killing keyboards entirely from the style prompt, (3) loading rock-forward descriptors ("overdriven rhythm guitar with crunch," "cutting lead guitar accents," "driving mid-tempo rock groove," "rock urgency with emotional weight"), (4) raising Audio Influence to 55% (Voice sweet spot), (5) removing harsh-vocal exclusions (the clean Voice couldn't produce them anyway), (6) specifying "heartland southern rock" as the genre anchor. Result: recognizable voice identity with the target rock production.
 
 **Custom Models:**
 - Train on 6+ original tracks, 2-5 min training time, up to 3 custom models per account
@@ -294,6 +318,9 @@ Specific genre terms produce specific results. This table documents what Suno ac
 | `crushing slow heavy swamp metal` + `pounding heartbeat kick drum` | Heavy, deliberate, single-tempo weight | Stacking slow/heavy modifiers locks Suno into a plodding pace |
 | `prog rock` + `slow build then fade` | Atmospheric with proper decrescendo | One of the few reliable ways to get Suno to actually come back down |
 | `Acoustic, intimate, solo voice with gentle guitar, bluesy, swampy, sparse and warm, quiet reflection, raw clean vocals, stripped down, empty room atmosphere` | Acoustic track that retains band identity | `bluesy, swampy` keeps NOLA identity; `empty room atmosphere` = reverb/space; explicitly exclude `heavy guitars, drums` in Exclude Styles |
+| `heartland rock` | Accessible mid-tempo rock with Petty/Mellencamp/Springsteen character — chimey or mid-gain driven electric guitars, rock-forward without metal weight | **Safe rock term for Voice tracks** — no harsh vocal trigger. Good starting point when a clean-voice Voice clone needs rock energy without metal pull |
+| `southern rock` | Rootsy rock with Allman/Skynyrd character — can pull slide/steel guitar as a byproduct of the genre association | Safe vocal-wise (no harsh-vocal triggers). Exclude `steel guitar` if you want to avoid the slide side. Pairs well with `heartland` to anchor toward the accessible end rather than jam-band end |
+| `heartland southern rock` | Combined — intersection of accessible singer-songwriter rock with rootsy grit and drive | **Validated on Voice tracks** — clean folk-tagged Voice with "overdriven rhythm guitar with crunch" + "driving mid-tempo rock groove" as reinforcement produces rock presence without metal pull. Good for confessional rock songs that need both weight and accessibility |
 
 ### Era Tags as Sonic Targets
 

@@ -583,6 +583,29 @@ These are NOT metatags but critical formatting techniques that directly control 
 - Confirmed working: Suno rendered `(blasting)` as a distinct backing vocal layer.
 - **Genre-dependent:** Parentheses produce true backing vocals in pop/R&B/soul/gospel/hip-hop contexts. In thrash/metal they come in as whispered phrases or ambience rather than a second voice. Not suitable for rapid intrusive-voice dialogue in heavy genres — see Dual Vocals section above for genre-appropriate alternatives.
 
+**Isolated parentheticals as performed speech (April 2026 production observation):**
+
+When parentheticals are placed on their own indented lines — not attached to a preceding line as `word(echo)` — Suno often delivers them as **spoken interjections** rather than sung backing vocal harmonies. This is a practical observation from production generations across multiple songs, not documented behavior.
+
+```
+she's telling me about her day
+and I am making
+                        the right noises
+
+        (uh-huh)
+                (sure)
+                        (really)
+                                (sorry to hear that)
+```
+
+In this pattern, Suno tends to render `(uh-huh)`, `(sure)`, `(really)`, etc. as brief spoken interjections — a backing-vocal layer delivered as speech rather than singing. Works reliably across most genres including rock, Americana, adult alternative, and nu-metal (the `(He's lying!)` style in Schizo is an adjacent case).
+
+**Practical implications:**
+- **Good for conversational/reactive interjections** (filler speech, reactions, asides) that shouldn't compete with the sung lead as harmony. The spoken delivery keeps them in the background without requiring a full `[Spoken Word]` section.
+- **Works with v5.5 Voices** even though Suno's documentation cautions that Voices aren't suitable for sustained spoken word. Brief parenthetical interjections are a different case from `[Spoken Word]`-tagged full sections — the interjection length is short enough that Voices don't drift.
+- **Fallback if not delivered spoken:** if a specific generation renders them as sung backing vocals instead of spoken, regenerate — the behavior is consistent across most gens but not 100% deterministic.
+- **Distinct from attached parentheticals** — `word(echo)` still works as the traditional backing-vocal echo technique. The isolated-line pattern is a different use case producing different behavior.
+
 ### Inline Performance Modifiers (HIGH)
 Parenthetical performance cues placed at the END of a lyric line to direct vocal delivery for that specific line. **This is a SEPARATE use of parentheses from backing vocals** — context determines interpretation. Backing vocals typically echo/repeat a word from the line; performance modifiers are delivery instructions.
 

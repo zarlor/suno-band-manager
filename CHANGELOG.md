@@ -4,6 +4,51 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [1.6.3] - 2026-04-10
+
+### v5.5 Voice Gravity Principle + Production Observations
+
+An additive findings release capturing new knowledge discovered during a live Voice track production session (song: *Observation*, an adult alternative / heartland southern rock track using a v5.5 Voice clone trained on soft rock / folk material). No bug fixes, no API changes — three reference files gain new production-validated guidance.
+
+### Added
+
+- **`suno-style-prompt-builder/references/model-prompt-strategies.md`** — Major expansion of the "Getting the best voice clone" section and new subsection "The v5.5 Voice Gravity Principle" with six practical rules and a validated case study. Key additions:
+  - **Voice Gravity Principle:** v5.5 Voice clones carry trained genre gravity and pull generations toward their training baseline on their own. When a song's target genre differs from the Voice's trained direction, the style prompt must actively fight against that gravity rather than describing the target.
+  - **Six practical rules:** (1) drop descriptors the Voice already delivers, (2) load descriptors pulling against the Voice's direction, (3) Style Influence 65+ for Voice-genre mismatch, (4) never specify Vocal Gender when a Voice is active, (5) Voice-aware exclusion strategy (drop harsh-vocal protections when the clean Voice can't produce them), (6) Audio Influence floor caution for non-Professional Voices.
+  - **Consistency-vs-variety resolution:** Reconciles the apparent tension between JG BeatsLab's "consistency within a clip wins" and HookGenius's "three clips across moods helps" — both are correct at different scales. Consistency within a single sample, variety across multiple Voice profiles.
+  - **Re-recording guidance:** 20-30 sec optimal length per clip, Professional skill level mandatory (not cosmetic — cannot be changed after recording), preserve vocal quirks rather than smoothing them, sibilance mic-technique solution (off-axis positioning 15-30°).
+  - **Validated case study:** Documents the specific iteration path from a failed first attempt (folk-descriptors-duplicating-Voice + Audio Influence 20% + keyboards + unhurried tempo) to the working solution (heartland southern rock + overdriven guitar + Audio Influence 55% + keyboards killed + rock urgency).
+
+- **`suno-style-prompt-builder/references/model-prompt-strategies.md`** — Three new entries in the Genre Term Behavior Table:
+  - **`heartland rock`** — safe rock term for Voice tracks (no harsh vocal trigger)
+  - **`southern rock`** — safe vocal-wise; may pull slide/steel guitar (exclude if unwanted)
+  - **`heartland southern rock`** — validated combined term for Voice tracks needing rock presence without metal pull
+
+- **`suno-lyric-transformer/references/metatag-reference.md`** — New subsection "Isolated parentheticals as performed speech" documenting production observation that parentheticals placed on their own indented lines (not attached as `word(echo)`) are often delivered as **spoken interjections** rather than sung backing vocals. Works with v5.5 Voices despite the docs cautioning against spoken-word use — brief interjections are a different case from sustained `[Spoken Word]` sections.
+
+- **`suno-band-profile-manager/references/profile-schema.md`** — Expanded "Voices (v5.5)" Notes for Downstream Skills bullet with the six Voice Gravity Principle rules (profile-schema form) and a new "Multi-profile Voice strategy" note explaining how profiles can reference multiple Voice IDs for projects with several Voice recordings (e.g., "Narrative Rock," "Ballad Intimate," "Speak-Sing Confessional"), with consistency-within-sample + variety-across-samples as the guiding principle.
+
+### Sources
+
+- [JG BeatsLab — Suno v5.5 Voices Tested (Day One Findings)](https://www.jgbeatslab.com/ai-music-lab-blog/suno-v5-5-voices-tested)
+- [HookGenius — Suno v5.5 Guide: Voices, Custom Models & My Taste](https://hookgenius.app/learn/suno-v5-5-guide/)
+- [Suno Knowledge Base — Use Your Voice in Suno](https://help.suno.com/en/articles/11362369)
+- [Suno — How to Use Suno AI Voice Cloning (2026 Guide)](https://suno.com/hub/ai-voice-cloning)
+- Production observation from *Observation* song iteration (2026-04-10) — validated fix path documented as case study
+
+### Version Bumps
+
+- `package.json`: 1.6.2 → 1.6.3
+- `src/skills/suno-setup/assets/module.yaml`: 1.6.2 → 1.6.3
+- `.claude-plugin/marketplace.json`: 1.6.2 → 1.6.3
+- `INSTALLATION.md`: 1.6.2 → 1.6.3
+
+### Scope Note
+
+This is a **reference-file-only release** — no script behavior changes, no new files created, no schema changes. Purely additive documentation of production-validated Voice-track findings. Safe to pull as a drop-in replacement for v1.6.2 with no migration needed.
+
+---
+
 ## [1.6.2] - 2026-04-10
 
 ### Reference File Consolidation & Broken Link Cleanup

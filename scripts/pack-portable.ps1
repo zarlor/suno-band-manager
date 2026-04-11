@@ -51,7 +51,11 @@ function Add-Glob {
 }
 
 if (Test-Path $Manifest) {
-    # Read includes from manifest (lines under "include:" that start with "- ")
+    # Read includes from manifest (lines under "include:" that start with "- ").
+    # Two-step extraction: match the payload between "- " and optional inline
+    # comment, then trim whitespace and strip surrounding quotes (both " and ').
+    # The previous regex excluded only " and #, so single-quoted YAML patterns
+    # had the quotes captured as part of the pattern and failed to match.
     $inIncludes = $false
     foreach ($line in Get-Content $Manifest) {
         if ($line -match '^include:') {
@@ -59,8 +63,11 @@ if (Test-Path $Manifest) {
             continue
         }
         if ($inIncludes) {
-            if ($line -match '^\s*-\s*"?([^"#]+?)"?\s*(#.*)?$') {
-                Add-Glob ($Matches[1].Trim())
+            if ($line -match '^\s*-\s*(.+?)\s*(#.*)?$') {
+                $pattern = $Matches[1].Trim().Trim('"').Trim("'")
+                if ($pattern) {
+                    Add-Glob $pattern
+                }
             } elseif ($line -match '^\S' -and $line -notmatch '^\s*#') {
                 $inIncludes = $false
             }

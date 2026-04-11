@@ -27,8 +27,34 @@ FILES=()
 
 add_glob() {
     local pattern="$1"
-    local matches
-    matches=$(find "$PROJECT_ROOT" -path "$PROJECT_ROOT/$pattern" -type f 2>/dev/null || true)
+    local matches=""
+
+    if [[ "$pattern" == *'**'* ]]; then
+        # Recursive pattern: split at the first **, use the prefix as the base
+        # directory and the suffix as the filename filter. This matches the
+        # PowerShell version's Add-Glob recursive logic so cross-platform
+        # manifests behave identically. Using find's default recursion means
+        # the base directory's own files are matched along with nested ones,
+        # which is the expected glob semantics for patterns like
+        # docs/band-profiles/**/*.yaml (should match top-level AND nested).
+        local prefix="${pattern%%\*\**}"   # Everything before the first **
+        local suffix="${pattern#*\*\*}"    # Everything after the first **
+        prefix="${prefix%/}"               # Strip trailing /
+        suffix="${suffix#/}"               # Strip leading /
+        [ -z "$suffix" ] && suffix="*"     # Default to * if no tail pattern
+        local base="$PROJECT_ROOT"
+        [ -n "$prefix" ] && base="$PROJECT_ROOT/$prefix"
+        if [ ! -d "$base" ]; then
+            return
+        fi
+        matches=$(find "$base" -type f -name "$suffix" 2>/dev/null || true)
+    else
+        # Non-recursive pattern: use find -path. In find -path, * matches any
+        # character including /, so patterns with * will match across directory
+        # boundaries. This is fine for flat patterns like docs/voice-context-*.md.
+        matches=$(find "$PROJECT_ROOT" -path "$PROJECT_ROOT/$pattern" -type f 2>/dev/null || true)
+    fi
+
     if [ -n "$matches" ]; then
         while IFS= read -r f; do
             FILES+=("${f#$PROJECT_ROOT/}")
@@ -37,13 +63,15 @@ add_glob() {
 }
 
 if [ -f "$MANIFEST" ]; then
-    # Read includes from manifest (lines under "include:" that start with "- ")
-    while IFS= read -r line; do
-        pattern="${line#- }"
-        pattern="${pattern#\"}"
-        pattern="${pattern%\"}"
-        add_glob "$pattern"
-    done < <(sed -n '/^include:/,/^[^ -]/{ /^  *- /p }' "$MANIFEST")
+    # Read includes from manifest (lines under "include:" that start with "- ").
+    # Use sed to extract and strip the full prefix (leading whitespace + "- ")
+    # plus trailing inline comments and surrounding quotes robustly. The
+    # previous implementation used shell parameter expansion (${line#- }) which
+    # did not strip YAML's standard leading indentation, so valid manifests
+    # following portable-manifest.example.yaml silently packed nothing.
+    while IFS= read -r pattern; do
+        [ -n "$pattern" ] && add_glob "$pattern"
+    done < <(sed -n '/^include:/,/^[^ #-]/{ /^[[:space:]]*-[[:space:]]/ { s/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*#.*$//; s/^"//; s/"$//; s/^'\''//; s/'\''$//; p; }; }' "$MANIFEST")
 else
     # Default patterns: documented Suno module data conventions only.
     # Anything outside these (custom companion files, session findings, etc.)

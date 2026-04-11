@@ -4,6 +4,52 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [1.6.4] - 2026-04-11
+
+### pack-portable.sh Bug Fixes (Linux/macOS)
+
+A bugfix release for the bash portable-sync packer. Two distinct bugs caused users to silently lose files from their sync archives. PowerShell users were unaffected by the core bugs (the PS1 implementation was already correct) but get a small parity consistency fix.
+
+### Fixed
+
+- **`pack-portable.sh` manifest parser silently ignored every pattern.** The sed extraction pulled manifest lines with their original leading indentation intact (`  - "docs/..."` with 2-space YAML indent), but the shell parameter expansion `${line#- }` only strips `- ` from the very start of a string — it does not handle leading whitespace. Result: every pattern in every manifest became garbage text, every glob matched zero files, and `pack-portable.sh` returned `{"status": "empty", "message": "No portable files found to pack."}` with no diagnostic. Users following `portable-manifest.example.yaml` (which demonstrates standard 2-space YAML indentation) would hit this immediately on their first manifest run.
+
+  **Fix:** Replaced the shell-expansion parser with a robust sed one-liner that strips leading whitespace + `- `, inline `# ...` comments, and surrounding quotes (both `"` and `'`) in a single pass. Manifests with standard YAML indentation, inline comments, and either quote style now parse correctly.
+
+- **`pack-portable.sh` default band-profiles pattern silently excluded top-level files.** The default pattern `docs/band-profiles/**/*.yaml` used `find -path` for matching. In `find -path`, `*` matches any sequence including `/` (there is no special `**` globstar), so the pattern was functionally equivalent to `docs/band-profiles/*/*.yaml` — it required a literal `/` between `band-profiles/` and the `*.yaml` tail, which meant files had to be in a SUBDIRECTORY of `band-profiles/`. Every band profile following the standard convention (files placed directly in `docs/band-profiles/`, like `solitary-fire.yaml`) was silently excluded from the default pack.
+
+  **Fix:** Refactored `add_glob` in the bash script to match the PowerShell version's recursive `**` handling — when a pattern contains `**`, the script splits at the first `**`, uses the prefix as a base directory and the suffix as a filename filter, and calls `find -name -type f` (which naturally includes the starting directory). This matches standard shell globstar semantics and the PowerShell implementation, producing identical cross-platform behavior for patterns like `docs/band-profiles/**/*.yaml`, `docs/songbook/**/*.md`, and `docs/inspiration/**/*.txt`. Non-`**` patterns continue to use `find -path` unchanged.
+
+### Changed (parity / consistency)
+
+- **`pack-portable.ps1` manifest parser now handles single-quoted YAML patterns.** The previous regex `^\s*-\s*"?([^"#]+?)"?\s*(#.*)?$` excluded only `"` and `#` from the capture group, so manifest entries using single quotes (`  - 'docs/file.md'`) would capture the single quotes as part of the pattern and fail to match files. The parser is now a two-step approach (match the payload between `- ` and optional `#`, then `.Trim().Trim('"').Trim("'")`) that handles whitespace, inline comments, and both quote styles identically to the bash implementation. This is a minor consistency fix — the PS1 implementation was already correct for the common double-quoted YAML case used in `portable-manifest.example.yaml`.
+
+### Impact
+
+- **Linux/macOS users** using `pack-portable.sh` WITH a manifest — were hitting silent empty-pack failures. **Fixed.** Existing manifests that follow `portable-manifest.example.yaml` formatting now work correctly without modification.
+- **Linux/macOS users** using `pack-portable.sh` WITHOUT a manifest (defaults only) — were silently losing their top-level band profiles from the pack. **Fixed.** Defaults now capture both top-level and nested band profiles via `docs/band-profiles/**/*.yaml` with the new recursive handler.
+- **Windows users** using `pack-portable.ps1` — were not hitting either core bug (the PS1 implementation used separate correct logic paths for both). **Single-quote edge case in the manifest parser fixed** as a consistency improvement. Existing double-quoted manifests are unaffected.
+- **`portable-manifest.example.yaml`** — no changes needed. The existing example is correct and now works on both platforms as advertised.
+
+### Verification
+
+- **With manifest (Linux):** 54 files packed from a real project manifest including band profiles, companion docs, playlist artifacts, and session findings. All customized inclusions present.
+- **Without manifest, defaults only (Linux):** 42 files packed, including both top-level band profiles (`lennys-voice.yaml` and `solitary-fire.yaml`). Before the fix, band profiles were silently excluded.
+- **PowerShell:** regex change validated by inspection for single-quote handling. No behavior change for double-quoted patterns.
+
+### Version Bumps
+
+- `package.json`: 1.6.3 → 1.6.4
+- `src/skills/suno-setup/assets/module.yaml`: 1.6.3 → 1.6.4
+- `.claude-plugin/marketplace.json`: 1.6.3 → 1.6.4
+- `INSTALLATION.md`: 1.6.3 → 1.6.4
+
+### Scope Note
+
+This is a **bash and PowerShell script-only release** — no reference doc changes, no schema changes, no new files created. Safe drop-in replacement for v1.6.3. Existing `portable-manifest.yaml` files do not need to be updated; they will start working correctly on Linux/macOS with no changes.
+
+---
+
 ## [1.6.3] - 2026-04-10
 
 ### v5.5 Voice Gravity Principle + Production Observations

@@ -306,7 +306,7 @@ After publishing a song (adding audio, finalizing the title, saving to songbook)
 
 1. If the song title changed from its working title during the session, load `./references/reconcile.md` and run reconciliation with the old and new titles
 2. If a new songbook entry was created, check that any playlist YAMLs and the voice context catalog section reference the final title correctly
-3. If a WIP file exists for the published song (`docs/wip-*.md`), offer to delete it — the songbook entry supersedes the WIP
+3. If the song was developed from a WIP fragment file (`docs/wip-*.md`), **mark the WIP file COMPLETED** — do NOT delete it. The fragments are historical record of the brainstorming that led to the song and should be preserved, but the file must not appear as active work on future sessions. Load `./references/reconcile.md` → "The COMPLETED WIP convention" for the exact marker format and the rationale. Apply the marker before ending the session — without it, the next session (especially on a different machine after a portable sync) will incorrectly treat the finished song as pending work.
 4. If audio analysis produced data that updates the songbook entry (BPM, key, duration), verify the voice context and playlist docs have current data
 
-Keep it light — only trigger reconciliation if something actually changed. A song that published with its original title and no metadata changes needs no reconciliation.
+Keep it light — only trigger reconciliation if something actually changed. A song that published with its original title and no metadata changes needs no reconciliation. **But the WIP→COMPLETED marker in step 3 is mandatory whenever a song originated from a WIP file, even if nothing else changed** — skipping it creates the cross-machine sync drift that Layer 1 of the WIP-sync fix is designed to prevent.

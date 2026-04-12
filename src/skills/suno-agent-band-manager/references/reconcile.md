@@ -90,17 +90,80 @@ Wait for confirmation. The user may want to:
 For each confirmed update:
 1. Read the target file
 2. Replace the old value with the new value **in context** — understand the surrounding structure, don't blind find-replace
-3. For WIP files of published songs: offer to delete the WIP file entirely (the songbook entry is the authoritative record now)
+3. For WIP files of published songs: **apply the COMPLETED WIP convention** (see below) — preserve the file as historical record, do NOT delete
 4. Write the updated file
-5. Report what was changed: "Updated 3 files, deleted 1 WIP file"
+5. Report what was changed: "Updated 3 files, marked 1 WIP file COMPLETED"
 
 ### Special Cases
 
 **Playlist reordering:** When track numbers change, update ALL track number references in the voice context catalog section. This is a bulk update — present the full before/after for the catalog section rather than individual line changes.
 
-**WIP → Published:** Check for `docs/wip-*` files that reference the published song. Offer to delete them — the songbook entry supersedes the WIP. If the WIP contains creative context not in the songbook (brainstorm notes, unused fragments), ask whether to preserve it or archive relevant parts into the songbook notes.
+**WIP → Published:** Check for `docs/wip-*` files that reference the published song. **Apply the COMPLETED WIP convention (below)** to mark them resolved — do NOT delete them. The fragments are the historical record of the brainstorming that led to the song. The marker ensures they don't appear as active work on future sessions while preserving their content for reference.
 
 **Band profile rename:** This is the widest-impact change — every songbook entry references the profile by name in frontmatter. Surface the scope before proceeding.
+
+## The COMPLETED WIP convention
+
+When a song is published from a WIP fragments file, mark the file with a standard COMPLETED block at the top — immediately after the title heading, before the original content. This preserves the brainstorming record while signaling to future sessions (and future machines after a portable sync) that the file is not active work.
+
+### Why this convention exists
+
+**The problem it solves:** WIP fragment files live in `docs/wip-*.md` and get synced across machines via the portable-sync archive. Without a resolution marker, a WIP file for a finished song looks identical to a WIP for active work. A Mac session on the other machine will:
+- List the stale WIP as "pending/parked work"
+- Potentially suggest continuing work that's already done
+- Waste credits or context on work that's already published
+- Create sync drift between the two machines' understanding of catalog state
+
+This class of drift has happened at least once in this project (2026-04-11 session: three stale WIP files across sessions 3, 4, 5 were flagged after mid-session review). The marker prevents it at the source.
+
+**Why NOT delete:** The fragments are creative history. They contain brainstorming that didn't survive into the published song, notes on direction changes, images that were cut, and the evolution of the song's working title. Deleting them erases the paper trail. Marking them preserves the trail while neutralizing the "active work" signal.
+
+### The exact marker format
+
+Apply this block at the top of the WIP file, immediately after the `#` title heading and any `## WIP —` date line, separated by a `---` horizontal rule above and below:
+
+```markdown
+# <Original WIP title>
+## WIP — <original dates>
+
+---
+
+## STATUS: COMPLETED as "<Published Song Title>" — published <YYYY-MM-DD>
+
+This fragments file is preserved as historical record. The song was completed
+as **<Published Song Title>** on <YYYY-MM-DD> <brief context: what session,
+what band, what musical direction>. See the songbook entry at
+`docs/songbook/<band>/<song-slug>.md` for the finished form, style prompt,
+exclude styles, settings, and the full generation log.
+
+**This WIP file is NOT active work — do not list it in pending/parked work.**
+
+---
+
+<original fragments content continues here, unchanged>
+```
+
+**Key elements** (all required):
+1. A `## STATUS: COMPLETED as "<title>" — published <date>` heading — this is the machine-readable marker that pending/parked listings should grep for
+2. One paragraph of context pointing to the songbook entry (absolute path within the repo)
+3. The explicit "NOT active work — do not list in pending/parked work" line — this is the instruction to future Mac sessions
+4. A `---` horizontal rule below to separate the marker block from the original fragments
+
+### Listing discipline (sidecar index maintenance)
+
+When building or updating the "Pending / Parked Work" section of the sidecar `index.md`, Mac MUST:
+
+1. **Scan every `docs/wip-*.md` file** for the `## STATUS: COMPLETED` marker before listing it
+2. **Skip files with the marker** — they are resolved, not pending
+3. **When including resolved WIPs in the index for historical reference**, put them under a separate "Resolved WIP fragments (historical record only — not active work)" subsection, clearly delineated from active pending/parked work, with a pointer to the songbook entry they became
+
+The sidecar index's Pending / Parked Work section is the primary place a future Mac session looks to decide what to work on next. A stale WIP listed there will be picked up as a candidate. The scan-before-list rule prevents this.
+
+### Applying the marker to existing unmarked WIPs
+
+If you encounter a WIP file without a COMPLETED marker but you can confirm the song is published (by finding the songbook entry), apply the marker in context — surface it as a cleanup: "I noticed `docs/wip-X.md` is for a song that's already published as Y. Marking it COMPLETED so it doesn't get picked up next session." Then apply the block and confirm.
+
+Do NOT guess — if you're not sure the song is published, ask. The marker is a positive assertion that the WIP resolved into a specific published song; applying it to a still-active WIP would lose work.
 
 ## Scope Boundaries
 

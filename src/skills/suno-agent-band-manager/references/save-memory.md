@@ -63,8 +63,11 @@ Immediately persist the current session context to memory.
    **Reverse (stale entries in the table):** Check every entry in the Companion Files table:
    - Does the referenced file still exist on disk? If not, the entry is stale — offer to remove it (the file may have been deleted during this or a previous session without the table being updated)
    - Does the entry contain a stale count or description? (e.g., "34 tracks" when the playlist now has 36, or "The Slide — firearm metaphor..." when The Slide is now a published song with a songbook entry). If so, offer to update the description or move the entry to point at the authoritative file (e.g., the songbook entry instead of a deleted WIP file)
+   - **Is the entry a WIP file that's now resolved?** If the Companion Files table includes a `docs/wip-*.md` entry, check whether the file has a `## STATUS: COMPLETED` marker at the top (see `./references/reconcile.md` → "The COMPLETED WIP convention"). If so, the entry is stale — offer to remove it from the table. Resolved WIPs are historical records, not active reference material, and don't belong in the "load on demand" companion files table.
 
    Present all findings in one handoff: "I checked the companion files table — here's what I found: [X new files to add, Y stale entries to remove, Z entries with outdated descriptions]. Want me to fix them all, review each, or skip?"
+
+   **WIP completion scan (post-publication):** Additionally, if this session included publishing a song, scan `docs/wip-*.md` for any file whose content matches the published song but lacks the `## STATUS: COMPLETED` marker. If found, surface it: "I notice `docs/wip-X.md` looks like the source fragments for the song we just published. Mark it COMPLETED? (Load `./references/reconcile.md` → 'The COMPLETED WIP convention' for the marker format.)" Apply the marker if confirmed. This is the primary mechanism by which Layer 1 of the WIP-sync fix operates — catching WIP resolution at save-memory time is the backstop if `create-song.md` Step 7 missed it.
 
 7. **Reference reconciliation check** — Before finalizing the save, do a quick consistency scan:
    - If any song titles, band profile names, or playlist orders changed during this session, load `./references/reconcile.md` and run reconciliation

@@ -99,17 +99,21 @@ def scaffold_sidecar(project_root: Path) -> dict:
 
     created = []
 
-    # access-boundaries.md - static template
+    # access-boundaries.md - static template.
+    # Paths are all relative to project root — validate-path.py resolves them
+    # against project-root at parse time. Bare relative paths keep the file
+    # portable across machines (no user-specific absolute paths embedded).
     ab_path = sidecar / "access-boundaries.md"
     if not ab_path.exists():
         ab_path.write_text(
             "# Access Boundaries for Mac\n\n"
+            "All paths below are relative to the project root.\n\n"
             "## Read Access\n"
             "- docs/band-profiles/\n"
             "- docs/voice-context-*.md\n"
-            "- {project-root}/_bmad/_memory/band-manager-sidecar/\n\n"
+            "- _bmad/_memory/band-manager-sidecar/\n\n"
             "## Write Access\n"
-            "- {project-root}/_bmad/_memory/band-manager-sidecar/\n"
+            "- _bmad/_memory/band-manager-sidecar/\n"
             "- docs/voice-context-{user}.md (current user's file only)\n\n"
             "## Deny Zones\n"
             "- All other directories\n"

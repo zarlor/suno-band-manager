@@ -18,6 +18,7 @@ Checks performed:
     3. Sidecar Recently Published list matches songbook ground truth
     4. Sidecar Catalog Status counts match actual songbook counts
     5. Playlist YAML track count matches songbook count for that band
+    6. Markdown cross-references in docs/ resolve to existing files
 
 Called by:
     - pack-portable.{sh,ps1} before packing (gates sync)
@@ -76,7 +77,7 @@ class Song:
 
 @dataclass
 class Finding:
-    category: str  # "songbook_drift" | "audio_missing" | "index_drift" | "playlist_drift"
+    category: str  # "songbook_drift" | "audio_missing" | "index_drift" | "playlist_drift" | "cross_reference_missing"
     severity: str  # "error" | "warning"
     path: str
     message: str
@@ -452,6 +453,157 @@ def check_playlist_songbook_parity(
 
 
 # ---------------------------------------------------------------------------
+# Cross-reference check
+# ---------------------------------------------------------------------------
+
+
+# Inline-code reference: `path/to/file.md` or `path/to/file.md#anchor`
+# We require at least one slash or dot-segment so bare `README.md` in running
+# prose still matches but single-word code spans like `status` don't.
+INLINE_CODE_REF_RE = re.compile(r"`([^`\s]+\.md(?:#[^`]*)?)`")
+
+# Markdown link reference: [text](path.md) or [text](path.md#anchor)
+# Negative lookbehind on ! avoids matching image syntax ![alt](...).
+MARKDOWN_LINK_REF_RE = re.compile(
+    r"(?<!!)\[[^\]]*\]\(([^)\s]+?\.md(?:#[^)\s]*)?)\)"
+)
+
+
+def _is_external_or_anchor(ref: str) -> bool:
+    """Skip external URLs, mail links, and bare anchor references."""
+    lowered = ref.strip().lower()
+    if lowered.startswith(("http://", "https://", "mailto:", "ftp://", "//")):
+        return True
+    if lowered.startswith("#"):
+        return True
+    return False
+
+
+def _strip_code_fences(text: str) -> str:
+    """Remove fenced code blocks so references inside them are not checked.
+
+    References inside inline backticks (single backtick spans) are still checked,
+    since those are the canonical form for pointing at a file in prose. But
+    multi-line ``` fences often contain examples, templates, or diffs that
+    shouldn't be validated against the real filesystem.
+    """
+    return re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+
+
+def check_markdown_cross_references(project_root: Path) -> list[Finding]:
+    """Scan every markdown file under docs/ for broken cross-references.
+
+    Catches forward-intent references (`docs/X.md` mentioned declaratively but
+    never actually created) and stale references that slipped past the delete
+    reconciliation protocol.
+
+    Scope: `docs/` only — module source references (`src/skills/...`) are out
+    of scope because they follow different drift semantics (tracked in git, not
+    synced machine-to-machine).
+
+    Matches:
+      - Inline code: `path/to/file.md` (single backtick spans)
+      - Markdown links: [text](path/to/file.md) including relative `../` paths
+
+    Skips:
+      - External URLs (http/https/mailto/ftp)
+      - Anchor-only refs (#section)
+      - Self-references
+      - Anything inside fenced code blocks (``` ... ```)
+    """
+    findings: list[Finding] = []
+    docs_root = project_root / "docs"
+    if not docs_root.is_dir():
+        return findings
+
+    for md_path in sorted(docs_root.rglob("*.md")):
+        try:
+            text = md_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+
+        scannable = _strip_code_fences(text)
+        rel_referrer = str(md_path.relative_to(project_root))
+        seen: set[str] = set()
+
+        for pattern in (INLINE_CODE_REF_RE, MARKDOWN_LINK_REF_RE):
+            for match in pattern.finditer(scannable):
+                raw_ref = match.group(1).strip()
+                if _is_external_or_anchor(raw_ref):
+                    continue
+
+                # Strip URL-style anchor suffix for file existence check
+                ref_path_part = raw_ref.split("#", 1)[0]
+                if not ref_path_part:
+                    continue
+
+                # Deduplicate per-file so one broken reference reported once
+                if ref_path_part in seen:
+                    continue
+                seen.add(ref_path_part)
+
+                # Absolute-ish refs (starting with /) are machine paths — skip.
+                if ref_path_part.startswith("/"):
+                    continue
+
+                # Glob/wildcard patterns (e.g. `per-candidate/*.md`) describe
+                # a directory of files, not a single target — skip them.
+                if any(c in ref_path_part for c in "*?["):
+                    continue
+
+                # References can be either parent-relative (`../foo.md`) or
+                # project-root-relative (`docs/foo.md` written from inside
+                # `docs/` — the user convention in this codebase). Try both
+                # anchors; if either target exists, the reference is valid.
+                project_abs = project_root.resolve()
+                parent_resolved = (md_path.parent / ref_path_part).resolve()
+                root_resolved = (project_root / ref_path_part).resolve()
+                referrer_abs = md_path.resolve()
+
+                # Self-reference check against either resolution
+                if parent_resolved == referrer_abs or root_resolved == referrer_abs:
+                    continue
+
+                # Does either candidate exist under the project root?
+                candidates = []
+                for cand in (parent_resolved, root_resolved):
+                    try:
+                        cand.relative_to(project_abs)
+                    except ValueError:
+                        continue
+                    candidates.append(cand)
+
+                if not candidates:
+                    # Both candidates escape the project root — out of scope
+                    continue
+
+                if any(c.exists() for c in candidates):
+                    continue
+
+                # Neither exists — report using the more informative target
+                # (prefer project-root-relative when the reference looked like
+                # one, else the parent-relative form).
+                display_target = candidates[-1] if len(candidates) > 1 else candidates[0]
+                try:
+                    target_display = str(display_target.relative_to(project_abs))
+                except ValueError:
+                    target_display = str(display_target)
+                findings.append(
+                    Finding(
+                        category="cross_reference_missing",
+                        severity="warning",
+                        path=rel_referrer,
+                        message=(
+                            f"reference to {raw_ref!r} → target not found: "
+                            f"{target_display}"
+                        ),
+                    )
+                )
+
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -471,6 +623,7 @@ def run_checks(project_root: Path) -> tuple[list[Finding], dict[str, int]]:
         findings.extend(check_index_catalog_counts(index_text, songs, project_root))
 
     findings.extend(check_playlist_songbook_parity(songs, project_root))
+    findings.extend(check_markdown_cross_references(project_root))
 
     stats = {
         "songs_scanned": len(songs),

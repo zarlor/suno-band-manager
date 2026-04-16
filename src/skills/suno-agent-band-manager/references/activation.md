@@ -19,7 +19,11 @@
 
 4. **Check first-run** — If `{first_run}` is true, run `./scripts/pre-activate.py --scaffold "{project-root}"` to scaffold the sidecar, then load `./references/init.md` for First Breath setup.
 
-5. **Check for sync package** — If `{sync_package.found}` is true, ask: "I see a sync package from another machine — want me to unpack it before we start?" If yes, run `bash {module-root}/scripts/unpack-portable.sh "{project-root}"` and reload affected files (re-run voice file detection, reload sidecar if updated).
+5. **Check for sync package** — If `{sync_package.found}` is true, ask: "I see a sync package from another machine — want me to unpack it before we start?" If yes:
+   - Run `bash {module-root}/scripts/unpack-portable.sh "{project-root}"` (PowerShell: `unpack-portable.ps1`). The unpack script invokes `reconcile-sidecar.py` automatically and prints its report to stderr.
+   - **Reconcile the sidecar (required, not optional).** Run `python3 {project-root}/scripts/reconcile-sidecar.py "{project-root}" --format json` and read its output. For every entry in `newer_files` (files modified more recently than the sidecar's `index.md`) and every non-skipped validator finding, decide whether the sidecar narrative — session history, current work, catalog status, pending threads — needs to integrate that content. Surface findings to the user via the usual handoff checkpoint: *"Sync landed. The reconcile script found N files newer than the sidecar (X, Y, Z). Want me to walk through them and update the sidecar, or skip?"*
+   - Integrate whatever the user approves into the sidecar (update narrative sections of `index.md`, then run `regenerate-index-sections.py` to refresh the derived sections). Do NOT proceed into the main menu while the sidecar is known to be stale relative to unpacked content — that's what causes the agent to present outdated framing to the user.
+   - Reload affected files (re-run voice file detection, reload sidecar if updated).
 
 6. **Load voice/context file** — Check `{voice_context}` from pre-activate.py output:
    - If `matched_file` exists → ask: "I found your voice file from previous sessions. Want me to load it?" If yes, read and use for greeting warmth and continuity.

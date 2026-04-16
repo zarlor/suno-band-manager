@@ -43,5 +43,25 @@ try {
 Write-Output ('{"status": "success", "files_unpacked": ' + $fileCount + '}')
 [Console]::Error.WriteLine("Unpacked $fileCount files from $Archive")
 
+# Post-unpack reconciliation — warn if the sidecar narrative may be stale
+# relative to the unpacked files. Never blocks: reconciliation is the agent's
+# job, not the script's. Bypass with $env:BMAD_SKIP_RECONCILE=1.
+$reconcile = Join-Path $PSScriptRoot 'reconcile-sidecar.py'
+if ($env:BMAD_SKIP_RECONCILE -ne '1' -and (Test-Path $reconcile)) {
+    $py = $null
+    foreach ($candidate in @('python3', 'python')) {
+        if (Get-Command $candidate -ErrorAction SilentlyContinue) { $py = $candidate; break }
+    }
+    if ($py) {
+        [Console]::Error.WriteLine("")
+        [Console]::Error.WriteLine("--- Post-unpack reconciliation check ---")
+        try {
+            & $py $reconcile $ProjectRoot 2>&1 | ForEach-Object { [Console]::Error.WriteLine($_) }
+        } catch {
+            [Console]::Error.WriteLine("reconcile-sidecar.py skipped: $_")
+        }
+    }
+}
+
 # Optionally remove the archive after unpacking
 # Remove-Item $Archive

@@ -4,6 +4,74 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [1.6.6] - 2026-04-16
+
+### Drift Protection — Round Two
+
+A follow-on to v1.6.5's Sidecar Drift Protection release. v1.6.5 closed the largest drift gap (index sections vs. songbook ground truth), but three smaller classes of drift surfaced in sessions afterward:
+
+1. **Forward-intent cross-references.** Markdown files referencing other docs files that were never actually created — `` `docs/catalog-meta-observations.md` `` mentioned declaratively in a WIP draft, but the target file doesn't exist on disk. The v1.6.5 validator scanned songbook frontmatter/body agreement and audio file existence; it didn't scan prose for markdown cross-references.
+2. **Unpack-side sidecar drift.** The pre-pack validator gates sync on the source machine, but after unpack on the receiving machine the sidecar still reflects the receiving machine's prior local state. Freshly-arrived WIP notes, session-context edits, and songbook updates don't automatically make it into the sidecar narrative — the agent has to remember to integrate them, and often didn't.
+3. **Machine-specific absolute paths in access-boundaries.** The scaffold template wrote a `{project-root}/...` placeholder that users or agents sometimes expanded to an absolute `/home/.../bmm/...` path during edits, making the file non-portable. Paths in `access-boundaries.md` are conceptually relative to project root; absolute paths were vestigial.
+
+This release closes all three.
+
+### Added
+
+- **`scripts/reconcile-sidecar.py`** — post-unpack reconciliation helper. Lists every `docs/**/*.md` file whose mtime is more recent than the sidecar's `index.md` (likely integration candidates), runs `validate-sidecar.py` to surface drift, and produces a punch list for the agent to walk through with the user. Exits 1 when reconciliation is needed, 0 when clean. `--format json` for programmatic consumption. Does not edit files — reconciliation itself is the agent's job.
+
+- **`scripts/validate-sidecar.py` → `check_markdown_cross_references()`** — new check that scans every `.md` file under `docs/` for inline-code references (`` `docs/X.md` ``) and markdown-link references (`[text](X.md)`, `[text](../path/to/X.md)`) and verifies each target exists on disk. Reports findings with category `cross_reference_missing`, severity `warning`. Dual-anchor resolution (tries both parent-relative and project-root-relative) so the user convention of writing `` `docs/X.md` `` from inside a file already in `docs/` still resolves correctly. Skips external URLs, anchor-only references, self-references, glob/wildcard patterns, and anything inside fenced code blocks.
+
+### Changed
+
+- **`scripts/unpack-portable.sh` and `unpack-portable.ps1`** — automatically invoke `reconcile-sidecar.py` after extraction. The reconcile report prints to stderr so the agent reading the script output sees the punch list without parsing it out of a JSON stdout channel. Bypass with `BMAD_SKIP_RECONCILE=1` (or `$env:BMAD_SKIP_RECONCILE=1` on PowerShell). The reconcile call never fails the unpack — reconciliation is advisory, and the integration decisions belong to the agent and user.
+
+- **`src/skills/suno-agent-band-manager/scripts/pre-activate.py → scaffold_sidecar()`** — `access-boundaries.md` scaffold now writes bare relative paths (`_bmad/_memory/band-manager-sidecar/`) instead of the `{project-root}/` placeholder form. Paths are all conceptually relative to project root; the placeholder was a convention artifact that sometimes got expanded to absolute paths during edits. Includes a one-line header clarifying the convention: *"All paths below are relative to the project root."*
+
+  `validate-path.py` continues to handle both bare-relative and `{project-root}/` forms, so existing installs with the legacy placeholder keep working unchanged. Only new scaffolds change.
+
+- **`src/skills/suno-agent-band-manager/references/activation.md` step 5** — sync package handling now requires post-unpack sidecar reconciliation before proceeding to the main menu. Previously the step said "reload affected files" which was soft and easy to skip. The new language is explicit: run `reconcile-sidecar.py`, walk every `newer_files` entry and every validator finding with the user via the Handoff Checkpoint Pattern, integrate approved changes into the narrative sections of `index.md`, regenerate derived sections, and only then proceed into the normal activation flow.
+
+- **`src/skills/suno-agent-band-manager/references/memory-system.md`** — new *Post-Unpack Reconciliation* section documents the mandatory protocol. *Access Control* section now documents the path convention (relative to project root, no placeholder, no absolute paths — validator resolves both forms for back-compat).
+
+- **`src/skills/suno-agent-band-manager/references/save-memory.md` step 7** — reconciliation check now also covers `cross_reference_missing` warnings from the validator. If broken cross-references are detected, surface them to the user and resolve (create target file, rephrase as future-intent, or remove the reference) before packing. The class of drift described in issue #23 gets caught automatically at save time now, not just at unpack time.
+
+### Fixed
+
+- **Issue #23** — `validate-sidecar.py` didn't catch declarative references to docs files that were never created. Now flagged as `cross_reference_missing` warnings.
+- **Issue #25** — no post-unpack reconciliation meant the sidecar narrative could silently lag behind freshly-arrived file content. Now the agent gets a punch list automatically and the protocol requires reconciliation before proceeding.
+- **Issue #26** — access-boundaries scaffold emitted `{project-root}/` placeholder paths that sometimes got expanded to absolute machine paths, breaking portability. Scaffold now writes bare relative paths. Existing files with the placeholder form keep working.
+
+### Migration
+
+None. All changes are additive or internal:
+
+- Existing installs with `{project-root}/` paths in `access-boundaries.md` continue to work — `validate-path.py` normalizes both forms.
+- Existing sidecars work unchanged — the reconcile script is new tooling, not a schema change.
+- The cross-reference check runs automatically as part of `validate-sidecar.py`; findings are warnings, not errors, so existing drift surfaces but doesn't block syncs.
+
+### Version Bumps
+
+- `package.json`: 1.6.5 → 1.6.6
+- `src/skills/suno-setup/assets/module.yaml`: 1.6.5 → 1.6.6
+- `.claude-plugin/marketplace.json`: 1.6.5 → 1.6.6
+- `INSTALLATION.md`: 1.6.5 → 1.6.6
+
+### Verification
+
+- **Cross-reference check on current test harness:** 7 legitimate drift findings surfaced in the test project — broken references to `outreach-tracker.md`, `sessions/2026-04-10.md`, `case-state.md`, `identity-and-context.md`, `docs/wip-contentment-poem-brainstorm.md`, `wip-categories-fragments.md`, `back-woods-rushin-city-slow.md`. Zero false positives. All legitimate — this is exactly the class of drift issue #23 described.
+- **Glob-pattern filtering:** `per-candidate/*.md` glob references correctly skipped (intent-references, not single-file lookups).
+- **Scaffold output:** fresh project scaffolds `access-boundaries.md` with bare relative paths and no `{project-root}/` strings anywhere in the file.
+- **Back-compat:** `validate-path.py` unit-tested against a boundaries file containing both `docs/X/` and `{project-root}/docs/X/` forms — both resolve identically.
+- **Unpack script:** `unpack-portable.sh` runs `reconcile-sidecar.py` automatically after extraction on Linux; report prints to stderr with the stale-files punch list.
+- **Reconcile script edge cases:** returns exit 0 with `status: no_sidecar` when no sidecar exists (nothing to reconcile); returns exit 1 with populated `newer_files` when docs files are newer than `index.md`; returns exit 0 with `status: clean` when sidecar is in sync.
+
+### Scope Note
+
+This release adds **one new script** (`reconcile-sidecar.py`), **extends one script** (`validate-sidecar.py` gains `check_markdown_cross_references()`), and **updates two scripts + three reference docs** (`unpack-portable.sh`, `unpack-portable.ps1`, `pre-activate.py`, `activation.md`, `memory-system.md`, `save-memory.md`). User data (`docs/`, `_bmad/`) is not part of the module and remains untouched by the module upgrade. No user migration required.
+
+---
+
 ## [1.6.5] - 2026-04-13
 
 ### Sidecar Drift Protection

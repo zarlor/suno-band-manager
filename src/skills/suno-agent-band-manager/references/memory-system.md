@@ -58,6 +58,8 @@ When the agent creates a satellite document during a session, add a reference en
 
 **Critical:** On every activation, load these boundaries first. Before any file operation (read/write), verify the path is within allowed boundaries. If uncertain, ask user.
 
+**Path convention:** All entries are relative to the project root — no `{project-root}/` placeholder, no absolute paths. `validate-path.py` resolves both bare-relative paths (`_bmad/_memory/band-manager-sidecar/`) and the legacy `{project-root}/` form for backward compatibility, but new scaffolds write bare-relative only. This keeps the file portable across machines: a desktop/laptop handoff or a home-directory change doesn't invalidate the boundary list.
+
 ### `patterns.md` — Learned Musical Patterns & Production Knowledge
 
 **Load when needed.** Contains:
@@ -158,3 +160,17 @@ This ensures that if context compaction drops earlier conversation, Mac can reco
 ## First Run
 
 If sidecar doesn't exist, load `./references/init.md` to create the structure.
+
+## Post-Unpack Reconciliation (Cross-Machine Sync)
+
+When a portable sync archive is unpacked on a receiving machine, the sidecar's narrative (session history, current work, catalog status, pending threads) still reflects the receiving machine's prior state — even though the newly-arrived files may contain updates the narrative should integrate. If this drift isn't reconciled, Mac presents outdated framing to the user in the very next interaction.
+
+**The protocol is mandatory, not optional:**
+
+1. `unpack-portable.{sh,ps1}` invokes `reconcile-sidecar.py` automatically after extraction and prints a report.
+2. Re-run the reconcile script explicitly — `python3 {project-root}/scripts/reconcile-sidecar.py "{project-root}" --format json` — and walk every entry in `newer_files` plus every validator finding with the user via the Handoff Checkpoint Pattern.
+3. Integrate approved changes into the narrative sections of `index.md`.
+4. Run `regenerate-index-sections.py` to refresh the derived sections.
+5. Only then proceed into the normal activation flow (greeting, menu, etc.).
+
+**Rationale:** The pre-pack validator gates sync on the source machine. Without a post-unpack reconciliation gate, the freshly-arrived file state and the receiving machine's sidecar narrative drift apart with every round trip. Reconciliation is the agent's job — the script only produces the punch list.

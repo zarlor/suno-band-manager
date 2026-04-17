@@ -364,6 +364,26 @@ The Exclude Styles field (Pro/Premier only) is a separate input from the style p
 - **Limit to 2-3 most important exclusions** — too many exclusions destabilize the arrangement and produce unpredictable results. Prioritize the exclusions that matter most for the song.
 - **Combine with positive instructions** — telling Suno what you DO want is more reliable than only excluding what you don't. Use Exclude Styles as a safety net alongside positive vocal/instrument guidance in the style prompt.
 
+### CRITICAL RULE: Excludes Defend Against Drift From the CURRENT Prompt ONLY
+
+**Suno is stateless. It has zero knowledge of:**
+- Prior generations of this song (regen iterations, earlier versions, previous Creates)
+- Other bands' renderings of the same lyrics (e.g., if the user has both a Solitary Fire version and a Lenny's Voice version of the same poem, Suno generating one knows nothing about the other)
+- The user's broader catalog, band profiles, genre lanes, or historical patterns
+- Any context that isn't in the style prompt, Exclude Styles, lyrics, sliders, voice selection, or persona/audio input for this specific generation
+
+**The ONLY inputs that influence Suno's output are the ones submitted with the current Create.** The Exclude Styles list should defend against drift risks that the CURRENT style prompt's own descriptors might introduce. Nothing else.
+
+**Common violations to avoid when building exclusion lists:**
+
+- ❌ "Defend against SF-DNA drift on this LV version" — Suno doesn't know SF exists. If metal-coded words aren't in the LV style prompt, metal won't creep in from the parallel SF version.
+- ❌ "The earlier generation drifted toward X, so exclude X in the next attempt" — Suno doesn't remember prior generations. If the current prompt still contains descriptors that pull toward X, excluding X is valid. If the current prompt doesn't contain those descriptors, the exclusion is defending against a ghost.
+- ❌ "The user's Band A catalog never uses instrument Y, so exclude Y on Band B's version of this song" — Suno doesn't know about Band A. Only exclude Y if the CURRENT prompt might pull it in.
+
+**The correct question for every exclude candidate:** *"What in my current style prompt could plausibly pull Suno toward this element?"* If the answer is "nothing in this prompt pulls that way," the exclude is wasted exclusion-field budget.
+
+**Parallel-band-rendering work is the highest-risk context for this error.** When a song exists in two band catalogs (same poem, different genre/voice rendering), the temptation is to frame excludes as "defense against the other band's version." That framing is always wrong — Suno cannot be influenced by a version it has no knowledge of. Build excludes fresh for each rendering based on that specific prompt's descriptors.
+
 ## Vocal Behavior and Triggers
 
 ### Scream/Harsh Vocal Triggers

@@ -35,7 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"
 from suno_constants import SUNO_LYRICS_HARD_LIMIT, SUNO_LYRICS_QUALITY_BUDGET
 
 SCRIPT_NAME = "validate-lyrics"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 # Valid section metatags (case-insensitive matching)
 VALID_SECTIONS = {
@@ -59,6 +59,24 @@ VALID_VOCAL_CUES = {
 
 # Valid descriptor metatag prefixes
 VALID_DESCRIPTORS = {"mood", "energy", "vocal style", "instrument", "tempo", "key"}
+
+# HIGH-confidence standalone bare-bracket tags from metatag-reference.md
+# Kept in sync with the "Standalone Mood/Energy Tags" and "Timing & Rhythm Tags" sections.
+VALID_STANDALONE_MOODS = {
+    "uplifting", "haunting", "dark", "nostalgic", "somber", "romantic",
+    "dreamy", "peaceful", "anxious", "euphoric", "mysterious", "playful",
+    "epic", "intimate", "bittersweet", "triumphant",
+}
+
+VALID_STANDALONE_ENERGY = {
+    "high energy", "medium energy", "low energy", "chill", "driving",
+    "explosive", "building", "relaxed", "frantic", "steady",
+}
+
+VALID_TIMING_RHYTHM = {
+    "half-time", "swung feel", "shuffle", "triplet feel", "syncopated",
+    "straight", "four on the floor", "polyrhythmic", "breakbeat",
+}
 
 # Style cues that should NOT be in lyrics
 STYLE_CONTAMINATION_PATTERNS = [
@@ -256,8 +274,12 @@ def validate_lyrics(text: str) -> list[dict]:
         is_vocal_cue = tag_lower in VALID_VOCAL_CUES
         # Is it a valid descriptor?
         is_descriptor = ':' in tag_text and tag_text.split(':')[0].strip().lower() in VALID_DESCRIPTORS
+        # Is it a HIGH-confidence standalone mood/energy/rhythm tag from metatag-reference.md?
+        is_standalone = (tag_lower in VALID_STANDALONE_MOODS or
+                        tag_lower in VALID_STANDALONE_ENERGY or
+                        tag_lower in VALID_TIMING_RHYTHM)
 
-        if not is_section and not is_vocal_cue and not is_descriptor:
+        if not is_section and not is_vocal_cue and not is_descriptor and not is_standalone:
             findings.append({
                 "severity": "low",
                 "category": "consistency",

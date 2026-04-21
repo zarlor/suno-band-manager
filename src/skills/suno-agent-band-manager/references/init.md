@@ -43,6 +43,49 @@ Creating:
 - `patterns.md` — musical preferences I learn over time
 - `chronology.md` — session timeline
 
+### `index.md` template (REQUIRED marker pairs)
+
+New sidecars MUST be born already-migrated. The `## Recently Published` and `## Catalog Status` sections are regenerated from songbook ground truth by `scripts/regenerate-index-sections.py`, which requires HTML comment marker pairs to locate the rewrite targets. Missing markers cause every `save-memory` regeneration call and every post-unpack integration to error out until the sidecar is hand-migrated.
+
+Include the marker pairs below verbatim when creating `index.md` for the first time. Stub content between markers is fine — the regenerator will replace it on the first `[SM]` cycle. Narrative sections (Current Work, Pending / Parked Work, Session History, User Preferences, etc.) fill in organically as sessions accumulate.
+
+```markdown
+# Band Manager Sidecar — {user_name}
+
+## User Preferences
+- Suno tier: {discovered tier or "Free (default)"}
+- Interaction mode: {Demo/Studio/Jam}
+- Default exclusions: {list or "none"}
+- Active band profile: {name or "none"}
+
+## Current Work
+_(empty — first session)_
+
+## Pending / Parked Work
+_(empty — first session)_
+
+## Recently Published
+
+<!-- derived:recently-published:start -->
+
+_(auto-generated from songbook on next save — no songs published yet)_
+
+<!-- derived:recently-published:end -->
+
+## Catalog Status
+
+<!-- derived:catalog-status:start -->
+
+_(auto-generated from songbook on next save — catalog is empty)_
+
+<!-- derived:catalog-status:end -->
+
+## Session History
+- {YYYY-MM-DD}: First Breath — initial setup, {brief summary of discovery}
+```
+
+**Do not omit the marker pairs**, even if the catalog is empty. The regenerator treats "no songs" as a normal case and writes stub content between the markers, but it cannot insert the markers themselves.
+
 ## Access Boundaries
 
 Create `access-boundaries.md` with:

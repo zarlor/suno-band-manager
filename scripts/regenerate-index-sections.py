@@ -14,13 +14,16 @@ Section boundaries are HTML comment markers:
     <!-- derived:recently-published:end -->
 
 If the markers are missing from index.md, the script reports what to add and
-exits non-zero without modifying the file.
+exits non-zero without modifying the file. Pass --migrate to wrap existing
+"## Recently Published" and "## Catalog Status" sections with the markers
+in-place, then continue with regeneration.
 
 Cross-platform: pure Python stdlib + PyYAML.
 
 Usage:
     python3 scripts/regenerate-index-sections.py [project_root]
     python3 scripts/regenerate-index-sections.py --dry-run  # print diff only
+    python3 scripts/regenerate-index-sections.py --migrate  # add missing markers
 """
 
 from __future__ import annotations
@@ -226,6 +229,41 @@ def replace_section(
     return text[: match.start()] + replacement + text[match.end() :], True
 
 
+def migrate_section(text: str, heading: str, marker_name: str) -> tuple[str, bool]:
+    """Wrap an existing "## Heading" section's body with derived-section markers.
+
+    Finds a line like "## Recently Published", locates the end of the section
+    (next "## " heading at the same level, or EOF), and wraps the body content
+    with <!-- derived:NAME:start --> / <!-- derived:NAME:end --> markers.
+
+    Returns (new_text, migrated). migrated=False means the markers already
+    existed or the heading wasn't found.
+    """
+    existing_marker = re.compile(
+        rf"<!--\s*derived:{re.escape(marker_name)}:start\s*-->"
+    )
+    if existing_marker.search(text):
+        return text, False
+
+    heading_pattern = re.compile(rf"^{re.escape(heading)}\s*$", re.MULTILINE)
+    heading_match = heading_pattern.search(text)
+    if not heading_match:
+        return text, False
+
+    body_start = heading_match.end()
+    next_heading = re.compile(r"^##\s+", re.MULTILINE)
+    next_match = next_heading.search(text, pos=body_start)
+    body_end = next_match.start() if next_match else len(text)
+
+    body = text[body_start:body_end].strip("\n")
+    wrapped = (
+        f"\n\n<!-- derived:{marker_name}:start -->\n\n"
+        f"{body}\n\n"
+        f"<!-- derived:{marker_name}:end -->\n\n"
+    )
+    return text[:body_start] + wrapped + text[body_end:], True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Regenerate derivable sections of Mac sidecar index.md."
@@ -240,6 +278,15 @@ def main() -> int:
         "--dry-run",
         action="store_true",
         help="Print the regenerated sections without writing",
+    )
+    parser.add_argument(
+        "--migrate",
+        action="store_true",
+        help=(
+            "If index.md is missing derived-section markers, wrap the existing "
+            "## Recently Published and ## Catalog Status sections with them "
+            "before regenerating. One-shot migration for pre-v1.6.5 sidecars."
+        ),
     )
     args = parser.parse_args()
 
@@ -267,6 +314,54 @@ def main() -> int:
         return 0
 
     text = index_path.read_text(encoding="utf-8")
+
+    if args.migrate:
+        migrated_text = text
+        migrated_any = False
+        could_not_migrate = []
+        for heading, marker in (
+            ("## Recently Published", "recently-published"),
+            ("## Catalog Status", "catalog-status"),
+        ):
+            migrated_text, migrated = migrate_section(
+                migrated_text, heading, marker
+            )
+            if migrated:
+                migrated_any = True
+            elif not re.search(
+                rf"<!--\s*derived:{re.escape(marker)}:start\s*-->", migrated_text
+            ):
+                could_not_migrate.append((heading, marker))
+
+        if could_not_migrate:
+            print(
+                "ERROR: --migrate could not locate these sections to wrap:",
+                file=sys.stderr,
+            )
+            for heading, marker in could_not_migrate:
+                print(
+                    f"  '{heading}' heading not found — expected marker pair "
+                    f"<!-- derived:{marker}:start --> ... "
+                    f"<!-- derived:{marker}:end -->",
+                    file=sys.stderr,
+                )
+            print(
+                "\nAdd the heading and rerun, or hand-edit the markers in. "
+                "See the 'Migration' block in CHANGELOG.md under the 1.6.5 "
+                "release for the exact template.",
+                file=sys.stderr,
+            )
+            return 1
+
+        if migrated_any:
+            text = migrated_text
+            if not args.dry_run:
+                index_path.write_text(text, encoding="utf-8")
+                print(
+                    f"Migrated: wrapped existing sections with derived-section "
+                    f"markers in {index_path.relative_to(project_root)}"
+                )
+
     new_text = text
     missing_markers = []
 
@@ -290,8 +385,11 @@ def main() -> int:
                 file=sys.stderr,
             )
         print(
-            "\nAdd these markers around the sections to enable regeneration. "
-            "See v1.6.5 release notes for migration guidance.",
+            "\nTo fix automatically, rerun with --migrate — this wraps the "
+            "existing '## Recently Published' and '## Catalog Status' sections "
+            "with the required markers in-place. The exact marker template is "
+            "documented in CHANGELOG.md under the 1.6.5 release (see the "
+            "'Migration (one-time, per project)' block).",
             file=sys.stderr,
         )
         return 1

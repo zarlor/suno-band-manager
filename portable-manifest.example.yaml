@@ -16,6 +16,7 @@ include:
   - "docs/songbook/**/*.md"
   - "docs/band-profiles/**/*.yaml"
   - "docs/wip-*.md"
+  - "docs/mac-preferences.md"        # User-specific Mac behavioral preferences (no-disclaimed-restraint, no-false-dichotomy, pacing rules, etc.) — loaded on activation if present
 
   # ----- Examples of custom additions below — uncomment what applies -----
 

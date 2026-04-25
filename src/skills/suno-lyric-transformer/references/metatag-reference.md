@@ -12,6 +12,17 @@ Core tags that define song structure. Suno uses these to organize musical sectio
 
 **CRITICAL: Only use recognized tags.** Custom/invented tags like `[The Questions]` or `[Reflection]` are NOT recognized by Suno. At best they are ignored; at worst **Suno sings the tag text as lyrics** ("The Questions" becomes a sung line). Always map sections to recognized tags and use parameterized syntax or descriptor tags to shape the musical feel.
 
+**Section-tag content: direction, not narrative labels.** The space inside section tags — the text between `[` and `]` — is valuable real estate Suno can act on. Use it for **functional direction** (tempo, dynamics, vocal style, mood, energy) Suno can interpret, NOT for **human-readable narrative labels** Suno has no training on.
+
+| Format | Effect |
+|--------|--------|
+| `[VERSE 1 — THE ROOM]` | BAD. Suno doesn't know what "— THE ROOM" means. At best ignored; at worst the phrase gets sung as lyrics. Burns character budget for nothing. |
+| `[Verse 1: hushed, tense]` | GOOD. Parameterized tag content — Suno interprets the arrangement/delivery cues. |
+| `[Breakdown — THE TURN]` | BAD. Same issue — descriptive narrative label has no generation signal. |
+| `[Breakdown: stripped, declarative]` | GOOD. Functional direction Suno can act on. |
+
+When a source songbook uses em-dashed descriptive labels in section tags (common in longer-form catalog entries), translate them to Suno-actionable direction before pasting into the lyrics field. If a label like "— THE TURN" carries useful information (structural pivot, emotional shift), translate it to functional direction that captures the same intent: `[Breakdown: stripped, declarative]`. Keep human-readable commentary in songbook notes / frontmatter, not in the Suno-paste-ready lyrics block. Applies equally to cross-band conversions — the source band's human-readable labels should be cleaned up for the target band's lyrics block.
+
 | Tag | Usage | Notes |
 |-----|-------|-------|
 | `[Intro]` | Instrumental or minimal vocal opening | Notoriously unreliable — keep short or omit |
@@ -247,13 +258,13 @@ These energy and vocal style descriptors have been tested in production and prod
 | `[Energy: building]` | Works for gradual intensity increase |
 | `[Vocal Style: whispered]` | More reliably quiet than `[Vocal Style: clean, distant]` — use as the go-to for quiet sections |
 | `[Vocal Style: acapella]` | Sometimes works, sometimes Suno adds light instrumentation anyway |
-| `[Whispered, vulnerable]` | The most reliable quiet-section tag confirmed across multiple songs — use for descent/resolution sections |
+| `[Whispered, vulnerable]` | Reliable quiet-section tag in folk-intimate / acoustic-singer-songwriter / ballad-intimate contexts. **Context-dependent caveat (April 2026):** In theatrical-horror / voodoo-rock / dramatic-narrative contexts, `[Whispered, vulnerable]` can pull Suno into spoken-word delivery rather than sung-quiet. Use `[Vocal Style: soft, sung]` when sung-quiet is required in those genres — the explicit `sung` token defeats spoken-word drift. |
 
 ### Three-Phase Dynamic Arcs (Up, Peak, Down)
 For songs that need to build UP and come back DOWN, place descent tags at the **transition point**, not just the outro. The mistake is saving all the quiet tags for `[Outro]` — by then the energy has already carried through. Instead:
 
 1. Place `[Energy: minimal, fading to silence]` and `[Vocal Style: whispered, vulnerable]` **before** the final lines, at the moment the song should begin its descent.
-2. `[Whispered, vulnerable]` is the single most reliable quiet-section tag — confirmed across multiple songs. Prefer it over `[Soft]` or `[Gentle]` when you need a guaranteed drop.
+2. `[Whispered, vulnerable]` is reliable for quiet sections in folk-intimate / acoustic-singer-songwriter / ballad contexts. Prefer it over `[Soft]` or `[Gentle]` when you need a guaranteed drop — but see caveat: in theatrical-horror / voodoo-rock / dramatic-narrative territory, it can pull Suno into spoken-word delivery. Use `[Vocal Style: soft, sung]` there; the explicit `sung` token defeats spoken-word drift.
 3. The descent tag placement matters more than the outro tags. If the transition into the final section is already quiet, the outro follows naturally.
 
 ### Vocal Style Findings — Harmonized as Sweet Spot
@@ -571,16 +582,45 @@ These are NOT metatags but critical formatting techniques that directly control 
 | Sentence case | Normal delivery | Use throughout as baseline |
 | ALL CAPS | **Loudness ceiling** | Confirmed: ALL CAPS words are sung with more passion/volume. If you cap words in Verse 1, you've already hit the ceiling — nowhere to build. Save caps for the absolute peak moment only (one word, one line, in the climax). |
 
+### Stretched Words — Phonetic Disambiguation
+
+When stretching a word with hyphenated letters for dramatic effect (e.g., `to-o-o-lling`), check whether the repeated vowel could collapse into a different word in Suno's vocal interpretation. If so, add a consonant or alt-vowel spelling to anchor the intended sound.
+
+**Example — broken and fixed (Distant Mourning LV, April 2026):**
+- Broken: `to-o-o-lling` → Suno reads as "tooling" (the `to-o-o` collapses to "too" and lands on the more common nearby word)
+- Fixed: `toh-o-o-lling` → Suno reads as "tolling" (the `h` forces the "OH" vowel rather than "OO")
+- Result: `12 times tooling` became `12 times tolling` — intended word preserved through the stretch
+
+**Why it happens:** Suno's vocal engine collapses repeated vowels into the simpler phoneme, and phonetically-ambiguous stretches drift to the closest common word in the engine's training data. Adding a consonant after the first vowel breaks the collapse and pins the intended sound.
+
+**Disambiguation techniques:**
+- **Insert `h`:** `toh-o-o-lling`, `moh-oh-oh-rning`, `loh-oh-oh-st`
+- **Alt-vowel spelling:** `dy-eye-ing` instead of `dy-iii-ing`, `sigh-igh-ed` instead of `si-ii-ed`
+- **Double-consonant anchor:** `roll-l-l-ling` emphasizes the `ll`, harder to collapse
+- **Re-articulate the word:** `tolling... tolling... tolling` (ellipses + repetition) instead of elongation notation — often cleaner than stretching one word
+
+**How to apply:** Before committing any hyphenated stretched-word in lyrics, run the collapse test mentally — *if this word gets sung as a long vowel, what word would Suno's engine settle on?* If the answer differs from the intended word, add phonetic disambiguation. Same applies when transforming poetry that has visual word-stretching conventions — the visual meaning may not survive vocal interpretation without phonetic anchors.
+
 ### Parentheses
 | Format | Effect |
 |--------|--------|
 | `(words in parentheses)` | Interpreted as **backing vocals/texture**, not lead melody. Useful for dual vocal interplay: lead line with (backing harmonies). |
 
 **Parenthetical Backing Vocals — Production-Tested Details:**
-- No space before opening paren tightens coupling: `word(echo)` not `word (echo)`.
+- **Space before the opening paren is catalog-standard: `word (echo)` not `word(echo)`.** A prior version of this doc recommended no-space ("tightens coupling"); that was based on a single-song experimental finding (SF Distant Mourning, March 2026) that got mis-promoted to a general rule. Verified across the LV catalog April 2026 — every song with working parenthetical backing vocals uses spaces before the paren. The no-space form caused `(blasting)` to be skipped entirely on DM-LV Bridge across multiple gens until spaces were added.
+- **Paren must be at END of line.** Mid-line parens — parens with text after the closing paren on the same line — are dropped inconsistently. If the sentence continues past the paren, break the line after the closing paren and put the continuation on a new line. Example broken-and-fixed (Distant Mourning LV, April 2026):
+  ```
+  Broken (mid-line, "(blasting)" dropped across gens):
+    The neverending (blasting) Sound of the Bell
+
+  Fixed (paren at end of line, renders reliably):
+    The neverending (blasting)
+    Sound of the Bell
+  ```
 - Build echo density as intensity climbs — selective use beats every-line use.
 - Works best as single-word echoes in early verses, full-phrase echoes in later verses.
-- Confirmed working: Suno rendered `(blasting)` as a distinct backing vocal layer.
+- Confirmed working: Suno rendered `(blasting)` as a distinct backing vocal layer (once spaces-before-paren + paren-at-end-of-line rules were both applied).
+- **Long-paren fold-back fails as backing vocal (April 2026 LV data point):** A 10-syllable parenthetical like `(or at least that you think you need to be)` on its own line pulled as primary vocal rather than backing vocal interjection, even with triple-reinforcement (position-1 style-prompt descriptor + global `[Vocal Arrangement]` tag + per-section `[Vocal Style]` tags + paren-split into two shorter parens). Short parens (1-4 syllables) land as backing vocal interjections reliably; long parens (10+ syllables) pull as primary vocal continuation. The boundary is approximate — probably 5-7 syllables depending on context. When the fold-back logic requires a longer response phrase, the backing-vocal call-and-response effect may not land even with triple-reinforcement.
 - **Genre-dependent:** Parentheses produce true backing vocals in pop/R&B/soul/gospel/hip-hop contexts. In thrash/metal they come in as whispered phrases or ambience rather than a second voice. Not suitable for rapid intrusive-voice dialogue in heavy genres — see Dual Vocals section above for genre-appropriate alternatives.
 
 **Doubled-word parentheticals — atmospheric/ritualistic backing (April 2026 production observation):**

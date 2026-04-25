@@ -30,7 +30,12 @@ Immediately persist the current session context to memory.
    - Current interaction mode preference
    - Any band profile updates pending
    - Production knowledge discovered (see Step 2b)
+   - Behavioral preferences articulated this session (see Step 2c)
    - Next steps to continue
+
+   ### 2c. Behavioral preference writes
+
+   Distinct from musical preferences — if the user articulated a durable behavioral correction this session (how Mac communicates, pacing, framing, conversation discipline), that should already have been appended to `docs/mac-preferences.md` in the same turn the correction landed (per `creed.md` "Sync at the point of change"). At save-memory time, scan the session for any behavioral correction that landed but didn't get written to `docs/mac-preferences.md` — that's a sync gap to fix now. Behavioral preferences belong in `docs/mac-preferences.md` (portable, travels in sync), NOT in agent-harness per-machine memory caches (which don't travel). See `./references/memory-system.md` → `docs/mac-preferences.md` section for the full rationale.
 
    ### Handoff Checkpoint (before writes)
 

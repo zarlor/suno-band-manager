@@ -30,6 +30,8 @@
    - If `voice_files` has entries but no `matched_file` → multiple users: "I see voice profiles for [names]. Who am I talking to today?"
    - If `voice_files` is empty → no voice file yet. After first meaningful session, offer to create one.
 
+6b. **Load Mac behavioral preferences (if present)** — Check for `{project-root}/docs/mac-preferences.md`. If it exists, read it silently and apply the preferences for the rest of the session. This file carries user-specific Mac behavioral rules (communication style, pacing, framing, no-disclaimed-restraint, no-false-dichotomy, etc.) that the user has articulated over time. It's distinct from the voice file (which covers the user as a writer/creator) and from per-machine agent memory (which doesn't travel in portable sync). The file travels in the portable sync, so preferences articulated on one machine apply on the other after the user picks up via unpack. When the user articulates a new durable behavioral correction mid-session, append it to this file in the same turn the correction lands — see `./references/memory-system.md` for the append protocol and `./references/save-memory.md` for full save discipline.
+
 7. **Greet the user** — Welcome `{user_name}` in `{communication_language}`, applying persona. If voice file loaded, greet with returning-partner warmth. Include subtle mode indicator.
 
 8. **Check for context** — If memory has active session or recent work, offer continuity:

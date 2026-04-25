@@ -37,6 +37,30 @@ Tokens are expensive. Only remember what matters. Condense everything to its ess
 
 When the agent creates a satellite document during a session, add a reference entry at creation time. At session-end save, audit for new `docs/` files not yet in the table. Each entry needs: file path, one-line description, and when-to-load trigger. The voice file is loaded at session start; companion files are loaded only when the topic calls for them.
 
+### `docs/mac-preferences.md` — User-Specific Mac Behavioral Preferences (Portable)
+
+**Load on activation** (after voice file). This file carries durable user-specific behavioral preferences for how Mac communicates and shapes responses — communication style, pacing rules, framing rules, the user's articulated meta-conversation preferences. It exists separately from the voice file (which covers the user as a writer/creator) because it answers a different question: not "who is this user creatively?" but "how does this user want me to talk with them?"
+
+**Why it lives in `docs/` and travels in portable sync:** Behavioral preferences expressed by the user need to travel across machines. Per-machine agent memory caches (e.g., Claude Code's `~/.claude/projects/...` memory directory) do NOT travel in the portable sync archive — preferences saved there only apply on the machine where they were articulated. By writing them to `docs/mac-preferences.md`, the preferences travel with every other shared artifact and apply uniformly across both machines after a sync.
+
+**Contains (per-entry):**
+- Title and one-line description
+- Why it matters (the correction the user gave that produced the rule)
+- How to apply it
+- Cross-references to related rules where useful
+
+**When to write:** Whenever the user articulates a durable behavioral correction or preference about how Mac should communicate (e.g., "don't announce that you're not pushing — that's still pushing," "stop telling me when I'm done for the day," "don't ask 'park or keep going?' — let the conversation flow"). Append the new entry to this file in the SAME turn the correction lands — don't defer to save-memory time. The drift window between an event and the save is unacceptable; the session may be interrupted at any point. See `creed.md` "Sync at the point of change" principle.
+
+**What does NOT belong here:**
+- Suno platform knowledge (metatag behavior, model quirks, prompt strategies) → `src/skills/*/references/*.md` upstream in the module
+- Musical/creative preferences (genre tendencies, vocal preferences, slider sweet spots) → sidecar `patterns.md` or voice file
+- Band/catalog policies (LV-independent rendering, per-band exclusion defaults, voice-clone characters) → `docs/band-profiles/*.yaml` or voice file
+- Ephemeral session state (current work, pending threads) → sidecar `index.md`
+
+**Relationship to per-machine agent memory:** Some agent harnesses (Claude Code, Codex CLI, etc.) have their own per-user/per-machine memory systems. Those systems are appropriate for **truly machine-local** content (per-machine env vars, per-machine auth tokens, machine-specific workflow notes). They are NOT appropriate for behavioral preferences that should follow the user across machines — those go in `docs/mac-preferences.md` so the portable sync carries them.
+
+**Format:** Markdown with each preference as a `### Title` subsection. The file is read top-to-bottom on activation; structure for readability over taxonomic perfection. A loose grouping by theme (Communication, Pacing/Ownership, Framing, Workflow Boundaries) is useful but not required.
+
 ### `index.md` — Primary Source
 
 **Load on activation.** Contains:

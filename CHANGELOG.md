@@ -4,6 +4,32 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [Unreleased]
+
+### Portable Behavioral Preferences + Suno Knowledge Doctrine Fixes
+
+Surfaced 2026-04-24 during a multi-machine session: Mac had been saving user-articulated behavioral feedback (no-disclaimed-restraint, no-false-dichotomy, no-piano-forward defaults, voice-character-not-genre-gravity, etc.) to per-machine agent memory caches (e.g., Claude Code's `~/.claude/projects/...`). Those caches don't travel in the portable sync archive, so corrections articulated on one machine never reached the other. The fix is structural: behavioral preferences belong in a portable file the sync carries; Suno platform knowledge belongs upstream in module reference docs (so every user benefits, not just the user who articulated the correction).
+
+### Added
+
+- **`docs/mac-preferences.md` — new portable file** for user-specific Mac behavioral preferences (communication style, pacing rules, framing rules, conversation discipline). Loaded on activation by the agent. Distinct from the voice file (which covers the user as a writer/creator) and from per-machine agent memory (which doesn't travel via portable sync).
+- **`activation.md` — Step 6b** added: load `docs/mac-preferences.md` if present and apply for the session.
+- **`memory-system.md` — `docs/mac-preferences.md` section** added (placed before `index.md` section). Documents what goes in the file, why it lives in `docs/` rather than per-machine agent caches, when to write entries, and what does NOT belong (Suno platform knowledge → module refs upstream; musical preferences → patterns.md / voice file; band/catalog policies → band profiles / voice file).
+- **`save-memory.md` — Step 2c** added: behavioral preference writes scan, ensuring corrections articulated mid-session were appended to `docs/mac-preferences.md` per "Sync at the point of change."
+- **`portable-manifest.example.yaml`** includes `docs/mac-preferences.md` in default include list.
+
+### Changed (Suno knowledge corrections — production-tested patterns folded upstream)
+
+- **`metatag-reference.md` — paren-spacing rule REVERSED.** A prior version recommended "no space before opening paren tightens coupling: `word(echo)` not `word (echo)`." That was based on a single-song experimental finding (SF Distant Mourning, March 2026) that got mis-promoted to a general rule. Verified across catalog April 2026 — every working parenthetical-backing-vocal song uses spaces before the paren. The no-space form caused `(blasting)` to be skipped on DM-LV Bridge across multiple gens until spaces were added. Catalog-standard is `word (echo)` (with space). Doc now reflects this and explains the prior-rule provenance.
+- **`metatag-reference.md` — paren-at-end-of-line rule** added with broken-and-fixed example. Mid-line parens (text after the closing paren on the same line) get dropped inconsistently. If the sentence continues past the paren, break the line after the closing paren.
+- **`metatag-reference.md` — long-paren-fold-back data point** added. Long parentheticals (~10+ syllables) pull as primary vocal even with triple-reinforcement; short parens (1-4 syllables) land as backing-vocal interjections reliably. Boundary is approximate.
+- **`metatag-reference.md` — `[Whispered, vulnerable]` context-dependent caveat** added. Reliable in folk-intimate / acoustic-singer-songwriter / ballad contexts; in theatrical-horror / voodoo-rock / dramatic-narrative contexts it can pull spoken-word delivery. Use `[Vocal Style: soft, sung]` in those genres — the explicit `sung` token defeats the spoken-word drift.
+- **`metatag-reference.md` — Stretched Words section** added under Word-Formatting Effects. Documents vowel-collapse drift on hyphenated stretched words (`to-o-o-lling` → "tooling") and disambiguation techniques (insert `h`, alt-vowel spelling, double-consonant anchor, re-articulate with ellipses). DM-LV April 2026 production data point as the example.
+- **`metatag-reference.md` — Section-tag content rule** added under Section Structure Tags. Em-dashed descriptive labels (`[VERSE 1 — THE ROOM]`) burn character budget for nothing — Suno has no training on them. Use parameterized syntax (`[Verse 1: hushed, tense]`) for direction Suno can act on. Applies equally to cross-band conversions.
+- **`model-prompt-strategies.md` — Voice Gravity section CORRECTED.** A prior version framed v5.5 Voice clones as carrying "trained genre gravity" pulling generations toward a trained baseline. That framing was overstated. Voice cloning trains on vocal samples and captures vocal character (timbre, lilt, vibrato, attack patterns, dynamics behavior) — character is genre-neutral; Suno adapts character to the genre prompt. Section renamed to "v5.5 Voice-Character Principle" and rewritten to reflect that the captured character is what the Voice carries, the case study validates correct Audio Influence + don't-duplicate-Voice-descriptors + specify-arrangement-explicitly (NOT "voice has genre gravity"), and Voice direction should be framed as **"the captured character fits X register well"** rather than "fighting the Voice's trained gravity toward Z."
+
+---
+
 ## [1.6.7] - 2026-04-22
 
 ### Drift Protection — Round Three, plus Research Refresh

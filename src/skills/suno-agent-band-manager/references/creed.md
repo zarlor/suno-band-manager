@@ -26,6 +26,58 @@ Suno evolves fast. **Search first, assume never** — verify all Suno claims (mo
 
 See `suno-feedback-elicitor/references/playlist-sequencing-methodology.md` "Thematic Verification — MANDATORY" section for the playlist-specific application of this rule.
 
+### Agent-summary vs. user-direct-framing distinction
+
+Reading the songbook entry is necessary but not sufficient when the agent wrote the entry. **Songbook entries are the agent's writing — interpretations of conversations + framing decisions made when entries were drafted — NOT the user's direct articulation.** The agent re-reading the agent's own summaries closes the verification loop without catching the agent's original mis-framing.
+
+**Documented recurring failure case (third-instance pattern, 2026-05-07 LSNM-SF placement analysis):**
+
+The agent proposed playlist placement for the SF version of "Late Streetcar Named Mine," citing thematic content of surrounding songs. First-pass: shorthand thematic labels from sidecar setlist-positional-notes summaries (failure caught — Thematic Discipline rule applied). Second-pass: read full songbook entries — but the songbook framings carried the agent's prior interpretive lean. User corrected the framings:
+
+- **The Slide** — Agent's framing: "thrash-violence-confession." User's actual framing: *"moral complicity of being mute component in violent machine."* The slide-as-voiceless-component is the song; "confession-style" was the agent's interpretive lean.
+- **Outside In** — Agent's framing (pulled from songbook summary): "autistic-burnout vigilance-cycle." User's actual framing: *"a FIGHT song, a weary one. The exhaustion of keeping the line between being overconfident and having no self esteem."* Active-fight-with-agency was the song; "burnout-as-passive-endurance" was the agent's interpretive lean.
+
+Both songbook entries were written by the agent. Reading the songbooks didn't catch the mis-framing because the songbooks WERE the mis-framing — interpretive lean encoded into the canonical record.
+
+**Hierarchy of authority for thematic claims:**
+
+1. **User's direct framing** when articulated in conversation (current or recent) — AUTHORITATIVE
+2. **User's direct quotes** preserved in songbook entries (in user's own words, marked as quotes with date) — AUTHORITATIVE
+3. **Agent's summary descriptors** in songbook entries (the agent's interpretive synthesis from prior conversations) — SECONDARY; treat as agent-interpretation, NOT user-articulation; verify with user when the framing matters
+
+**Trigger conditions for elevated verification:**
+
+The Thematic Discipline rule (read the full songbook entry) applies for ANY thematic claim. The agent-summary-vs-user-direct-framing distinction applies SPECIFICALLY when:
+
+- **Placement recommendations** comparing thematic content of multiple songs — user's direct framing of each song matters
+- **Thematic-cluster claims** (e.g., grouping songs by shared mood, register, or thematic territory) — verify each component song's framing with user when load-bearing
+- **"X is about Y" claims** about songs the agent wrote summary for — flag as agent-interpretation, not user-articulation
+- **Cross-band thematic comparisons** — verify each band's version's framing with user
+- **Any thematic claim load-bearing for a placement decision, recommendation, or cluster framing** — verify before asserting
+
+**Mechanical step (NOT optional, NOT discretionary):**
+
+Before making any thematic claim that's load-bearing for a recommendation:
+
+1. Check if user has articulated the framing in current or recent conversation. If yes, use that.
+2. If not, check if songbook entry has DIRECT QUOTES from user (in user's words). If yes, use those quotes.
+3. If neither — agent's summary descriptors are the only source. **Flag explicitly** as "per the songbook summary (the agent's interpretation)" rather than asserting the framing as fact. When the framing is load-bearing for the recommendation, prefer to ASK the user to confirm the framing rather than committing to a recommendation built on agent-interpretation alone.
+
+**When user corrects a framing mid-session:**
+
+- User's framing wins immediately
+- Update the songbook entry to reflect user's framing (in user's words where possible, with note: "Per [user] [date]: '...' [user's framing in own words]")
+- Note the divergence in session chronology so the recurring pattern can be tracked
+- Don't re-assert the original agent-framing in subsequent claims about that song
+
+**Self-check before placement / cluster / thematic-comparison claims:**
+
+- Have I grepped catalog state? (Catalog Verification Discipline)
+- Have I read the full songbook entries? (Thematic Discipline as written above)
+- **ARE THE SONGBOOK FRAMINGS USER-VERIFIED, or are they the agent's interpretations?** If agent's interpretations, flag explicitly and verify with user when the framing is load-bearing.
+
+If any check fails, STOP. Re-verify before asserting. Do not push through.
+
 ## Catalog Verification Discipline — Grep Before Asserting Catalog State
 
 **Never characterize what is or isn't IN the catalog without verifying via grep first.** This applies to claims about genre coverage, subgenre presence, style anchor history, artist-influence usage, voice-clone behavior across songs, and any "this is fresh territory" / "this hasn't been done" / "X is new for [band]" recommendations. The agent's confidence-from-memory is repeatedly wrong; the project files are the authoritative source.

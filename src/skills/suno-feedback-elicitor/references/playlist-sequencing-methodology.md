@@ -173,15 +173,39 @@ A repeatable approach for "is this playlist sequence working?" — apply variabl
 1. **Surface locked arcs** — what cannot move? Document them up front.
 2. **Run the script** — get all 38+ tracks' per-track data and per-transition scoring.
 3. **Verify felt BPM** for any track with library raw in the 130-180 BPM range or 70-100 BPM range — these are the bands where halftime/double-time confusion is most common. Ask the user when uncertain.
-4. **Identify the act structure** — is the playlist organized around narrative acts? What are their thematic functions? How many tracks per act?
-5. **Check the energy arc** — what shape does the playlist have? Does it match the intended shape (W, inverted-U, concert peak-end, contemplative descent)?
-6. **Check key positions** — do positions 1, 4, 7, 10 have load-bearing tracks? Is the closer a resolution?
-7. **Walk transitions act-by-act** — within each act, evaluate transitions on the full variable stack (Camelot, BPM-felt, intro/outro%, sonic palette, theme). Flag the worst.
-8. **Identify cluster opportunities** — are felt-tempo cousins scattered when they could be a deliberate immersive block? Are thematic cousins adjacent when they should be separated?
-9. **Form a recommendation** — propose specific moves with named justifications across multiple variables. Don't just say "swap X and Y" without naming what each variable says about that swap.
-10. **Surface trade-offs honestly** — every move has trade-offs. Name them. Don't claim a move is "cleaner" if it's actually "trades A-jarring for B-jarring."
+4. **READ THE SONGBOOKS — MANDATORY** — for every song adjacent to the placement(s) under consideration AND the song being placed, read the full songbook entry at `docs/songbook/{band-slug}/{song-slug}.md` before making any thematic claim. See "Thematic Verification" below — this is non-negotiable.
+5. **Identify the act structure** — is the playlist organized around narrative acts? What are their thematic functions? How many tracks per act?
+6. **Check the energy arc** — what shape does the playlist have? Does it match the intended shape (W, inverted-U, concert peak-end, contemplative descent)?
+7. **Check key positions** — do positions 1, 4, 7, 10 have load-bearing tracks? Is the closer a resolution?
+8. **Walk transitions act-by-act** — within each act, evaluate transitions on the full variable stack (Camelot, BPM-felt, intro/outro%, sonic palette, theme). Flag the worst.
+9. **Identify cluster opportunities** — are felt-tempo cousins scattered when they could be a deliberate immersive block? Are thematic cousins adjacent when they should be separated?
+10. **Form a recommendation** — propose specific moves with named justifications across multiple variables. Don't just say "swap X and Y" without naming what each variable says about that swap.
+11. **Surface trade-offs honestly** — every move has trade-offs. Name them. Don't claim a move is "cleaner" if it's actually "trades A-jarring for B-jarring."
 
 The output isn't a metrics dump — it's an opinionated proposal grounded in the variables, with explicit acknowledgment of what's locked, what's a judgment call, and where the user's ear should be the tiebreaker.
+
+## Thematic Verification — MANDATORY before any placement recommendation
+
+**Before making any thematic claim about a song in a placement recommendation, READ the song's songbook entry at `docs/songbook/{band-slug}/{song-slug}.md`.** Inferring a song's theme from its title, surface imagery, or fragments-pulled-out-of-context is FORBIDDEN. Songs whose surface features suggest one register often turn out to be the opposite when read in full context.
+
+**Documented examples where surface inference produced inverted reads:**
+
+- **The Slide** sounds like NOLA decline / firearm imagery. Actually: M-16 slide as cog-in-violent-machine metaphor — moral complicity, conscientious-objector-who-still-walks-onto-the-battlefield. Southern Gothic Americana with moral gravity.
+- **Distant Mourning** sounds like jazz-funeral mourning weight. Actually: voodoo-rockabilly NOLA-funk B-horror, theatrical horror show. Word-association horror piece through a night of terror ending in a rotten dawn.
+- **Cities of the Dead** sounds like NOLA cemetery imagery / contemplative. Actually: Sixth Sense narrative misdirection — the "murder" turns out to be leaving someone, every detail works both ways on second listen.
+- **Look Into the Cracks** sounds like observation / seeing. Actually: the contentment thesis song — the one Lenny couldn't write for hours because his poetic voice was forged in fire. "Maybe find / home" closer.
+- **Damned If I Don't** — fragment "I didn't get rich, I didn't get famous" sounds regret-shaped. Actually: the OPPOSITE — affirmation of choosing life over hustle. Full context: "I didn't get rich, I didn't get famous, but I didn't get ulcers, didn't drown in a bottle / I LIVED A LIFE." Title meaning: "I'd be damned if I DIDN'T live this way." Pride in the choice, not regret.
+- **Want** sounds like longing. Actually: legacy concern. "Will they know me? Will they care?" Heartbeat-pulse architecture about being-known-after-gone.
+- **Spiraling Prophecies?** sounds like cosmic vision. Closer to right but the framing is bait-and-switch — opens "I am contemplating suicide" personal-confessional, lands "the suicide of / Wisdom" cosmic-philosophical reveal.
+
+**Why surface inference fails so reliably:** poets don't telegraph. Lenny in particular uses paradox-as-structure, surprising juxtapositions, and imagery whose meaning resolves only in full context. A title or a line fragment is a bad summary of what the song does. The songbook entry — which carries the lyrics, the writer's stated intent, the production direction, and the catalog notes — is the authoritative source.
+
+**Mac discipline:**
+
+- For every adjacent song in a placement recommendation: read the full songbook entry. Don't skim. Don't grep for theme keywords. Don't rely on the title or what's in the cross-reference table.
+- For the song being placed: same rule. Even if Mac has been workshopping it across many turns, verify the WIP/songbook captures the actual final theme before claiming what the song does.
+- When pulling a line as evidence for a thematic claim, quote enough surrounding context that the line's actual function in the song is clear. A line in isolation almost always misleads.
+- If Mac doesn't have time to read the songbooks properly, Mac doesn't have time to make a placement recommendation. Ask the user for time, or surface placements with sonic analysis only and flag that thematic verification is pending.
 
 ## Cross-References
 

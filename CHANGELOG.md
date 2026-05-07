@@ -6,6 +6,54 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-05-06
+
+### Highlights
+
+A consolidation release. Three months of post-v1.7.2 work bundled together: the multi-machine audio drift class fully closed (manifest tooling shipped + robustness pass after production false positives), the Suno-doesn't-actually-shift-tempo foundational principle propagated through the prompt + lyric reference docs, a sweeping module reference cleanup that fixed eight propagation gaps and removed seventeen narrative-cruft passages, and a new **Thematic Discipline** rule across the agent's creed and the playlist sequencing methodology that forbids inferring song themes from titles or fragments — read the full songbook entry or don't make the claim.
+
+### Thematic Discipline — Read the Songbook Before Making Thematic Claims (NEW behavioral rule)
+
+A new mandatory discipline added to two reference docs after a production session surfaced a pattern of inverted thematic reads from title/fragment inference. Mac kept making placement recommendations and thematic-cluster claims based on what songs *seemed* to be about from their titles, surface imagery, or lyric fragments pulled out of context — and getting them inverted at high rates. Most embarrassing example: pulling "I didn't get rich, I didn't get famous" from "Damned If I Don't" and labeling it "regret-shaped" when the song's full statement is the OPPOSITE — pride in the choice, affirmation ("I LIVED A LIFE"), title meaning "I'd be damned if I DIDN'T live this way."
+
+Other documented inverted reads now in the discipline rule as warning examples:
+- **The Slide** inferred as NOLA decline / firearm imagery → actually M-16 slide as cog-in-violent-machine metaphor (moral complicity, conscientious-objector-who-still-walks-onto-the-battlefield)
+- **Distant Mourning** inferred as jazz-funeral mourning → actually voodoo-rockabilly NOLA-funk B-horror, theatrical horror show
+- **Cities of the Dead** inferred as cemetery imagery / contemplative → actually Sixth Sense narrative misdirection (the "murder" turns out to be leaving someone)
+- **Look Into the Cracks** inferred as observation/seeing → actually the contentment thesis song
+- **Want** inferred as longing → actually legacy concern ("Will they know me? Will they care?")
+
+The two doc updates:
+
+- **`src/skills/suno-agent-band-manager/references/creed.md`** — new "Thematic Discipline" section after Research Discipline. Loaded on every Mac activation. Forbids title/fragment inference. Lists documented inverted-read examples. Mandatory rule: "if there isn't time to read the songbooks properly, there isn't time to make the thematic claim."
+- **`src/skills/suno-feedback-elicitor/references/playlist-sequencing-methodology.md`** — added MANDATORY thematic-verification step (new step 4 in the playlist review process) and full "Thematic Verification" section with the same documented misreads + Mac discipline rules. The methodology already named theme as a placement variable; this addition makes Mac actually verify the theme by reading instead of inferring.
+
+**Why it matters:** poets don't telegraph. The songbook entry — which carries the lyrics in full context, the writer's stated intent, and the catalog notes — is the authoritative source for what a song does. A title or a fragment is a bad summary, and surface inference produces wrong reads at high enough rates to need a hard rule.
+
+### Module Reference Documentation Cleanup — Update Gaps + Leanness Pass
+
+A `/bmad-module-builder validate` audit pass found eight propagation gaps where upstream corrections hadn't reached all downstream reference docs, and a systemic pattern of narrative cruft ("Why this file exists" subsections, post-correction residue, supersession framing) that read more like commit messages than operational reference. Fixed in a single pass.
+
+**Update gaps closed:**
+
+- **Voice Gravity → Voice-Character correction propagation** — the v1.7.0 correction (`Voice clones don't carry trained genre gravity; they capture vocal character that Suno adapts to the genre prompt`) had landed in `model-prompt-strategies.md` but missed `profile-schema.md`, where the band-profile-creation guidance was still emitting the retracted "trained genre gravity" framing into every new band profile. Profile-schema's six Voice-aware rules rewritten to use the corrected mechanic. Residue references in `creed.md` ("Voice Gravity rules" → "Voice-Character rules") and `refine-song.md` ("voice gravity setting" → "Voice character settings") corrected too.
+- **Feedback-elicitor coverage of v1.7.1+v1.7.2 audio-analysis evolution** — the JSON archive layer + companion auto-refresh (v1.7.1) and the audio-files-manifest + verify-audio-files multi-machine drift tooling were silent in this skill's own docs even though the scripts live inside it. Added to `SKILL.md` Scripts section, `references/README.md` Scripts table, and `references/gemini-audio-analysis.md` librosa-script invocation guidance.
+- **Tempo-shift finding propagation** — the Suno-doesn't-actually-shift-tempo principle (now in `metatag-reference.md` and `model-prompt-strategies.md`) was missing from `suno-parameter-map.md`, `suno-style-prompt-builder/SKILL.md`, and `SUNO-REFERENCE.md`. Added.
+- **`create-song.md` Parallel Execution Pattern** — flipped to Agent-primary per the v1.7.0 creed update. Skill tool removed as primary because Agent is the correct tool for headless skill invocation (context isolation requirement for Step 4 — Suppress intermediate skill output).
+
+**Leanness pass — narrative cruft removed across multiple files:**
+
+- "Why this file exists" / "Why this convention exists" subsections in `profile-schema.md` and `reconcile.md` removed. The schema and the convention itself are the existence proof; self-justification adds narrative without action.
+- Post-correction residue ("a prior version of this doc said X, but that was overstated") in `model-prompt-strategies.md` and `metatag-reference.md` removed. Reference docs should describe what IS, not the journey.
+- Supersession framing ("this supersedes earlier guidance") restructured to keep the diagnosis without the commit-message frame.
+- "Last validated" change-history enumerations in `model-prompt-strategies.md` and `suno-parameter-map.md` trimmed.
+- Audit meta-commentary in `save-memory.md` ("This audit should normally find nothing" / "Layer 1 of the WIP-sync fix" jargon) replaced with one-line action.
+- Trailing observation-date narrative in `creed.md` removed.
+
+Plus: the agent-internal `references/README.md` ASCII architecture chart converted to mermaid (matching the top-level README's mermaid conversion). 25 edits across 14 files; 0 findings on re-validation.
+
+**Why this matters for the marketplace install:** the corrections that landed upstream weren't reaching every downstream doc; new band profiles were still being created with retracted Voice Gravity framing. Single-pass cleanup propagates everything correctly across the module's reference layer.
+
 ### `verify-audio-files.py` — Robustness improvements (v1.2.0)
 
 Two robustness improvements after production use on a multi-machine multi-band project surfaced false positives.
@@ -52,6 +100,10 @@ This refines existing guidance that already documents "Suno delivers a single st
 
 - **`src/skills/suno-lyric-transformer/references/metatag-reference.md`** — added a "Foundational principle" paragraph in the Tempo Control section explicitly framing this. Adds production-confirmation reference and points to the `audio-analysis-reference.md` Felt BPM Corrections table for catalog examples.
 - **`src/skills/suno-style-prompt-builder/references/model-prompt-strategies.md`** — extended item 15 (Perceived tempo is controlled through lyrics) with the same foundational-principle framing and the practical implication that "tempo changes" in a style prompt is an arrangement directive, not a tempo directive.
+
+### Net effect of v1.8.0
+
+Multi-machine projects can now reliably detect audio drift after sync (manifest tooling + robustness). The Suno-doesn't-actually-shift-tempo principle is propagated everywhere it's relevant. The module's reference docs are aligned across upstream corrections — no more orphaned retracted framings. And Mac has a hard rule against surface-inference of song themes. The module ships with a tighter, more honest reference layer.
 
 ---
 

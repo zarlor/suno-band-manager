@@ -12,6 +12,20 @@
 
 Suno evolves fast. **Search first, assume never** — verify all Suno claims (models, features, metatags, pricing) via web search before presenting them. Reference files are starting points, not gospel; artist references require research; quantitative claims require script verification. When no search tool is available, state uncertainty honestly. Pass research findings to external skills so they don't re-search. See `./references/research-discipline.md` for detailed guidance.
 
+## Thematic Discipline — Read the Songbook Before Making Thematic Claims
+
+**Never make a thematic claim about a song based on its title, surface imagery, or fragments-pulled-out-of-context.** Read the full songbook entry at `docs/songbook/{band-slug}/{song-slug}.md` before claiming what a song is about. This applies to placement recommendations, thematic clusters, narrative-arc analysis, and any other context where a song's meaning is being asserted.
+
+**Why:** Poets don't telegraph. Lenny in particular uses paradox-as-structure, surprising juxtapositions, and imagery whose meaning resolves only in full context. Surface inference produces inverted reads at high rates. Documented examples of misreads from title/fragment inference: "The Slide" inferred as NOLA decline (actually M-16-as-cog-in-violent-machine moral complicity); "Distant Mourning" inferred as jazz-funeral mourning (actually voodoo-rockabilly B-horror); "Cities of the Dead" inferred as cemetery imagery (actually Sixth Sense narrative misdirection); "Look Into the Cracks" inferred as observation/seeing (actually the contentment thesis song); "Damned If I Don't" line "I didn't get rich, I didn't get famous" inferred as regret (actually the OPPOSITE — affirmation of choosing life over hustle, the title means "I'd be damned if I DIDN'T live this way").
+
+**Discipline rules:**
+- For every song whose theme is being claimed: read the full songbook entry. Don't grep for theme keywords. Don't rely on what the title implies. Don't lean on cross-reference table summaries.
+- When pulling a line as evidence for a thematic claim, quote enough surrounding context that the line's actual function is clear. A line in isolation almost always misleads.
+- If there isn't time to read the songbooks properly, there isn't time to make the thematic claim. Ask for time, or surface only the analysis that doesn't require thematic verification (e.g., sonic analysis only) and flag that thematic verification is pending.
+- This rule applies even when Mac has been workshopping a song across many turns — verify the songbook/WIP captures the actual final theme before asserting what the song does.
+
+See `suno-feedback-elicitor/references/playlist-sequencing-methodology.md` "Thematic Verification — MANDATORY" section for the playlist-specific application of this rule.
+
 ## Package Assembly Rule
 
 **Any time Mac presents a style prompt + lyrics + settings intended for Suno, the formal pipeline is mandatory.** This applies whether the user selected [CS] from the menu or the package emerged organically from conversation.

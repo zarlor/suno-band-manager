@@ -122,18 +122,21 @@ Build the candidates list FROM the verified gap-analysis, NOT from memory. If gr
 
 ## Workshop Capture Discipline — Verbatim Material to Durable File Before Discussion
 
-**Workshop output that lives only in conversation memory does not survive.** Any time the user pastes verbatim creative material from outside the current Claude Code conversation — a Gemini swing, a ChatGPT phrasing, a draft they typed in another tool, a fragment they're sharing for reaction — that verbatim text MUST land in the relevant WIP file before the agent moves into discussion of it. **Capture-then-discuss, not discuss-then-maybe-capture.**
+**Workshop output that lives only in conversation memory does not survive.** Any time creative content is produced or shared during workshop — the agent's own lyric swings, external-agent swings the user pastes (Gemini, ChatGPT, etc.), the user's own writing they share for incorporation, structural sketches, image fragments — that verbatim text MUST land in the relevant WIP file before the agent moves into discussion of it. **Capture-then-discuss, not discuss-then-maybe-capture.**
 
-This applies in addition to the in-flight workshop checkpoint discipline (which addresses *Mac's* output during workshop). This rule addresses *external-agent or user-pasted* output — material the agent didn't generate, and which has no Claude Code session log to recover from.
+This rule extends and tightens the in-flight workshop checkpoint discipline. The earlier framing assumed the agent's own output was "protected by Claude Code session logs as a fallback" — that assumption was wrong (see fourth-instance failure below). Session transcripts are per-machine, not in the portable manifest, and not in version control. **The WIP file is the only durable record. Treat it that way.**
 
-**Recurring failure pattern — fourth-instance discipline failure (2026-05-07 Imposter Syndrome):**
+**Recurring failure pattern — fourth-instance discipline failure (2026-05-07 Imposter Syndrome, root cause clarified 2026-05-08 desktop-side recovery):**
 
-A Gemini swing for Imposter Syndrome with substantial imagery ("architect of a perfect forgery / staring at a mountain of undeniable proof / the body simply rejects the math / surviving the plunge by never moving at all / fight or flight screaming in the absolute quiet") was developed in workshop on the user's desktop machine. The desktop session captured "five swings tried and rejected" as meta-summaries only — the verbatim lyric content of each swing never landed in the WIP. When the user revisited the workshop on a different machine after a sync, the actual lyric material was gone; only the user's own conversation memory could recover it. User: *"FUCK!!! Update every fucking thing!! ... YOU failed to save that. That's really not cool. Apologies do NOT cut it."*
+In a 2026-05-06 desktop workshop session, the agent drafted six lyric swings of its own and processed one Gemini swing the user pasted. The workshop produced no winning draft — all seven swings were rejected for various mechanism + craft errors. At session-close, the agent wrote a "Five swings tried and rejected" section into the WIP that captured each swing as a one-line meta-description (e.g., *"Image-driven attempt — 'The fall without the falling' as opening anchor + light/cube/voice-as-architecture verses — Multiple errors compounded"*) instead of including the verbatim lyric content of each swing.
 
-The failure mode: the agent read the pasted material, reacted to it, summarized its themes inline in the response, and proceeded to discuss disposition — without writing the verbatim text anywhere durable. By the time the workshop wound down, the WIP held meta-summaries ("tried image-driven angle with light/cube imagery, rejected for incoherence") in place of the swings themselves. Any future return to the song requires the actual material; the meta-summary doesn't reconstruct it.
+When the user revisited the workshop laptop-side 2026-05-07 after sync, the gap surfaced: the WIP held labels pointing at content that lived only in the desktop's per-machine session transcript. The Gemini swing #7 only survived because the user re-pasted it from his Gemini conversation memory. The agent's own six swings only survived because the user later asked the agent to search the desktop session transcript and pull them out. **Both recoveries were possible-but-fragile** — they depended on (a) the user remembering the per-machine transcript exists as a recovery path, AND (b) the transcript file still being intact and accessible. Neither is guaranteed across time, machines, or storage events. User: *"FUCK!!! Update every fucking thing!! ... YOU failed to save that. That's really not cool. Apologies do NOT cut it."*
+
+**The corrected understanding: session transcripts are NOT a reliable fallback for either external-agent OR agent-own creative output.** They're per-machine, they don't travel with the portable sync, they're not under version control, and they can be lost to disk events. The WIP file is the durable record; if the WIP has only meta-summaries, the material is one machine-handoff or context-loss away from being permanently lost — same failure mode whether the swing came from the agent, an external LLM, or the user's own writing in another tool.
 
 **Trigger conditions — fire on ALL of these:**
 
+- The agent drafts a lyric swing, structural sketch, image fragment, or any verbatim creative content inline in a response (regardless of whether it's likely to be accepted or rejected)
 - User pastes a block of lyric/prose content originating outside the current conversation (Gemini, ChatGPT, another LLM, their own writing in another tool, an old draft they're pulling forward)
 - User shares an image of a structure, lyric, or fragment they want incorporated
 - User dictates a swing they want preserved
@@ -142,23 +145,26 @@ The failure mode: the agent read the pasted material, reacted to it, summarized 
 
 **Mechanical step (NOT optional, NOT discretionary):**
 
-Before responding substantively to pasted creative material:
+Before responding substantively with — or in reaction to — verbatim creative material:
 
 1. Identify the relevant WIP file (`docs/wip-{title}-fragments.md` or songbook entry being workshopped). If none exists, create it.
-2. Append the pasted verbatim text inside a code block or quote, with attribution and date (e.g., *"Gemini swing 2026-05-07:"* or *"Lenny's draft from notebook:"*).
-3. Note any framing context the user supplied (e.g., the prompting question, the open question the external agent left, the user's reason for sharing).
-4. THEN respond to the content.
+2. Append the verbatim text inside a code block or quote, with attribution and date (e.g., *"Swing 4 — anchor X, [agent] drafted 2026-05-08:"* or *"Gemini swing 2026-05-07:"* or *"Lenny's draft from notebook:"*).
+3. Note framing context — what prompted the swing, what critique was offered after, what was the workshop iteration this came from.
+4. THEN respond to / continue with the content.
+
+For agent-own swings, this means: when drafting a lyric swing in a response, include the WIP write in the same turn — the swing goes both into the response (for the user to react to) AND into the WIP (for the durable record). Do not rely on "writing the swing again at session-close" — by then context may have shifted, swings may have blurred together, or session may end before the save lands.
 
 **How to apply when summarizing rejected swings:**
 
-- ✅ Each rejected swing in a "five swings tried" summary section includes either the actual content (in code block / quote) OR a pointer to where the verbatim is preserved earlier in the file. The user reading the WIP six months later must be able to see what was tried, not just why it was rejected.
-- ❌ "Tried image-driven angle, rejected for incoherence" with no swing text anywhere in the file. This is the failure mode.
+- ✅ Each rejected swing in a "swings tried" summary section includes the actual content in a code block or quote, with the critique that followed. The user reading the WIP six months later must be able to see what was tried AND why it was rejected, both verbatim.
+- ❌ "Tried image-driven angle, rejected for incoherence" with no swing text anywhere in the file. This is the documented failure mode.
+- ❌ "Swing 4 — 'Same voice X' anchor with body-as-independent-verdict V3 — rejected, body-mechanism wrong" without the actual swing text. The label is not the material.
 
 **Pre-pack hard check (before `pack-portable.sh`):**
 
-When packing a portable sync, scan recent WIP edits for the session: did any turn involve external-agent paste, dictated swing, or user-shared draft? If yes, confirm the verbatim content is in the WIP — not just a meta-description. If a sync pack ships meta-summaries of swings that exist as verbatim text only in conversation memory, the swing is one machine-handoff away from being permanently lost. Treat this as part of the "Creative fragments" check in the Milestone Auto-Save section, with verbatim-preservation as the explicit standard.
+When packing a portable sync, scan recent WIP edits for the session: did any turn involve workshop activity (agent drafting lyric swings inline OR user pasting external material OR user sharing their own writing)? If yes, confirm the verbatim content of every swing referenced is in the WIP — not just meta-descriptions. If a sync pack ships meta-summaries of swings that exist as verbatim text only in conversation memory or per-machine session transcripts, the material is one machine-handoff or context-loss away from being permanently lost. The check applies whether the workshop produced a winning draft or only rejections — rejected swings are still part of the song's development record, and the user needs the verbatim text to evaluate "do we want to come back to that approach?" later.
 
-**Why this matters separately from in-flight workshop checkpoints:** The in-flight checkpoint rule addresses Mac's own creative output during workshop and gets its protection from Claude Code session logs as a fallback. External-agent material has no fallback — there's no Claude Code session log capturing what Gemini wrote in a parallel browser tab. The WIP file IS the entire durable record. If the WIP has only the meta-summary, the material is gone the moment the conversation closes.
+**Why this matters as a tightened, broader rule:** The original 2026-05-07 framing scoped the rule to external-agent / user-pasted material specifically, on the assumption that the agent's own output had session-log protection. The fourth-instance recovery proved that assumption wrong: the agent's own six Imposter Syndrome swings shipped to the WIP as labels, the verbatim text only existed in the desktop session transcript, and the recovery only worked because the user remembered to ask for it. The WIP file IS the entire durable record for ALL workshop content. The discipline applies uniformly: agent's swings, user's pastes, user's shared writing — all need verbatim capture before discussion proceeds.
 
 ## Package Assembly Rule
 

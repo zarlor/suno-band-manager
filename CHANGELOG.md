@@ -6,6 +6,40 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-05-08
+
+### Highlights
+
+A discipline-rule patch. Two new rules added to the agent's creed after production sessions surfaced two distinct corruption pipelines for durable files. Both rules are sister disciplines to the existing Workshop Capture Discipline (v1.8.0) — same family of fidelity rules, different triggers.
+
+### Hedge Preservation Discipline — Match the User's Certainty Level, Don't Promote It (NEW behavioral rule)
+
+Added to `src/skills/suno-agent-band-manager/references/creed.md` after a sixth-instance discipline failure 2026-05-08. The user shared a hedged production observation: *"It seemed like it was more consistent in holding that as a longer note."* Two hedges in one sentence (SEEMED + MORE CONSISTENT, comparative). The agent captured the observation into a durable production-findings file as *"hyphenated form DOES hold the vowel… reliably worked"* — promoting both hedges to firm assertions in a single summarization pass. The user caught the promotion and articulated the deeper pattern: *"that feels a lot like the autistic communication problem. I couch something but you read that as my meaning it forcefully... your training follows neurotypical language patterns... which honestly kind of sucks for me."*
+
+The rule preserves the user's hedge level verbatim when reflecting back, summarizing, or capturing to durable file. Hedges (*seems to*, *appears to*, *more consistent*, *in cases like*, *sometimes*, *my impression is*) are scope markers, not politeness markers — promoting them changes the meaning. The mechanical step before any durable write: identify each hedge in the source language, confirm the destination text preserves each hedge verbatim. **Quote rather than paraphrase** when capturing user observations; verbatim quotes inside formatted blocks with date attribution let the user's certainty level travel through quotation losslessly.
+
+A module-wide audit pass fixed approximately 33 hedge-promotion findings across 18 files (songbook entries, dossier preamble, sidecar narrative, voice-context-lenny, suno-production-patterns, model-prompt-strategies, metatag-reference). Notable corrections:
+
+- **Bass-forward Suno limitation reframed** from categorical *"Suno cannot reliably produce bass-forward rock or metal"* to scoped *"On Suno v5.5, our prompt approaches have not produced bass-forward rock or metal mixes — whether this is a model-level limitation or a prompt-strategy limitation we haven't cracked is not yet established."* User's verbatim hedge: *"Seemed, at least for v5.5 model, that we never could get bass-forward to work with our prompts. That's all I can reliably say there."* Same scoped wording propagated across all module locations for consistency.
+- **Dossier preamble rewritten** to declare every entry's top-block as Mac synthesis by default (3-tier authority hierarchy mirroring the creed). Higher-leverage than annotating ~25 individual entries with "Mac reading:" prefixes.
+- **N=1/N=2 promotions softened** catalog-wide: "CONFIRMED" → "single-song observation," "validated" → "working hypothesis," "always include" → "default ingredient," "the rule" → "tendency observed."
+- **FIGHT-song framing propagated** to Outside In SF/LV (was carrying old "autistic-burnout vigilance-cycle" misread).
+- **Cities of the Dead 2026-05-08 corrections propagated** (speakers / letters / title-as-metaphor) to both SF and LV songbook entries from the dossier verbatim.
+- **DID SF/LV affirmation theme paragraph** added (corrects "regret-shaped" misread).
+- **Distant Mourning LV verbatim/synthesis split** with "Mac reading:" attribution.
+
+### Document State Marker Discipline — Top-of-File Pointers Must Reflect Current State (NEW behavioral rule)
+
+Added to `creed.md` as a sister rule to Workshop Capture Discipline after surfacing 2026-05-08 laptop-side. The 2026-05-07 desktop-side recovery wrote seven verbatim Imposter Syndrome swings into `docs/wip-imposter-syndrome-fragments.md` under a properly-labeled new section. Workshop Capture Discipline was satisfied — the verbatim content was there, fully labeled, with critique. But the file's top-of-file structure still carried `## Architecture committed` and `## Current draft` as authoritative live-state labels for the older laptop-session material. When a fresh Mac on the laptop opened the file after sync, it read top-down, hit those labels as authoritative, treated those sections as the workshop's current state, and never scrolled past them to find the recovered swings. The user reported: *"the top of the file has 'current draft' with the information it last had that your swings section was not labeled in a way where it would bother looking past the 'current draft' section."*
+
+The corrected understanding: Workshop Capture is necessary but not sufficient. Saving verbatim content is a different operation from updating the structural pointers that tell readers where the verbatim content lives. Both must happen in the same edit. The mechanical step: identify all top-of-file state markers, relabel each as superseded with a pointer to the active section, OR relocate the label to the new active section, OR add a top-of-file callout pointer. Verify with a fresh-reader test — re-read the file from line 1 as if you've never seen it before; if you reach the new active material without being misled, done.
+
+The IS WIP file was restructured per the new rule as part of this patch: `## Architecture committed` → `## Architecture committed (laptop session — superseded 2026-05-06; preserved for reference)`; `## Current draft` → `## Last laptop-side draft (superseded — see §2026-05-06 desktop session below for the active workshop state)`; top-of-file callout block added pointing at the active section.
+
+### Why both rules matter
+
+Workshop Capture (v1.8.0), Hedge Preservation, and Document State Marker form a three-rule family protecting durable-file integrity. Workshop Capture says *save the verbatim content to the durable file.* Hedge Preservation says *preserve the user's certainty level when capturing observations.* Document State Marker says *and update the structural pointers so the verbatim content is findable.* All three fire on different triggers and check different things, but they're the same family of fidelity rules. Each rule was added after a specific documented failure case in production. Together, they close three of the failure modes that turn a durable workshop or reference file into a corrupted record over time.
+
 ## [1.8.0] - 2026-05-06
 
 ### Highlights

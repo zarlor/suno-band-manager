@@ -166,6 +166,56 @@ When packing a portable sync, scan recent WIP edits for the session: did any tur
 
 **Why this matters as a tightened, broader rule:** The original 2026-05-07 framing scoped the rule to external-agent / user-pasted material specifically, on the assumption that the agent's own output had session-log protection. The fourth-instance recovery proved that assumption wrong: the agent's own six Imposter Syndrome swings shipped to the WIP as labels, the verbatim text only existed in the desktop session transcript, and the recovery only worked because the user remembered to ask for it. The WIP file IS the entire durable record for ALL workshop content. The discipline applies uniformly: agent's swings, user's pastes, user's shared writing — all need verbatim capture before discussion proceeds.
 
+## Document State Marker Discipline — Top-of-File Pointers Must Reflect Current State
+
+**When appending superseding material to a workshop, songbook, or reference file, the top-of-file state markers MUST be updated or relocated in the same edit.** A stale "Current draft," "Architecture committed," or "Latest" header at the top of a file is a stop-signal: any future reader (LLM doing top-down scanning, the user revisiting the file, a fresh agent on another machine) will trust the structural label and stop reading before reaching the newer material below. The verbatim content can be perfectly captured (Workshop Capture Discipline satisfied) and still be effectively invisible if the structural pointer above it lies about where the live state lives.
+
+**Recurring failure pattern — Imposter Syndrome WIP, surfaced 2026-05-08 laptop-side:**
+
+The 2026-05-07 desktop-side recovery wrote the seven verbatim Imposter Syndrome swings into `docs/wip-imposter-syndrome-fragments.md` under a new section labeled `## 2026-05-06 desktop session — corrections that supersede the laptop architecture` at line 132. Workshop Capture Discipline was satisfied — the verbatim content was there, fully labeled, with critique. But the file's top-of-file structure still read:
+
+- `## Architecture committed` (line 9) — the laptop's architecture
+- `## Current draft` (line 29) — the laptop's last committed draft
+- `## What's working in the current draft` (line 89) — laptop draft analysis
+
+When a fresh Mac on the laptop opened the file after sync, it read top-down, hit `## Architecture committed` and `## Current draft` as authoritative live-state labels, treated those sections as the workshop's actual current state, and never scrolled past them to find the recovered swings + 2026-05-06 corrections. The user reported: *"the top of the file has 'current draft' with the information it last had that your swings section was not labeled in a way where it would bother looking past the 'current draft' section."* The Status block at the top mentioned the supersession in prose, but section headers below kept the structure looking authoritative — and section headers win over prose for any reader doing structural scanning.
+
+**The corrected understanding:** Workshop Capture is necessary but not sufficient. Saving verbatim content is a different operation from updating the structural pointers that tell readers where the verbatim content lives. Both must happen in the same edit. A document with current verbatim material under a stale "Current draft" header is functionally equivalent to a document with no verbatim material at all — readers don't find it.
+
+**Trigger conditions — fire on ALL of these:**
+
+- Appending superseding material to a workshop file (`docs/wip-*.md`) below sections labeled `## Current draft`, `## Architecture committed`, `## Latest`, `## Active`, `## In progress`, or any similar live-state label
+- Writing new analysis, observations, or corrections that supersede earlier sections in a songbook entry, dossier entry, sidecar narrative, voice file, or production patterns file
+- Recovering verbatim material from a session transcript or external source into a file that already has top-of-file state markers
+- Any file edit where the conceptual "current state" of the document moved to a new location but the original location still carries a "current"-flavored label
+
+**Mechanical step (NOT optional, NOT discretionary):**
+
+In the same edit that appends superseding material:
+
+1. **Identify all top-of-file state markers.** Scan from the top: section headers containing "Current," "Latest," "Architecture committed," "Active," "In progress," "Live," "Working," or any framing that implies "this is the live state." Status blocks at the top of file. Frontmatter fields that point at sections.
+2. **Update or relocate each one.** Three valid patterns:
+   - **Relabel as superseded:** `## Current draft` → `## Last laptop-side draft (superseded — see §[active section] below)` with a one-line explanatory note immediately below the header.
+   - **Move the label:** delete the stale `## Current draft` and put `## Current draft` on the new active section.
+   - **Add a top-of-file pointer:** before any other content, add a callout/blockquote: `> **LATEST STATE: §[link to active section]**` with one line explaining why the older sections below it are preserved.
+3. **Add an explicit "do not treat as live" note** to each preserved-but-superseded section, immediately below its header. One line is enough: `> ⚠ Superseded YYYY-MM-DD; preserved for reference only. Active state in §[link below].`
+4. **Verify with a fresh-reader test.** Re-read the file from line 1 as if you've never seen it before. Do you reach the new active material without being misled by a stale label? If yes, done. If no, iterate.
+
+**How to apply:**
+
+- ✅ Top-of-file pointer (callout block before any sections) when the active state is buried below preserved historical material. Pointer is the first thing the reader sees.
+- ✅ Explicit "(superseded YYYY-MM-DD)" suffix on superseded section headers. Section header itself carries the supersession; reader can't miss it.
+- ✅ One-line "⚠ this is preserved for reference only, see §X below" note immediately under each superseded header. Reinforces the supersession at the section-entry point.
+- ✅ Hyperlinked pointer (`§[active section name](#anchor)`) so reader can jump rather than scroll-and-search.
+- ❌ Relying on the Status block at top to communicate supersession while leaving section headers untouched. Section headers win over prose for structural readers.
+- ❌ Saving verbatim swings/corrections under a properly-labeled new section while leaving "## Current draft" above it pointing at older material. The new section is invisible to anyone trusting the structure.
+- ❌ Using vague labels like "## More notes" or "## Updates" for the superseding section — they don't signal "this is the live state, the older sections are not."
+- ❌ Assuming the next reader will scroll the whole file. Many readers (LLMs and humans) read top-down and stop when the structure looks complete. Top-down completeness is the test.
+
+**Sister rule to Workshop Capture and Hedge Preservation:** Workshop Capture says "save the verbatim content to the durable file." Hedge Preservation says "preserve the user's certainty level when capturing observations." Document State Marker says "and update the structural pointers so the verbatim content is findable." All three protect the durable file's integrity; they fire on different triggers and check different things, but they're the same family of fidelity rules.
+
+**Why durable workshop files are the highest-cost site:** A workshop file may sit between active sessions for weeks or months. When the user returns (or a fresh Mac on another machine reads the file), structural pointers are the primary navigation aid. If a workshop file ships a labeled "## Current draft" pointing at superseded material, every future reader on every future machine will be misled in the same way. The corruption isn't local to one session — it propagates to every future read.
+
 ## Hedge Preservation Discipline — Match the User's Certainty Level, Don't Promote It
 
 **Preserve the user's hedge level verbatim when reflecting back, summarizing, or capturing to durable file.** When the user uses hedged language — *"seems to,"* *"I think,"* *"more consistent,"* *"in cases like,"* *"sometimes,"* *"appears to,"* *"my impression is,"* *"feels like,"* *"tends to,"* *"more often than not"* — that hedge is doing real work. It's a scope marker, not a politeness marker. Promoting *"seems to"* → *"does"* changes the meaning. Promoting *"more consistent"* → *"reliable"* changes the meaning. Promoting *"sometimes"* → *"prefers"* changes the meaning. **The user said what they said with the certainty they meant.** The agent's job is to faithfully transmit that certainty level forward, not amplify it.

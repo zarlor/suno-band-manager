@@ -248,17 +248,18 @@ These work as simple bracket tags without the `[Energy: ...]` prefix:
 
 **Mood word effectiveness:** Vivid, visceral words work better than polite ones. `[Mood: Mardi Gras]`, `[Mood: wild, party]`, `[Mood: dark, haunting]` are more effective than `[Mood: festive]` or `[Mood: celebratory]`. Suno responds to emotional intensity in tag language.
 
-### Energy Tags — Production-Confirmed Behavior
-These energy and vocal style descriptors have been tested in production and produce reliable results:
+### Energy Tags — Production-Tested Behavior
+
+These energy and vocal style descriptors have been tested across multiple gens with consistent results — treat as working defaults, not guarantees (Suno is probabilistic):
 
 | Tag | Observed Effect |
 |-----|-----------------|
-| `[Energy: stripped, minimal]` | Reliably reduces instrumentation |
-| `[Energy: massive]` | Reliably adds full band weight |
-| `[Energy: building]` | Works for gradual intensity increase |
-| `[Vocal Style: whispered]` | More reliably quiet than `[Vocal Style: clean, distant]` — use as the go-to for quiet sections |
+| `[Energy: stripped, minimal]` | Tends to reduce instrumentation (consistent across observed gens) |
+| `[Energy: massive]` | Tends to add full band weight (consistent across observed gens) |
+| `[Energy: building]` | Works for gradual intensity increase (consistent across observed gens) |
+| `[Vocal Style: whispered]` | More consistently quiet than `[Vocal Style: clean, distant]` across observed gens — preferred go-to for quiet sections |
 | `[Vocal Style: acapella]` | Sometimes works, sometimes Suno adds light instrumentation anyway |
-| `[Whispered, vulnerable]` | Reliable quiet-section tag in folk-intimate / acoustic-singer-songwriter / ballad-intimate contexts. **Context-dependent caveat (April 2026):** In theatrical-horror / voodoo-rock / dramatic-narrative contexts, `[Whispered, vulnerable]` can pull Suno into spoken-word delivery rather than sung-quiet. Use `[Vocal Style: soft, sung]` when sung-quiet is required in those genres — the explicit `sung` token defeats spoken-word drift. |
+| `[Whispered, vulnerable]` | Worked consistently across observed folk-intimate / acoustic-singer-songwriter / ballad-intimate gens. **Context-dependent caveat (April 2026, single-song observation on DM-LV):** In theatrical-horror / voodoo-rock / dramatic-narrative contexts, `[Whispered, vulnerable]` may pull Suno into spoken-word delivery rather than sung-quiet. Working alternative when sung-quiet is required in those genres: `[Vocal Style: soft, sung]` — the explicit `sung` token defeated spoken-word drift on DM-LV. Whether the tag-pull and the alt-tag fix generalize across more theatrical-horror songs needs more observations. |
 
 ### Three-Phase Dynamic Arcs (Up, Peak, Down)
 For songs that need to build UP and come back DOWN, place descent tags at the **transition point**, not just the outro. The mistake is saving all the quiet tags for `[Outro]` — by then the energy has already carried through. Instead:

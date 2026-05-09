@@ -452,15 +452,15 @@ Drum descriptors are highly context-dependent — the same term produces differe
   - `swinging drums` + `blues-metal intensity` → Bill Ward-style groove (loose, behind-the-beat swagger)
   - `pounding drums` → rigid, mechanical, metronomic feel (use when you want deliberate, machine-like precision)
 
-### Bass Prominence (Known Limitation)
+### Bass Prominence (Working Observation, Suno v5.5)
 
-Suno cannot reliably produce bass-forward rock or metal mixes. This has been tested extensively:
+On Suno v5.5, our prompt approaches have not produced bass-forward rock or metal mixes. Whether this is a model-level limitation or a prompt-strategy limitation we haven't cracked is not yet established. What was tried (extensive iteration on Solitary Fire *Sightless Black*):
 
-- Requesting "bass-forward" or "prominent bass" in the style prompt produces marginal results at best — bass remains buried in the mix
+- Requesting "bass-forward" or "prominent bass" in the style prompt produced marginal results at best — bass remained buried in the mix
 - `bass and drums only, no guitar` combined with guitar in the Exclude Styles field was the most effective approach found, but this requires removing guitar entirely rather than simply featuring bass
-- `funk metal` as a genre term triggers slap/pop bass (Flea-style), NOT overdriven fingerstyle (Geddy Lee-style) — there is currently no reliable way to get prominent overdriven bass in a full-band rock/metal context
+- `funk metal` as a genre term triggered slap/pop bass (Flea-style), NOT overdriven fingerstyle (Geddy Lee-style) — none of the approaches tried produced prominent overdriven bass in a full-band rock/metal context
 
-**Treat bass-forward rock/metal as a known platform limitation.** If a song concept depends on prominent bass, consider the "bass and drums only" approach or accept that bass will sit in a typical supporting-instrument position in the mix.
+**Treat bass-forward rock/metal as not-yet-cracked on v5.5.** If a song concept depends on prominent bass, consider the "bass and drums only" approach, try prompt strategies not yet attempted, or accept that bass will sit in a typical supporting-instrument position in the mix. Worth re-testing on future Suno model releases.
 
 ### Instrument Bleed-Through
 

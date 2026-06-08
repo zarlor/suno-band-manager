@@ -6,6 +6,22 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ## [Unreleased]
 
+## [1.8.3] - 2026-06-08
+
+### Highlights
+
+A tooling patch from a production session: a lyric-transformer section-tag fix that was breaking song structure, plus a new genre-coverage index that grounds "what has this band done / what's actually fresh" in a maintained source of truth instead of the agent's memory.
+
+### Lyric Transformer — intensity words are NOT section tags (`[Heavy]` intro-skip fix)
+
+Added to `src/skills/suno-lyric-transformer/references/metatag-reference.md`. A production session surfaced that `[Heavy]` — an intensity/feel word used as a section header — is not a recognized Suno section tag and **mis-parses the song structure**: Suno skipped the `[Intro]` entirely and started on the `[Heavy]` section on multiple generations. The transformer's validator (`validate-lyrics.py`) had flagged `[Heavy]` as unrecognized on every build, but the flag had been overridden because the tag once appeared in an older songbook entry. Changing it to `[Verse]` made the structure parse correctly.
+
+The rule added: intensity/feel words (`[Heavy]`, `[Loud]`, `[Soft]`, `[Quiet]`) are never section tags — carry the intensity via descriptor tags (`[Energy: ...]`, `[Vocal Style: ...]`) on a recognized section, or use `[Bridge]` when the section needs to be harmonically/energetically new. **If the validator flags a section tag as unrecognized, it is invalid — map it to a recognized tag; do not override the flag because it appeared in an old entry.**
+
+### New — `genre-coverage.py`: per-band genre coverage index
+
+Added `src/skills/suno-agent-band-manager/scripts/genre-coverage.py`. Generates a per-band coverage map (`docs/{band}-genre-coverage.md`) of genre anchors AND artist/reference territory, derived from every published style prompt **and the band-profile catalog** (`reference_tracks` + per-song `genre_applied`) with hard filters against stat/lyric noise. The point: ground every "X is fresh / never done / let's add some variety" claim in a maintained, source-derived index instead of the agent's memory — which had repeatedly produced wrong novelty claims (asserting a genre was new to a band when the catalog already covered it under an artist label, e.g. "90s alt" living as Counting Crows / Wilco). Regenerate on every publish, alongside the playlist sequencing companion.
+
 ## [1.8.2] - 2026-06-07
 
 ### Highlights

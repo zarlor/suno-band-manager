@@ -12,6 +12,8 @@ Core tags that define song structure. Suno uses these to organize musical sectio
 
 **CRITICAL: Only use recognized tags.** Custom/invented tags like `[The Questions]` or `[Reflection]` are NOT recognized by Suno. At best they are ignored; at worst **Suno sings the tag text as lyrics** ("The Questions" becomes a sung line). Always map sections to recognized tags and use parameterized syntax or descriptor tags to shape the musical feel.
 
+**Intensity/feel words are NOT section tags — and they mis-parse the structure.** `[Heavy]`, `[Loud]`, `[Soft]`, `[Quiet]` etc. used as section headers are invalid. **Documented failure (Stillness, 2026-06-08): `[Heavy]` as a section header caused Suno to SKIP the `[Intro]` and start on the `[Heavy]` section** on more than a few gens — an unrecognized section tag breaks Suno's structural parse. Carry the intensity via descriptor tags on a RECOGNIZED section instead — e.g. `[Verse]` + `[Energy: dense, engulfing, peak]` + `[Vocal Style: full power]`; use `[Bridge]` when the section needs to be harmonically/energetically NEW. **If `validate-lyrics.py` flags a section tag as unrecognized, it is invalid — map it to a recognized tag; do NOT override the flag because the tag appeared in an old songbook entry.**
+
 **Section-tag content: direction, not narrative labels.** The space inside section tags — the text between `[` and `]` — is valuable real estate Suno can act on. Use it for **functional direction** (tempo, dynamics, vocal style, mood, energy) Suno can interpret, NOT for **human-readable narrative labels** Suno has no training on.
 
 | Format | Effect |

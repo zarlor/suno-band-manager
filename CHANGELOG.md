@@ -6,6 +6,20 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ## [Unreleased]
 
+## [1.8.2] - 2026-06-07
+
+### Highlights
+
+A slider-discipline patch for the Style Prompt Builder. A production session surfaced the builder anchoring its Weirdness / Style Influence recommendations to a band profile's stored `sliders:` default instead of choosing per-song from slider behavior — which defeats the entire purpose of the sliders as the per-song differentiator.
+
+### Style Prompt Builder — sliders are a per-song decision, not a profile default (fix)
+
+Added to `src/skills/suno-style-prompt-builder/references/model-prompt-strategies.md` (Slider Guidelines). During a Solitary Fire build, the builder recommended Weirdness 55 by reasoning *"above the profile's 45 default"* — anchoring to the band profile's stored slider value rather than the song's needs. The song was a dissonant, harmonically-locked, counter-genre piece that actually wanted Weirdness ~75: high enough to stop Suno normalizing the dissonance back toward polished heaviness (the documented default-Weirdness counter-genre behavior), capped under the 80 structural-breakdown cliff to protect a load-bearing `[End]`. The user: *"Do NOT rely (EVER!) on some presumed 'band default'. The sliders are where we created differences!... They are MEANT to be played with... USE THEM!"*
+
+The rule: a band profile's stored `sliders:` values (if any) are a weak fallback for a bare Demo only — never the per-song anchor, and never a baseline to nudge up/down from. For every real song, Weirdness and Style Influence are chosen fresh from the slider-behavior table + song type + counter-genre needs, justified by what each slider actually does. Audio Influence remains the one slider commonly left at a standard value (~25% for Personas).
+
+Known follow-up (not in this patch): band profile YAMLs that carry stale `sliders:` defaults (e.g. Solitary Fire's `weirdness: 45`, where the catalog actually runs 55–75) should be corrected via the band profile manager so they stop misanchoring future builds.
+
 ## [1.8.1] - 2026-05-08
 
 ### Highlights

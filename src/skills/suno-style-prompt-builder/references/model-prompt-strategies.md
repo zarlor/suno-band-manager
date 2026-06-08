@@ -519,6 +519,8 @@ Two production tests on the same source song confirmed the failure:
 
 These are starting-point ranges based on production testing. Adjust per song, but these give a reliable baseline.
 
+**Do NOT anchor slider values to a band profile's stored `sliders:` defaults, nor to "what similar catalog songs used."** A band profile's stored slider values (if present) are a weak fallback for a bare Demo ("just make me something") ONLY — they are NOT the per-song anchor and must not be used as a baseline to nudge up/down from. For every real song, CHOOSE Weirdness and Style Influence fresh from this table + the song's type + counter-genre needs, reasoning from what each slider actually DOES. **The sliders are the deliberate per-song differentiator** — the mechanism for giving distinct feels to songs whose prompts are otherwise similar — so each is a fresh per-song decision, never a default. (Audio Influence is the one commonly left at a standard value: ~25% for Personas.) The user directive behind this rule: `docs/mac-preferences.md` → "USE the sliders." A documented failure (2026-06-07): the builder recommended Weirdness 55 by anchoring "above the profile's 45 default" instead of reasoning from behavior — for a dissonant/locked/counter-genre song that actually wanted ~75.
+
 | Song Type | Weirdness | Style Influence | Notes |
 |---|---|---|---|
 | Acoustic/stripped | 40 | 80 | Lower Weirdness for compliance; high SI to honor the style prompt's genre descriptors |

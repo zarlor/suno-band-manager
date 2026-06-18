@@ -1,6 +1,6 @@
 ## Audio Analysis Workflow
 
-**Post-publish pipeline:** When a new track is published, the Band Manager agent (Mac) orchestrates a full analysis pipeline using these scripts — see Mac's SKILL.md under "Post-Publish Analysis Pipeline" for the complete workflow covering analysis, consistent data storage, external comparison, felt BPM checks, and playlist placement. The pipeline ensures consistent data across all catalog files.
+**Single-song scope:** This reference covers analyzing one track to inform feedback on that track — instrument presence, dynamic arc, mood/energy, style-prompt accuracy. Catalog-wide pipelines (consistent data storage across all songs, felt-BPM catalog checks, playlist placement) are the Band Manager agent's and `suno-playlist-sequencer`'s job, not this skill's; this skill works the song in hand.
 
 ### Overview
 
@@ -239,7 +239,7 @@ A/B testing on the same track (brass-metal fusion) with blind prompts at differe
 ### Integration with Feedback Elicitor
 - Style Prompt Accuracy as feedback loop: compare what was prompted vs. what Gemini hears → identify what Suno ignores, misinterprets, or adds unbidden → adjust future prompts
 - A/B prompt testing: change one variable, generate both, analyze both, compare. Quantifies what prompt changes actually do.
-- Batch analysis for playlist ordering: BPM, key, and dynamic arc data across catalog enables data-informed playlist decisions
+- Per-song objective measurements (BPM, key, dynamic arc) complement subjective feedback on the track in hand. (Cross-catalog batch analysis for playlist ordering belongs to `suno-playlist-sequencer`, not this skill.)
 
 ### Gemini as Suno Prompt Engineering Feedback Loop
 
@@ -263,63 +263,15 @@ Opus 4.6 (Claude) as primary prompter/orchestrator, Gemini 3.1 as audio analysis
 
 ---
 
-## Playlist Sequencing
-
-### Methodology
-
-Playlist ordering requires balancing two dimensions simultaneously:
-- **Sonic flow** — BPM transitions, key compatibility (Camelot wheel), energy arcs, timbral variety
-- **Lyrical/narrative progression** — thematic arc across songs, emotional journey, story sequencing
-
-Neither dimension alone is sufficient. Adjacent tracks need to work musically AND thematically.
-
-### Sequencing Principles
-
-**Album sequencing fundamentals:**
-- Opener must grab attention — front-loading engaging material is critical in the streaming era
-- Variety within cohesion — avoid two songs with similar arrangement density, instrumentation, or timbral character back-to-back
-- Similar thematic songs need distance — tracks covering the same ground blur when adjacent
-- Sonic palette contrast is essential for maintaining interest
-- Silence between tracks is itself a sequencing decision — spacing signals mood group shifts
-
-**DJ Harmonic Mixing (Camelot Wheel):**
-- Same key (8A→8A): Perfect but monotonous if overused
-- +/-1 number, same letter (8A→7A or 9A): Most common professional move, changes one scale note
-- Relative major/minor (8A→8B): Mood shift without changing harmonic center. Minor→major lifts; major→minor darkens
-- +2 numbers: Energy boost, more noticeable — use sparingly
-- Beyond +2: Risk audible clashing — use only for intentional dramatic contrast
-
-**BPM takes priority over key:** A harmonically perfect transition with a 20 BPM jump sounds worse than a minor key clash at the same tempo. Double/half time relationships (70 BPM ↔ 140 BPM) share the same pulse grid and can work together.
-
-**Camelot is a key-relationship tool, not a comprehensive transition-smoothness measure.** The Camelot wheel tracks key relationships only — it does NOT capture:
-- **Tempo gaps** — a 152 BPM power-pop banger adjacent to a 78-felt heavy-rock track will sound jarring even with a perfect 10A↔10B relative pair
-- **Genre/style register** — power-pop crashing into philosophical-heavy or piano-grief sounds abrupt regardless of Camelot match
-- **Energy/dynamic level** — sustained-high banger next to sustained-low melancholy won't blend even with key alignment
-- **Production aesthetic** — different mix character (warm analog vs. modern compressed, etc.) creates discontinuity
-
-**When Camelot perfection is misleading:** For genre-outlier tracks (e.g., a power-pop song in a non-power-pop catalog, or a thrash track in a folk-leaning album), Camelot architecture may favor placement spots where the keys line up beautifully but the listening experience is jarring because of tempo, genre, or energy mismatches. Camelot perfection on paper does NOT equal smooth listening transitions when other dimensions diverge.
-
-**Production-confirmed (LV Mirror Image placement, 2026-04-28):** Initial placement options framed Option A as Camelot-strong (three-track perfect run Slide→DID→MI at 9A→10A→10B) and Option C as a "Camelot trade-off for thematic-callback." User correction: *"Not so much trading Camelot because it's honestly just jarring in those other positions and in C it's a little less so."* Options A and B were rejected because the **listening experience was jarring** despite Camelot perfection — the 152 BPM power-pop crashing into 78-felt DID/Cities was a tempo+genre+energy mismatch that Camelot couldn't correct for. Position 3 had rougher Camelot but tonally adjacent tracks (PR 81-felt, Askin'? 92-felt) were less distant from MI's banger energy, producing a less-jarring transition.
-
-**Practical rule for placement evaluation:** When presenting placement options, describe the **listening experience** (smooth / fluid / abrupt / jarring) as the primary criterion. Camelot is one input. Explicitly call out tempo gaps, genre register gaps, and energy gaps alongside Camelot when significant. A Camelot-perfect match with a 70+ BPM gap should be flagged as "Camelot-perfect but tempo-jarring," not as "the strongest option." For genre-outlier tracks, accept that no placement will be Camelot-AND-tempo-AND-genre-perfect — pick where the listening experience is least jarring.
-
-**When Camelot is reliable:** Camelot transitions work cleanly when the songs are also tempo-and-genre-coherent. The framework breaks down specifically when other dimensions diverge. Same-genre / same-tempo-pocket placements (e.g., sequential tracks in a coherent stylistic cluster) benefit straightforwardly from Camelot architecture; cross-genre / cross-tempo placements need additional listening-experience evaluation.
-
-**Concert setlist design (W-Shape model):**
-- Featured songs at three peaks (beginning, middle, end) with complementary songs providing changes in key, tempo, timbre, and mood between them
-- Multiple peaks and valleys rather than a single arc
-- Peak-end rule: audiences remember the best moment and the final moment most vividly
-- Encore: a planned 3-5 song mini-set at high energy following a breath-catching break
-
-### Single-Track Harmonic Scripts
+## Single-Track Harmonic Scripts
 
 **chord-progression.py** — Analyzes chord changes and key centers in 30-second windows within a single track. Measure-by-measure detection is too noisy with distorted guitars, but 30-second key center summaries are useful.
 ```bash
 python scripts/chord-progression.py track.mp3
 ```
 
-**Camelot wheel mapping** is embedded in `chord-progression.py` and in the `suno-playlist-sequencer` skill's `playlist-sequencing-data.py` — all 24 keys (12 major, 12 minor) mapped to codes 1A-12A (minor) and 1B-12B (major).
+**Camelot wheel mapping** is embedded in `chord-progression.py` — all 24 keys (12 major, 12 minor) mapped to codes 1A-12A (minor) and 1B-12B (major). The same mapping in the `suno-playlist-sequencer` skill's `playlist-sequencing-data.py` is what that skill uses for cross-track sequencing.
 
-### Playlist Sequencing (moved to `suno-playlist-sequencer`)
+## Playlist Sequencing (moved to `suno-playlist-sequencer`)
 
-Album/playlist sequencing — the `playlist-sequencing-data.py` full sequencing report (BPM, overall/entry/exit keys, Camelot codes, energy levels, intro/outro energy %, per-transition quality) and the album-craft methodology — now lives in the **`suno-playlist-sequencer`** skill. Route album/playlist/tracklist work there. The Camelot-mixing and felt-BPM material above remains the foundational reference that skill builds on.
+Album/playlist sequencing — Camelot harmonic mixing, felt-BPM transitions, energy arcs, the album-craft methodology, and the `playlist-sequencing-data.py` full sequencing report — is **not** part of single-song feedback. It now lives in the **`suno-playlist-sequencer`** skill. Route album/playlist/tracklist work there.

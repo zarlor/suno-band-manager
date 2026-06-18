@@ -78,12 +78,21 @@ class TestStylePromptTriggers:
             assert term in HEAVY_VOCAL_TRIGGERS
 
     def test_keyboard_pull_words_cover_documented_terms(self):
-        """The reference documents baroque/orchestral/cinematic as keyboard pulls."""
-        for term in ("baroque", "orchestral", "cinematic"):
+        """The reference documents baroque/orchestral/cinematic/rock opera as keyboard pulls."""
+        for term in ("baroque", "orchestral", "cinematic", "rock opera"):
             assert term in KEYBOARD_PULL_WORDS
 
     def test_keyboard_pull_words_are_frozenset(self):
         assert isinstance(KEYBOARD_PULL_WORDS, frozenset)
+
+    def test_keyboard_pull_and_genre_signals_disjoint(self):
+        """Texture modifiers must not double as genres — a word cannot both satisfy
+        front-loading AND read as a dangerous keyboard pull (self-contradicting signal)."""
+        overlap = KEYBOARD_PULL_WORDS & GENRE_SIGNALS
+        assert overlap == frozenset(), (
+            f"KEYBOARD_PULL_WORDS and GENRE_SIGNALS overlap on {sorted(overlap)}; "
+            "these are texture modifiers, not genres — remove from GENRE_SIGNALS."
+        )
 
     def test_vocal_safe_pairings_nonempty_strings(self):
         assert len(VOCAL_SAFE_PAIRINGS) > 0

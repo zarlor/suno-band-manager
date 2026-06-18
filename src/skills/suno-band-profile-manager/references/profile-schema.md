@@ -20,7 +20,7 @@ reference_tracks:
   - "Fleet Foxes with Massive Attack production"
 
 # Model & Tier
-model_preference: "v4.5-all"  # v4.5-all | v4 Pro (legacy) | v4.5 Pro | v4.5+ Pro | v5 Pro | v5.5
+model_preference: "v4.5-all"  # v4.5-all | v4 Pro (legacy) | v4.5 Pro | v4.5+ Pro | v5 Pro | v5.5 Pro
 tier: "free"                   # free | pro | premier
 
 # Style Prompt — 1,000 char limit (v4.5+/v5/v5.5; 200 for v4 Pro). Front-load essentials in first ~200 chars (critical zone).
@@ -49,6 +49,23 @@ vocal:
   voice_id: ""             # Suno Voice identifier (v5.5, Pro/Premier only). Replaces persona_reference for v5.5.
   # NOTE: When voice_id is set, omit gender vocal descriptors from style_baseline —
   # the Voice defines the vocal identity (gender, tone, character from the audio sample).
+
+# Multi-Voice mapping (optional — v5.5, Pro/Premier, only when a band uses
+# more than one cloned Voice for different track types). When present, this is
+# the source of truth for per-track Voice selection; vocal.voice_id remains the
+# single-Voice default / primary. Each Voice must be internally consistent
+# (single stable character, Skill Level Professional) — variety lives ACROSS
+# Voices, not within one sample.
+voices:
+  # - voice_id: "<Suno Voice id>"
+  #   label: "Narrative Rock"        # short human name for this Voice
+  #   use_case: "mid-tempo rock tracks, driving narrative songs"
+  # - voice_id: "<Suno Voice id>"
+  #   label: "Ballad Intimate"
+  #   use_case: "tender, stripped-back tracks"
+  # - voice_id: "<Suno Voice id>"
+  #   label: "Speak-Sing Confessional"
+  #   use_case: "literary / narrative tracks"
 
 # Creative Settings
 creativity_default: "balanced"  # conservative | balanced | experimental
@@ -96,17 +113,21 @@ known_limitations: []
   #   - "'funk metal' triggers slap/pop bass, not overdriven fingerstyle — avoid this term"
   #   - "Even with 'guitar' in Exclude Styles, Suno still produces guitar in rock/metal context"
 
-# Generation Learnings (optional — what prompt language triggers what behavior)
+# Generation Learnings (optional — DURABLE learned patterns across songs)
 generation_learnings:
-  # Optional — captures what style prompt language triggers what behavior
-  # for this specific band's sound. Accumulated from testing and feedback.
+  # Durable, cross-song learnings: what style prompt language reliably triggers
+  # what Suno behavior for this band's sound. NOT tied to one generation — this is
+  # the distilled "what works / what doesn't" the band has accumulated over time.
   # Examples:
   #   - "'metal' in style prompt triggers screaming — use 'progressive heavy groove' instead"
   #   - "'sludge' triggers harsh vocals — use 'thick, heavy' instead"
   #   - "Weirdness above 60 produces inconsistent results for this genre"
 
-# Generation History (optional — successful generation snapshots)
+# Generation History (optional — PER-GENERATION snapshots)
 generation_history: []
+# Per-generation snapshots: this round's exact settings + the reaction. One entry
+# per notable generation, not a distilled pattern. (The durable patterns those
+# snapshots teach get promoted into generation_learnings.)
 # Each entry:
 #   - date: "2026-03-19"
 #     style_prompt: "the style prompt that worked"
@@ -126,7 +147,7 @@ generation_history: []
 | `mood` | Yes | string | Non-empty |
 | `language` | No | string | Defaults to "English". Passed to Lyric Transformer and Style Prompt Builder |
 | `reference_tracks` | No | list of strings | Free-form "sounds like" descriptions |
-| `model_preference` | Yes | string | One of: v4.5-all, v4 Pro (legacy), v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 |
+| `model_preference` | Yes | string | One of: v4.5-all, v4 Pro (legacy), v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro |
 | `tier` | Yes | string | One of: free, pro, premier |
 | `style_baseline` | Yes | string | Max 1000 chars (v4.5+/v5/v5.5). Max 200 chars for v4 Pro. Front-load essentials in first ~200 chars (critical zone — strongest influence). Content beyond 200 is supplementary, not wasted. |
 | `exclusion_defaults` | No | list of strings | Keep each entry concise and specific. Max 5 entries recommended |
@@ -137,7 +158,8 @@ generation_history: []
 | `vocal.diction` | No | string | Optional refinement |
 | `vocal.persona_reference` | No | string | Suno Persona name if exists (Pro/Premier only). v4.5/v5 models only; replaced by `voice_id` for v5.5 |
 | `vocal.persona_source_song` | No | string | Song the Persona was derived from (for recreation if lost) |
-| `vocal.voice_id` | No | string | Suno Voice identifier (Pro/Premier only, v5.5). Replaces `persona_reference` for v5.5. When set, omit gender vocal descriptors from `style_baseline` |
+| `vocal.voice_id` | No | string | Suno Voice identifier (Pro/Premier only, v5.5). Replaces `persona_reference` for v5.5. When set, omit gender vocal descriptors from `style_baseline`. Single-Voice default; use `voices` for a multi-Voice band |
+| `voices` | No | list of objects | Multi-Voice mapping (Pro/Premier, v5.5). Each entry: `voice_id` (required), `label` (short name), `use_case` (which track types it serves). Source of truth for per-track Voice selection when a band has more than one cloned Voice; `vocal.voice_id` stays the primary/default |
 | `creativity_default` | No | string | One of: conservative, balanced, experimental. Defaults to balanced |
 | `sliders.weirdness` | No | integer | 0-100, only valid for pro/premier tiers |
 | `sliders.style_influence` | No | integer | 0-100, only valid for pro/premier tiers |
@@ -174,12 +196,15 @@ generation_history: []
 17. If `vocal.voice_id` is set, warn if `vocal.gender` is also set — the Voice defines vocal identity, gender descriptors should be omitted from `style_baseline`
 18. If `vocal.voice_id` is set but `model_preference` is not "v5.5", warn that Voices require v5.5
 19. If `custom_model_id` is set but `tier` is "free", warn that Custom Models require Pro or Premier tier
+20. If `voices` is present, each entry must have a non-empty `voice_id`; `label` and `use_case` are recommended (a Voice with no use-case is just a `vocal.voice_id`)
+21. If `voices` is populated, `vocal.voice_id` should be one of the listed `voice_id`s (the primary/default) — warn if it names a Voice absent from the list
 
 ## Notes for Downstream Skills
 
-- **Style Prompt Builder** reads: `style_baseline`, `reference_tracks`, `vocal`, `exclusion_defaults`, `sliders`, `creativity_default`, `model_preference`, `language`, `instrumental`
+- **Style Prompt Builder** reads: `style_baseline`, `reference_tracks`, `vocal`, `voices`, `exclusion_defaults`, `sliders`, `creativity_default`, `model_preference`, `language`, `instrumental`
 - **Lyric Transformer** reads: `writer_voice`, `language`
-- **Feedback Elicitor** reads: `style_baseline`, `sliders`, `model_preference`; writes to `generation_history` via headless:edit
+- **Feedback Elicitor** reads: `style_baseline`, `sliders`, `model_preference`; writes BOTH `generation_history` and `generation_learnings` via headless:edit.
+- **`generation_learnings` vs `generation_history` (the data contract):** `generation_learnings` holds **durable learned patterns across songs** — the distilled "what works / what doesn't" for this band's sound, not tied to any single generation. `generation_history` holds **per-generation snapshots** — this round's exact settings (style prompt, model, sliders) plus the reaction. The Feedback Elicitor writes both: it appends the round's snapshot to `generation_history` and promotes any durable pattern that snapshot taught into `generation_learnings`. Treat `generation_learnings` (alongside `known_working_patterns` / `known_limitations`) as the band's institutional memory; `generation_history` as the changelog those learnings were distilled from.
 - When a Persona is active (v4.5/v5), its style auto-populates the Style of Music field — keep additional style modifications simple (1-2 genres, 1 mood, 2-4 instruments max)
 - **Persona Era-Anchoring (v4.5/v5):** Personas pull the sound toward the era/style of the source song. Audio Influence at 10-15% reduces this but doesn't eliminate it. For era-specific pieces, generate without a persona or create era-specific personas from era-appropriate source songs.
 - **Voices (v5.5):** Voices replace Personas for v5.5. When `voice_id` is set, the Voice defines the vocal identity — omit gender vocal descriptors from `style_baseline`. The style prompt should focus on instrumentation, production, and mood rather than vocal character.
@@ -190,7 +215,7 @@ generation_history: []
   4. **Leave `vocal.gender` empty** when `voice_id` is set — the schema already warns about this (rule 17).
   5. **Voice-aware `exclusion_defaults`** — when the Voice physically cannot produce harsh/screamed vocals, harsh-vocal exclusions are wasted Exclude Styles space. Focus exclusions on production/genre-direction protection (`heavy metal`, `heavy distortion`, `steel guitar`, `autotune`, `pop sheen`). The clean Voice IS the guardrail against harsh vocals.
   6. **Audio Influence floor caution** — 55-60% is the recommended default for Voice profiles. The 30-40% "subtle flavor" range works with Professional-level Voices; for non-Professional Voices, dropping below ~40% can trigger a robotic-timbre failure mode.
-- **Multi-profile Voice strategy** — profiles can reference multiple Voice IDs when the project uses several Voice recordings (e.g., "Narrative Rock" for mid-tempo rock tracks, "Ballad Intimate" for tender songs, "Speak-Sing Confessional" for literary/narrative tracks). Each Voice should be internally consistent (single stable character, 20-30 sec per recording, Skill Level Professional mandatory). Variety lives across Voices, not within one Voice sample. Document the mapping and per-Voice use cases in the profile.
+- **Multi-Voice strategy** — when a band uses several Voice recordings, the `voices:` list (see YAML Structure above) is the structural home for the mapping: each entry is `{voice_id, label, use_case}` (e.g., "Narrative Rock" for mid-tempo rock tracks, "Ballad Intimate" for tender songs, "Speak-Sing Confessional" for literary/narrative tracks). `vocal.voice_id` stays the primary/default; `voices` carries the rest. Each Voice should be internally consistent (single stable character, 20-30 sec per recording, Skill Level Professional mandatory) — variety lives across Voices, not within one Voice sample. The Style Prompt Builder reads `voices` to pick the per-track Voice from `use_case`.
 - **Custom Models (v5.5):** When `custom_model_id` is set, the Style Prompt Builder should complement the model's learned production style rather than fight it. Include `custom_model_notes` context when building prompts.
 - **Inspo Playlist Guidance:** Using your own songs as Inspo homogenizes the catalog sound. Drop Inspo when a song needs its own identity within the same band — let the style prompt and persona/voice do the work instead.
 

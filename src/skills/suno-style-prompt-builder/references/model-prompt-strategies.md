@@ -290,12 +290,12 @@ Straightforward genre + mood + basic production notes. Less nuanced than v4.5+ m
 11. **Comma separation works across all models** — consistent delimiter
 12. **Describe, don't command** — "dreamy shoegaze with female vocals" over "Create a dreamy shoegaze song." (v4.5 examples use "Create a..." which matches Suno's own v4.5 docs, but descriptive style generally works better.)
 13. **Production tags are the most underused category** (HookGenius analysis) — adding even one production descriptor ("radio-ready mix", "punchy drums", "wide stereo") meaningfully improves output distinctiveness. Most users rely only on genre + mood.
-14. **"Cinematic" is a universal quality modifier** — HookGenius's 1000+ prompt analysis found it consistently elevates production quality across every tested genre. Most versatile single tag for enhancing output. (Note: in guitar/bass-led arrangements, "cinematic" can pull keyboard/synth — see Dangerous Words above.)
+14. **"Cinematic" is a universal quality modifier** — HookGenius's 1000+ prompt analysis found it consistently elevates production quality across every tested genre. Most versatile single tag for enhancing output. (Note: in guitar/bass-led arrangements, "cinematic" can pull keyboard/synth — see the Dangerous Words and Keyboard Triggers table below. It is a texture modifier, not a genre.)
 15. **Conflicting tags produce bland compromise** — "aggressive, peaceful" or similar contradictions cause Suno to default to a generic middle ground, not an interesting hybrid. Opposing descriptors cancel out.
 16. **Callback phrasing during Replace Section** — when using Replace Section or Extend, re-inject genre/mood and use callback phrases like "continue same chorus energy" every 1-2 extends to prevent drift.
-13. **BPM in style prompts — model-dependent** — on v4/v4.5, BPM tags have zero detectable effect on Suno's output (confirmed by librosa analysis: songs tagged 60 BPM were delivered at 95.7 BPM; songs tagged 65-150 BPM across sections were delivered at a steady 123 BPM). On v5, BPM and key in the style prompt may be more effective than lyric tags (e.g., `"deep house, 122 BPM, A minor, hypnotic groove"`), though rhythm nouns remain more reliable for most use cases. Suno still picks its own tempo based on genre context and arrangement.
-14. **Use rhythm nouns for tempo feel** — "halftime groove," "double-time driving," "shuffle," "breakbeat" lock rhythmic feel far more reliably than BPM numbers or tempo adjectives like "slow" or "fast." These describe specific drum patterns Suno can interpret.
-15. **Perceived tempo is controlled through lyrics, not the style prompt** — Suno delivers a single steady BPM per song. Perceived tempo changes come from lyrical density (short fragmented lines = slower feel, packed lines = faster feel), arrangement dynamics (instrument dropout = slower feel), and half-time/double-time drum patterns. The style prompt can request rhythm nouns and "tempo changes" as priming, but the actual perceived control lives in the lyrics field.
+17. **BPM in style prompts — model-dependent** — on v4/v4.5, BPM tags have zero detectable effect on Suno's output (confirmed by librosa analysis: songs tagged 60 BPM were delivered at 95.7 BPM; songs tagged 65-150 BPM across sections were delivered at a steady 123 BPM). On v5, BPM and key in the style prompt may be more effective than lyric tags (e.g., `"deep house, 122 BPM, A minor, hypnotic groove"`), though rhythm nouns remain more reliable for most use cases. Suno still picks its own tempo based on genre context and arrangement.
+18. **Use rhythm nouns for tempo feel** — "halftime groove," "double-time driving," "shuffle," "breakbeat" lock rhythmic feel far more reliably than BPM numbers or tempo adjectives like "slow" or "fast." These describe specific drum patterns Suno can interpret.
+19. **Perceived tempo is controlled through lyrics, not the style prompt** — Suno delivers a single steady BPM per song. Perceived tempo changes come from lyrical density (short fragmented lines = slower feel, packed lines = faster feel), arrangement dynamics (instrument dropout = slower feel), and half-time/double-time drum patterns. The style prompt can request rhythm nouns and "tempo changes" as priming, but the actual perceived control lives in the lyrics field.
 
    **Foundational principle (production-confirmed 2026-04-29):** Suno does NOT actually shift tempo within a song. When a style prompt requests "tempo shifts" / "tempo changes" / "dynamic pacing," what Suno produces is **arrangement-density variation** (instrumentation pullback for halftime *feel*, compression for double-time *feel*), not actual BPM changes. Underlying tempo stays absolutely constant. Confirmed across multiple production tracks where the prompt explicitly asked for tempo changes — librosa-measured BPM steady end-to-end despite clear felt-shifts in lucid vs. dense sections. **Practical implication:** "tempo changes" in a style prompt is an *arrangement* directive, not a *tempo* directive. Plan for one underlying BPM per song; use rhythm nouns (`halftime groove`, `double-time driving`) and arrangement framing to vary perceived feel within that fixed tempo. Felt-tempo readings should be taken from the densest section where the pulse is most countable. See `suno-lyric-transformer/references/metatag-reference.md` "Half-Time / Double-Time Drum Feel" for the lyric-side techniques and any project's `docs/audio-analysis-reference.md` Felt BPM Corrections table for catalog examples.
 
@@ -614,31 +614,14 @@ The Persona auto-populates the Style of Music field. Song-specific prompts shoul
 - **Change ONE variable at a time** — adjust either the music direction OR the Persona settings, not both simultaneously. This isolates what's working vs. what's not.
 - **Mental model:** Persona = artist identity (vocals, character); Style prompt = producer brief (sonic direction for this specific song).
 
-### Voices Interaction Guidelines (v5.5, replaces Personas)
+### Voices and Custom Models (v5.5)
 
-In v5.5, **Voices** succeeds Personas for vocal identity. Voices is actual voice cloning (from a 15s-4min audio sample with anti-deepfake verification), while Personas is style essence capture from a source generation. **Style Personas are NOT gone** — they coexist within the Voices tab in v5.5. Both features work on v5.5; Personas also work on v4.5/v5.
+The full treatment of Voices (gender-drop, Audio Influence ranges, delivery-metatag pairing, the 15s-4min + anti-deepfake requirement, the Voice-Character Principle, the case study) and Custom Models (drop-generic-descriptors, train-separate-per-style, the Voice + Custom Model stack, privacy/consent) lives in the **v5.5 Pro** section above — see "Voices (replaces Personas)" and "Custom Models." Don't restate it here. Two style-prompt-construction points specific to *building the prompt* that aren't covered there:
 
-- **Drop gender descriptors when using Voices** — "male vocals", "female singer", etc. are redundant because the Voice already defines these. This frees characters for production detail.
-- **Audio Influence for Voices is use-case dependent** — start at 40-60% for balanced voice + quality. Go higher (60-70%) if voice identity is paramount, lower (30-40%) if voice is just flavoring. Do not exceed 70% without accepting quality trade-offs — see the Voices Audio Influence table in the v5.5 Pro section above.
-- **Pairs well with delivery metatags** — `[Whispered]`, `[Belted]`, `[Breathy]`, `[Raspy]` etc. Voice sets *who* sings, metatags set *how* they deliver each section.
-- **15s-4min audio sample required** plus anti-deepfake verification (you must prove you own or have rights to the voice).
+**Prompt strategy shift with Custom Models:** When a Custom Model is active, the priority order changes from genre-first to **mood/production-first** since genre is already encoded in the model. Simpler, more natural-language prompts may outperform tag-heavy prompts because the model already handles foundational style characteristics.
 
-### Custom Model Interaction Guidelines (v5.5)
-
-Custom Models let you train Suno on your own tracks to establish a production DNA. Think of the Custom Model as "producer" and the prompt as "songwriter."
-
-- **Drop generic production descriptors your model already knows** — if your Custom Model was trained on lo-fi indie tracks, "lo-fi warmth" is redundant in every prompt. Use those characters for song-specific direction instead.
-- **Train separate models for separate styles** — mixing genres in training data confuses the model. A "dark electronic" model and an "acoustic folk" model will each outperform a single model trained on both.
-- **Voice + Custom Model is the most powerful combo** — who sings (Voice) + what style (Custom Model) + detailed prompt (creative direction). This is the full v5.5 personalization stack in action.
-
-**Prompt strategy shift with Custom Models:**
-When a Custom Model is active, the priority order changes from genre-first to **mood/production-first** since genre is already encoded in the model. Simpler, more natural-language prompts may produce better results than highly detailed tag-heavy prompts because the model already handles foundational style characteristics.
-
-**Optimal formula with Custom Models:** MOOD + PRODUCTION TEXTURE + ENERGY/TEMPO + SPECIFIC INSTRUMENTS + VOCAL DIRECTION
-
-**What becomes redundant:** Base genre tags, broad stylistic descriptors matching training data, foundation-level production characteristics. Use that freed prompt budget for mood modifiers, production specifications, and contextual modifiers like 'cinematic', 'anthemic', 'intimate'.
-
-- **Privacy/consent note:** Voices and Custom Models consent grants Suno permission to use your data for training their global models. Not optional, not a private silo.
+- **Optimal formula with Custom Models:** MOOD + PRODUCTION TEXTURE + ENERGY/TEMPO + SPECIFIC INSTRUMENTS + VOCAL DIRECTION
+- **What becomes redundant:** Base genre tags, broad stylistic descriptors matching training data, foundation-level production characteristics. Spend that freed budget on mood modifiers, production specifications, and contextual modifiers like 'cinematic', 'anthemic', 'intimate'.
 
 ## Cover Feature
 

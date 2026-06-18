@@ -39,6 +39,8 @@
 
 ## Iteration Log
 
+The persistent iteration log is one markdown file per song at `docs/feedback-history/{band-or-session}/{song-slug}.md`, with a dated `## Round {n}` heading per round (see SKILL.md Step 1 for the slug convention). Each round's entry captures what was tried and the user's reaction in prose; the JSON line below is the same per-round snapshot in machine-readable form — embed it under the round heading (and it doubles as the headless `iteration_log` payload).
+
 ```json
 {"session_id": "{timestamp}", "round": 1, "feedback_type": "vague", "dimensions_adjusted": ["vocals", "production"], "key_changes": ["rawer vocals", "less reverb"], "user_intent": "dreamy indie folk", "reasoning_chain": "User said 'too polished' -> mapped to vocal production -> reduced reverb + added raw/intimate descriptors"}
 ```

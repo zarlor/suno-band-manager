@@ -10,9 +10,11 @@ module_greeting: >
   Get started by talking to Mac (your Band Manager) or jump straight into any skill:
   Create a song, manage band profiles, build style prompts, transform lyrics, or refine your Suno output.
 
-  **Multi-machine workflow?** This module supports moving your songbook, voice
-  files, and WIP between machines without git. See INSTALLATION.md
-  "Multi-Machine Sync" for setup.
+  **Multi-machine workflow?** Once you have a full repo checkout (with the
+  top-level `scripts/` folder), this module can move your songbook, voice files,
+  and WIP between machines without git. See INSTALLATION.md "Multi-Machine Sync"
+  for setup — including how to get those scripts if a marketplace install left
+  only the skills.
 
 # Variables from Core Config inserted:
 ## user_name

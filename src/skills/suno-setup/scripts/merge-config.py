@@ -16,6 +16,10 @@ Matching values serve as fallback defaults (answers override them). After a
 successful merge, the legacy config.yaml files are deleted. Only the current
 module and core directories are touched — other module directories are left alone.
 
+Detection pre-pass: --detect-mode classifies the install (fresh|update|standalone|
+migration) and reports the version transition without writing anything. With
+--answers it also returns changes:[{key,old,new}] for a dry-run preview.
+
 Exit codes: 0=success, 1=validation error, 2=runtime error
 """
 
@@ -59,6 +63,14 @@ def parse_args():
         help="Directory-creation mode: read the resolved config + module.yaml "
         "'directories:' list and create any output directories that don't exist. "
         "Skips the merge entirely. Requires --project-root.",
+    )
+    parser.add_argument(
+        "--detect-mode",
+        action="store_true",
+        help="Detection-only pre-pass: classify the install (fresh|update|"
+        "standalone|migration), report the version transition, and — if "
+        "--answers is given — diff the answers against the existing config. "
+        "Writes nothing. Skips the merge entirely.",
     )
     parser.add_argument(
         "--project-root",
@@ -458,6 +470,96 @@ def create_output_dirs(config: dict, module_yaml: dict, project_root: str) -> di
     return {"created": created, "existed": existed}
 
 
+def compute_changes(existing_config: dict, module_yaml: dict, answers: dict) -> list:
+    """Diff the about-to-be-written values against the existing config.
+
+    Returns a list of {key, old, new} for every core/module value whose
+    existing value differs from what the merge would write. Applies the same
+    result-template transform the merge uses so the comparison reflects the
+    stored form (e.g. {project-root}/-prefixed folders), not the raw answer.
+    New keys (no existing value) report old: null.
+    """
+    changes: list = []
+    module_code = module_yaml.get("code", "")
+
+    # Core keys land at config root (user-only keys live in config.user.yaml
+    # and aren't part of the config.yaml diff).
+    core_answers = answers.get("core", {})
+    for key, new_val in core_answers.items():
+        if key in _CORE_USER_KEYS:
+            continue
+        old_val = existing_config.get(key)
+        if old_val != new_val:
+            changes.append({"key": key, "old": old_val, "new": new_val})
+
+    # Module keys land in the module section, after result-template transform.
+    existing_module = existing_config.get(module_code, {})
+    if not isinstance(existing_module, dict):
+        existing_module = {}
+    module_answers = apply_result_templates(module_yaml, answers.get("module", {}))
+    for key, new_val in module_answers.items():
+        old_val = existing_module.get(key)
+        if old_val != new_val:
+            changes.append({"key": key, "old": old_val, "new": new_val})
+
+    return changes
+
+
+def detect_mode(
+    config_path: str, module_yaml: dict, legacy_dir: str | None
+) -> dict:
+    """Classify the installation deterministically.
+
+    mode:
+      - standalone : no _bmad/ directory yet
+      - update     : config.yaml already has this module's section
+      - migration  : genuine pre-consolidation legacy — per-module init config
+                     exists but config.yaml has NO consolidated module section
+      - fresh      : _bmad/ exists, no module section, no genuine legacy
+
+    has_module_section distinguishes a re-run (the installer's own init bridge
+    files coexisting with a consolidated section) from genuine legacy, so the
+    "legacy migration" message never fires on a healthy upgrade.
+    """
+    module_code = module_yaml.get("code", "")
+    config_file = Path(config_path)
+    bmad_dir = config_file.parent
+
+    existing_config = load_yaml_file(config_path)
+    has_module_section = isinstance(existing_config.get(module_code), dict)
+
+    # Legacy per-module init config files this/another installer may have left.
+    legacy_root = Path(legacy_dir) if legacy_dir else bmad_dir
+    has_legacy = (
+        (legacy_root / module_code / "config.yaml").exists()
+        or (legacy_root / "core" / "config.yaml").exists()
+    )
+
+    if not bmad_dir.exists():
+        mode = "standalone"
+    elif has_module_section:
+        # Consolidated section already present → upgrade. Any init configs are
+        # the installer's own runtime bridge files, not pre-consolidation legacy.
+        mode = "update"
+    elif has_legacy:
+        mode = "migration"
+    else:
+        mode = "fresh"
+
+    existing_version = None
+    if has_module_section:
+        existing_version = existing_config[module_code].get("version")
+    new_version = module_yaml.get("module_version")
+
+    return {
+        "status": "success",
+        "mode": mode,
+        "has_module_section": has_module_section,
+        "has_legacy": has_legacy,
+        "version_transition": {"from": existing_version, "to": new_version},
+    }
+
+
 def main():
     args = parse_args()
 
@@ -482,6 +584,17 @@ def main():
         config = load_yaml_file(args.config_path)
         result = create_output_dirs(config, module_yaml, args.project_root)
         result["status"] = "success"
+        print(json.dumps(result, indent=2))
+        return
+
+    # Detection-only mode: classify the install and (if answers given) diff,
+    # without writing anything. Used as a pre-pass before the merge.
+    if args.detect_mode:
+        result = detect_mode(args.config_path, module_yaml, args.legacy_dir)
+        if args.answers:
+            existing_config = load_yaml_file(args.config_path)
+            answers = load_json_file(args.answers)
+            result["changes"] = compute_changes(existing_config, module_yaml, answers)
         print(json.dumps(result, indent=2))
         return
 

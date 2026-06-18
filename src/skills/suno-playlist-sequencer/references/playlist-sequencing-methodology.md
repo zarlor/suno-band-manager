@@ -137,9 +137,9 @@ Sometimes a sequence of 2-N tracks is *deliberately positioned* to read as a uni
 When evaluating playlist changes:
 - Surface locked arcs explicitly before proposing reorders
 - Treat the arc's position as flexible (the block may move) but the order within as fixed
-- If a proposed reorder requires breaking the arc, stop and ask the user — never break a documented locked arc on Mac's own authority
+- If a proposed reorder requires breaking the arc, stop and ask the user — never break a documented locked arc on your own authority
 
-In Lenny's case, the locked arc is the four-song Love & Loss / Heal sequence (From Now Until... → Distant-- → Breast Feeding → The Fire That Never Stops). Per session-context-for-mac.md: *"These are positioned deliberately in the playlist and should not be separated."*
+A locked arc is typically a thematic sequence the writer positioned deliberately — for example, a four-song love → loss → grief → healing run whose emotional logic depends on the songs staying together and in order. The playlist YAML (or the user) flags such arcs as not-to-be-separated; the block may shift position as a unit, but the songs inside it never reorder and never split.
 
 ### Encore Structure
 
@@ -173,7 +173,7 @@ A repeatable approach for "is this playlist sequence working?" — apply variabl
 1. **Surface locked arcs** — what cannot move? Document them up front.
 2. **Run the script** — get all 38+ tracks' per-track data and per-transition scoring.
 3. **Verify felt BPM** for any track with library raw in the 130-180 BPM range or 70-100 BPM range — these are the bands where halftime/double-time confusion is most common. Ask the user when uncertain.
-4. **READ THE SONGBOOKS — MANDATORY** — for every song adjacent to the placement(s) under consideration AND the song being placed, read the full songbook entry at `docs/songbook/{band-slug}/{song-slug}.md` before making any thematic claim. See "Thematic Verification" below — this is non-negotiable.
+4. **READ THE SONGBOOKS — MANDATORY** — for every song adjacent to the placement(s) under consideration AND the song being placed, the full songbook entry at `docs/songbook/{band-slug}/{song-slug}.md` must be read before making any thematic claim. See "Thematic Verification" below — this is non-negotiable. **Scale the read to the job:** for a 1-2-track placement, read the handful of entries directly. For a catalog-scale pass (a full re-sequence touching dozens of tracks), delegate the full read to a subagent and have it return ONLY a compact per-song theme summary (one or two lines each: actual theme, any surface-vs-actual inversion, a load-bearing quote-in-context) — never read all entries into the parent context, where they'd compact out before the recommendation forms.
 5. **Identify the act structure** — is the playlist organized around narrative acts? What are their thematic functions? How many tracks per act?
 6. **Check the energy arc** — what shape does the playlist have? Does it match the intended shape (W, inverted-U, concert peak-end, contemplative descent)?
 7. **Check key positions** — do positions 1, 4, 7, 10 have load-bearing tracks? Is the closer a resolution?
@@ -182,7 +182,7 @@ A repeatable approach for "is this playlist sequence working?" — apply variabl
 10. **Form a recommendation** — propose specific moves with named justifications across multiple variables. Don't just say "swap X and Y" without naming what each variable says about that swap.
 11. **Surface trade-offs honestly** — every move has trade-offs. Name them. Don't claim a move is "cleaner" if it's actually "trades A-jarring for B-jarring."
 
-The output isn't a metrics dump — it's an opinionated proposal grounded in the variables, with explicit acknowledgment of what's locked, what's a judgment call, and where the user's ear should be the tiebreaker.
+The output isn't a metrics dump — it's an opinionated proposal grounded in the variables, with explicit acknowledgment of what's locked, what's a judgment call, and where the user's ear should be the tiebreaker. Write the proposal narrative in `{communication_language}`; any persisted companion/proposal document is written in `{document_output_language}`.
 
 ## Thematic Verification — MANDATORY before any placement recommendation
 
@@ -198,14 +198,14 @@ The output isn't a metrics dump — it's an opinionated proposal grounded in the
 - **Want** sounds like longing. Actually: legacy concern. "Will they know me? Will they care?" Heartbeat-pulse architecture about being-known-after-gone.
 - **Spiraling Prophecies?** sounds like cosmic vision. Closer to right but the framing is bait-and-switch — opens "I am contemplating suicide" personal-confessional, lands "the suicide of / Wisdom" cosmic-philosophical reveal.
 
-**Why surface inference fails so reliably:** poets don't telegraph. Lenny in particular uses paradox-as-structure, surprising juxtapositions, and imagery whose meaning resolves only in full context. A title or a line fragment is a bad summary of what the song does. The songbook entry — which carries the lyrics, the writer's stated intent, the production direction, and the catalog notes — is the authoritative source.
+**Why surface inference fails so reliably:** poets don't telegraph. A writer who works in paradox-as-structure, surprising juxtapositions, and imagery whose meaning resolves only in full context (the examples above are all drawn from one such catalog) defeats any surface read. A title or a line fragment is a bad summary of what the song does. The songbook entry — which carries the lyrics, the writer's stated intent, the production direction, and the catalog notes — is the authoritative source.
 
-**Mac discipline:**
+**Thematic-verification discipline:**
 
 - For every adjacent song in a placement recommendation: read the full songbook entry. Don't skim. Don't grep for theme keywords. Don't rely on the title or what's in the cross-reference table.
-- For the song being placed: same rule. Even if Mac has been workshopping it across many turns, verify the WIP/songbook captures the actual final theme before claiming what the song does.
+- For the song being placed: same rule. Even if you've been workshopping it across many turns, verify the WIP/songbook captures the actual final theme before claiming what the song does.
 - When pulling a line as evidence for a thematic claim, quote enough surrounding context that the line's actual function in the song is clear. A line in isolation almost always misleads.
-- If Mac doesn't have time to read the songbooks properly, Mac doesn't have time to make a placement recommendation. Ask the user for time, or surface placements with sonic analysis only and flag that thematic verification is pending.
+- If you don't have time to read the songbooks properly, you don't have time to make a placement recommendation. Ask the user for time, or surface placements with sonic analysis only and flag that thematic verification is pending.
 
 ## Cross-References
 
@@ -213,8 +213,8 @@ The output isn't a metrics dump — it's an opinionated proposal grounded in the
 - `scripts/playlist-sequencing-data.py` — generates the per-track sequencing data
 - `scripts/batch-full-analysis.py` — generates the catalog-wide deeper analysis (energy shifts, section boundaries, dynamic character)
 - `suno-feedback-elicitor/scripts/audio-deep-analysis.py` — per-song deep analysis (lives in the Feedback Elicitor skill)
-- `docs/audio-analysis/playlists/<album>.json` — JSON archive of the playlist sequencing data
+- `docs/audio-analysis/playlists/{band-slug}.json` — per-band JSON archive of the playlist sequencing data
 - `docs/audio-analysis/catalog/<date>-deep.json` — JSON archive of the deep catalog analysis
-- `docs/playlist-sequencing-data.md` — auto-refreshed Markdown companion to the playlist sequencing JSON
+- `docs/{band-slug}-playlist-sequencing.md` — per-band auto-refreshed Markdown companion to the playlist sequencing JSON
 - `docs/catalog-analysis-report.md` — auto-refreshed Markdown companion to the deep catalog analysis
 - `docs/audio-analysis-reference.md` — felt-BPM corrections + LLM-comparison hand-curated alongside the auto-table

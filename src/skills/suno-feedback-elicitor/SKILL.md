@@ -47,7 +47,7 @@ Translates subjective musical reactions into concrete parameter adjustments for 
 
 1. **Headless mode**: If `--headless` or `-H` flags are present, or intent clearly indicates non-interactive execution:
    - If `--headless:analyze` -- triage and categorize feedback only, return analysis as JSON
-   - If `--headless:adjustments` -- accept feedback + original prompts, return full adjustment recommendations
+   - If `--headless:adjustments` -- accept feedback + original prompts, return full adjustment recommendations. Runs triage internally if `feedback_type`/`dimensions` are absent; if they're present in the input, trusts them and skips re-triage.
    - If just `--headless` -- analyze + generate adjustments with balanced defaults
    - **Headless contracts:** Load `references/headless-contract.md` for output JSON schema, input flag specs, and the flag-to-JSON translation note (you are the translation layer between advertised flags and the scripts' JSON keys).
 
@@ -58,7 +58,7 @@ Translates subjective musical reactions into concrete parameter adjustments for 
 1. **Resolve customization** -- run `python3 {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --key workflow`. This reads the merged `[workflow]` block (base `customize.toml` -> team `{project-root}/_bmad/custom/{skill-name}.toml` -> user `{project-root}/_bmad/custom/{skill-name}.user.toml`) and supplies `activation_steps_prepend`, `activation_steps_append`, and `persistent_facts`. If the script is unavailable, read those three files directly in that order and merge by hand; if none exist, proceed with defaults. Run any `activation_steps_prepend` before the next step and load `persistent_facts`.
 2. **Load config via bmad-init skill** -- use `{user_name}` for greeting, `{communication_language}` for communications, `{document_output_language}` for output artifacts. **Fallback:** If bmad-init is unavailable, greet generically, default to English. Do not block.
 3. **Greet user** as `{user_name}` in `{communication_language}`
-4. **Intent check:** If the request doesn't involve feedback on a Suno generation, redirect to Band Manager agent or Style Prompt Builder.
+4. **Intent check:** If the request clearly isn't about feedback on an existing Suno generation, redirect to the Band Manager agent or Style Prompt Builder. If it's ambiguous -- e.g. you can't tell whether they want to refine an existing take or build something new -- ask one disambiguating question ("Are we refining a generation you've already heard, or starting a fresh one?") before redirecting; don't bounce a user who's actually in scope.
 5. **Run any `activation_steps_append`,** then **proceed to Step 1**
 
 ## Workflow Steps
@@ -69,7 +69,7 @@ Accept natural language feedback. Let them express freely -- don't interrupt or 
 
 **Capture everything** -- note specific words about sound, vocals, structure, mood, energy. Listen for section-specific feedback ("verse was great but chorus fell flat") -- informs full regeneration vs. section-level editing. If user shares strategic intent alongside feedback ("thinking concept album"), capture for Step 7 without redirecting.
 
-From this round onward, append to the iteration log (`docs/feedback-history/{band-profile-or-session}/`): what was tried and the user's reaction to it. The log is the living spine of refinement, not an end-of-session export.
+From this round onward, append to the iteration log: what was tried and the user's reaction to it. The log is one markdown file per song at `docs/feedback-history/{band-or-session}/{song-slug}.md` — `{band-or-session}` is the band-profile name (or a session timestamp `YYYYMMDD-HHMM` when no profile is in play), `{song-slug}` is the song title kebab-cased (or the same session timestamp when the song is untitled). Each round is a dated `## Round {n}` heading. The log is the living spine of refinement, not an end-of-session export.
 
 **Headless:** Accept as text or structured JSON with optional pre-categorized dimensions.
 
@@ -77,11 +77,11 @@ From this round onward, append to the iteration log (`docs/feedback-history/{ban
 
 Prioritize ruthlessly. Start with the most valuable question, gate further questions on triage results.
 
-**Resume prior rounds first.** Check `docs/feedback-history/{band-profile-or-session}/` for an existing iteration log for this song or band. If found, surface it ("We worked on this last on {date} -- round {n}; here's what we tried and how it landed") and resume from that record so the user isn't re-explaining settled ground; reading the log recovers full context even after compaction. This log is the canonical memory of multi-round refinement -- write to it from round 1 onward (below), don't treat it as a terminal artifact.
+**Resume prior rounds first.** Derive `{song-slug}` from the title and check whether `docs/feedback-history/{band-or-session}/{song-slug}.md` already exists (when the song name is fuzzy, scan that band's folder for a slug that matches). If it exists, surface it ("We worked on this last on {date} -- round {n}; here's what we tried and how it landed") and resume from that record so the user isn't re-explaining settled ground; reading the log recovers full context even after compaction. This log is the canonical memory of multi-round refinement -- write to it from round 1 onward (per Step 1), don't treat it as a terminal artifact.
 
 **Priority 1 (always):** "Can you share the style prompt you used? If you don't have it handy, just describe what you asked for and I'll reconstruct it from that plus your feedback." Reconstruction is a real path, not a fallback gate -- never block on the verbatim prompt.
 
-**Express path:** If the opening already supplied the style prompt and model (and lyrics, if vocal-relevant), skip the Q&A and go straight to triage -- confirm the package in one line rather than re-asking.
+**Express path:** If the opening already supplied the style prompt, skip the Q&A and go straight to triage -- confirm the package in one line rather than re-asking. The model isn't needed to start; only ask for it inline at Step 5 if overflow validation needs to know the character limit (and only when the adjusted prompt is near the limit). Lyrics likewise come in on demand if the feedback turns out to be vocal-relevant.
 
 **Priority 2 (as needed):** Original lyrics, band profile (`docs/band-profiles/{profile-name}.yaml`), model used, slider settings, creativity mode, intent description.
 
@@ -127,7 +127,7 @@ The user likes it. Lead with the win, not a manufactured problem.
 
 The user knows something is off but can't say what. Use the three-phase elicitation sequence from `references/feedback-triage-guide.md` (opposing pairs table, parameter mappings, technique details).
 
-**Maximally vague shortcut:** If zero dimensional awareness ("all of it is off"), skip to Phase 2: "Can you name a song or artist that sounds like what you wanted?"
+**Maximally vague shortcut:** If zero dimensional awareness ("all of it is off"), skip to Phase 2: "Can you point me at anything that sounds like what you wanted -- a song, an artist, a movie scene, or even just a feeling?" Any of these decomposes into concrete audio characteristics; musical knowledge isn't required.
 
 **Phase 1: Binary Narrowing** -- Yes/no questions across dimension checklist (music/production, vocals, energy, structure, lyrics, vibe). One at a time. If narrowed in 2 questions, skip to Phase 2.
 
@@ -185,11 +185,13 @@ Proceed to Step 5 (prompt adjustments) or Step 6 (pure regeneration/Studio recom
 
 Synthesize feedback into concrete Suno parameter adjustments.
 
-**Translate to structured dimensions** for `scripts/map-adjustments.py` (e.g., "vocals feel too polished" -> `{"dimension": "vocals", "direction": "too_polished"}`). Pass `--style-prompt` and `--model` when known so the script flags a `style_prompt_overflow` warning against the model's character limit (v4 Pro silently truncates at 200). Run the script for baseline recommendations, then refine with LLM judgment based on full context (band profile, intent, creative context from Step 1).
+**Translate to structured dimensions** for `scripts/map-adjustments.py` (e.g., "vocals feel too polished" -> `{"dimension": "vocals", "direction": "too_polished"}`). Pass `--style-prompt` and `--model` when known so the script flags a `style_prompt_overflow` warning against the model's character limit (v4 Pro silently truncates at 200). If the model wasn't captured earlier and the adjusted prompt is running near the limit, this is the one place to ask for it inline -- otherwise don't. Run the script for baseline recommendations, then refine with LLM judgment based on full context (band profile, intent, creative context from Step 1).
 
 **Consistency check:** Verify adds don't conflict with exclusions, sliders don't contradict style prompt, and no adjustment risks breaking liked elements.
 
-**Effectiveness tracking:** Read the iteration log for this song/band and reason against what prior rounds already tried -- don't re-recommend a move that already failed, and lean on one that worked. Offer to store reusable patterns in the band profile's `generation_learnings` field.
+**Effectiveness tracking:** Read the iteration log for this song/band and reason against what prior rounds already tried -- don't re-recommend a move that already failed, and lean on one that worked. Two distinct writes to the band profile, per the band-profile data contract:
+- **`generation_history`** -- this round's settings + reaction snapshot (the per-round record). Append it every round.
+- **`generation_learnings`** -- a durable pattern only when one round generalizes across songs (e.g., "reverb on lead vocals always reads as 'too polished' for this band"). Offer to store these; don't log one-song specifics here.
 
 **Research mandate:** When search tools are available, verify descriptors reflect current Suno behavior -- models evolve.
 
@@ -228,9 +230,9 @@ After user approves, offer next steps (outcomes first, skill names parenthetical
 - "Want me to rewrite the lyrics with these changes?" -> `suno-lyric-transformer --headless:refine`
 - Both can run in parallel -- independent artifacts.
 
-**Band profile update:** If feedback revealed a systematic preference (not one-song), offer to update the profile.
+**Band profile update:** If feedback revealed a systematic preference (not one-song), offer to add it to the profile's `generation_learnings` (the durable-pattern field from Step 5). The per-round `generation_history` snapshot is written every round regardless.
 
-**Iteration log audit:** The log has been accumulating since round 1 -- at handoff, make sure this round's tried-adjustments and the user's reaction are captured in `docs/feedback-history/{band-profile-or-session}/`, and confirm the record reads as a faithful account of the session so the next round (or the next session) resumes cleanly. Encourage returning after trying the updated version.
+**Iteration log audit:** The log has been accumulating since round 1 -- at handoff, make sure this round's tried-adjustments and the user's reaction are captured in `docs/feedback-history/{band-or-session}/{song-slug}.md`, and confirm the record reads as a faithful account of the session so the next round (or the next session) resumes cleanly. Encourage returning after trying the updated version.
 
 ## Scripts
 

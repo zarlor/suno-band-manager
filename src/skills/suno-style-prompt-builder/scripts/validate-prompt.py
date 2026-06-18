@@ -83,7 +83,7 @@ def detect_triggers(text: str) -> list[dict]:
             "severity": "medium",
             "category": "trigger",
             "issue": f"Keyboard-pull dangerous word(s): {found_kb}. These pull theatrical/keyboard/synth-heavy or cinematic-light arrangements when guitars/bass should lead.",
-            "fix": "Replace per the Dangerous Words table — e.g. 'cinematic' -> 'dynamic shifts, building from gentle to crushing'; 'orchestral' -> 'cello, heavy strings, kettle drums'; avoid 'baroque' (describe the qualities instead).",
+            "fix": "Replace per the Dangerous Words table — e.g. 'cinematic' -> 'dynamic shifts, building from gentle to crushing'; 'orchestral' -> 'cello, heavy strings, kettle drums'; 'rock opera' -> 'power ballad, dynamic shifts, building from gentle to crushing'; avoid 'baroque' (describe the qualities instead).",
             "data": {"words": found_kb}
         })
 

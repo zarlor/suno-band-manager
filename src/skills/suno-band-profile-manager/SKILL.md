@@ -65,7 +65,7 @@ Every return is JSON with `status` (`complete` | `blocked`). On `blocked`, add a
 
 | Flag | Action | Returns |
 |------|--------|---------|
-| `--headless:create` | Validate provided YAML, save profile, scaffold playlist YAML, write decision log — all in one write batch | `{"status": "complete", "profile_path": "...", "playlist_path": "...", "decision_log": "...", "validation": {...}}` |
+| `--headless:create` | Validate provided YAML, save profile, scaffold playlist YAML, write decision log — all in one write batch. **Auto-resolvable issues** (style_baseline over the model's limit → trim; free-tier sliders/studio prefs → drop) are fixed, logged, and surfaced in the `validation` warnings block → `complete`. **Unresolvable issues** (missing required `genre`/`mood`/`style_baseline`, invalid `tier`/`model`) → `blocked` (nothing saved). | complete: `{"status": "complete", "profile_path": "...", "playlist_path": "...", "decision_log": "...", "validation": {"warnings": [...]}}` · blocked: `{"status": "blocked", "reason": "...", "decision_log": "..."}` |
 | `--headless:edit <name>` | Merge YAML field overrides via `apply-profile.py --set`, validate, save | `{"status": "complete", "profile_path": "...", "fields_changed": [...], "decision_log": "...", "validation": {...}}` |
 | `--headless:duplicate <source> <new_name>` | Copy via `apply-profile.py --duplicate`, validate, write decision log | `{"status": "complete", "profile_path": "...", "source": "...", "decision_log": "..."}` |
 | `--headless:validate` | Validate existing profile | validate-profile.py JSON output |
@@ -81,7 +81,7 @@ The deterministic save/field-merge for create, edit, and duplicate is owned by `
 
 Once the band is named (propose a kebab-case slug if the user doesn't give one — a rename later is a logged decision, not a redo), write the sibling decision log at `{band_profiles_folder}/{profile-name}.decision-log.md`. The decision log is canonical memory — load-bearing decisions, rejected references/descriptors, and overrides live on disk, not in the conversation. If a log already exists for this slug, append a new session heading instead.
 
-**Open-floor opening:** Start by inviting the user to dump everything they've got — "Tell me everything you've got: the vibe, bands it should sound like, lyrics or poems lying around, links, whatever's in your head." Extract what they give, then ask only about what's genuinely missing.
+**Open-floor opening:** Start by inviting the user to dump everything they've got — "Tell me everything you've got: the vibe, bands it should sound like, lyrics or poems lying around, links, whatever's in your head — oh, and which Suno plan you're on (free / Pro / Premier) so I only offer what you can actually use." Tier/model gates half the later discovery (sliders, Voices, Custom Models, studio prefs), so reaching for it up front lets `scripts/tier-features.py` run early and prunes discovery to the user's reality instead of walking back features mid-stream. Extract what they give, then ask only about what's genuinely missing.
 
 Load `references/profile-schema.md` and run `scripts/tier-features.py` (if tier known) in parallel when entering this operation.
 
@@ -93,11 +93,12 @@ Gather the information needed for a complete profile through natural dialogue (f
 - **References**: 2-3 "sounds like" artists/songs. Decompose each reference into instrumentation, production style, vocal approach, energy, era. Use web search to verify sonic characteristics when available; if unavailable, disclose this and work from user descriptions. Confirm: "Does that breakdown match what you hear?"
 - **Model & tier**: Which Suno model/plan. Run `scripts/tier-features.py` to show available features.
 - **Vocal direction** (skip if instrumental): Gender, tone, delivery, energy, diction — push for evocative specifics ("warm, breathy female vocal with indie folk phrasing" not "female vocals"). Capture Voice (v5.5, `voice_id`) or Persona (v4.5/v5, name + source song). When a Voice is set, flag that gender descriptors should be omitted from style baseline.
-- **Voices & Custom Models** (Pro/Premier only): Capture `voice_id` (v5.5 voice cloning) and/or `custom_model_id` with `custom_model_notes`.
+- **Voices & Custom Models** (Pro/Premier only): Capture `voice_id` (v5.5 voice cloning) and/or `custom_model_id` with `custom_model_notes`. If the band uses more than one cloned Voice for different track types, capture them as the `voices:` list (`{voice_id, label, use_case}` each) and set `vocal.voice_id` to the primary — see `references/profile-schema.md`.
 - **Style baseline**: Build default style prompt from collected answers. Front-load essentials in the first ~200 characters (critical zone — strongest influence on generation). 1,000 char hard limit for v4.5+/v5/v5.5 (200 for v4 Pro). Show draft: "Read this like a recipe for your sound — does every ingredient belong?"
 - **Exclusions**: What should never appear (max 5, concise). Note internally: Suno doesn't reliably process negatives — Style Prompt Builder translates these into positive language.
 - **Creative settings**: Creativity mode (conservative/balanced/experimental). Paid tiers: Weirdness and Style Influence slider preferences (0-100).
 - **Writer voice** (optional): Offer to analyze now or skip for later.
+- **Accumulated learnings** (optional): If the user already knows what works or what to avoid for this sound (from prior Suno sessions), capture it — durable cross-song patterns into `generation_learnings` / `known_working_patterns`, dead ends into `known_limitations`. Most first-timers won't have these yet; don't push.
 
 **Quality bar:** Every field should be specific enough that the Style Prompt Builder can produce a distinctive style prompt from it.
 
@@ -132,7 +133,7 @@ If ambiguous, list profiles and ask to clarify.
 
 Read the target profile YAML, its sibling `{profile-name}.decision-log.md`, and `references/profile-schema.md` in parallel when entering this operation. The change request enters as a change signal against the standing record: if it contradicts a prior decision in the log, surface the conflict before applying.
 
-Accept natural language changes and apply to relevant fields. If tier changes, run `scripts/tier-features.py` to check feature availability. If genre/mood/vocal fields change, suggest reviewing style_baseline.
+Accept natural language changes and apply to relevant fields. If tier changes, run `scripts/tier-features.py` to check feature availability. If genre/mood/vocal fields change, suggest reviewing style_baseline — and read the profile's `known_limitations`, `known_working_patterns`, and `generation_learnings` (the band's accumulated craft) and surface any collision with the requested change ("heads up — `known_limitations` says 'funk metal' triggers slap bass here; want to phrase it differently?"). A months-old profile's hardest-won knowledge lives in those fields; an edit that ignores them repeats a dead end.
 
 **Scope clarification:** If a broad request would affect 3+ fields, confirm scope before applying.
 
@@ -164,7 +165,7 @@ Extracts writer voice patterns from writing samples and stores them in a band pr
 
 **Present analysis** with example quotes from their samples illustrating each pattern. User confirms or corrects.
 
-**Store** as `writer_voice` section of the specified band profile. If none specified, ask which one (or create new).
+**Store** as `writer_voice` section of the specified band profile. If a profile is specified, write into it. If none is named but profiles exist, ask which one. If no band exists yet (a natural order — many writers know their voice before their sound), don't manufacture a stub profile that would fail validation (genre/mood/style_baseline are required): hold the writer_voice analysis and route into **Create**, building the band around this voice and dropping the analysis straight into its `writer_voice` section once the required fields are gathered.
 
 ### Health Check
 
@@ -177,6 +178,7 @@ Assess beyond structural validation — is it good enough for great Suno output?
 - **exclusion_defaults** — none? Suggest common exclusions for the genre.
 - **vocal direction depth** — generic? Suggest specific descriptors.
 - **generation_history** — any snapshots? Remind to save winners.
+- **known_limitations / known_working_patterns / generation_learnings** — the band's accumulated craft. Read them back, and ask whether the last few sessions taught anything worth recording ("Learned anything new about what works or what to avoid for this band? Paste it and I'll record it — durable patterns into `generation_learnings`, this-round settings into `generation_history`"). Capture what they give into the right field per the schema's data contract.
 
 Present as friendly recommendations, not failures.
 

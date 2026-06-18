@@ -48,6 +48,8 @@ This skill generates Suno-ready style prompts optimized for the user's chosen mo
    - `--headless` with profile name -- hybrid mode (profile baseline + overrides)
    - Bare `--headless` with no sub-mode and no profile -- require at minimum `genre_mood`; apply defaults
    - Reload `references/model-prompt-strategies.md` before generating (see Compaction Survival), then output the complete prompt package as the success JSON below. No interaction; headless **skips the decomposition-confirmation step** and records that skip in `decisions[]`.
+   - **Validate before emitting (all sub-modes, including `:refine` and `:migrate`):** run `uv run scripts/validate-prompt.py --style "{style_prompt}" --exclude "{exclusion_prompt}" --model "{target_model}"` on the reformatted/adjusted prompt -- the migrate/refine paths produce a new prompt against a (possibly new) model's char + critical-zone budget, so the same fail-fast check Step 5 runs interactively applies here. Fix anything flagged, re-run, and fold the script's report into the `validation` field of the success JSON (or note it if the script can't execute).
+   - **Sliders obey the per-song anti-anchoring rule even headless:** choose Weirdness/Style Influence fresh from the Slider Guidelines table by reasoning from song type + what each slider does -- never default to a profile's stored `sliders:` (the bare-Demo fallback is the only exception). Log each chosen value with its behavioral reasoning in `decisions[]`. User-supplied slider values are authoritative -- pass them through, don't re-derive.
 
    **Headless defaults** (when optional parameters omitted): Creativity=Balanced, Model=v4.5-all, Wild card=disabled (unless `include_wild_card=true`)
 
@@ -84,7 +86,7 @@ This skill generates Suno-ready style prompts optimized for the user's chosen mo
 
 ## Compaction Survival (HARD RULE)
 
-All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous Words / keyboard-pull list, and the Genre Term Behavior Table -- lives in `references/model-prompt-strategies.md`. A long interactive session or an open-ended Step 5 refine loop can compact that reference out of context, and a prompt built without it can silently ship "metal", "cinematic", or an unpaired heavy genre that triggers screaming or pulls keyboards.
+All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous Words / keyboard-pull list, the Genre Term Behavior Table, and the **Slider Guidelines table + per-song anti-anchoring rule** (choose Weirdness/Style Influence fresh each song reasoning from what each slider DOES; never anchor to a profile's stored `sliders:` defaults or to "what similar catalog songs used" -- a profile's stored sliders are a weak fallback for a bare Demo *only*, the single exception) -- lives in `references/model-prompt-strategies.md`. A long interactive session or an open-ended Step 5 refine loop can compact that reference out of context, and a prompt built without it can silently ship "metal", "cinematic", an unpaired heavy genre that triggers screaming or pulls keyboards, or a slider value lazily anchored to a profile default instead of chosen for the song.
 
 **Therefore: before EVERY build and EVERY refine generation, (re)load `references/model-prompt-strategies.md` and treat its gotcha tables as non-negotiable inputs.** Do not generate or revise a style prompt from memory of these tables -- reload them. `validate-prompt.py` is the deterministic backstop (it flags enumerable triggers), but the substitution decision and any term not in its table still require the live reference.
 
@@ -96,7 +98,9 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 
 **Signpost build vs. refine at the front door.** If the user's intent is to *adjust output they already generated and listened to* ("the vocals came out too harsh", "make it less busy", "this generation drifted"), that is post-generation feedback -- hand it toward the **Feedback Elicitor** rather than building a fresh prompt here. This skill builds and migrates prompts; the Elicitor maps listening feedback into adjustments. A new build from a fresh creative direction stays here.
 
-**Expert quick-win short-circuit.** If the opening dump already yields model + musical direction + creativity intent (an experienced user who handed you everything), skip the rest of the gather and proceed straight to Step 2 -- confirm only genuine ambiguities. Don't re-ask for things already provided.
+**Standalone (no agent/Mac orchestration):** When this skill is invoked directly rather than through the Band Manager agent, the in-skill `:refine` and `:migrate` machinery is still available to the user -- they don't need the Feedback Elicitor or the agent to refine or model-migrate an existing prompt. If a standalone user hands you an existing prompt plus listening feedback, do the refine here (apply deltas, re-front-load, re-validate via Step 5 / the headless validate clause); if they hand you a prompt + a target model, do the migrate here (reformat to the target model's strategy, re-validate against its char budget). Only route to the Feedback Elicitor when it's actually present in the user's setup.
+
+**Expert quick-win short-circuit.** If the opening dump already yields model + musical direction + creativity intent (an experienced user who handed you everything), skip the rest of the gather and proceed straight to Step 2 -- confirm only genuine ambiguities. Don't re-ask for things already provided. **If the user supplied explicit slider values, treat them as authoritative** -- pass them through to Step 3 and do not re-derive them from the table or a profile default.
 
 **Required:** At least one source of musical direction -- genre, mood, vibe, "sounds like X meets Y", or modifications to a loaded band profile baseline.
 
@@ -110,6 +114,8 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 
 **No profile loaded:** Need genre, mood, and vocal direction at minimum. Offer to proceed without profile or hand off to Profile Manager.
 
+**Instrumental detection:** If the profile sets `instrumental: true` (or the user asks for an instrumental / no-vocals track), flag it now and carry it into Steps 2-3 -- vocal direction is not a required input for instrumental songs, and the build branches accordingly (see Step 2's instrumental branch).
+
 **Tier detection:** Determine from profile `tier` field or ask. Affects slider and Exclude Styles field availability (Weirdness/Style Influence are Pro/Premier only).
 
 **Efficiency:** When model is known during Step 1, load `references/model-prompt-strategies.md` alongside the profile read.
@@ -117,6 +123,8 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 ### Step 2: Build Style & Exclusion Prompts
 
 (Re)load `references/model-prompt-strategies.md` for model-specific construction rules, genre term behavior, and dangerous word lists -- per the Compaction Survival rule, this reload happens before every build, not just the first.
+
+**Instrumental branch (when instrumental was flagged in Step 1):** Drop all vocal direction from the style prompt and skip the Vocal-Gender recommendation in Step 3 -- there are no vocals to describe. Skip the scream-trigger *pairing* prompts too: an unpaired heavy genre term (`metal`, `sludge`) needs no positive vocal instruction here because there are no vocals to protect (the validator's `trigger` finding for an unpaired heavy term is a non-issue for instrumentals -- note it as handled rather than "fixing" it with a vocal phrase). Note `[Instrumental]` handling for the package. **Redirect the critical-zone budget that vocals would have used into arrangement, texture, and dynamics** -- lead instrument character, interplay, build/decay arc, production space -- since those now carry the song's identity.
 
 **Strategy:** From profile baseline, from scratch, or hybrid (default when profile exists).
 
@@ -135,6 +143,8 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 - **"Death"**, **"thrash"**, **"black"** (as genre modifiers) trigger extreme vocal styles
 - When a profile specifies these genres but excludes screaming, automatically substitute safe alternatives
 
+**Keyboard-pull dangerous words** -- **"baroque"**, **"orchestral"**, **"cinematic"**, and **"rock opera"** pull theatrical/keyboard/synth-heavy or cinematic-light arrangements when guitars/bass should lead. These are texture modifiers, not genres. Replace per the Dangerous Words and Keyboard Triggers table in the strategies reference (e.g. "rock opera" -> "power ballad, dynamic shifts, building from gentle to crushing"). `validate-prompt.py` flags them; the reference carries the per-word rewrite.
+
 **Rhythm nouns over tempo adjectives:** "halftime", "double-time", "four-on-the-floor", "shuffle", "breakbeat" lock feel more effectively than "slow", "fast", "upbeat"
 
 **Instrument bleed-through:** The style prompt sets a GLOBAL instrument palette; instruments bleed into ALL sections regardless of section-level tags. Warn users requiring section-specific instrumentation. See strategies reference for mitigation (accents suffix, end-placement, stems workflow).
@@ -149,12 +159,11 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 
 ### Step 3: Slider & Parameter Recommendations
 
-**Pro/Premier:**
-- **Weirdness** (0-100) -- Conservative: 20-35, Balanced: 40-60, Experimental: 65-85
-- **Style Influence** (0-100) -- Tight: 65-80 (above ~80 plateaus), Balanced: 40-60, Loose: 20-40
-- **Audio Influence** (0-100, appears with Persona/uploaded audio) -- Voice preservation: 25-40%, Closer match: 60-75%, High fidelity: 70-80% (above 80% may introduce artifacts)
+**Pro/Premier sliders -- choose fresh per song (anti-anchoring rule):** Pull Weirdness and Style Influence from the **Slider Guidelines table** in `references/model-prompt-strategies.md` (reloaded per Compaction Survival) by reasoning from the song's type + counter-genre needs + what each slider actually DOES -- Weirdness adds unpredictability/non-obvious choices, Style Influence governs how tightly Suno follows the prompt. **The sliders are the deliberate per-song differentiator.** Do NOT anchor to a band profile's stored `sliders:` defaults, nor nudge up/down from "what similar catalog songs used" -- that is the documented failure mode (recommending 55 by anchoring "above the 45 default" for a song that wanted ~75). **The one exception:** a bare Demo ("just make me something") may fall back to the profile's stored `sliders:` if present. Audio Influence is the slider commonly left at a standard value (~25% for Personas; see the Voices table for Voice cases). Log the chosen values + the behavioral reasoning (headless: in `decisions[]`).
 
 **Free tier:** Note sliders unavailable. Recommend Vocal Gender selection and Lyrics Mode.
+
+**Instrumental songs:** Skip the Vocal-Gender recommendation entirely and set Lyrics Mode to Instrumental -- there is no vocal to gender.
 
 **Additional parameters (all tiers):**
 - Lyrics Mode (Manual/Auto), Song title suggestion
@@ -220,6 +229,8 @@ Rules: twist one or two major elements along the chosen direction, keep it music
 **Multi-model:** If user has no model preference, generate both v4.5-conversational and v5-film-brief variants.
 
 **Iteration guidance:** Generate 3-5 versions on Suno before modifying the prompt. Change only 1-2 variables per iteration. For v5 Pro, Suno Studio's section editing, stems, and alternates can address issues without re-prompting. At session end, offer collected summary of all versions with deltas.
+
+**Version ledger (compaction-proof).** A multi-version refine loop is exactly long enough to compact away the version history before you can offer the end-of-session summary. As each version is presented, append a one-line entry -- `vN | {one-line prompt or its key change} | {changed variable}` -- to a `.style-prompt-ledger.md` scratch file in the working directory (create on v1). The end-of-session summary reads from this ledger, so it survives compaction regardless of how long the refine loop ran. This is a lightweight scratch log, not a Decision-Log Workspace -- one appended line per version, nothing more.
 
 **Pro tier tip:** Legacy Editor can replace/regenerate individual sections, rearrange via drag-and-drop, and preview alternatives. Recommend for dramatic section contrasts.
 

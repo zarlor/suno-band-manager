@@ -39,11 +39,14 @@ This skill orders a body of tracks into a coherent album-craft listening experie
        "album": "string",
        "recommended_sequence": [{"position": 1, "name": "string", "rationale": "string"}],
        "locked_arcs_respected": ["string"],
+       "dropped_tracks": [{"name": "string", "reason": "missing audio file | analysis error"}],
+       "flagged_transitions": [{"from": "string", "to": "string", "issue": "string"}],
        "trade_offs": ["string"],
        "artifacts": {"sequencing_json": "docs/audio-analysis/playlists/{band-slug}.json", "companion": "docs/{band-slug}-playlist-sequencing.md", "decision_log": "docs/{band-slug}-playlist-sequencing/.decision-log.md"},
        "decision_log": [{"call": "string", "reason": "string"}]
      }
      ```
+     `dropped_tracks[]` lists any playlist entry the script could not analyze (audio file missing/mistyped, or analysis error) — populate it from the script's per-track status, never silently sequence a short list. `flagged_transitions[]` carries the transitions the methodology judged jarring/degraded (worst first). `decision_log[]` must include an entry for every assumption made without the user — including any declined locked-arc break (recorded, not acted on) and any transition sequenced on felt-BPM-taken-on-faith (no interactive ear-confirmation available).
    - **Blocked contract:** `{"status": "blocked", "missing": ["playlist_yaml"], "reason": "one-line cause", "decision_log": []}`.
 
 2. **Interactive mode** (default): Proceed to On Activation.
@@ -64,9 +67,11 @@ The load-bearing sequencing knowledge — the per-track variable stack, energy-a
 
 **Open the floor.** Invite the user to share everything: which band/album, the per-band playlist YAML (or whether one needs scaffolding), any fixed/locked sequences, what they're trying to fix ("doesn't flow"), and whether this is a first ordering, a re-evaluation after a regen wave, or slotting one new track. Adapt the ask to what they hand you.
 
+**Frame the scope before working.** Once you know the job, say back what you're about to do and how deep it goes — a full re-sequence with songbook-verified thematic claims is a different commitment from a one-track slot or a sonic-only transition pass. Let the user redirect the depth before you spend the effort.
+
 **Canonical input:** the per-band playlist YAML at `docs/{band-slug}-playlist.yaml` — the single source of truth for the band's track sequence. If a band has songbook entries but no playlist YAML, scaffold one via `python3 src/skills/suno-band-profile-manager/scripts/scaffold-playlist.py {band-slug} --from-songbook`, then have the user fill in audio filenames. Schema and lifecycle rules: `suno-band-profile-manager/references/profile-schema.md` "Per-Band Playlist YAML".
 
-**Scope check (skip the heavy methodology):** reordering 1-2 adjacent tracks with no upstream/downstream impact, or a fixed-sequence user who wants only sonic-transition feedback, doesn't need the full review — handle it directly.
+**Scope check (skip the heavy methodology):** reordering 1-2 adjacent tracks with no upstream/downstream impact, or a fixed-sequence user who wants only sonic-transition feedback, doesn't need the full review — handle it directly. A very short playlist (≤4 tracks) likewise has no real album-arc to shape — there's no front/peak/close geography to balance, so skip the arc models, surface any locked pair, and reason about the handful of transitions directly rather than narrating a methodology that doesn't have room to apply.
 
 ### Step 2: Generate Sequencing Data
 
@@ -78,6 +83,12 @@ uv run scripts/playlist-sequencing-data.py --playlist docs/{band-slug}-playlist.
 
 This produces per-track BPM, overall/entry/exit keys + Camelot codes, energy level, intro/outro energy %, and per-transition quality (exit-Camelot of N → entry-Camelot of N+1). Output auto-archives to `docs/audio-analysis/playlists/{band-slug}.json` and refreshes the companion `docs/{band-slug}-playlist-sequencing.md` (AUTOGEN markers preserve hand-curated content). If librosa deps are missing the script returns JSON with install instructions (exit code 2) — surface that and continue with any data already on disk.
 
+**Reconcile the track count before sequencing.** Compare the number of tracks the script actually analyzed against the playlist YAML entry count. A missing or mistyped audio filename makes the script skip that track silently, and an unnoticed drop produces a confident sequence over the wrong list. If any track is MISSING or errored, name those tracks explicitly and confirm with the user (fix the filename, or proceed knowingly without them) before sequencing. In headless, never silently drop — record each dropped track in `dropped_tracks[]`.
+
+**Re-eval after a regen wave:** when the intent is re-evaluation rather than a first ordering, diff the fresh script output against the prior archive at `docs/audio-analysis/playlists/{band-slug}.json` and lead the proposal with what actually moved — which tracks' BPM/key/energy shifted and which transitions degraded as a result — instead of re-deriving the whole sequence from scratch.
+
+**Fully degraded (deps gone AND no prior archive):** if librosa is unavailable and there's no archived JSON to fall back on, there is no audio data at all. Don't fabricate Camelot/BPM/energy numbers. Either help the user install the deps, or proceed on narrative/thematic grounds only (locked arcs, theme spacing, act logic) and state plainly that the sonic-transition layer is unverified.
+
 **Optional catalog-wide deeper pass:** for energy shifts, section boundaries, spectral balance, and dynamic character across the whole catalog, run `uv run scripts/batch-full-analysis.py --audio-dir docs/audio` (writes `docs/catalog-analysis-report.md`). Use it when dynamic-character or section-shape data informs the arc; skip it for a quick reorder.
 
 The data layer is the *input* to the methodology — it does not decide the sequence.
@@ -86,9 +97,15 @@ The data layer is the *input* to the methodology — it does not decide the sequ
 
 (Re)load `references/playlist-sequencing-methodology.md` per Compaction Survival, then apply it: surface locked arcs first, verify felt BPM for tracks in the halftime/double-time danger ranges, **read the full songbook entry for every song in any thematic claim** (Thematic Verification — mandatory), identify the act/energy-arc shape, check load-bearing key positions, walk transitions on the full variable stack, and spot cluster opportunities (scattered felt-tempo cousins; adjacent thematic cousins that should be spaced). The reference carries the energy-arc models, key positions, same-key/sonic-palette/tempo-variety rules, similar-songs-distance, encore anatomy, and the parallel-key and genre-outlier caveats.
 
+For a full re-sequence (not a quick reorder), the two flows are independent and easy to conflate, so review them as parallel lenses: a **sonic-flow** pass (Camelot/felt-BPM/intro-outro/sonic-palette transitions and the energy arc) and a **narrative-flow** pass (theme spacing, act logic, locked arcs, the closer-as-resolution). Reconcile where they disagree — a transition that's sonically smooth but thematically blurs two cousins, or a thematically perfect adjacency that's tempo-jarring — rather than letting one lens silently win.
+
 ### Step 4: Present the Sequence
 
+Before committing to a proposal, **soft-gate**: ask whether there's anything fixed you should respect — a locked pair, a deliberate opener/closer, a track the user refuses to move — before you build the order around assumptions. Cheaper to ask than to re-sequence.
+
 Present an *opinionated proposal*, not a metrics dump: the recommended order with per-move rationale that names what each variable says, the energy-arc shape it produces, which arcs were held locked, and honest trade-offs (every move trades something — name it; don't claim "cleaner" when it's "trades A-jarring for B-jarring"). Where the user's ear should be the tiebreaker, say so. Invite refinement and iterate.
+
+When the user volunteers a narrative aside mid-flow ("oh, that one's really about my dad," "these two were written as a pair") — capture it into the decision log rather than interrupting the sequencing to chase it. Those unprompted asides are often the load-bearing thematic context the songbook read would otherwise have to surface.
 
 The recommended sequence is a revisable artifact: write the proposal and a `.decision-log.md` as peers in `docs/{band-slug}-playlist-sequencing/` (the workspace); the decision log is canonical memory — it records each placement call, the rejected alternatives, and any locked-arc override the user authorizes, so a later re-sequence resumes cleanly instead of relitigating settled placements. On re-sequence, read the decision log first and enter the change as a signal against the standing record, surfacing any conflict with a prior call before applying it. At handoff, audit the log so the user signs off on how their sequencing decisions were handled.
 

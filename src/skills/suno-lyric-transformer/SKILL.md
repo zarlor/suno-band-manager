@@ -61,8 +61,9 @@ Transforms poems, raw text, and rough lyrics into Suno-ready structured song lyr
 **Headless Output Contract:**
 ```json
 {
-  "status": "complete | blocked",
+  "status": "complete | complete_with_caveats | blocked",
   "reason": "one line — only when status is blocked",
+  "caveats": ["voice-preservation second read flagged X", "degraded: syllable-counter.py failed, counts are LLM estimates", "non-Latin: structure-only, no syllable/rhyme/cliche"],
   "transformed_lyrics": "string — complete lyrics with metatags",
   "transformation_summary": {
     "sections": ["Verse 1", "Chorus", "Verse 2", "Chorus", "Bridge", "Final Chorus"],
@@ -89,7 +90,9 @@ Transforms poems, raw text, and rough lyrics into Suno-ready structured song lyr
 
 **Hashes are read, never computed.** `source_hash` (and the LT-STATE `source_hash`) come from `analyze-input.py`'s `metrics.source_hash`; the `draft_hash` after a transform comes from re-running `analyze-input.py` (or `validate-lyrics.py` extended the same way) on the current draft. An LLM cannot compute sha256 by hand — if the script did not run, mark the hash `unavailable` rather than inventing one.
 
-**Headless decision log.** Capture every assumption a headless run makes without the user: inferred transformation options, profile-not-found-proceeded, budget trims, cliche keep/replace calls, and the non-Latin fork. **Headless non-Latin default:** auto-skip syllable/rhyme/cliche detection and focus on structure + emotional arc (interactive mode leaves this a user choice); record the skip in `decision_log`. On `blocked` (e.g. no source text, mutually exclusive options that cannot be reconciled), set `status: "blocked"` with a one-line `reason` and still return the `decision_log`.
+**Headless decision log.** Capture every assumption a headless run makes without the user: inferred transformation options, profile-not-found-proceeded, budget trims, cliche keep/replace calls, and the non-Latin fork. **Headless non-Latin default:** auto-skip syllable/rhyme/cliche detection and focus on structure + emotional arc (interactive mode leaves this a user choice); record the skip in `decision_log`. On `blocked` (e.g. no source text, oversized input where even the strongest section won't fit, mutually exclusive options that cannot be reconciled), set `status: "blocked"` with a one-line `reason` and still return the `decision_log`.
+
+**Status and caveats.** `complete` is a clean run. `complete_with_caveats` means delivered-but-degraded — use it (and populate the `caveats` array) when a run still returns lyrics but the caller should know the output is qualified: the voice-preservation second read flagged a real risk, a script failed and counts fell back to LLM estimates, oversized input was focused down to its strongest section, or a mixed/non-Latin script forced a structure-only path. `caveats` is the machine-visible surface of those facts (the `decision_log` carries the reasoning); keeping it distinct from `blocked` lets a caller consume a usable-but-flagged result instead of treating every degradation as a failure.
 
 ## Workflow Steps
 
@@ -102,13 +105,15 @@ Transforms poems, raw text, and rough lyrics into Suno-ready structured song lyr
 **Required:** Source text (pasted or file path). Validate file paths before passing to scripts.
 
 **Optional inputs:**
-- **Band profile** — from `{band_profiles_folder}/{name}.yaml`; constrains voice/vocabulary. If not found, list available profiles or proceed without.
+- **Band profile** — from `{band_profiles_folder}/{name}.yaml`; constrains voice/vocabulary. Three states, kept distinct so Step 4's "verify voice alignment" isn't rubber-stamping absent constraints: **(a) not found** → list available profiles or proceed without; **(b) found but malformed** (won't parse) → note it, proceed without its constraints, don't silently treat it as clean; **(c) found and parses but carries no voice/vocabulary fields** → use it for what it has, but flag that there are no voice constraints to verify against later. Carry which state applied into Step 4 and (headless) the `decision_log`.
 - **Song direction** — genre, mood, energy (informs structure, vocabulary, cliche alternatives)
 - **Reference tracks** — "sounds like X meets Y" (informs vocabulary, line length, rhyme style)
 - **Transformation options** — see Step 2; present if not specified
 - **Language** — default English
 
 Capture ambient creative context users share alongside their text ("this is about my grandmother") — it informs arc mapping, chorus creation, and metatag choices.
+
+**Unbroken prose:** If the source arrives as running prose with no line breaks (one paragraph, no poem-style lines), segment it into candidate lines first — break on clause and breath boundaries (punctuation, conjunctions, natural phrasing) — before arc-mapping or any line-based script analysis, which both assume lines exist. Note that the line breaks are inferred, not the writer's.
 
 **Input analysis (parallel batch):**
 - `analyze-input.py` — existing metatags, repeated phrases, rhyme pairs, counts, `source_hash`, structure size, script type detection
@@ -122,13 +127,15 @@ If any script fails, continue with LLM-based analysis, noting approximation.
 
 **Non-English input:** For non-Latin scripts (CJK, Arabic, Cyrillic), auto-skip syllable counting, rhyme detection, and cliche detection — focus on structure and emotional arc, which work across all languages. For Latin-script non-English, offer choice to skip or proceed with caveats. (Headless: apply the documented non-Latin default and log it.)
 
+**Mixed-script input:** If `analyze-input.py` reports both Latin and non-Latin lines, split the treatment by line rather than forcing the whole text one way — Latin lines get syllable/rhyme/cliche analysis, non-Latin lines are treated structure-only. Report the split (which lines got which treatment) in the analysis presentation and, headless, in `caveats` + `decision_log`.
+
 **Pre-structured input:** If existing metatags detected, acknowledge and default to RA + CD rather than full pipeline. Raw text defaults to ST + CC + RA + CD.
 
 **Short input** (under ~15 content lines, per `analyze-input.py` `estimated_structure: short`): a default full-poem pipeline produces aimless looping instrumental. Route to the very-short-poem strategies in `references/section-jobs.md` (double-delivery, chorus extraction, thesis isolation) and surface them as the recommended path in Step 2.
 
 **Em-dash narrative section tags:** If the source already carries section tags with em-dash/colon narrative labels like `[Verse 1 — THE ROOM]` or `[Breakdown — THE TURN]`, flag them for translation to Suno-actionable direction (`[Verse 1: hushed, tense]`) — Suno has no signal for the narrative label and may sing it. See `references/metatag-reference.md` (Section Structure Tags). Keep the human-readable label in songbook notes, not the paste-ready block.
 
-**Oversized input:** If `analyze-input.py` flags character count far over the 5,000 hard limit (not just over the 3,000 quality budget), offer split/focus **now** — split into multiple songs, or focus on the strongest section — rather than transforming the whole thing and discovering the overflow at Step 3.
+**Oversized input:** If `analyze-input.py` flags character count far over the 5,000 hard limit (not just over the 3,000 quality budget), offer split/focus **now** — split into multiple songs, or focus on the strongest section — rather than transforming the whole thing and discovering the overflow at Step 3. **Headless default:** focus the single strongest section that fits the budget, log the assumption in `decision_log`, and return `complete_with_caveats` with the focus noted in `caveats`; block only if even the strongest section won't fit the hard limit.
 
 Present analysis: structure, emotional arc, hooks, syllable patterns, character count vs. budget.
 
@@ -162,7 +169,7 @@ Apply each adjustment, run quality checks, return via Headless Output Contract.
 
 **Quick-win path:** If the user already stated their options ("just tag structure, keep my words, don't ask"), skip the menu — map their intent to codes (here: ST + WF), confirm in one line, and go. Don't make an expert read an 8-row table.
 
-**Lead with the recommendation.** Present the recommended set for *this* input plus a one-line rationale per code, derived from Step 1 analysis (and the short-poem strategy when input is short). Frame the full code table below as "the full menu if you want to adjust" — not the opening move.
+**Lead with the recommendation.** Present the recommended set for *this* input plus a one-line rationale per item, derived from Step 1 analysis (and the short-poem strategy when input is short). **Lead each recommendation with the plain-English outcome; put the code in parentheses** — "even out line lengths so Suno doesn't rush them (RA)", not "RA — Rhythmic Adjustment". The codes are a shorthand for return users, not the language a first-timer should have to decode. Frame the full code table below as "the full menu if you want to adjust" — not the opening move.
 
 **Dynamic defaults** from Step 1 analysis:
 - Raw text → ST + CC + RA + CD
@@ -234,7 +241,9 @@ Apply transformations in the order below.
 - `syllable-counter.py --estimate-duration` — syllable balance and duration estimate (present as rough heuristic with caveats, not hard limit)
 - `section-length-checker.py` — section lengths vs. section-jobs expectations (supports `--genre prog` for relaxed constraints)
 
-If RA was applied and no further changes made, reuse those syllable results. If writing with a band profile, verify voice pattern alignment (LLM judgment). Fix issues before presenting.
+If RA was applied and no further changes made, reuse those syllable results. If writing with a band profile, verify voice pattern alignment (LLM judgment) **against the profile's actual voice fields** — if the profile was found but carries no voice/vocabulary constraints (see Step 1 profile states), say "no voice constraints to check against" rather than asserting alignment. Fix issues before presenting.
+
+**Voice-preservation second read (one lens, not a panel):** Before presenting (interactive) or returning (headless), read the original against the transformed once and name the single biggest risk that a transform weakened the strongest image, flattened the emotional core, or drifted from the writer's voice. If the transform held, say so in one line. Surface it as one line in "Changes Made" (interactive) or a `caveats` entry in the headless contract. This is a focused creative check, not a re-run of the scripts — it catches the loss those measurements can't see.
 
 **Verification mandates:**
 - All assertions about syllable counts, durations, section lengths must be supported by script output
@@ -255,13 +264,14 @@ If RA was applied and no further changes made, reuse those syllable results. If 
 
 ## Changes Made
 {Key structural decisions — why chorus placed here, why this line was broken, etc.}
+{Voice-preservation second read — one line: the biggest risk a transform weakened the strongest image / flattened the emotional core / drifted from voice, or "the transform held the original's voice and core."}
 
 ## Cliche Report (if CD applied)
 - {N} flagged, {M} replaced
 - Kept: {list if interactive}
 ```
 
-**Before/after diff:** Run `lyrics-diff.py` and `assemble-summary.py` in parallel. Present annotated diff showing which transformation code caused each change (enables selective undo).
+**Before/after diff:** Run `lyrics-diff.py` and `assemble-summary.py` in parallel. Present annotated diff showing which transformation code caused each change (enables selective undo). Tell the user they can reverse any single transformation by naming its code or its effect ("undo the rhyme changes", "drop RA") — to do it cleanly, re-apply the *remaining* codes to the **original** text, not the current draft, so the unwanted transform's downstream ripples come out too.
 
 **Refinement:** Offer 2-3 concrete suggestions based on quality data rather than open-ended questions. Loop back to relevant transformation step if changes requested. Offer side-by-side comparison with original.
 

@@ -81,7 +81,14 @@ VOCAL_SAFE_PAIRINGS = (
 # Words that reliably pull keyboard/synth-heavy, theatrical, or cinematic-light
 # arrangements when guitars/bass should lead. Detection flags presence; the
 # reference file carries the per-word rewrite (e.g. "cinematic" -> "dynamic
-# shifts, building from gentle to crushing").
+# shifts, building from gentle to crushing"; "rock opera" -> "power ballad,
+# dynamic shifts, building from gentle to crushing").
+#
+# These are TEXTURE / PRODUCTION modifiers, not genres — deliberately kept OUT
+# of GENRE_SIGNALS below so a prompt whose only "genre-ish" word is `cinematic`
+# or `orchestral` still trips the "no genre front-loaded" check instead of being
+# mistaken for a real genre. (A word must not both satisfy front-loading AND read
+# as a dangerous keyboard pull — that is a self-contradicting validator signal.)
 KEYBOARD_PULL_WORDS = frozenset({
     "baroque", "orchestral", "cinematic", "rock opera",
 })
@@ -93,12 +100,18 @@ SHOUT_TRIGGER_CHAR = "!"
 # so the validator does not falsely report "no genre keyword" for the southern /
 # heavy / atmospheric lanes this module works in. ADD here when a real genre term
 # trips a false negative; this is a detection aid, not an exhaustive taxonomy.
+#
+# Deliberately EXCLUDES the KEYBOARD_PULL_WORDS texture modifiers (orchestral,
+# cinematic, baroque, rock opera): those are production/texture flavor, not
+# genres, and counting them as genres would let a textureless prompt pass
+# front-loading while the same word is flagged as a dangerous keyboard pull —
+# a self-contradicting signal. Keep the two sets disjoint.
 GENRE_SIGNALS = frozenset({
     # broad families
     "rock", "pop", "folk", "jazz", "blues", "electronic", "hip hop", "hip-hop",
     "r&b", "country", "classical", "metal", "punk", "indie", "soul", "funk",
     "ambient", "lo-fi", "lofi", "dance", "edm", "house", "techno", "rap",
-    "acoustic", "orchestral", "cinematic", "reggae", "latin", "alternative",
+    "acoustic", "reggae", "latin", "alternative",
     "grunge", "shoegaze", "post-punk", "synth", "synthwave", "disco",
     # rock / metal subgenres and lanes this module actually uses
     "heartland", "southern rock", "heartland rock", "swamp metal", "swamp",

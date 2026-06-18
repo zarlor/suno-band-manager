@@ -7,4 +7,9 @@
 [workflow]
 activation_steps_prepend = []
 activation_steps_append = []
+# Output paths are NOT scalars here — they come from module config:
+# override `band_profiles_folder` / `songbook_folder` in {project-root}/_bmad/config.yaml
+# to relocate where profiles and songbook entries land.
 persistent_facts = ["file:{project-root}/**/project-context.md"]
+# persistent_facts loads durable creative context on activation (project-context.md
+# is BMad's convention; append a profile/voice-context file: glob here to preload it).

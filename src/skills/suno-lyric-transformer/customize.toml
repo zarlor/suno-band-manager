@@ -2,7 +2,7 @@
 # Teams/users override without editing this file:
 #   {project-root}/_bmad/custom/suno-lyric-transformer.toml       (team, committed)
 #   {project-root}/_bmad/custom/suno-lyric-transformer.user.toml  (personal, gitignored)
-# Merge order: this file -> team -> user. See standard-fields.md for the [workflow] shape.
+# Merge order: this file -> team -> user. Scalars override; plain arrays append.
 
 [workflow]
 activation_steps_prepend = []

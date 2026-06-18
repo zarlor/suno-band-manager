@@ -296,6 +296,69 @@ def test_studio_preferences_invalid_bpm(tmp_path):
     assert any("bpm" in str(f).lower() for f in result["findings"])
 
 
+# --- multi-Voice (voices) tests ---
+
+PRO_PROFILE = {
+    **VALID_PROFILE,
+    "tier": "pro",
+    "model_preference": "v5.5 Pro",
+}
+
+
+def test_voices_valid_list(tmp_path):
+    data = {**PRO_PROFILE, "voices": [
+        {"voice_id": "v-rock", "label": "Narrative Rock", "use_case": "mid-tempo rock"},
+        {"voice_id": "v-ballad", "label": "Ballad Intimate", "use_case": "tender tracks"},
+    ]}
+    path = write_profile(tmp_path, data)
+    result = validate_profile(path)
+    assert not any("voices" in str(f.get("location", {}).get("field", "")) for f in result["findings"])
+
+
+def test_voices_not_a_list(tmp_path):
+    data = {**PRO_PROFILE, "voices": "v-rock"}
+    path = write_profile(tmp_path, data)
+    result = validate_profile(path)
+    assert any(f.get("location", {}).get("field") == "voices" for f in result["findings"])
+
+
+def test_voices_entry_missing_voice_id(tmp_path):
+    data = {**PRO_PROFILE, "voices": [{"label": "No id", "use_case": "tracks"}]}
+    path = write_profile(tmp_path, data)
+    result = validate_profile(path)
+    assert any("voice_id" in str(f.get("location", {}).get("field", ""))
+               and f.get("severity") == "medium" for f in result["findings"])
+
+
+def test_voices_entry_missing_use_case(tmp_path):
+    data = {**PRO_PROFILE, "voices": [{"voice_id": "v-rock", "label": "Rock"}]}
+    path = write_profile(tmp_path, data)
+    result = validate_profile(path)
+    assert any("use_case" in str(f.get("location", {}).get("field", "")) for f in result["findings"])
+
+
+def test_voices_primary_not_in_list(tmp_path):
+    data = {**PRO_PROFILE, "voices": [
+        {"voice_id": "v-rock", "label": "Rock", "use_case": "rock"},
+    ]}
+    data["vocal"] = {**PRO_PROFILE["vocal"], "voice_id": "v-missing"}
+    path = write_profile(tmp_path, data)
+    result = validate_profile(path)
+    assert any(f.get("location", {}).get("field") == "vocal.voice_id"
+               and "absent from the voices list" in f.get("issue", "")
+               for f in result["findings"])
+
+
+def test_voices_primary_in_list_no_warning(tmp_path):
+    data = {**PRO_PROFILE, "voices": [
+        {"voice_id": "v-rock", "label": "Rock", "use_case": "rock"},
+    ]}
+    data["vocal"] = {**PRO_PROFILE["vocal"], "voice_id": "v-rock"}
+    path = write_profile(tmp_path, data)
+    result = validate_profile(path)
+    assert not any("absent from the voices list" in f.get("issue", "") for f in result["findings"])
+
+
 # --- derive_filename tests ---
 
 def test_derive_filename_basic():

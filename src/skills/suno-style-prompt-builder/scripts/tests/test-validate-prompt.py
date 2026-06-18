@@ -175,6 +175,26 @@ class TestTriggerDetection:
         assert "baroque" in kb[0]["data"]["words"]
         assert "orchestral" in kb[0]["data"]["words"]
 
+    def test_rock_opera_flagged(self):
+        """'rock opera' should be flagged as a keyboard-pull dangerous word."""
+        findings = validate_prompt.validate_style_prompt(
+            "hard rock opera, soaring vocals, driving guitars"
+        )
+        kb = [f for f in findings if f["category"] == "trigger" and "keyboard-pull" in f["issue"].lower()]
+        assert len(kb) == 1
+        assert "rock opera" in kb[0]["data"]["words"]
+
+    def test_texture_modifier_does_not_satisfy_front_loading(self):
+        """A texture-only prompt (cinematic/orchestral, no real genre) must still trip the
+        'no genre front-loaded' warning AND be flagged as a keyboard pull — never both pass."""
+        findings = validate_prompt.validate_style_prompt(
+            "cinematic, orchestral, atmospheric, sweeping and grand"
+        )
+        no_genre = [f for f in findings if "no obvious genre keyword" in f.get("issue", "").lower()]
+        kb = [f for f in findings if f["category"] == "trigger" and "keyboard-pull" in f["issue"].lower()]
+        assert len(no_genre) == 1, "texture-only prompt should still warn about missing genre"
+        assert len(kb) == 1, "texture words should be flagged as keyboard pulls"
+
     def test_exclamation_flagged_low(self):
         """Exclamation marks should produce a low trigger finding."""
         findings = validate_prompt.validate_style_prompt("upbeat pop rock, energetic!, bright")

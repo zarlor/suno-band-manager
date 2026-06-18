@@ -350,6 +350,61 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None) -> dict:
                 "fix": "Set bpm to a numeric value (e.g., 120)"
             })
 
+    # Multi-Voice mapping validation (schema rules 20-21). Optional v5.5
+    # Pro/Premier feature: a list of {voice_id, label, use_case} entries for
+    # bands that use more than one cloned Voice. vocal.voice_id stays the
+    # primary/default; `voices` carries the rest.
+    voices = profile.get("voices")
+    if voices is not None:
+        if not isinstance(voices, list):
+            findings.append({
+                "severity": "low",
+                "category": "structure",
+                "location": {"file": str(profile_path), "field": "voices"},
+                "issue": "voices must be a list of {voice_id, label, use_case} entries",
+                "fix": "Set voices to a list, or remove it and keep the single vocal.voice_id",
+            })
+        else:
+            listed_ids = []
+            for i, entry in enumerate(voices):
+                if not isinstance(entry, dict):
+                    findings.append({
+                        "severity": "low",
+                        "category": "structure",
+                        "location": {"file": str(profile_path), "field": f"voices[{i}]"},
+                        "issue": "Each voices entry must be a mapping with at least voice_id",
+                        "fix": "Use {voice_id, label, use_case} per entry",
+                    })
+                    continue
+                vid = entry.get("voice_id")
+                if not vid or not isinstance(vid, str) or not vid.strip():
+                    findings.append({
+                        "severity": "medium",
+                        "category": "structure",
+                        "location": {"file": str(profile_path), "field": f"voices[{i}].voice_id"},
+                        "issue": "voices entry is missing a non-empty voice_id",
+                        "fix": "Every voices entry needs a voice_id (a Voice with no use-case is just vocal.voice_id)",
+                    })
+                else:
+                    listed_ids.append(vid)
+                if not entry.get("use_case"):
+                    findings.append({
+                        "severity": "low",
+                        "category": "consistency",
+                        "location": {"file": str(profile_path), "field": f"voices[{i}].use_case"},
+                        "issue": "voices entry has no use_case (which track types it serves)",
+                        "fix": "Add a use_case so the Style Prompt Builder can pick the per-track Voice",
+                    })
+            primary = vocal.get("voice_id") if isinstance(vocal, dict) else None
+            if listed_ids and primary and primary not in listed_ids:
+                findings.append({
+                    "severity": "low",
+                    "category": "consistency",
+                    "location": {"file": str(profile_path), "field": "vocal.voice_id"},
+                    "issue": "vocal.voice_id names a Voice absent from the voices list",
+                    "fix": "Set vocal.voice_id to one of the listed voices entries (the primary/default)",
+                })
+
     # Build summary
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for f in findings:

@@ -316,7 +316,8 @@ def main():
         "--companion", nargs="?", const="", default="",
         help=(
             "Refresh the canonical Markdown companion file. "
-            "With no path: writes to docs/playlist-sequencing-data.md. "
+            "With no path: writes the per-band companion docs/{band-slug}-playlist-sequencing.md "
+            "(slug derived from the album/band name). "
             "Pass an explicit path to override. Default: ON."
         ),
     )

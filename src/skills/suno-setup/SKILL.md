@@ -16,26 +16,31 @@ description: Sets up Suno Band Manager module in a project. Use when the user re
 
 ## Overview
 
-Installs and configures a BMad module into a project. Module identity (name, code, version) comes from `assets/module.yaml`. Collects user preferences and writes them to three files:
+Installs and configures a BMad module into a project. Module identity (name, code, version) and variable definitions come from `assets/module.yaml`; the capability rows registered for the help system come from `assets/module-help.csv`. Collects user preferences and writes them to three files:
 
 - **`{project-root}/_bmad/config.yaml`** — shared project config: core settings at root (e.g. `output_folder`, `document_output_language`) plus a section per module with metadata and module-specific values. User-only keys (`user_name`, `communication_language`) are **never** written here.
 - **`{project-root}/_bmad/config.user.yaml`** — personal settings intended to be gitignored: `user_name`, `communication_language`, and any module variable marked `user_setting: true` in `assets/module.yaml`. These values live exclusively here.
 - **`{project-root}/_bmad/module-help.csv`** — registers module capabilities for the help system.
 - **`{project-root}/_bmad/core/config.yaml`** and **`{project-root}/_bmad/suno/config.yaml`** — per-module config files written automatically by `merge-config.py` so that `bmad-init` can load config at runtime. These bridge the shared config format with `bmad-init`'s expected per-module layout.
 
-Both config scripts use an anti-zombie pattern — existing entries for this module are removed before writing fresh ones, so stale values never persist.
+`merge-config.py` (config.yaml) and `merge-help-csv.py` (module-help.csv) each use an anti-zombie pattern — both rewrite this module's section fresh, removing any existing entries before writing, so stale values never persist.
 
 ## On Activation
 
 1. Read `assets/module.yaml` for module metadata and variable definitions (the `code` field is the module identifier)
-2. **Detect installation mode:**
-   - If `{project-root}/_bmad/config.yaml` exists with a section for this module → this is an **update**
-   - If `{project-root}/_bmad/` exists but no module section → this is a **fresh BMad install**
-   - If `{project-root}/_bmad/` does not exist → this is a **standalone install**. Create `{project-root}/_bmad/` and proceed with defaults. Inform the user: "Setting up standalone — no BMad Method detected, using direct configuration."
-3. Check for per-module configuration at `{project-root}/_bmad/suno/config.yaml` and `{project-root}/_bmad/core/config.yaml`. If either file exists:
-   - If `{project-root}/_bmad/config.yaml` does **not** yet have a section for this module: this is a **fresh install**. Inform the user that installer config was detected and values will be consolidated into the new format.
-   - If `{project-root}/_bmad/config.yaml` **already** has a section for this module: this is a **legacy migration**. Inform the user that legacy per-module config was found alongside existing config, and legacy values will be used as fallback defaults.
-   - In both cases, per-module config files and directories will be cleaned up after setup.
+2. **Detect installation mode deterministically** with the pre-pass — it classifies the install the same way the merge will, so the narrated mode never drifts from what gets written or returned:
+
+   ```bash
+   uv run scripts/merge-config.py --detect-mode --config-path "{project-root}/_bmad/config.yaml" --module-yaml assets/module.yaml --legacy-dir "{project-root}/_bmad"
+   ```
+
+   It returns `{mode, has_module_section, has_legacy, version_transition}`. Narrate the `mode`:
+   - **`update`** — config.yaml already has this module's section. Lead Confirm with the `version_transition`. Any per-module init configs present are this installer's own runtime bridge files (`has_legacy: true` here is expected), **not** pre-consolidation legacy — do not show the legacy-migration message.
+   - **`fresh`** — `{project-root}/_bmad/` exists, no module section. If `has_legacy`, a prior installer left per-module config; tell the user it was detected and values will be consolidated into the new format (used as fallback defaults).
+   - **`standalone`** — no `{project-root}/_bmad/`. Create it and proceed with defaults. Inform the user: "Setting up standalone — no BMad Method detected, using direct configuration."
+   - **`migration`** — genuine pre-consolidation legacy: per-module config exists but config.yaml has no module section. Inform the user legacy values will be used as fallback defaults.
+
+   In the `fresh`-with-legacy and `migration` cases, the per-module config files and directories are cleaned up after setup.
 
 If the user provides arguments (e.g. `accept all defaults`, `--headless` / `-H`, or inline values like `user name is BMad, I speak Swahili`), map any provided values to config keys, use defaults for the rest, and skip interactive prompting. Still display the full confirmation summary at the end. See **Headless mode** for the autonomous-run contract.
 
@@ -51,6 +56,10 @@ Ask the user for values. Show defaults in brackets. Present all values together 
 
 ## Write Files
 
+Before the first write, echo the resolved project root once ("Installing into `<resolved path>`") so a user who launched from the wrong directory can catch it before anything is created or deleted.
+
+**Resolve the update-diff and keep/overwrite decisions BEFORE the merge runs** — the anti-zombie rewrite is destructive, so the preview has to happen against the still-untouched config. On an update, run the dry-run pass first (it writes nothing), settle any keeps with the user, fold kept values back into the answers JSON, and only then run the merge below. See **Update mode** for the diff mechanics.
+
 Write a temp JSON file with the collected answers structured as `{"core": {...}, "module": {...}}` (omit `core` if it already exists). Then run both scripts — they can run in parallel since they write to different files (batch them in a single message to guarantee concurrency):
 
 ```bash
@@ -64,10 +73,14 @@ Both scripts output JSON to stdout with results. If either exits non-zero, surfa
 
 Run `scripts/merge-config.py --help` or `scripts/merge-help-csv.py --help` for full usage.
 
-**Update mode — show what changes before overwriting.** On an update, the anti-zombie rewrite replaces the whole module section, which can silently revert hand-edited values. Before writing, read the existing `{project-root}/_bmad/config.yaml`:
+**Update mode — preview what changes before overwriting.** On an update, the anti-zombie rewrite replaces the whole module section, which can silently revert hand-edited values. Get the deterministic diff from the same pre-pass that classified the mode, passing the answers temp file so it dry-run-diffs them against the existing config (it writes nothing):
 
-- Report the version transition from the existing module section's `version` to `assets/module.yaml`'s `module_version` (e.g. "upgrading suno 1.8.2 → 1.8.3").
-- For any module/core key whose existing value differs from what's about to be written, show a "current → new" line and let the user keep the existing value. Carry kept values forward into the answers JSON so the merge writes them back.
+```bash
+uv run scripts/merge-config.py --detect-mode --config-path "{project-root}/_bmad/config.yaml" --module-yaml assets/module.yaml --answers {temp-file}
+```
+
+- Report `version_transition` (e.g. "upgrading suno 1.8.2 → 1.8.3").
+- For each entry in `changes:[{key, old, new}]`, show a "current → new" line and let the user keep the existing value. Carry kept values forward into the answers JSON so the merge writes them back. This whole exchange happens **before** the merge command above runs — a preview reported after the write would be a replay, not a preview.
 
 ## Create Output Directories
 
@@ -127,24 +140,29 @@ The script appends the standing order section to AGENTS.md (creates the file if 
 
 ## Confirm
 
-Use the script JSON output to display what was written — config values set (written to `config.yaml` at root for core, module section for module values), user settings written to `config.user.yaml` (`user_keys` in result), init-compatible per-module configs written (`init_configs_written`), help entries added, fresh install vs update. On an update, lead with the version transition and any kept-vs-overwritten values surfaced in Write Files. Report directories created (`created` from `--create-dirs`). If legacy files were deleted, mention the migration. If legacy directories were removed, report the count and list (e.g. "Cleaned up 106 installer package files from bmb/, core/, \_config/ — skills are installed at .claude/skills/"). Then display the `module_greeting` from `assets/module.yaml` to the user.
+Summarize the install from the scripts' JSON output — what config, user settings, init configs, help entries, and output directories were written, plus the install mode. On an update, lead with the version transition and any kept-vs-overwritten values from Write Files. If legacy files or directories were removed, mention the migration and the cleanup count (e.g. "Cleaned up 106 installer package files from bmb/, core/, \_config/ — skills are installed at .claude/skills/"). The result keys are bound at their source sections; surface them as an outcome, don't re-list them mechanically.
+
+Then close with a concrete next step, not just the generic `module_greeting`. A fresh install's natural first move falls out of the `assets/module-help.csv` `after:`/`before:` graph: `create-song` lists `after: suno-band-profile-manager:manage-profiles`, which itself runs `before: build-style-prompt` — so the entry point is creating a band profile, then a song. Point the user there explicitly (e.g. "Next: say 'create a band profile', then 'create a song'"), then display the `module_greeting` from `assets/module.yaml`. On a **standalone** install, drop the greeting's multi-machine-sync paragraph — it needs the top-level `scripts/` folder that a standalone/marketplace install lacks, and it's the wrong pitch for a first-timer.
 
 ## Headless mode
 
-When invoked headlessly (`--headless` / `-H`, or "accept all defaults"), run end-to-end with no prompts: take provided inline values, fill the rest from the default-priority chain, and run all scripts. **Pipeline-guard default:** auto-configure for whatever platform files exist — run the Stop-hook command if `{project-root}/.claude/` exists, run the AGENTS.md command if `{project-root}/AGENTS.md` exists, and if neither exists, create `AGENTS.md` (run the `--agents-md-path` command). Skip only if the caller passed an explicit guard opt-out.
+These "flags" are natural language the orchestrating model interprets, not an argv parser — a caller invokes this skill the way it invokes any skill. Example: *"install suno module -H, user name is BMad, language English, accept the guard default."*
+
+When invoked headlessly (`--headless` / `-H`, or "accept all defaults"), run end-to-end with no prompts: take provided inline values, fill the rest from the default-priority chain, and run all scripts. **Update keep-vs-overwrite default:** on a headless update, keep existing hand-edited values where they differ from the new defaults (run the `--detect-mode --answers` diff, fold the `changes` back as keeps) and record the override in `decisions[]`. **Pipeline-guard default:** auto-configure for whatever platform files exist — run the Stop-hook command if `{project-root}/.claude/` exists, run the AGENTS.md command if `{project-root}/AGENTS.md` exists, and if neither exists, create `AGENTS.md` (run the `--agents-md-path` command). Skip only if the caller passed an explicit guard opt-out.
 
 **Headless return.** Emit, as the final line of your response, a single JSON object the calling process can parse:
 
 ```json
-{"status": "complete", "config_path": "...", "user_config_path": "...", "module_code": "suno", "version": "1.8.3", "mode": "fresh", "guard_configured": true, "decisions": []}
+{"status": "complete", "config_path": "...", "user_config_path": "...", "module_code": "suno", "version": "1.8.3", "mode": "fresh", "guard_configured": true, "output_dirs": {"band_profiles_folder": "{project-root}/docs/band-profiles", "songbook_folder": "{project-root}/docs/songbook"}, "decisions": []}
 ```
 
 - `status`: `complete` or `blocked`. On `blocked`, add a one-line `"reason"` and still return whatever paths are known.
-- `mode`: `fresh` | `update` | `standalone` | `migration` (the detected installation mode).
+- `mode`: `fresh` | `update` | `standalone` | `migration` (the detected installation mode, from `--detect-mode`).
 - `version`: the `module_version` just written; on an update, use `"<old> → <new>"`.
 - `guard_configured`: whether the pipeline guard was wired.
 - `config_path` / `user_config_path`: resolved paths from `merge-config.py`'s JSON output.
-- `decisions`: lightweight inline list of any default chosen without the user (e.g. `"language defaulted to English"`, `"guard auto-configured: AGENTS.md (no .claude/)"`). Full Decision-Log ceremony is overkill for an installer; this list is the audit trail.
+- `output_dirs`: the resolved module output folders (the `band_profiles_folder` / `songbook_folder` values written to the module section, literal `{project-root}` token intact) so a chaining caller can wire the next skill without re-reading config. Optionally also include the `--create-dirs` `{created, existed}` result.
+- `decisions`: lightweight inline list of any default chosen without the user (e.g. `"language defaulted to English"`, `"headless update kept hand-edited suno_tier=pro"`, `"guard auto-configured: AGENTS.md (no .claude/)"`). Full Decision-Log ceremony is overkill for an installer; this list is the audit trail.
 
 ## Outcome
 

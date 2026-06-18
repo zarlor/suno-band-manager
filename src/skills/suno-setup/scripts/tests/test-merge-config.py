@@ -233,6 +233,108 @@ def test_create_dirs_requires_project_root():
         assert data["status"] == "error"
 
 
+def test_detect_mode_fresh_and_standalone():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        module_yaml = write(tmp / "module.yaml", MODULE_YAML)
+        bmad = tmp / "_bmad"
+        bmad.mkdir()
+        # _bmad/ exists, no module section, no legacy → fresh
+        code, data = run([
+            "--detect-mode",
+            "--config-path", str(bmad / "config.yaml"),
+            "--module-yaml", str(module_yaml),
+        ])
+        assert code == 0, data
+        assert data["mode"] == "fresh"
+        assert data["has_module_section"] is False
+        assert data["version_transition"]["to"] == "1.8.3"
+        # no _bmad/ dir → standalone
+        code, data = run([
+            "--detect-mode",
+            "--config-path", str(tmp / "nodir" / "config.yaml"),
+            "--module-yaml", str(module_yaml),
+        ])
+        assert code == 0, data
+        assert data["mode"] == "standalone"
+
+
+def test_detect_mode_update_not_migration_with_init_files():
+    """A consolidated section + leftover init bridge files is an update, not
+    a migration — the installer's own per-module configs aren't legacy."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        module_yaml = write(tmp / "module.yaml", MODULE_YAML)
+        bmad = tmp / "_bmad"
+        (bmad / "suno").mkdir(parents=True)
+        (bmad / "core").mkdir()
+        write(bmad / "config.yaml",
+              "suno:\n  version: 1.8.2\n  suno_tier: free\n")
+        write(bmad / "suno" / "config.yaml", "suno_tier: free\n")
+        write(bmad / "core" / "config.yaml", "output_folder: x\n")
+        code, data = run([
+            "--detect-mode",
+            "--config-path", str(bmad / "config.yaml"),
+            "--module-yaml", str(module_yaml),
+            "--legacy-dir", str(bmad),
+        ])
+        assert code == 0, data
+        assert data["mode"] == "update"
+        assert data["has_module_section"] is True
+        assert data["has_legacy"] is True
+        assert data["version_transition"] == {"from": "1.8.2", "to": "1.8.3"}
+
+
+def test_detect_mode_migration_legacy_without_section():
+    """Legacy init config but NO consolidated section → genuine migration."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        module_yaml = write(tmp / "module.yaml", MODULE_YAML)
+        bmad = tmp / "_bmad"
+        (bmad / "suno").mkdir(parents=True)
+        write(bmad / "suno" / "config.yaml", "suno_tier: pro\n")
+        code, data = run([
+            "--detect-mode",
+            "--config-path", str(bmad / "config.yaml"),
+            "--module-yaml", str(module_yaml),
+            "--legacy-dir", str(bmad),
+        ])
+        assert code == 0, data
+        assert data["mode"] == "migration"
+        assert data["has_module_section"] is False
+        assert data["has_legacy"] is True
+
+
+def test_detect_mode_changes_diff():
+    """With --answers, detect-mode returns a result-template-aware diff of only
+    the values that actually change; user-only and unchanged keys are excluded."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        module_yaml = write(tmp / "module.yaml", MODULE_YAML)
+        bmad = tmp / "_bmad"
+        bmad.mkdir()
+        write(bmad / "config.yaml",
+              "output_folder: '{project-root}/_bmad-output'\n"
+              "suno:\n  version: 1.8.2\n  suno_tier: free\n"
+              "  band_profiles_folder: '{project-root}/docs/band-profiles'\n")
+        answers = write(tmp / "answers.json", json.dumps({
+            "core": {"output_folder": "{project-root}/_bmad-output", "user_name": "Lenny"},
+            "module": {"suno_tier": "pro", "band_profiles_folder": "docs/band-profiles"},
+        }))
+        code, data = run([
+            "--detect-mode",
+            "--config-path", str(bmad / "config.yaml"),
+            "--module-yaml", str(module_yaml),
+            "--answers", str(answers),
+        ])
+        assert code == 0, data
+        keys = {c["key"] for c in data["changes"]}
+        # suno_tier changed free→pro; everything else unchanged or user-only
+        assert keys == {"suno_tier"}
+        change = data["changes"][0]
+        assert change == {"key": "suno_tier", "old": "free", "new": "pro"}
+
+
 if __name__ == "__main__":
     tests = [
         test_fresh_install_writes_core_and_module,
@@ -244,6 +346,10 @@ if __name__ == "__main__":
         test_missing_module_yaml_errors,
         test_create_dirs_honors_declaration,
         test_create_dirs_requires_project_root,
+        test_detect_mode_fresh_and_standalone,
+        test_detect_mode_update_not_migration_with_init_files,
+        test_detect_mode_migration_legacy_without_section,
+        test_detect_mode_changes_diff,
     ]
     passed = failed = 0
     for test in tests:

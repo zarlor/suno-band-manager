@@ -180,3 +180,36 @@ def test_find_module_csv_not_found(tmp_path):
 
     result = mod.find_module_csv(tmp_path, skill_dir)
     assert result is None
+
+
+def test_sanctum_load_order_is_the_canonical_seven(tmp_path):
+    """The always-loaded rebirth set is exactly the canonical 7 files, in order."""
+    assert mod.SANCTUM_LOAD_ORDER == [
+        "access-boundaries.md",
+        "INDEX.md",
+        "MEMORY.md",
+        "CREED.md",
+        "PERSONA.md",
+        "BOND.md",
+        "CAPABILITIES.md",
+    ]
+    # access-boundaries.md must load FIRST (Dominion contract before any file op).
+    assert mod.SANCTUM_LOAD_ORDER[0] == "access-boundaries.md"
+
+
+def test_main_emits_menu_text_key(tmp_path, monkeypatch, capsys):
+    """The pre-activate JSON output uses the `menu_text` key (not `menu`)."""
+    bmad_dir = tmp_path / "_bmad"
+    bmad_dir.mkdir()
+    (bmad_dir / "module-help.csv").write_text(SAMPLE_CSV)
+
+    monkeypatch.setattr(sys, "argv", ["pre-activate.py", str(tmp_path)])
+    mod.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert "menu_text" in payload
+    assert "menu" not in payload
+    assert "[CS]" in payload["menu_text"]
+    # The load order is surfaced as the canonical 7.
+    assert payload["sanctum_load_order"] == mod.SANCTUM_LOAD_ORDER
+    assert len(payload["sanctum_load_order"]) == 7

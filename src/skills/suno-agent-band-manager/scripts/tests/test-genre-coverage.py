@@ -99,3 +99,26 @@ def test_collect_band_and_json_run(tmp_path, capsys, monkeypatch):
     assert band["entries"] == 1
     # The generated doc was written.
     assert (tmp_path / "docs" / "lennys-voice-genre-coverage.md").exists()
+
+
+def test_empty_catalog_is_clean_noop_json(tmp_path, capsys, monkeypatch):
+    """No docs/songbook/ yet → clean exit with a zeroed JSON result, not exit 2."""
+    monkeypatch.setattr(
+        sys, "argv",
+        ["genre-coverage.py", str(tmp_path), "--format", "json"],
+    )
+    # Must NOT raise SystemExit — an empty catalog is a normal no-op.
+    mod.main()
+    out = json.loads(capsys.readouterr().out)
+    assert out == {"bands": [], "band_count": 0}
+
+
+def test_empty_catalog_is_clean_noop_text(tmp_path, capsys, monkeypatch):
+    """Empty catalog in text mode prints a friendly no-op line, exits cleanly."""
+    monkeypatch.setattr(
+        sys, "argv",
+        ["genre-coverage.py", str(tmp_path)],
+    )
+    mod.main()
+    captured = capsys.readouterr().out
+    assert "empty catalog" in captured.lower() or "nothing to index" in captured.lower()

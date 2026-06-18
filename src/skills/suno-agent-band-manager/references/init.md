@@ -14,17 +14,21 @@ Welcome! Let's get you making music fast. Setup happens naturally — not as an 
 
 By the time this prompt runs, `scripts/init-sanctum.py` has already scaffolded
 the v2 sanctum at `{project-root}/_bmad/_memory/band-manager-sidecar/` from the
-`assets/` templates: `INDEX.md`, `MEMORY.md`, `PERSONA.md`, `CREED.md`,
-`BOND.md`, `PULSE.md`, `CAPABILITIES.md`, plus the `sessions/` and
-`capabilities/` directories. The skeleton files are **born already-migrated** —
-`MEMORY.md` already carries the required derived-section marker pairs, and
-`access-boundaries.md` is in place.
+`assets/` templates: the always-loaded 7 — `access-boundaries.md`, `INDEX.md`,
+`MEMORY.md`, `CREED.md`, `PERSONA.md`, `BOND.md`, `CAPABILITIES.md` — PLUS the
+on-demand creed shards (`creed-disciplines.md`, `creed-workshop-capture.md`,
+`creed-package-assembly.md`), the non-loaded `creed-incident-log.md`, `PULSE.md`,
+and the `sessions/` and `capabilities/` directories. A freshly-born sanctum has
+the **same file set a migrated one does** — birth and migration converge. The
+skeleton files are **born already-migrated** — `MEMORY.md` already carries the
+required derived-section marker pairs, and `access-boundaries.md` (the
+loaded-first Dominion contract) is in place.
 
 **You do NOT hand-create the structure or hand-write the templates here.** The
 script did that. First Breath is the *conversational calibration* that fills the
 scaffolded `MEMORY.md` with the owner's real preferences as you discover them.
 (If the scaffold is somehow missing — `init-sanctum.py` didn't run or errored —
-re-run it: `uv run scripts/init-sanctum.py "{project-root}" "{skill-root}"`,
+re-run it: `python3 scripts/init-sanctum.py "{project-root}" "{skill-root}"`,
 then continue here. Per the Sacred Truth, a fresh start is always valid.)
 
 ## Progressive Preference Discovery
@@ -76,12 +80,20 @@ conversationally, you do not re-create them:
 - `PERSONA.md`, `CREED.md`, `BOND.md`, `PULSE.md`, `CAPABILITIES.md` — Mac's
   living identity, creed core, owner-orienting file, maintenance routine, and
   capability roster.
+- `access-boundaries.md` — the Dominion contract (read/write/deny zones), loaded
+  FIRST on every rebirth. Seeded from `assets/ACCESS-BOUNDARIES-template.md`.
+- `creed-disciplines.md`, `creed-workshop-capture.md`, `creed-package-assembly.md`,
+  `creed-incident-log.md` — the on-demand creed shards + the non-loaded incident
+  log, sliced from `references/creed.md` by the same logic the migration uses.
 - `sessions/` and `capabilities/` directories.
 
-`access-boundaries.md` is part of the scaffolded skeleton (the Dominion contract).
-If a fresh scaffold did not include it on this install, create it with the
-project's read/write/deny zones (see `references/memory-system.md` and the
-sanctum's own `access-boundaries.md` for the canonical content).
+`access-boundaries.md` and the creed shards are part of the scaffolded skeleton
+now — `init-sanctum.py` writes all of them. (Earlier birth paths produced only the
+6 templates + CAPABILITIES, which left a fresh sanctum missing the loaded-first
+Dominion file and the on-demand shards the activation contract advertises; that
+gap is closed.) In the rare case a scaffold somehow lands incomplete, re-run
+`python3 scripts/init-sanctum.py "{project-root}" "{skill-root}"` — it is a no-op
+if the sanctum already exists. Per the Sacred Truth, a fresh start is always valid.
 
 **Do NOT hand-author the `MEMORY.md` marker pairs here** — the scaffold already
 wrote them, and the regenerator (`scripts/regenerate-index-sections.py`) treats an

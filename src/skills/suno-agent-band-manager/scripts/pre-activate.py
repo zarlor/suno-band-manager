@@ -44,12 +44,17 @@ DEFAULT_SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
 
 # Files the agent loads on every rebirth (per references/activation.md). Surfaced
 # in the pre-activate output so the activation router references the new file set.
+# This is the canonical always-loaded set — exactly 7 files. Every doc that lists
+# the rebirth set (SKILL.md, activation.md, memory-system.md, INDEX-template) must
+# agree with this list.
 SANCTUM_LOAD_ORDER = [
     "access-boundaries.md",  # Dominion contract — loads FIRST, before any file op
     "INDEX.md",              # thin map of the sanctum
     "MEMORY.md",             # curated long-term memory (carries derived sections)
     "CREED.md",              # always-loaded creed CORE (Package Assembly Rule core)
     "PERSONA.md",            # Mac's living self
+    "BOND.md",               # thin owner-model orienting file
+    "CAPABILITIES.md",       # built-in + learned capability roster (auto-generated)
 ]
 
 
@@ -299,7 +304,7 @@ def main():
     result = {
         "first_run": check_first_run(project_root, args.sanctum_dir),
         "sync_package": detect_sync_package(project_root),
-        "menu": render_menu(csv_path, menu_modules),
+        "menu_text": render_menu(csv_path, menu_modules),
         "routing_table": build_routing_table(csv_path, menu_modules),
         "voice_context": detect_voice_files(project_root, args.user_name),
         # The activation router loads these sanctum files, in this order, on rebirth.

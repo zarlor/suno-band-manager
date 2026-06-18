@@ -11,6 +11,8 @@ menu-code: SB
 
 Browse your creative portfolio — past songs, successful prompts, iteration history, and creative evolution.
 
+**Headless-eligible:** false — browsing is a fundamentally interactive, exploratory loop (view, search, compare, reuse, evolve) with no single structured output. A headless invocation of this capability returns `{status: blocked, reason: "interactive-only"}`. (For a machine-readable catalog snapshot, callers should run `scripts/validate-sidecar.py` / `scripts/genre-coverage.py` instead.)
+
 ## Step 1: Scan Available Content (parallel batch)
 
 Check these locations in a single parallel batch:

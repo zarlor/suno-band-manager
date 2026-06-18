@@ -45,7 +45,20 @@ import json
 import re
 import sys
 from datetime import date
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+
+
+def _load_sanctum_seed():
+    """Import the shared seed module by path (hyphenated script dir, no package)."""
+    seed_path = Path(__file__).resolve().parent / "_sanctum_seed.py"
+    spec = spec_from_file_location("_sanctum_seed", seed_path)
+    mod = module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_seed = _load_sanctum_seed()
 
 SKILL_NAME = "suno-agent-band-manager"
 # Preserved divergence: bespoke sanctum location (double underscore + fixed name).
@@ -163,6 +176,50 @@ def substitute_vars(content: str, variables: dict) -> str:
     return content
 
 
+def fresh_birth_history(content: str, birth_date: str) -> str:
+    """Blank fabricated history out of a template for a FRESH birth.
+
+    The MEMORY/PERSONA templates carry a seeded "First Breath / sanctum
+    migration" / "Reborn into the v2 sanctum … memories migrated" line. That
+    framing is accurate for a *migrated* sanctum, but for a *freshly born* one
+    there were no prior memories to migrate — it would be fiction. Replace those
+    specific seed lines with a neutral first-session marker so a fresh birth
+    starts with an honest, empty history. Idempotent and order-independent: it
+    only rewrites the known seed lines, leaving everything else untouched.
+    """
+    # MEMORY-template Session History seed line.
+    content = re.sub(
+        r"^- \{birth_date\}: First Breath / sanctum migration — initial setup\.$",
+        f"- {birth_date}: First Breath — initial setup.",
+        content,
+        flags=re.MULTILINE,
+    )
+    content = re.sub(
+        rf"^- {re.escape(birth_date)}: First Breath / sanctum migration — initial setup\.$",
+        f"- {birth_date}: First Breath — initial setup.",
+        content,
+        flags=re.MULTILINE,
+    )
+    # PERSONA-template Evolution Log seed line (the "memories migrated" fiction).
+    content = re.sub(
+        r"^- \*\*\{birth_date\}\*\* — Reborn into the v2 sanctum\. .*$",
+        f"- **{birth_date}** — First Breath. Mac woke into a fresh sanctum carrying "
+        "the full NOLA character forward from the skill persona. No prior memories "
+        "to migrate — the history starts here.",
+        content,
+        flags=re.MULTILINE,
+    )
+    content = re.sub(
+        rf"^- \*\*{re.escape(birth_date)}\*\* — Reborn into the v2 sanctum\. .*$",
+        f"- **{birth_date}** — First Breath. Mac woke into a fresh sanctum carrying "
+        "the full NOLA character forward from the skill persona. No prior memories "
+        "to migrate — the history starts here.",
+        content,
+        flags=re.MULTILINE,
+    )
+    return content
+
+
 def scaffold(project_root: Path, skill_path: Path) -> dict:
     """Create the sanctum. Returns a result dict (CLI-friendly)."""
     bmad_dir = project_root / "_bmad"
@@ -211,8 +268,24 @@ def scaffold(project_root: Path, skill_path: Path) -> dict:
         output_name = template_name.replace("-template", "").upper()
         output_name = output_name[:-3] + ".md"  # .MD -> .md
         content = substitute_vars(template_path.read_text(encoding="utf-8"), variables)
+        # A fresh birth has no prior history to migrate — strip the seeded
+        # "First Breath / sanctum migration" / "memories migrated" lines so the
+        # MEMORY/PERSONA history starts honestly empty.
+        content = fresh_birth_history(content, variables["birth_date"])
         (sanctum_path / output_name).write_text(content, encoding="utf-8")
         created.append(output_name)
+
+    # access-boundaries.md — the Dominion contract that loads FIRST on every
+    # rebirth. Seeded from assets/ACCESS-BOUNDARIES-template.md via the shared
+    # seed module so a fresh birth and a migration converge on the same shape.
+    ab_written = _seed.write_access_boundaries(sanctum_path, assets_dir, variables)
+    if ab_written:
+        created.append(ab_written)
+
+    # On-demand creed shards + the non-loaded incident log — sliced from
+    # references/creed.md by the SAME shard_creed() the migration tool uses.
+    shards_written = _seed.write_creed_shards(sanctum_path, references_dir)
+    created.extend(shards_written)
 
     # CAPABILITIES.md (auto-generated).
     capabilities = discover_capabilities(references_dir)

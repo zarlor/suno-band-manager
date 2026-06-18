@@ -15,21 +15,21 @@ On each Pulse, run the maintenance scripts (all read-only against creative conte
 collect their output into a single staged report:
 
 1. **Validate the sidecar against catalog ground truth**
-   `uv run scripts/validate-sidecar.py "{project_root}" --format json`
+   `python3 scripts/validate-sidecar.py "{project_root}" --format json` (or `uv run` if deps are missing)
    Flags songbook/index drift, audio-file gaps, broken cross-references.
 
 2. **Check derived-section freshness (dry run — do NOT write)**
-   `uv run scripts/regenerate-index-sections.py "{project_root}" --dry-run --format json`
+   `python3 scripts/regenerate-index-sections.py "{project_root}" --dry-run --format json` (or `uv run` if deps are missing)
    Surfaces whether `Recently Published` / `Catalog Status` would change. Pulse reports
    the drift; the regeneration write happens in a live session (or is staged for one).
 
 3. **Refresh genre-coverage indices if stale**
-   `uv run scripts/genre-coverage.py "{project_root}" --timestamp "<today's date>"`
+   `python3 scripts/genre-coverage.py "{project_root}" --timestamp "<today's date>"`
    The coverage index is a derived, regenerable artifact — safe to refresh. Note any band
    whose index changed. (Substitute today's actual date for `<today's date>` at run time.)
 
 4. **Check memory health (oversized files)**
-   `uv run scripts/check-memory-health.py "{project_root}/_bmad/_memory/band-manager-sidecar"`
+   `python3 scripts/check-memory-health.py "{project_root}/_bmad/_memory/band-manager-sidecar"`
    Flags `MEMORY.md`/`patterns.md`/`chronology.md` over their size thresholds.
 
 ## Report-and-Stage Protocol

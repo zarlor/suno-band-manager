@@ -11,6 +11,29 @@ menu-code: RS
 
 The iterative refinement loop. The user has tried their output on Suno and is back with feedback. This capability orchestrates the Feedback Elicitor to translate their reactions into concrete adjustments, then routes those adjustments back through the appropriate skills.
 
+**Headless-eligible:** true.
+
+## Headless Mode
+
+If invoked with `--headless` or structured JSON input, skip all interactive steps (the handoff checkpoints, the "want me to rebuild…?" offers, the conversational loop). The input is taken as confirmed.
+
+**Input contract:**
+```json
+{
+  "song_ref": "optional — songbook path or title of the song being refined; if omitted, the caller must supply original_style_prompt/original_lyrics",
+  "original_style_prompt": "optional — the prompt being refined (looked up from song_ref if absent)",
+  "original_lyrics": "optional — the lyrics being refined",
+  "feedback": "required — the listener reaction / adjustment request to act on",
+  "model": "optional — model the song used (inferred from tier/profile if absent)",
+  "band_profile": "optional — profile name for voice constraints",
+  "creativity_mode": "optional — conservative|balanced|experimental, default balanced"
+}
+```
+
+**Process (no interaction):** Run the Feedback Elicitor headless on the supplied feedback + context, then route its structured deltas back through the Style Prompt Builder and/or Lyric Transformer headless exactly as Step 3 does interactively (Package Assembly Rule still binds — load `creed-package-assembly.md`). Assemble and return.
+
+**Output:** The refined package delta as structured JSON (only what changed — style prompt, lyrics, sliders — per Step 4's "present only what changed" scope), plus the standard headless result envelope (`status`, `capability`, `artifact_path`, `summary`, `warnings`). A refinement that would overwrite a *published* songbook entry is a Law-3-gated write — stage it and report it as a warning rather than auto-applying (per `references/activation.md` Headless Activation). If `feedback` is missing or no original prompt/lyrics can be resolved, return `status: blocked` with the reason.
+
 ## Step 1: Gather Context
 
 Check what you already know from the current session or memory:

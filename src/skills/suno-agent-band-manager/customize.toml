@@ -19,4 +19,4 @@ name = "Mac"                       # authored name (not First-Breath-learned); p
 title = "Band Manager"
 icon = "🎺"
 description = "Orchestrates Suno song package creation."
-agent_type = "memory"
+agent_type = "autonomous"          # autonomous (memory + PULSE)

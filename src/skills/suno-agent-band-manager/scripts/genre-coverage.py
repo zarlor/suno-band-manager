@@ -228,8 +228,16 @@ def main():
     args = ap.parse_args()
     songbook = os.path.join(args.project_root, "docs", "songbook")
     if not os.path.isdir(songbook):
-        print(f"ERROR: {songbook} not found", file=sys.stderr)
-        sys.exit(2)
+        # Empty catalog (no songbook yet — fresh project, first session) is a
+        # NORMAL no-op, not an error. A Pulse wake or a first save calls this
+        # before any song exists; a hard exit-2 here would look like a failure
+        # to the user (or log a scary error in a cron context) when there is
+        # simply nothing to index. Exit clean with a zeroed result.
+        if args.format == "json":
+            print(json.dumps({"bands": [], "band_count": 0}, indent=2))
+        else:
+            print(f"No songbook at {songbook} yet — empty catalog, nothing to index.")
+        return 0
     bands = [args.band] if args.band else sorted(
         d for d in os.listdir(songbook) if os.path.isdir(os.path.join(songbook, d)))
     results = []
@@ -255,7 +263,8 @@ def main():
                   f"{len(clauses)} prose refs -> {out}")
     if args.format == "json":
         print(json.dumps({"bands": results, "band_count": len(results)}, indent=2))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

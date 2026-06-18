@@ -50,7 +50,21 @@ import re
 import shutil
 import sys
 from datetime import date
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+
+
+def _load_sanctum_seed():
+    """Import the shared seed module by path (hyphenated script dir, no package)."""
+    seed_path = Path(__file__).resolve().parent / "_sanctum_seed.py"
+    spec = spec_from_file_location("_sanctum_seed", seed_path)
+    mod = module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_seed = _load_sanctum_seed()
+shard_creed = _seed.shard_creed  # single source of the creed-sharding logic
 
 SKILL_NAME = "suno-agent-band-manager"
 SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
@@ -224,85 +238,10 @@ def current_work_pointer_block(current_section: str | None) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Creed sharding
+# Creed sharding — the slicing logic now lives in the shared `_sanctum_seed`
+# module so BOTH this migration tool and init-sanctum.py shard the source creed
+# identically. `shard_creed` is imported at the top of this file.
 # ---------------------------------------------------------------------------
-
-# Map source creed "## " headings to shard destinations. Headings not listed
-# stay in the core (they are reproduced by the CREED-template anyway). The
-# always-load CORE comes from the template; the shards carry the heavy
-# disciplines + incident narratives lifted out of the source creed verbatim.
-SHARD_ROUTING = {
-    "creed-workshop-capture.md": ["Workshop Capture Discipline"],
-    "creed-disciplines.md": [
-        "Research Discipline",
-        "Thematic Discipline",
-        "Catalog Verification Discipline",
-        "Document State Marker Discipline",
-        "Hedge Preservation Discipline",
-        "Pre-Presentation Review",
-        "Milestone Auto-Save",
-    ],
-    "creed-package-assembly.md": ["Package Assembly Rule"],
-}
-
-
-def shard_creed(creed_text: str) -> dict[str, str]:
-    """Slice the source creed into shard files by heading prefix-match.
-
-    Returns {shard_filename: content}. Every source "## " discipline section is
-    routed to exactly one shard; the incident-heavy narrative content rides
-    along inside its discipline shard. A creed-incident-log.md is also produced
-    aggregating the verbose "Recurring failure pattern" narratives so they can
-    be referenced without loading.
-    """
-    parts = SECTION_SPLIT_RE.split(creed_text)
-    sections = [p for p in parts if p.strip().startswith("##")]
-
-    shard_content: dict[str, list[str]] = {name: [] for name in SHARD_ROUTING}
-    incident_sections: list[str] = []
-
-    for section in sections:
-        heading = heading_of(section)
-        heading_body = heading.lstrip("#").strip()
-        routed = False
-        for shard_name, prefixes in SHARD_ROUTING.items():
-            if any(heading_body.startswith(p) for p in prefixes):
-                shard_content[shard_name].append(section.rstrip() + "\n")
-                routed = True
-                break
-        if not routed:
-            # Mission / Principles live in the core template; skip duplicating.
-            continue
-        # Collect the verbose failure-pattern narrative for the incident log.
-        if "Recurring failure pattern" in section or "instance" in heading_body.lower():
-            incident_sections.append(section.rstrip() + "\n")
-
-    out: dict[str, str] = {}
-    for shard_name, secs in shard_content.items():
-        if not secs:
-            continue
-        title = shard_name.replace("creed-", "").replace(".md", "").replace("-", " ").title()
-        header = (
-            f"# Mac — Creed Shard: {title}\n\n"
-            "> Loaded on demand. Lifted verbatim from the skill creed. The "
-            "always-loaded CORE (Mission, Three Laws, Sacred Truth, Package "
-            "Assembly core) lives in `CREED.md`.\n"
-        )
-        out[shard_name] = header + "\n" + "\n".join(secs).rstrip() + "\n"
-
-    # Incident log — verbose narratives, NOT loaded on rebirth.
-    incident_body = "\n".join(incident_sections).rstrip() if incident_sections else (
-        "_No verbose incident narratives extracted._"
-    )
-    out["creed-incident-log.md"] = (
-        "# Mac — Creed Incident Log\n\n"
-        "> NOT loaded on rebirth. Verbose narratives behind the documented "
-        "discipline-failure incidents — the 'why' archive. The rules themselves "
-        "live in the creed shards; this is reference only.\n\n"
-        + incident_body
-        + "\n"
-    )
-    return out
 
 
 # ---------------------------------------------------------------------------

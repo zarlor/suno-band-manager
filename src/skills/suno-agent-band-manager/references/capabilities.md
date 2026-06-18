@@ -7,7 +7,12 @@ Package Assembly Rule **core**, Dominion pointer) loads on every activation. The
 heavy disciplines live in capability-scoped sanctum shards loaded on demand —
 load the relevant shard when its trigger context arises (NOT the skill's authored
 `references/creed.md`, which is source/template lineage and is not loaded on
-rebirth):
+rebirth).
+
+The table below is the **shard load-trigger** routing for capability work. The
+full loaded / on-demand / not-loaded tier map (including the always-loaded
+7-file rebirth set and the raw not-loaded layers) is owned canonically by the
+sanctum's `INDEX.md` — consult it for the complete picture:
 
 | Shard | Load when |
 |-------|-----------|

@@ -10,6 +10,8 @@ description: Reconcile stale references across docs and sidecar files after auth
 
 When authoritative data changes in one file, stale references may persist in other files. This reference defines how to detect and fix them.
 
+**Headless-eligible:** false — reconciliation hinges on judgment a script can't make (which hits are intentional historical references like "formerly known as" vs. genuine drift, and the in-context replacement) and on the owner's Handoff Checkpoint approval before any write. A headless invocation returns `{status: blocked, reason: "interactive-only"}`. The deterministic scan parts are owned by `scripts/validate-sidecar.py` / `scripts/scan-wip-status.py`, which a headless caller can run directly for a punch list.
+
 ## When to Run
 
 Reconciliation is triggered after these events:
@@ -142,11 +144,11 @@ exclude styles, settings, and the full generation log.
 
 When building or updating the "Pending / Parked Work" section of the sanctum `MEMORY.md`, Mac MUST:
 
-1. **Scan every `docs/wip-*.md` file** for the `## STATUS: COMPLETED` marker before listing it
-2. **Skip files with the marker** — they are resolved, not pending
-3. **When including resolved WIPs in the index for historical reference**, put them under a separate "Resolved WIP fragments (historical record only — not active work)" subsection, clearly delineated from active pending/parked work, with a pointer to the songbook entry they became
+1. **Run `python3 scripts/scan-wip-status.py "{project-root}" --format json`** (or `uv run` if deps are missing) — this is the marker scan. It reports each `docs/wip-*.md` file as `status: completed | active`, with `completed_as` / `songbook_ref` for resolved ones and a `correlation_warning` for any active WIP that looks like the source of a published song. Do NOT hand-scan the files — the marker is "machine-readable … that listings should grep for," and this is the grep.
+2. **Skip files reported `status: completed`** — they are resolved, not pending. Partition the script output: `active` (with no warning) → pending; `completed` → resolved.
+3. **When including resolved WIPs in the index for historical reference**, put them under a separate "Resolved WIP fragments (historical record only — not active work)" subsection, clearly delineated from active pending/parked work, with a pointer to the songbook entry they became (`songbook_ref` from the script).
 
-The sanctum `MEMORY.md`'s Pending / Parked Work section is the primary place a future Mac session looks to decide what to work on next. A stale WIP listed there will be picked up as a candidate. The scan-before-list rule prevents this.
+The sanctum `MEMORY.md`'s Pending / Parked Work section is the primary place a future Mac session looks to decide what to work on next. A stale WIP listed there will be picked up as a candidate. The scan-before-list rule prevents this — and the script makes the partition a group-by over structured data rather than a per-file read.
 
 ### Applying the marker to existing unmarked WIPs
 

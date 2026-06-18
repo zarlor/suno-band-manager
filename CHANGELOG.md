@@ -4,21 +4,50 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
-## [Unreleased]
+## [2.0.0] - 2026-06-18
 
-> **Version TBD** — the maintainer sets the final version number on release. This
-> entry covers the v2 sanctum migration and the automatic, safe v1→v2 upgrade path.
+A major release. The whole module is brought up to the **BMad Module Builder v2 (BMB v2) standard**: every workflow skill modernized, a new dedicated playlist-sequencing skill extracted, and the Mac agent rebuilt as a v2 **autonomous sanctum agent** whose memory store now stays bounded instead of growing without limit. The only thing that touches existing installs is the memory layout — and it **auto-migrates losslessly on first activation** (details below). All `docs/` content is untouched and fully compatible.
 
-### Highlights
+### Upgrade at a glance (existing installs)
 
-The memory store moved to the **v2 sanctum** layout (a thin `INDEX.md` map plus
-curated `MEMORY.md`, slim `CREED.md`, living `PERSONA.md`, `BOND.md`, `PULSE.md`,
-`CAPABILITIES.md`, a `sessions/` raw-narrative layer, and capability-scoped creed
-shards) — replacing the old single `index.md` content store. The important part
-for existing users: **the upgrade is automatic and lossless.** The first time Mac
-activates on the new version, he detects a pre-v2 (v1) memory store, backs it up,
-and migrates it in place before doing anything else — no data-loss trap, no manual
-steps.
+- **Your memory store auto-migrates, backup-first, on first activation.** Mac detects the old v1 store, backs it up (directory **and** tarball), and migrates it in place before doing anything else. Nothing is lost; rollback is restoring the backup. No manual steps. (Full detail under "Automatic, safe v1→v2 sidecar upgrade" below.)
+- **`docs/` is unchanged** — band profiles, the songbook, the voice-context file, `mac-preferences.md`, playlists, and WIPs all keep working exactly as before. The migration only reshapes the memory store under `_bmad/_memory/band-manager-sidecar/`.
+- **Re-run `suno-setup`** after updating, so the new `suno-playlist-sequencer` skill gets linked and the capability menu picks up its **[PS] Sequence Playlist** entry.
+- **Version reconciliation:** the module version, `.claude-plugin/marketplace.json`, and `package.json` were all aligned to `2.0.0` (they had drifted to 1.8.3 / 1.7.2 / 1.6.7 respectively).
+
+### The workflow skills → BMB v2 standard
+
+All five non-agent skills (`suno-band-profile-manager`, `suno-style-prompt-builder`, `suno-lyric-transformer`, `suno-feedback-elicitor`, `suno-setup`) were brought to the BMB v2 bar — graded against the same `skill-quality-principles` the builder validates against, then remediated end-to-end across two passes (standard conformance, then the opportunity findings).
+
+- **Path + structure hygiene** — bare skill-root paths throughout (the old `./references/…` / `./scripts/…` forms are gone), a stamped `## Conventions` block in every skill, and the canonical source-tree shape.
+- **v2 customization surface** — each creative skill ships a minimal `customize.toml` (`persistent_facts` glob + activation hooks) with the resolver activation step; hardcoded writable paths now reference the existing `band_profiles_folder` / `songbook_folder` config variables instead of literals.
+- **Headless contracts** — `status` / `reason` / `decision_log` discipline across the skills so an automated caller gets a machine-readable result, not prose.
+- **Decision-Log Workspaces, open-floor openings, and expert quick-win lanes** added where a skill produces a revisable artifact or runs a guided conversation.
+- **Determinism pushed into scripts** — character/critical-zone/trigger validation, genre-signal detection, syllable/section counting, and the dangerous-word / scream-trigger tables now live in tested scripts (and shared constants in `_shared/suno_constants.py`), leaving the prompts the judgment calls only.
+- **Script hygiene** — PEP 723 inline deps, structured JSON output, exit codes, and unit tests across the script layer.
+- **Agent-shape removed from workflow surfaces** — the `Identity` / `Communication Style` / `Principles` blocks were folded into Overview/design-rationale on the skills where they were re-teaching LLM-native behavior (and preserved where the voice genuinely serves the craft).
+
+Defects fixed in the same effort:
+
+- **Lyric Transformer** — the headless contract and the compaction-survival state marker required a `sha256` that no script computed (an LLM can't produce one by hand, so the field was being fabricated or skipped, silently breaking the change-tracking that refinement and version-bumping key on). `analyze-input.py` now emits it from stdlib `hashlib` and the workflow reads it from the JSON.
+- **Lyric Transformer** — `validate-options.py` / `assemble-summary.py` carried a `CODE_DESCRIPTIONS` table that had drifted from `SKILL.md`'s canonical option codes (the `RE` rhyme-enhancement code was being outright rejected as invalid). Reconciled, with a drift-guard test so it can't silently diverge again.
+- **Band Profile Manager** — interactive Create was hand-serializing the profile YAML, contradicting the new "never hand-serialize — `apply-profile.py` owns the write" invariant; Create now routes through the same deterministic writer as Edit/Duplicate. Output paths became config-var-driven through the scripts (`--profiles-dir` / `--docs-dir`, backward-compatible). The schema gained an optional `voices:` list so the documented multi-Voice strategy has a real structural home, and the model-preference enum was corrected (bare `v5.5` → `v5.5 Pro`, the value the validator actually accepts).
+
+### New skill — `suno-playlist-sequencer`
+
+The album/playlist-sequencing apparatus — the album-craft methodology plus the `playlist-sequencing-data.py` / `batch-full-analysis.py` librosa scripts — was **extracted out of `suno-feedback-elicitor` into its own skill.** The principle: a lean agent orchestrates, and each workflow owns one job — single-song feedback and album sequencing are different jobs. `suno-feedback-elicitor` is now cleanly single-song scope; Mac routes album/tracklist work ("sequence my playlist", "order my album", "plan my tracklist") to the new skill. The shared `STUDIO-EDITOR-REFERENCE.md` (referenced by three skills) also moved to `_shared/references/` so no workflow reaches into the agent's internals.
+
+### Mac → BMB v2 autonomous sanctum agent
+
+The Mac agent was rebuilt to the v2 agent standard. The builder's detector now correctly recognizes Mac as a memory/autonomous agent — it previously mis-classified him as *stateless*, because he shipped no `agent_type` and no `assets/` templates despite running a heavily-exercised bespoke memory store.
+
+- **Declared identity** — a metadata-only `customize.toml` `[agent]` block with `agent_type = "autonomous"` (Mac is a memory agent **with** PULSE).
+- **v2 sanctum vocabulary** — the memory store is now `INDEX.md` (a thin map) / `MEMORY.md` (curated) / `PERSONA.md` / `CREED.md` / `BOND.md` / `CAPABILITIES.md` / `PULSE.md`, scaffolded by a new `init-sanctum.py` from `assets/*-template.md`.
+- **Bounded memory (the big practical win)** — a two-tier model: raw per-session logs live in `sessions/YYYY-MM-DD.md` (not loaded on rebirth) and are curated up into a tight `MEMORY.md`. The always-loaded store dropped from **533 lines / 145 KB** (≈48× its own health threshold — perpetually red and ignored) to a curated **~100 lines**; the memory-health check is GREEN again.
+- **Sharded CREED** — a slim always-loaded core (Mission, the Three Laws, the Sacred Truth, and the Package Assembly Rule core, all marked INVARIANT) plus capability-scoped discipline shards loaded on demand and a non-loaded incident-narrative log. The root `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` standing-orders now defer to the agent's own `activation.md` instead of force-loading the full ~12 K-token authored creed on every activation — recovering that cost per rebirth while keeping the Package Assembly guarantee true (the rule lives in the always-loaded core).
+- **Headless + a narrow autonomous PULSE** — the headless route SKILL.md had only advertised is now actually implemented (per-capability contracts + structured returns), and a tightly-scoped maintenance PULSE was added: on an autonomous wake it validates the store and refreshes derived sections and **reports-and-stages** for the next session — it never edits creative content (Law 3 is a hard line).
+- **Wired-in tooling + craft fixes** — the built-but-unused `genre-coverage.py` is now wired into the publish path and the catalog-verification self-check; a species-mission line and save-as-you-go First-Breath resilience were added; and a published-track name (`Schizo`) that had leaked into the refine template was replaced with a placeholder.
+- **The bespoke machinery was preserved, not regressed** — `validate-sidecar.py`'s integrity checks, the post-unpack `reconcile` gate, ground-truth derived-section regeneration, portable cross-machine sync, the loaded-first `access-boundaries.md`, and the fixed New-Orleans persona all carry forward intact. This was selective adoption of the v2 *shape* on top of the bespoke *rigor* — not a rip-and-replace.
 
 ### Automatic, safe v1→v2 sidecar upgrade on first activation
 

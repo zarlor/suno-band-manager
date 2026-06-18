@@ -118,9 +118,51 @@ def detect_sync_package(project_root: Path) -> dict:
 
 
 def check_first_run(project_root: Path, sanctum_dir: str | None = None) -> bool:
-    """Check if the sanctum directory exists (first run when it doesn't)."""
+    """Check if the sanctum directory exists (first run when it doesn't).
+
+    Back-compat shim: `first_run` is exactly the "absent" sidecar state. The
+    richer three-way picture (absent / v1 / v2 / damaged) lives in
+    `detect_sidecar_format`; this stays so existing callers keep working.
+    """
+    return detect_sidecar_format(project_root, sanctum_dir)["sidecar_format"] == "absent"
+
+
+def detect_sidecar_format(project_root: Path, sanctum_dir: str | None = None) -> dict:
+    """Classify the sidecar so the router can pick scaffold / migrate / load / repair.
+
+    Four states, distinguished by which marker files are present:
+
+    - "absent"  — the sanctum dir doesn't exist → genuine first run → scaffold.
+    - "v2"      — dir exists and carries the v2 marker (`MEMORY.md`) → normal load.
+    - "v1"      — dir exists, has the old `index.md` content store, but NO v2
+                  markers (`MEMORY.md` absent, and `CREED.md`/`INDEX.md` absent)
+                  → a memory store from a previous version → needs migration.
+    - "damaged" — dir exists but has neither `index.md` nor `MEMORY.md` → there's
+                  no recognizable content store to migrate or load → the existing
+                  damaged-sanctum fallback (offer re-scaffold).
+
+    `needs_migration` is true only for "v1": that's the one state where there's
+    real user content (`index.md`) that the v2 load path can't read and must be
+    upgraded — backup-first — before the normal rebirth load runs.
+    """
     sanctum = resolve_sanctum_dir(project_root, sanctum_dir)
-    return not sanctum.exists()
+
+    if not sanctum.exists():
+        return {"sidecar_format": "absent", "needs_migration": False}
+
+    has_v2_marker = (sanctum / "MEMORY.md").is_file()
+    has_v1_marker = (sanctum / "index.md").is_file()
+    # Be conservative about what counts as "already v2": MEMORY.md is the primary
+    # marker, but if either of the other v2 spine files is present we treat the
+    # store as v2 (load path), not v1 (migrate path) — a half-built v2 is not a
+    # v1 store and must not be force-migrated over.
+    has_other_v2_marker = (sanctum / "CREED.md").is_file() or (sanctum / "INDEX.md").is_file()
+
+    if has_v2_marker or has_other_v2_marker:
+        return {"sidecar_format": "v2", "needs_migration": False}
+    if has_v1_marker:
+        return {"sidecar_format": "v1", "needs_migration": True}
+    return {"sidecar_format": "damaged", "needs_migration": False}
 
 
 def scaffold_sidecar(
@@ -301,8 +343,14 @@ def main():
     # Only show this module's own capabilities in the menu.
     menu_modules = [MODULE_CODE]
 
+    sidecar_state = detect_sidecar_format(project_root, args.sanctum_dir)
+
     result = {
-        "first_run": check_first_run(project_root, args.sanctum_dir),
+        # `first_run` == the "absent" sidecar state (kept for back-compat).
+        "first_run": sidecar_state["sidecar_format"] == "absent",
+        # Richer routing signal: absent / v1 / v2 / damaged + the migration flag.
+        "sidecar_format": sidecar_state["sidecar_format"],
+        "needs_migration": sidecar_state["needs_migration"],
         "sync_package": detect_sync_package(project_root),
         "menu_text": render_menu(csv_path, menu_modules),
         "routing_table": build_routing_table(csv_path, menu_modules),

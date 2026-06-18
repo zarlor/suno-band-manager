@@ -6,6 +6,84 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ## [Unreleased]
 
+> **Version TBD** — the maintainer sets the final version number on release. This
+> entry covers the v2 sanctum migration and the automatic, safe v1→v2 upgrade path.
+
+### Highlights
+
+The memory store moved to the **v2 sanctum** layout (a thin `INDEX.md` map plus
+curated `MEMORY.md`, slim `CREED.md`, living `PERSONA.md`, `BOND.md`, `PULSE.md`,
+`CAPABILITIES.md`, a `sessions/` raw-narrative layer, and capability-scoped creed
+shards) — replacing the old single `index.md` content store. The important part
+for existing users: **the upgrade is automatic and lossless.** The first time Mac
+activates on the new version, he detects a pre-v2 (v1) memory store, backs it up,
+and migrates it in place before doing anything else — no data-loss trap, no manual
+steps.
+
+### Automatic, safe v1→v2 sidecar upgrade on first activation
+
+Before this change, an existing user updating to the v2 version hit a gap: their
+`band-manager-sidecar/` directory already existed (in the old v1 layout), so
+activation treated it as "not a first run," tried to load the 7 v2 files, found
+them absent, and fell into the "damaged sanctum → offer re-scaffold" fallback — a
+fresh empty sanctum that would orphan the user's real `index.md` memory. Nothing
+auto-migrated.
+
+Now:
+
+- **`pre-activate.py` distinguishes four sidecar states** instead of a single
+  first-run boolean: `absent` (no dir → genuine first run → scaffold), `v1` (dir
+  with the old `index.md`, no v2 markers → needs migration), `v2` (`MEMORY.md`
+  present → normal load), and `damaged` (dir with neither `index.md` nor
+  `MEMORY.md` → re-scaffold fallback). It emits `sidecar_format` and
+  `needs_migration` in its JSON. `first_run` is retained for back-compat (it
+  equals the `absent` case).
+
+- **On first activation after updating, Mac auto-detects the pre-v2 store and
+  upgrades it backup-first.** Interactive: Mac tells you he found a memory store
+  from a previous version and offers to upgrade it ("want me to upgrade it now?
+  I'll back it up first"); on yes he runs the upgrade and tells you where the
+  backup landed. Headless: the upgrade runs automatically (backup-first, no
+  prompt) before routing.
+
+- **The upgrade is backup → migrate → verify → swap, with abort-on-loss.**
+  `migrate-sidecar-to-v2.py --in-place` copies the live sidecar to a timestamped
+  `.sidecar-backup-pre-v2-{YYYYMMDD-HHMMSS}/` directory **and** a matching
+  `.tar.gz` before touching anything, migrates into a temp staging dir, and runs
+  the content-accounting verify. It only swaps the new layout into the live
+  location if verify passes with **all** source content present. If verify can't
+  account for any content, it ABORTS — no swap, the original is left fully intact
+  (Law 3: never lose content). It's idempotent: an already-v2 store is a no-op, an
+  absent sidecar is a no-op, safe to re-run.
+
+- **Rollback is trivial:** restore the timestamped backup directory (or extract
+  the tarball) over `band-manager-sidecar/`. Both live right next to the sidecar
+  under `_bmad/_memory/`.
+
+### Compatibility notes
+
+- **`docs/` files are unchanged and fully compatible.** Band profiles, the
+  songbook, the voice-context file, `mac-preferences.md`, playlists, and WIPs all
+  live under `docs/` and are untouched by the sanctum migration — the upgrade only
+  reshapes the memory store under `_bmad/_memory/band-manager-sidecar/`.
+
+- **An old portable-sync archive unpacked on the new version is also caught.** If
+  you unpack a pre-v2 sync archive (its sidecar is in the v1 layout), the v1 store
+  is detected and migrated on the next activation, the same backup-first way —
+  nothing special to do.
+
+### What to verify after upgrade
+
+Once Mac reports the upgrade is done, the store should come up clean:
+
+- `python3 scripts/validate-sidecar.py` → **PASS** (no errors against songbook /
+  band-profile ground truth).
+- `python3 scripts/check-memory-health.py <sanctum-path>` → **GREEN** (file sizes
+  within v2 thresholds).
+
+If anything is off, your original store is in the timestamped backup — restore it
+and report the issue.
+
 ## [1.8.3] - 2026-06-08
 
 ### Highlights

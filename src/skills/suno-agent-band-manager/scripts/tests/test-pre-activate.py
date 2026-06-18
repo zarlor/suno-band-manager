@@ -53,7 +53,107 @@ def test_check_first_run_honors_sanctum_dir_override(tmp_path):
     # Override points at a non-existent dir → first run.
     assert mod.check_first_run(tmp_path, sanctum_dir=str(staging)) is True
     staging.mkdir()
+    # An empty existing dir is NOT first-run (it's "damaged"), but check_first_run
+    # is the "absent" question only → False once the dir exists.
     assert mod.check_first_run(tmp_path, sanctum_dir=str(staging)) is False
+
+
+# --- three-way (four-state) sidecar-format detection ---
+
+
+def _make_sanctum(tmp_path):
+    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+    sanctum.mkdir(parents=True)
+    return sanctum
+
+
+def test_detect_format_absent(tmp_path):
+    """No sanctum dir → 'absent', no migration → genuine first run."""
+    state = mod.detect_sidecar_format(tmp_path)
+    assert state["sidecar_format"] == "absent"
+    assert state["needs_migration"] is False
+    # first_run is the 'absent' case.
+    assert mod.check_first_run(tmp_path) is True
+
+
+def test_detect_format_v1_needs_migration(tmp_path):
+    """Old v1 layout (index.md, no v2 markers) → 'v1', needs migration."""
+    sanctum = _make_sanctum(tmp_path)
+    (sanctum / "index.md").write_text("# old content store\n")
+    (sanctum / "patterns.md").write_text("# patterns\n")
+    state = mod.detect_sidecar_format(tmp_path)
+    assert state["sidecar_format"] == "v1"
+    assert state["needs_migration"] is True
+    # Critically: NOT first_run (the dir exists), so the old code path would have
+    # tried to load v2 files and fallen into the damaged fallback.
+    assert mod.check_first_run(tmp_path) is False
+
+
+def test_detect_format_v2_loads_normally(tmp_path):
+    """v2 marker (MEMORY.md) present → 'v2', no migration → normal load."""
+    sanctum = _make_sanctum(tmp_path)
+    (sanctum / "MEMORY.md").write_text("# curated memory\n")
+    state = mod.detect_sidecar_format(tmp_path)
+    assert state["sidecar_format"] == "v2"
+    assert state["needs_migration"] is False
+
+
+def test_detect_format_v2_via_other_spine_file(tmp_path):
+    """A half-built v2 (CREED/INDEX present, MEMORY not yet) still counts as v2."""
+    sanctum = _make_sanctum(tmp_path)
+    (sanctum / "INDEX.md").write_text("# thin map\n")
+    state = mod.detect_sidecar_format(tmp_path)
+    # Must NOT be force-migrated over: treat as v2 (load path), not v1.
+    assert state["sidecar_format"] == "v2"
+    assert state["needs_migration"] is False
+
+
+def test_detect_format_v2_wins_even_with_legacy_index(tmp_path):
+    """A migrated sanctum keeps the bespoke index.md? — MEMORY.md still wins → v2."""
+    sanctum = _make_sanctum(tmp_path)
+    (sanctum / "MEMORY.md").write_text("# curated memory\n")
+    (sanctum / "index.md").write_text("# stray legacy index\n")
+    state = mod.detect_sidecar_format(tmp_path)
+    assert state["sidecar_format"] == "v2"
+    assert state["needs_migration"] is False
+
+
+def test_detect_format_damaged(tmp_path):
+    """Dir exists but neither index.md nor MEMORY.md → 'damaged' (re-scaffold)."""
+    sanctum = _make_sanctum(tmp_path)
+    (sanctum / "stray.txt").write_text("junk\n")
+    state = mod.detect_sidecar_format(tmp_path)
+    assert state["sidecar_format"] == "damaged"
+    assert state["needs_migration"] is False
+
+
+def test_detect_format_honors_sanctum_dir_override(tmp_path):
+    """--sanctum-dir override drives format detection too."""
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    (staging / "index.md").write_text("# v1\n")
+    state = mod.detect_sidecar_format(tmp_path, sanctum_dir=str(staging))
+    assert state["sidecar_format"] == "v1"
+    assert state["needs_migration"] is True
+
+
+def test_main_emits_sidecar_format_and_needs_migration(tmp_path, monkeypatch, capsys):
+    """pre-activate JSON output carries sidecar_format + needs_migration."""
+    bmad_dir = tmp_path / "_bmad"
+    bmad_dir.mkdir()
+    (bmad_dir / "module-help.csv").write_text(SAMPLE_CSV)
+    sanctum = bmad_dir / "_memory" / "band-manager-sidecar"
+    sanctum.mkdir(parents=True)
+    (sanctum / "index.md").write_text("# old store\n")
+
+    monkeypatch.setattr(sys, "argv", ["pre-activate.py", str(tmp_path)])
+    mod.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["sidecar_format"] == "v1"
+    assert payload["needs_migration"] is True
+    # first_run stays back-compatible: only true for the absent case.
+    assert payload["first_run"] is False
 
 
 def test_scaffold_delegates_to_init_sanctum(tmp_path):

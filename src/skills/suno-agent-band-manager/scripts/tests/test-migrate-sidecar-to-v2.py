@@ -243,3 +243,134 @@ def test_verify_detects_dropped_content(synthetic_project):
     report = mod.verify(sanctum, out_dir)
     assert report["status"] == "fail"
     assert report["char_accounting"]["all_sections_present"] is False
+
+
+# --- in-place upgrade (backup → migrate → verify → swap, abort-on-loss) ---
+
+
+def test_sidecar_state_classification(synthetic_project, tmp_path):
+    tmp_path2, sanctum = synthetic_project
+    # v1: index.md present, no v2 markers.
+    assert mod.sidecar_state(sanctum) == "v1"
+    # v2: MEMORY.md present.
+    (sanctum / "MEMORY.md").write_text("# memory\n")
+    assert mod.sidecar_state(sanctum) == "v2"
+    # absent: dir doesn't exist.
+    assert mod.sidecar_state(tmp_path / "nope" / "band-manager-sidecar") == "absent"
+    # damaged: dir exists, neither marker.
+    damaged = tmp_path / "damaged"
+    damaged.mkdir()
+    assert mod.sidecar_state(damaged) == "damaged"
+
+
+def test_in_place_migrates_v1_with_backup_and_swap(synthetic_project):
+    tmp_path, sanctum = synthetic_project
+    # Capture the source content before the upgrade so we can prove backup fidelity.
+    src_index = (sanctum / "index.md").read_bytes()
+
+    result = mod.migrate_in_place(tmp_path, sanctum, SKILL_DIR)
+    assert result["status"] == "migrated", result
+
+    # Live location is now v2.
+    assert (sanctum / "MEMORY.md").is_file()
+    assert mod.sidecar_state(sanctum) == "v2"
+    # The old index.md content store is gone from the live location (migrated).
+    assert not (sanctum / "index.md").exists()
+
+    # Backup dir + tarball both exist.
+    backup_dir = Path(result["backup_path"])
+    backup_tarball = Path(result["backup_tarball"])
+    assert backup_dir.is_dir()
+    assert backup_tarball.is_file()
+    assert "sidecar-backup-pre-v2-" in backup_dir.name
+    # Backup is a faithful copy of the ORIGINAL v1 content.
+    assert (backup_dir / "index.md").read_bytes() == src_index
+
+    # Verify rode along and passed; content is present in the new MEMORY.md.
+    assert result["verify"]["status"] == "pass"
+    assert result["verify"]["char_accounting"]["all_sections_present"] is True
+    memory = (sanctum / "MEMORY.md").read_text()
+    assert "Synthetic parked idea" in memory
+    assert "Fixture Band" in memory
+    # Session narrative migrated into sessions/ (not lost).
+    assert result["session_files"]
+    assert (sanctum / "sessions" / "2026-06-10.md").is_file()
+
+
+def test_in_place_already_v2_is_noop(synthetic_project):
+    tmp_path, sanctum = synthetic_project
+    # First upgrade brings it to v2.
+    first = mod.migrate_in_place(tmp_path, sanctum, SKILL_DIR)
+    assert first["status"] == "migrated"
+    memory_before = (sanctum / "MEMORY.md").read_bytes()
+
+    # Second run is a clean no-op — no new backup, sanctum untouched.
+    backups_before = list((tmp_path / "_bmad" / "_memory").glob(".sidecar-backup-pre-v2-*"))
+    second = mod.migrate_in_place(tmp_path, sanctum, SKILL_DIR)
+    assert second["status"] == "already-v2"
+    backups_after = list((tmp_path / "_bmad" / "_memory").glob(".sidecar-backup-pre-v2-*"))
+    assert len(backups_after) == len(backups_before)
+    assert (sanctum / "MEMORY.md").read_bytes() == memory_before
+
+
+def test_in_place_no_sidecar_is_noop(tmp_path):
+    bmad = tmp_path / "_bmad"
+    bmad.mkdir()
+    (bmad / "config.yaml").write_text("user_name: Nobody\n")
+    sanctum = bmad / "_memory" / "band-manager-sidecar"  # never created
+    result = mod.migrate_in_place(tmp_path, sanctum, SKILL_DIR)
+    assert result["status"] == "no-sidecar"
+    assert not sanctum.exists()
+
+
+def test_in_place_aborts_on_content_loss(synthetic_project, monkeypatch):
+    """If verify can't account for all content, ABORT: no swap, original intact."""
+    tmp_path, sanctum = synthetic_project
+    src_before = {p.name: p.read_bytes() for p in sanctum.iterdir() if p.is_file()}
+
+    # Force a content-loss verify by monkeypatching verify() to report a drop.
+    def fake_verify(sanctum_path, out_dir):
+        return {
+            "status": "fail",
+            "findings": ["forced content loss for test"],
+            "char_accounting": {"all_sections_present": False, "dropped_sections": ["X"]},
+        }
+
+    monkeypatch.setattr(mod, "verify", fake_verify)
+    result = mod.migrate_in_place(tmp_path, sanctum, SKILL_DIR)
+
+    assert result["status"] == "blocked"
+    assert "verify did not pass" in result["reason"]
+    # Original sidecar is STILL v1 and byte-identical — nothing swapped.
+    assert mod.sidecar_state(sanctum) == "v1"
+    src_after = {p.name: p.read_bytes() for p in sanctum.iterdir() if p.is_file()}
+    assert src_before == src_after
+    # The backup was still made (backup-first) and is reported.
+    assert Path(result["backup_path"]).is_dir()
+    # No staging dir left lying around.
+    staging = list((tmp_path / "_bmad" / "_memory").glob(".sidecar-v2-staging-*"))
+    assert staging == []
+
+
+def test_in_place_blocks_damaged_sidecar(tmp_path):
+    """A damaged sidecar (no index.md, no MEMORY.md) is blocked, not migrated."""
+    bmad = tmp_path / "_bmad"
+    bmad.mkdir()
+    (bmad / "config.yaml").write_text("user_name: Nobody\n")
+    sanctum = bmad / "_memory" / "band-manager-sidecar"
+    sanctum.mkdir(parents=True)
+    (sanctum / "stray.txt").write_text("junk\n")
+    result = mod.migrate_in_place(tmp_path, sanctum, SKILL_DIR)
+    assert result["status"] == "blocked"
+    assert "re-scaffold" in result["reason"]
+
+
+def test_in_place_staging_mode_still_works(synthetic_project):
+    """The original staging-mode migrate() is unchanged by the in-place addition."""
+    tmp_path, sanctum = synthetic_project
+    out_dir, result = run_migrate(tmp_path, sanctum)
+    assert result["status"] == "migrated"
+    # Source untouched by staging mode.
+    assert (sanctum / "index.md").is_file()
+    assert mod.sidecar_state(sanctum) == "v1"
+    assert (out_dir / "MEMORY.md").is_file()

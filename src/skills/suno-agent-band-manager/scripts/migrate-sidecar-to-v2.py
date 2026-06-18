@@ -3,13 +3,23 @@
 # requires-python = ">=3.10"
 # dependencies = []
 # ///
-"""READ-ONLY migration of Mac's legacy sidecar into a v2 sanctum staging dir.
+"""Migration of Mac's legacy (v1) sidecar into a v2 sanctum.
 
-NON-DESTRUCTIVE BY CONTRACT. This tool NEVER writes to or modifies the source
-sidecar. It reads the live sidecar and writes a complete v2 sanctum layout into
-an output directory (default: {project-root}/_bmad/_memory/.sidecar-v2-staging).
-Nothing is cut over — a human reviews the staging dir and promotes it manually
-in a later phase.
+Two modes:
+
+1. STAGING mode (default, `--out DIR`) — NON-DESTRUCTIVE BY CONTRACT. NEVER
+   writes to or modifies the source sidecar. Reads the live sidecar and writes a
+   complete v2 sanctum layout into an output directory (default:
+   {project-root}/_bmad/_memory/.sidecar-v2-staging). Nothing is cut over — a
+   human reviews the staging dir and promotes it.
+
+2. IN-PLACE mode (`--in-place`) — the scripted, safe automatic upgrade an
+   existing user hits the first time they activate the v2 version. It backs the
+   live sidecar up FIRST (dir + tarball), migrates to a temp staging dir, runs
+   verify(), and ONLY swaps the live location into place if verify passes with
+   all source content present. If verify fails it ABORTS and leaves the original
+   untouched (Law 3 — never lose content). A v1 store is migrated; an already-v2
+   store is a no-op; an absent sidecar is a no-op. Idempotent, safe to re-run.
 
 What it does
 ------------
@@ -34,6 +44,7 @@ Usage
 -----
     migrate-sidecar-to-v2.py --project-root PATH [--out DIR]
     migrate-sidecar-to-v2.py --project-root PATH --out DIR --verify
+    migrate-sidecar-to-v2.py --project-root PATH --in-place --format json
     migrate-sidecar-to-v2.py --help
 
 The --verify pass re-reads the produced staging dir and reports: # session
@@ -49,7 +60,8 @@ import json
 import re
 import shutil
 import sys
-from datetime import date
+import tarfile
+from datetime import date, datetime
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
@@ -473,6 +485,173 @@ def verify(sanctum_path: Path, out_dir: Path) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# In-place upgrade (backup → migrate → verify → swap, abort-on-loss)
+# ---------------------------------------------------------------------------
+
+
+def sidecar_state(sanctum_path: Path) -> str:
+    """Classify the live sidecar: 'absent' | 'v2' | 'v1' | 'damaged'.
+
+    Mirrors pre-activate.py's detection so the router and this driver agree:
+    MEMORY.md (or another v2 spine file) ⇒ v2; index.md with no v2 marker ⇒ v1;
+    a dir with neither ⇒ damaged; no dir ⇒ absent.
+    """
+    if not sanctum_path.exists():
+        return "absent"
+    if (
+        (sanctum_path / "MEMORY.md").is_file()
+        or (sanctum_path / "CREED.md").is_file()
+        or (sanctum_path / "INDEX.md").is_file()
+    ):
+        return "v2"
+    if (sanctum_path / "index.md").is_file():
+        return "v1"
+    return "damaged"
+
+
+def _timestamp() -> str:
+    """Stable backup suffix: YYYYMMDD-HHMMSS (local time)."""
+    return datetime.now().strftime("%Y%m%d-%H%M%S")
+
+
+def _backup_sidecar(sanctum_path: Path, memory_root: Path, stamp: str) -> tuple[Path, Path]:
+    """Copy the live sidecar to a timestamped backup dir AND a .tar.gz.
+
+    Returns (backup_dir, backup_tarball). Both live alongside the sidecar in
+    `memory_root` (the sidecar's parent) so a rollback is a single move/extract.
+    """
+    backup_dir = memory_root / f".sidecar-backup-pre-v2-{stamp}"
+    # If a same-second backup dir somehow exists, clear it for a clean copy.
+    if backup_dir.exists():
+        shutil.rmtree(backup_dir)
+    shutil.copytree(sanctum_path, backup_dir)
+
+    backup_tarball = memory_root / f".sidecar-backup-pre-v2-{stamp}.tar.gz"
+    with tarfile.open(backup_tarball, "w:gz") as tar:
+        tar.add(sanctum_path, arcname=sanctum_path.name)
+
+    return backup_dir, backup_tarball
+
+
+def migrate_in_place(
+    project_root: Path, sanctum_path: Path, skill_path: Path
+) -> dict:
+    """Safely upgrade a v1 sidecar to v2 IN PLACE: backup → migrate → verify → swap.
+
+    Steps:
+      a. Classify. already-v2 → no-op {status: "already-v2"}; absent → no-op
+         {status: "no-sidecar"}; damaged → {status: "blocked"} (no content store
+         to migrate — the router offers re-scaffold, not migration). Only a v1
+         sidecar proceeds.
+      b. Back up FIRST — copy the live sidecar to
+         .sidecar-backup-pre-v2-{stamp}/ AND a matching .tar.gz.
+      c. Migrate to a temp staging dir (reuses migrate()).
+      d. verify(). If status != "pass" OR all_sections_present is false → ABORT:
+         do NOT swap, leave the original untouched, clean up staging, return
+         {status: "blocked", reason: ...}. (Law 3 — never lose content.)
+      e. Verified pass → swap: move the live sidecar aside to a backup-old dir,
+         move staging into the live location.
+      f. Return {status: "migrated", backup_path, backup_tarball, sanctum_path,
+         verify, session_files, files}.
+
+    Idempotent and safe to re-run: a second run sees a v2 sidecar and no-ops.
+    """
+    state = sidecar_state(sanctum_path)
+    if state == "v2":
+        return {"status": "already-v2", "sanctum_path": str(sanctum_path)}
+    if state == "absent":
+        return {"status": "no-sidecar", "sanctum_path": str(sanctum_path)}
+    if state == "damaged":
+        return {
+            "status": "blocked",
+            "reason": (
+                "sidecar has neither index.md (v1) nor MEMORY.md (v2) — no "
+                "recognizable content store to migrate; re-scaffold instead"
+            ),
+            "sanctum_path": str(sanctum_path),
+        }
+
+    # --- v1: do the safe cutover ---
+    memory_root = sanctum_path.parent
+    stamp = _timestamp()
+
+    # (b) Back up FIRST — before we touch anything.
+    backup_dir, backup_tarball = _backup_sidecar(sanctum_path, memory_root, stamp)
+
+    # (c) Migrate to a temp staging dir (sibling, hidden, stamped → never clobbers).
+    staging_dir = memory_root / f".sidecar-v2-staging-{stamp}"
+    migrate_result = migrate(project_root, sanctum_path, staging_dir, skill_path)
+    if migrate_result["status"] != "migrated":
+        if staging_dir.exists():
+            shutil.rmtree(staging_dir)
+        return {
+            "status": "blocked",
+            "reason": f"migration failed: {migrate_result.get('message', 'unknown error')}",
+            "backup_path": str(backup_dir),
+            "backup_tarball": str(backup_tarball),
+            "sanctum_path": str(sanctum_path),
+        }
+
+    # (d) Verify the staging dir against the (still-untouched) source. Abort on loss.
+    report = verify(sanctum_path, staging_dir)
+    if report["status"] != "pass" or not report["char_accounting"]["all_sections_present"]:
+        shutil.rmtree(staging_dir)
+        return {
+            "status": "blocked",
+            "reason": (
+                "verify did not pass — refusing to swap so no content is lost "
+                f"(findings: {report.get('findings', [])})"
+            ),
+            "backup_path": str(backup_dir),
+            "backup_tarball": str(backup_tarball),
+            "sanctum_path": str(sanctum_path),
+            "verify": report,
+        }
+
+    # (e) Verified pass → swap. Move the live sidecar aside, then staging into place.
+    # The backup dir already holds a copy; this "old" move is the rollback anchor
+    # that the swap itself can restore from if the final move ever fails.
+    old_aside = memory_root / f".sidecar-old-{stamp}"
+    if old_aside.exists():
+        shutil.rmtree(old_aside)
+    shutil.move(str(sanctum_path), str(old_aside))
+    try:
+        shutil.move(str(staging_dir), str(sanctum_path))
+    except OSError:
+        # Swap failed mid-flight: restore the original from the aside copy so the
+        # live location is never left empty.
+        shutil.move(str(old_aside), str(sanctum_path))
+        if staging_dir.exists():
+            shutil.rmtree(staging_dir)
+        return {
+            "status": "blocked",
+            "reason": "swap failed; original restored — sidecar left untouched",
+            "backup_path": str(backup_dir),
+            "backup_tarball": str(backup_tarball),
+            "sanctum_path": str(sanctum_path),
+        }
+    # Swap succeeded; the aside copy is redundant with the timestamped backup.
+    shutil.rmtree(old_aside)
+
+    session_files = sorted(
+        p.name for p in (sanctum_path / "sessions").glob("*.md")
+    ) if (sanctum_path / "sessions").is_dir() else []
+    files = sorted(
+        str(p.relative_to(sanctum_path)) for p in sanctum_path.rglob("*") if p.is_file()
+    )
+
+    return {
+        "status": "migrated",
+        "backup_path": str(backup_dir),
+        "backup_tarball": str(backup_tarball),
+        "sanctum_path": str(sanctum_path),
+        "verify": report,
+        "session_files": session_files,
+        "files": files,
+    }
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -503,6 +682,15 @@ def main() -> int:
         help=(
             "Path to the skill dir (assets/ + references/ live here). Default: "
             "inferred as the parent of this script's directory."
+        ),
+    )
+    parser.add_argument(
+        "--in-place",
+        action="store_true",
+        help=(
+            "Upgrade the live sidecar IN PLACE (backup → migrate → verify → swap, "
+            "abort-on-loss). Only migrates a v1 sidecar; already-v2 and absent are "
+            "no-ops. Ignores --out. This is the automatic activation-time upgrade."
         ),
     )
     parser.add_argument(
@@ -542,6 +730,31 @@ def main() -> int:
             print(json.dumps(payload, indent=2))
         else:
             print(payload.get("message", json.dumps(payload, indent=2)))
+
+    # --- In-place upgrade mode (the automatic activation-time path) ---
+    if args.in_place:
+        result = migrate_in_place(project_root, sanctum_path, skill_path)
+        if args.format == "json":
+            print(json.dumps(result, indent=2))
+        else:
+            status = result["status"]
+            if status == "migrated":
+                print(
+                    f"Upgraded sidecar to v2 in place.\n"
+                    f"  backup dir:     {result['backup_path']}\n"
+                    f"  backup tarball: {result['backup_tarball']}\n"
+                    f"  sanctum:        {result['sanctum_path']}\n"
+                    f"  session files:  {len(result['session_files'])}\n"
+                    f"  files:          {len(result['files'])}"
+                )
+            elif status == "already-v2":
+                print("Sidecar is already v2 — nothing to upgrade.")
+            elif status == "no-sidecar":
+                print("No sidecar present — nothing to upgrade.")
+            else:  # blocked
+                print(f"BLOCKED: {result.get('reason', 'unknown')}")
+        # migrated / already-v2 / no-sidecar are success exits; blocked is non-zero.
+        return 0 if result["status"] in ("migrated", "already-v2", "no-sidecar") else 1
 
     if not args.verify_only:
         result = migrate(project_root, sanctum_path, out_dir, skill_path)

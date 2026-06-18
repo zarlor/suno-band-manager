@@ -17,7 +17,18 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
+# Graceful degradation: pyyaml is required to parse profiles. If missing,
+# emit a clear JSON error so the caller can diff the two YAMLs by hand rather
+# than crashing on an uncaught ImportError.
+try:
+    import yaml
+except ImportError:
+    print(json.dumps({
+        "script": "diff-profiles",
+        "status": "error",
+        "error": "pyyaml is not installed. Run with `uv run`, or compare the two YAML files directly.",
+    }))
+    sys.exit(2)
 
 
 def flatten_dict(d: dict, prefix: str = "") -> dict:

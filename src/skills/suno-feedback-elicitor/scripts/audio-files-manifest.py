@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = ["pyyaml>=6.0"]
@@ -85,7 +85,7 @@ def require_yaml():
                 "version": SCRIPT_VERSION,
                 "status": "error",
                 "error": "missing-dependency",
-                "message": "pyyaml is required. Install with: pip install pyyaml",
+                "message": "pyyaml is required. Run this script via 'uv run scripts/audio-files-manifest.py ...' — uv reads the PEP 723 metadata block and provisions pyyaml automatically.",
             }),
             file=sys.stdout,
         )
@@ -186,6 +186,8 @@ def main():
                 "file_count": len(entries),
             })
         )
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

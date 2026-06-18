@@ -256,6 +256,10 @@ def main():
     )
     args = parser.parse_args()
 
+    if not Path(args.audio_file).is_file():
+        print(f"Audio file not found: {args.audio_file}", file=sys.stderr)
+        sys.exit(1)
+
     if args.output_format == "text":
         analyze_tempo_text(args.audio_file)
     else:
@@ -266,6 +270,8 @@ def main():
             Path(args.output).write_text(output + "\n")
         else:
             print(output)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

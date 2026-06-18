@@ -1,6 +1,6 @@
 # Suno Platform Reference
 
-Quick-reference for Suno models, plans, parameters, metatags, and common pitfalls. This is a companion to the [Usage Guide](./USAGE.md) (how to use Mac), the [Studio & Editor Reference](./STUDIO-EDITOR-REFERENCE.md) (post-generation editing tools), and covers *how Suno works* for generation.
+Quick-reference for Suno models, plans, parameters, metatags, and common pitfalls. This is a companion to the [Usage Guide](./USAGE.md) (how to use Mac), the [Studio & Editor Reference](../../_shared/references/STUDIO-EDITOR-REFERENCE.md) (post-generation editing tools), and covers *how Suno works* for generation.
 
 ---
 

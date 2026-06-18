@@ -629,15 +629,15 @@ This replaces gut-feel prompt tweaking with systematic iteration. Mac can sugges
 
 ### Playlist Sequencing
 
-Mac can assist with playlist/album ordering using both data and creative judgment. The workflow combines:
+Mac routes playlist/album ordering to the dedicated `suno-playlist-sequencer` skill, which combines data and creative judgment:
 
-- **librosa scripts** — `playlist-sequencing-data.py` generates BPM, key (with Camelot wheel codes), energy levels, and transition quality ratings between adjacent tracks. `chord-progression.py` analyzes key centers over time within individual tracks.
+- **librosa scripts** — `playlist-sequencing-data.py` generates BPM, key (with Camelot wheel codes), energy levels, and transition quality ratings between adjacent tracks; `batch-full-analysis.py` adds catalog-wide energy/section/spectral analysis. (`chord-progression.py`, for key centers over time within individual tracks, stays in the Feedback Elicitor.)
 - **Camelot wheel harmonic mixing** — key compatibility scoring based on DJ harmonic mixing principles (+/-1 number = safe, relative major/minor = mood shift, beyond +2 = intentional contrast)
-- **Narrative sequencing** — Mac considers thematic arcs, emotional progression, and lyrical connections between songs alongside the sonic data
+- **Narrative sequencing** — the skill considers thematic arcs, emotional progression, and lyrical connections between songs alongside the sonic data
 
-Tell Mac "help me order my playlist" or "sequence these songs for an album" and provide the audio files or sequencing data. Mac balances sonic flow (BPM transitions, key compatibility, timbral variety) with narrative progression (thematic arc, emotional journey) to suggest an ordering.
+Tell Mac "help me order my playlist" or "sequence these songs for an album" and provide the audio files or sequencing data. Mac hands the work to `suno-playlist-sequencer`, which balances sonic flow (BPM transitions, key compatibility, timbral variety) with narrative progression (thematic arc, emotional journey) to suggest an ordering.
 
-See the Feedback Elicitor's audio-analysis-workflow reference for the full sequencing methodology and Camelot wheel details.
+See the `suno-playlist-sequencer` skill's `references/playlist-sequencing-methodology.md` for the full sequencing methodology, and the Feedback Elicitor's `gemini-audio-analysis.md` for the Camelot wheel / felt-BPM foundation it builds on.
 
 ---
 

@@ -335,6 +335,10 @@ def main():
     )
     args = parser.parse_args()
 
+    if not os.path.isfile(args.audio_file):
+        print(f"Audio file not found: {args.audio_file}", file=sys.stderr)
+        sys.exit(1)
+
     if args.output_format == "text":
         analyze_chords_text(args.audio_file, chord_templates)
     else:
@@ -345,6 +349,8 @@ def main():
             Path(args.output).write_text(output + "\n")
         else:
             print(output)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

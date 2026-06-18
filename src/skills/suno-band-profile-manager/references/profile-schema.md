@@ -218,7 +218,7 @@ tracks:
   # ...
 ```
 
-The two required fields per track are `name` (the human-readable song title — must match the songbook entry's frontmatter `title`) and `file` (the audio filename in `docs/audio/`, used as the input to `playlist-sequencing-data.py`).
+The two required fields per track are `name` (the human-readable song title — must match the songbook entry's frontmatter `title`) and `file` (the audio filename in `docs/audio/`, used as the input to the `suno-playlist-sequencer` skill's `playlist-sequencing-data.py`).
 
 ### Bootstrapping
 
@@ -246,4 +246,4 @@ The band profile YAML must NOT contain a `playlist:` block. `validate-profile.py
 - **On track reorder:** edit `docs/{band-slug}-playlist.yaml` first; the script's per-album companion `docs/{band-slug}-playlist-sequencing.md` auto-refreshes from this on the next run.
 - **On track removal/rename:** update the YAML, the songbook (if renaming), the sidecar narrative, and any ordering doc all in the same write batch.
 
-See also `suno-feedback-elicitor/references/playlist-sequencing-methodology.md` for the album-craft methodology that consumes this file's data.
+See also `suno-playlist-sequencer/references/playlist-sequencing-methodology.md` for the album-craft methodology that consumes this file's data.

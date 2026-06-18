@@ -13,9 +13,11 @@ from pathlib import Path
 SCRIPT = str(Path(__file__).parent.parent / "map-adjustments.py")
 
 
-def run_script(input_data: dict | str | None = None) -> tuple[int, dict]:
+def run_script(input_data: dict | str | None = None, extra_args: list[str] | None = None) -> tuple[int, dict]:
     """Run map-adjustments.py with stdin input and return (exit_code, parsed_json)."""
     cmd = [sys.executable, SCRIPT, "--stdin"]
+    if extra_args:
+        cmd.extend(extra_args)
     input_str = json.dumps(input_data) if isinstance(input_data, dict) else (input_data or "")
     result = subprocess.run(cmd, input=input_str, capture_output=True, text=True)
     try:
@@ -266,6 +268,55 @@ def test_consistency_check_add_remove_conflict():
     assert "consistency_warnings" in adj
     conflict_types = [w["type"] for w in adj["consistency_warnings"]]
     assert "add_remove_conflict" in conflict_types
+
+
+def test_style_prompt_overflow_v4_pro():
+    """A long style prompt under v4 Pro's 200-char limit triggers an overflow warning."""
+    long_prompt = "warm indie rock, " * 20  # ~340 chars, well over 200
+    data = {"dimensions": [{"dimension": "vocals", "direction": "too_polished"}]}
+    code, output = run_script(
+        data, extra_args=["--style-prompt", long_prompt, "--model", "v4 Pro"]
+    )
+    assert code == 0
+    warnings = output["adjustments"].get("consistency_warnings", [])
+    overflow = [w for w in warnings if w["type"] == "style_prompt_overflow"]
+    assert overflow, "Expected a style_prompt_overflow warning for v4 Pro"
+    assert overflow[0]["limit"] == 200
+
+
+def test_style_prompt_no_overflow_default_model():
+    """The same long prompt is under the 1000-char default limit for other models."""
+    long_prompt = "warm indie rock, " * 20  # ~340 chars, under 1000
+    data = {"dimensions": [{"dimension": "vocals", "direction": "too_polished"}]}
+    code, output = run_script(
+        data, extra_args=["--style-prompt", long_prompt, "--model", "v5 Pro"]
+    )
+    assert code == 0
+    warnings = output["adjustments"].get("consistency_warnings", [])
+    assert not [w for w in warnings if w["type"] == "style_prompt_overflow"]
+
+
+def test_style_prompt_overflow_from_json_keys():
+    """Overflow validation also reads original_style_prompt/model from the input JSON."""
+    long_prompt = "x" * 250
+    data = {
+        "dimensions": [{"dimension": "vocals", "direction": "too_polished"}],
+        "original_style_prompt": long_prompt,
+        "model": "v4 Pro",
+    }
+    code, output = run_script(data)
+    assert code == 0
+    warnings = output["adjustments"].get("consistency_warnings", [])
+    assert [w for w in warnings if w["type"] == "style_prompt_overflow"]
+
+
+def test_no_style_prompt_no_overflow_check():
+    """Without a style prompt, no overflow warning is produced."""
+    data = {"dimensions": [{"dimension": "vocals", "direction": "too_polished"}]}
+    code, output = run_script(data)
+    assert code == 0
+    warnings = output["adjustments"].get("consistency_warnings", [])
+    assert not [w for w in warnings if w["type"] == "style_prompt_overflow"]
 
 
 if __name__ == "__main__":

@@ -312,3 +312,85 @@ def test_derive_filename_multiple_spaces():
 
 def test_derive_filename_already_kebab():
     assert derive_filename("already-kebab") == "already-kebab.yaml"
+
+
+# --- docs-dir / playlist-location tests ---
+
+def _make_standard_layout(root: Path, slug: str = "test-band", published: bool = True):
+    """Build {root}/docs/band-profiles/{slug}.yaml plus a songbook entry.
+
+    Returns the profile path. With published=True the songbook entry has
+    `status: published`, which is what trips the "missing playlist YAML"
+    high-severity finding (a band with songbook entries needs a canonical
+    playlist YAML).
+    """
+    profiles_dir = root / "docs" / "band-profiles"
+    profiles_dir.mkdir(parents=True)
+    profile_path = profiles_dir / f"{slug}.yaml"
+    with open(profile_path, "w") as f:
+        yaml.dump(VALID_PROFILE, f)
+    songbook_dir = root / "docs" / "songbook" / slug
+    songbook_dir.mkdir(parents=True)
+    status = "published" if published else "draft"
+    (songbook_dir / "song.md").write_text(
+        f'---\ntitle: "A Song"\nstatus: {status}\n---\nbody\n'
+    )
+    return profile_path
+
+
+def _has_missing_playlist_finding(result) -> bool:
+    return any(
+        "playlist YAML" in f.get("issue", "")
+        and f.get("severity") == "high"
+        for f in result["findings"]
+    )
+
+
+def test_default_docs_dir_flags_missing_playlist(tmp_path):
+    # Standard layout, no playlist YAML, songbook has a published entry.
+    # Default derivation (grandparent of profile = {root}/docs) must find the
+    # songbook and flag the missing playlist — identical to prior behavior.
+    profile_path = _make_standard_layout(tmp_path)
+    result = validate_profile(profile_path)
+    assert _has_missing_playlist_finding(result)
+
+
+def test_default_docs_dir_satisfied_when_playlist_present(tmp_path):
+    profile_path = _make_standard_layout(tmp_path)
+    # Create the canonical playlist YAML at the default location.
+    (tmp_path / "docs" / "test-band-playlist.yaml").write_text('album: "X"\ntracks: []\n')
+    result = validate_profile(profile_path)
+    assert not _has_missing_playlist_finding(result)
+
+
+def test_docs_dir_override_redirects_lookup(tmp_path):
+    # Profile lives under the standard band-profiles dir, but the songbook +
+    # playlist live under a RELOCATED docs root. Pointing --docs-dir there
+    # must make the playlist check honor the new location.
+    profile_path = _make_standard_layout(tmp_path)
+    # The default grandparent ({tmp_path}/docs) has the songbook but no
+    # playlist -> would flag. Now relocate docs.
+    alt_docs = tmp_path / "alt-docs"
+    songbook_dir = alt_docs / "songbook" / "test-band"
+    songbook_dir.mkdir(parents=True)
+    (songbook_dir / "song.md").write_text('---\ntitle: "A Song"\nstatus: published\n---\nbody\n')
+    # No playlist YAML under alt-docs -> should flag against alt-docs.
+    result_flag = validate_profile(profile_path, docs_dir=alt_docs)
+    assert _has_missing_playlist_finding(result_flag)
+    finding = next(f for f in result_flag["findings"] if "playlist YAML" in f.get("issue", ""))
+    assert str(alt_docs) in finding["issue"]
+
+    # Add the playlist YAML under alt-docs -> the finding clears, even though
+    # the default-derived {tmp_path}/docs has no playlist YAML.
+    (alt_docs / "test-band-playlist.yaml").write_text('album: "X"\ntracks: []\n')
+    result_ok = validate_profile(profile_path, docs_dir=alt_docs)
+    assert not _has_missing_playlist_finding(result_ok)
+
+
+def test_docs_dir_default_matches_grandparent(tmp_path):
+    # Passing docs_dir explicitly as the grandparent must be identical to the
+    # default (None) derivation.
+    profile_path = _make_standard_layout(tmp_path)
+    default_result = validate_profile(profile_path)
+    explicit_result = validate_profile(profile_path, docs_dir=tmp_path / "docs")
+    assert _has_missing_playlist_finding(default_result) == _has_missing_playlist_finding(explicit_result)

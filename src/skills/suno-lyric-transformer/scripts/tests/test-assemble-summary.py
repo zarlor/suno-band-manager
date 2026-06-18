@@ -5,12 +5,35 @@
 # ///
 """Tests for assemble-summary.py"""
 
+import importlib.util
 import json
 import subprocess
 import sys
 from pathlib import Path
 
 SCRIPT = str(Path(__file__).parent.parent / "assemble-summary.py")
+
+# Canonical code -> meaning, mirrored from SKILL.md "Full menu" table
+# (Step 2: Select Transformations). This is the source of truth; both
+# assemble-summary.py and validate-options.py must agree with it.
+CANONICAL_CODE_DESCRIPTIONS = {
+    "ST": "Structure Tagging",
+    "CE": "Chorus Extraction",
+    "CC": "Chorus Creation",
+    "RA": "Rhythmic Adjustment",
+    "RE": "Rhyme Enhancement",
+    "FR": "Full Rewrite",
+    "CD": "Cliche Detection",
+    "WF": "Word Fidelity Mode",
+}
+
+
+def _load_module():
+    """Import assemble-summary.py as a module despite the hyphenated filename."""
+    spec = importlib.util.spec_from_file_location("assemble_summary", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def run_script(*args, input_data=None):
@@ -94,6 +117,24 @@ class TestAssembleSummary:
         assert "ST:" in output
         assert "CC:" in output
         assert "RA:" in output
+
+    def test_rendered_descriptions_match_canonical(self, tmp_path):
+        # Each applied code must render with its canonical SKILL.md meaning.
+        val, syl, cli = create_test_files(tmp_path)
+        all_codes = ",".join(CANONICAL_CODE_DESCRIPTIONS)
+        output, code = run_script(
+            "--validation", val, "--syllables", syl, "--cliches", cli,
+            "--transformations", all_codes
+        )
+        assert code == 0
+        for c, meaning in CANONICAL_CODE_DESCRIPTIONS.items():
+            assert f"- {c}: {meaning}" in output
+
+    def test_code_descriptions_match_canonical(self):
+        # Guard against silent drift: assemble-summary.py CODE_DESCRIPTIONS must
+        # match the canonical SKILL.md "Full menu" mapping exactly.
+        module = _load_module()
+        assert module.CODE_DESCRIPTIONS == CANONICAL_CODE_DESCRIPTIONS
 
     def test_json_output(self, tmp_path):
         val, syl, cli = create_test_files(tmp_path)

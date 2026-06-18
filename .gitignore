@@ -19,3 +19,6 @@ _bmad-output/
 
 # User customization for pack-portable
 portable-manifest.yaml
+
+# Quality-analysis audit output (regenerable; grades captured in each skill's .decision-log.md)
+.analysis/

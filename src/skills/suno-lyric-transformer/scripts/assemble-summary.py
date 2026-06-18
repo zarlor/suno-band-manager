@@ -30,14 +30,19 @@ from pathlib import Path
 SCRIPT_NAME = "assemble-summary"
 VERSION = "1.0.0"
 
+# Canonical option codes and human-readable meanings.
+# SOURCE OF TRUTH: src/skills/suno-lyric-transformer/SKILL.md "Full menu" table
+# (Step 2: Select Transformations). Keep this dict in lockstep with that table
+# and with the identical CODE_DESCRIPTIONS in validate-options.py.
 CODE_DESCRIPTIONS = {
-    "ST": "Structural Transformation",
-    "CE": "Cliche Elimination",
-    "CC": "Consistency Check",
-    "RA": "Rhyme Analysis",
+    "ST": "Structure Tagging",
+    "CE": "Chorus Extraction",
+    "CC": "Chorus Creation",
+    "RA": "Rhythmic Adjustment",
+    "RE": "Rhyme Enhancement",
     "FR": "Full Rewrite",
     "CD": "Cliche Detection",
-    "WF": "Word Flow",
+    "WF": "Word Fidelity Mode",
 }
 
 # Approximate duration: ~15 seconds per section on average

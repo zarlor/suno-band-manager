@@ -158,6 +158,19 @@ class TestValidateLyrics:
         assert "character_count" in report["metrics"]
         assert report["metrics"]["character_count"] == len(lyrics)
 
+    def test_lyric_vs_metatag_character_split(self):
+        """Metrics expose the lyrics-vs-metatags char split so the LLM doesn't count by hand."""
+        lyrics = "[Verse 1]\nHello world\n\n[Chorus]\nSing it\n"
+        report, code = run_script("--text", lyrics)
+        assert report is not None
+        m = report["metrics"]
+        assert "lyric_character_count" in m
+        assert "metatag_character_count" in m
+        # Tag lines: "[Verse 1]" (9) + "[Chorus]" (8) = 17 chars of metatags.
+        assert m["metatag_character_count"] == len("[Verse 1]") + len("[Chorus]")
+        # The split must reconstruct the total exactly.
+        assert m["lyric_character_count"] + m["metatag_character_count"] == m["character_count"]
+
     def test_punctuation_density_detection(self):
         """Lines with heavy punctuation should trigger a rhythm finding."""
         lyrics = "[Verse 1]\nwell, - ; : ... yes\n"

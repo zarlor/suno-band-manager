@@ -1,0 +1,10 @@
+# Customization overrides for suno-feedback-elicitor.
+# Teams override via {project-root}/_bmad/custom/suno-feedback-elicitor.toml
+# Users override via {project-root}/_bmad/custom/suno-feedback-elicitor.user.toml
+# Merge order: base (this file) -> team -> user. Resolved at activation via
+# {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --key workflow
+
+[workflow]
+activation_steps_prepend = []
+activation_steps_append = []
+persistent_facts = ["file:{project-root}/**/project-context.md"]

@@ -22,6 +22,7 @@ Usage:
 """
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -33,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"
 from suno_constants import SUNO_LYRICS_HARD_LIMIT, SUNO_LYRICS_QUALITY_BUDGET
 
 SCRIPT_NAME = "analyze-input"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 
 def find_metatags(text: str) -> list[str]:
@@ -171,6 +172,11 @@ def analyze_input(text: str) -> dict:
     word_count = sum(len(line.split()) for line in content_lines)
     char_count = len(text)
 
+    # sha256 of the exact source text — the LLM cannot compute this by hand,
+    # so it is the authoritative value for the LT-STATE source_hash and the
+    # headless contract's original_hash (change-tracking / version increment).
+    source_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+
     # Repeated phrases
     repeated = find_repeated_phrases(text)
 
@@ -187,6 +193,7 @@ def analyze_input(text: str) -> dict:
         "non_empty_line_count": len(non_empty_lines),
         "word_count": word_count,
         "character_count": char_count,
+        "source_hash": source_hash,
         "repeated_phrases": repeated,
         "potential_rhyme_pairs": rhymes,
         **structure
@@ -241,6 +248,7 @@ def build_report(analysis: dict, text: str, skill_path: str = "") -> dict:
             "non_empty_line_count": analysis["non_empty_line_count"],
             "word_count": analysis["word_count"],
             "character_count": analysis["character_count"],
+            "source_hash": analysis["source_hash"],
             "repeated_phrases": analysis["repeated_phrases"],
             "potential_rhyme_pairs": analysis["potential_rhyme_pairs"],
             "estimated_structure": analysis["estimated_structure"],
@@ -268,6 +276,7 @@ Examples:
 Metrics extracted:
   - Existing metatags and structure detection
   - Line, word, and character counts
+  - sha256 source_hash (authoritative LT-STATE / headless change-tracking hash)
   - Repeated phrases (3+ words, 2+ occurrences)
   - Potential rhyme pairs (shared endings)
   - Estimated structure size (short/medium/long)

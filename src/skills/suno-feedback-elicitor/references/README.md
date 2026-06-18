@@ -32,6 +32,8 @@ Use this skill directly when you have already generated a song on Suno and want 
 - `--headless:adjustments` — Accept feedback + original prompts, return full adjustment recommendations
 - `--headless` — Analyze + generate adjustments with balanced defaults
 
+The `--feedback` / `--style-prompt` / `--model` / `--sliders` flags are the *skill's* interface. The agent (or LLM) translates them into the JSON keys the scripts actually read (`feedback_text`, `original_style_prompt`, `model`, `slider_settings`) before invoking `parse-feedback.py` / `map-adjustments.py`. The return carries a top-level `status` (`complete`/`blocked`), a `reason` on block, and a `decision_log[]`. See `headless-contract.md` for the full mapping table and output schema.
+
 ## Scripts
 
 | Script | Description |
@@ -40,8 +42,10 @@ Use this skill directly when you have already generated a song on Suno and want 
 | `map-adjustments.py` | Maps feedback dimensions to Suno parameter adjustments with consistency validation |
 | `audio-files-manifest.py` | Generates `docs/audio-files-manifest.yaml` on the canonical machine (name + size + mtime per file) for portable-sync drift detection |
 | `verify-audio-files.py` | Receiving machine reads the manifest and detects missing / wrong-gen / extra audio (filename-normalization + size-tolerance aware) |
-| `analyze-audio.py` / `audio-deep-analysis.py` / `batch-full-analysis.py` / `playlist-sequencing-data.py` | librosa audio analysis stack — write JSON archives to `docs/audio-analysis/` and refresh companion `.md` docs by default. See `SKILL.md` for full list. |
+| `analyze-audio.py` / `audio-deep-analysis.py` | librosa audio analysis stack — write JSON archives to `docs/audio-analysis/songs/` and refresh companion `.md` docs by default. See `SKILL.md` for full list. |
 | `chord-progression.py` / `tempo-detail.py` | Single-track librosa specialty analyses (chord changes, beat-level tempo). |
+
+> **Album/playlist sequencing** (`playlist-sequencing-data.py`, `batch-full-analysis.py`, and the album-craft methodology) moved to the **`suno-playlist-sequencer`** skill. Route "sequence my playlist" / "order my album" there.
 
 ## Example Invocation
 
@@ -51,7 +55,7 @@ Use this skill directly when you have already generated a song on Suno and want 
 "It just doesn't feel right — can you help me figure out what to change?"
 
 # Headless
---headless:adjustments --feedback "vocals too polished, needs rawer feel" --style-prompt "warm indie rock..." --model v5-pro
+--headless:adjustments --feedback "vocals too polished, needs rawer feel" --style-prompt "warm indie rock..." --model "v5 Pro"
 --headless:analyze --feedback "it sounds off somehow"
 ```
 

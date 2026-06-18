@@ -111,6 +111,92 @@ class TestValidateStylePrompt:
         asterisk = [f for f in findings if "asterisk" in f["issue"].lower()]
         assert len(asterisk) == 1
 
+    def test_southern_lane_genre_recognized(self):
+        """Heavy/southern lane genres should satisfy front-loading (no false 'no genre')."""
+        for prompt in [
+            "heavy swamp metal, gritty male vocals, no screaming",
+            "heartland southern rock, driving mid-tempo groove",
+            "prog rock, slow build then fade, atmospheric",
+            "slowcore, sparse and patient, doom-adjacent weight",
+        ]:
+            findings = validate_prompt.validate_style_prompt(prompt)
+            no_genre = [f for f in findings if "no obvious genre keyword" in f.get("issue", "").lower()]
+            assert len(no_genre) == 0, f"False 'no genre' trip on: {prompt}"
+
+
+class TestTriggerDetection:
+    """Tests for enumerable safety-trigger detection."""
+
+    def test_unpaired_metal_flagged(self):
+        """'metal' without a positive vocal instruction should be a high trigger finding."""
+        findings = validate_prompt.validate_style_prompt("dark metal, heavy riffs, pounding drums")
+        triggers = [f for f in findings if f["category"] == "trigger" and "scream" in f["issue"].lower()]
+        assert len(triggers) == 1
+        assert triggers[0]["severity"] == "high"
+        assert "metal" in triggers[0]["data"]["triggers"]
+
+    def test_paired_metal_not_flagged(self):
+        """'metal' paired with a positive vocal phrase should NOT be flagged as a scream trigger."""
+        findings = validate_prompt.validate_style_prompt(
+            "heavy swamp metal, raw melodic singing, down-tuned weight"
+        )
+        triggers = [f for f in findings if f["category"] == "trigger" and "scream" in f["issue"].lower()]
+        assert len(triggers) == 0
+
+    def test_no_screaming_pairing_clears_trigger(self):
+        """'no screaming' counts as a positive vocal pairing."""
+        findings = validate_prompt.validate_style_prompt(
+            "sludge metal, gritty male vocals, no screaming"
+        )
+        triggers = [f for f in findings if f["category"] == "trigger" and "scream" in f["issue"].lower()]
+        assert len(triggers) == 0
+
+    def test_word_boundary_no_false_trip(self):
+        """Substrings like 'blackbird' should not trip the 'black' trigger."""
+        findings = validate_prompt.validate_style_prompt(
+            "folk rock, blackbird imagery, warm acoustic, clean singing"
+        )
+        triggers = [f for f in findings if f["category"] == "trigger" and "scream" in f["issue"].lower()]
+        assert len(triggers) == 0
+
+    def test_keyboard_pull_word_flagged(self):
+        """'cinematic' should be flagged as a keyboard-pull dangerous word."""
+        findings = validate_prompt.validate_style_prompt("hard rock, cinematic, driving guitars")
+        kb = [f for f in findings if f["category"] == "trigger" and "keyboard-pull" in f["issue"].lower()]
+        assert len(kb) == 1
+        assert kb[0]["severity"] == "medium"
+        assert "cinematic" in kb[0]["data"]["words"]
+
+    def test_orchestral_and_baroque_flagged(self):
+        """Multiple keyboard-pull words should be collected in one finding."""
+        findings = validate_prompt.validate_style_prompt("baroque orchestral metal, intricate")
+        kb = [f for f in findings if f["category"] == "trigger" and "keyboard-pull" in f["issue"].lower()]
+        assert len(kb) == 1
+        assert "baroque" in kb[0]["data"]["words"]
+        assert "orchestral" in kb[0]["data"]["words"]
+
+    def test_exclamation_flagged_low(self):
+        """Exclamation marks should produce a low trigger finding."""
+        findings = validate_prompt.validate_style_prompt("upbeat pop rock, energetic!, bright")
+        excl = [f for f in findings if f["category"] == "trigger" and "exclamation" in f["issue"].lower()]
+        assert len(excl) == 1
+        assert excl[0]["severity"] == "low"
+
+    def test_clean_prompt_no_triggers(self):
+        """A clean safe prompt should produce no trigger findings."""
+        findings = validate_prompt.validate_style_prompt(
+            "heartland rock, warm male vocals, chimey electric guitar, driving groove"
+        )
+        triggers = [f for f in findings if f["category"] == "trigger"]
+        assert len(triggers) == 0
+
+    def test_empty_prompt_no_trigger_crash(self):
+        """Empty prompt should not raise in trigger detection."""
+        findings = validate_prompt.validate_style_prompt("")
+        # only the empty-critical finding; no trigger findings
+        triggers = [f for f in findings if f.get("category") == "trigger"]
+        assert len(triggers) == 0
+
 
 class TestValidateExclusionPrompt:
     """Tests for exclusion prompt validation."""
@@ -156,7 +242,7 @@ class TestBuildReport:
         """Report should have all required fields."""
         report = validate_prompt.build_report([], [], "test", "", "/test/path")
         assert report["script"] == "validate-prompt"
-        assert report["version"] == "1.1.0"
+        assert report["version"] == "1.2.0"
         assert report["status"] == "pass"
         assert "findings" in report
         assert "summary" in report

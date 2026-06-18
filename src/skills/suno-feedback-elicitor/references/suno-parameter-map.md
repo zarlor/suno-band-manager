@@ -452,7 +452,7 @@ When feedback maps to Studio features rather than prompt changes.
 
 **Tier mapping:** Legacy Editor features (Replace Section, Extend, Crop, Fade, Rearrange, Stems, Remaster) are available on **Pro and Premier**. Full Studio features (Warp Markers, Remove FX, Alternates, EQ, Heal Edits, Context Window, Recording, MIDI Export) are **Premier only**. Always check the user's tier before recommending.
 
-**For complete Studio & Editor workflows, tips, and troubleshooting:** See [STUDIO-EDITOR-REFERENCE.md](../../suno-agent-band-manager/references/STUDIO-EDITOR-REFERENCE.md).
+**For complete Studio & Editor workflows, tips, and troubleshooting:** See `STUDIO-EDITOR-REFERENCE.md` in the module's `_shared/references/` directory (the canonical Studio/Editor reference, shared across the module's skills).
 
 ## Song Length & Pacing
 

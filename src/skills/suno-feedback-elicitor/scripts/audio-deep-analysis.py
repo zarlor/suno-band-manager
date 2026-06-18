@@ -324,6 +324,9 @@ def main():
     args = parser.parse_args()
 
     filepath = args.audio_file
+    if not os.path.isfile(filepath):
+        print(f"Audio file not found: {filepath}", file=sys.stderr)
+        sys.exit(1)
     y, sr = _librosa.load(filepath, sr=22050)
     duration = _librosa.get_duration(y=y, sr=sr)
 
@@ -354,6 +357,8 @@ def main():
         if archive_target is not None:
             res = write_archive(archive_target, result)
             print(f"  ARCHIVED: {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

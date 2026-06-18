@@ -23,7 +23,7 @@ Use this skill directly when you need to manage profiles independently — creat
 
 ### Headless Mode (`--headless` or `-H`)
 
-- `--headless:create` — Create from provided YAML, validate, save
+- `--headless:create` — Validate provided YAML, save, scaffold the per-band playlist YAML, and write a decision log — all in one write batch
 - `--headless:validate` — Validate an existing profile against schema
 - `--headless:load <name>` — Return profile as structured JSON
 - `--headless:edit <name>` — Apply YAML field overrides to an existing profile
@@ -36,6 +36,8 @@ Use this skill directly when you need to manage profiles independently — creat
 | Script | Description |
 |--------|-------------|
 | `validate-profile.py` | Validates band profile YAML against schema; supports `--derive-filename` for kebab-case naming |
+| `apply-profile.py` | Deterministic save / field-merge / duplicate of profile YAML; owns the headless write path (`--set`, `--duplicate`) |
+| `scaffold-playlist.py` | Scaffolds the canonical per-band playlist YAML at `docs/{band-slug}-playlist.yaml`; `--from-songbook` pre-populates from songbook entries |
 | `list-profiles.py` | Scans `docs/band-profiles/` and returns profile summaries; supports `--check` to verify a specific profile |
 | `tier-features.py` | Returns available/unavailable Suno features for a given tier |
 | `diff-profiles.py` | Compares two profile YAML files and returns a structured JSON diff |
@@ -56,7 +58,7 @@ Use this skill directly when you need to manage profiles independently — creat
 
 ## Profiles Storage
 
-Profiles are stored as YAML files at `docs/band-profiles/{profile-name}.yaml`. The schema is defined in `./references/profile-schema.md`.
+Profiles are stored as YAML files at `docs/band-profiles/{profile-name}.yaml`. The schema is defined in `references/profile-schema.md`.
 
 ## Part of the Suno Band Manager Module
 

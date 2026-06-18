@@ -107,6 +107,8 @@ Rapid yes/no or A/B questions to reduce the problem space. Goal: identify which 
 4. Lyrics (content, delivery, phrasing)
 5. Overall vibe/mood (right neighborhood or wrong direction)
 
+For an instrumental track, drop items 1 (vocals half), 4 (lyrics), and any vocal sub-questions entirely — don't burn a narrowing question confirming there are no vocals.
+
 **Rules:**
 - Ask one question at a time
 - Accept partial answers — "kind of both" is useful signal

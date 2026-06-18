@@ -2,7 +2,7 @@
 
 > **Last validated:** March 2026 (Suno Free, Pro, Premier plans). Suno updates pricing, features, and tier boundaries frequently — use web search to verify against current Suno pricing page when uncertain.
 
-**Note:** The `./scripts/tier-features.py` script is the authoritative source for this data. This reference file is provided for human readability. When updating, update the script first.
+**Note:** The `scripts/tier-features.py` script is the authoritative source for this data. This reference file is provided for human readability. When updating, update the script first.
 
 ## Plan Comparison
 
@@ -111,10 +111,10 @@
 
 **My Taste (v5.5, All Tiers):** My Taste is passive personalization derived from the user's generation history. It requires no configuration and works across all tiers including Free. It subtly shapes generation output based on patterns in what the user has created and liked.
 
-**Legacy Editor vs. Studio (Pro vs Premier):** Pro users get the Legacy Editor — section-level editing with Replace Section, Extend, Crop, Fade, Rearrange, and Stems. Premier users additionally get Suno Studio — a full browser-based Generative Audio Workstation with multitrack timeline, EQ, Warp Markers, Alternates/Take Lanes, Remove FX, Recording, Loop Recording, Context Window, Stem Cover, Sounds Mode, Heal Edits, and MIDI Export. For complete editing workflows, see [STUDIO-EDITOR-REFERENCE.md](../../STUDIO-EDITOR-REFERENCE.md).
+**Legacy Editor vs. Studio (Pro vs Premier):** Pro users get the Legacy Editor — section-level editing with Replace Section, Extend, Crop, Fade, Rearrange, and Stems. Premier users additionally get Suno Studio — a full browser-based Generative Audio Workstation with multitrack timeline, EQ, Warp Markers, Alternates/Take Lanes, Remove FX, Recording, Loop Recording, Context Window, Stem Cover, Sounds Mode, Heal Edits, and MIDI Export. For complete editing workflows, see [STUDIO-EDITOR-REFERENCE.md](../../_shared/references/STUDIO-EDITOR-REFERENCE.md).
 
 **Remaster (Pro/Premier):** Generates refined variations adjusting production details (instrument balance, effects, mix quality, vocal clarity) while preserving song structure. Three strength levels: Subtle, Normal, High. Does NOT change lyrics, style, or vocalist — use Cover for those. Good for final polish before export.
 
 **Replace Section Best Practices (Pro/Premier):** Key controls: Keep Duration toggle (ON = match length, OFF = creative flexibility), Instrumental Mode toggle (removes vocals), Replace Lyrics (edit lyrics for just the selected region). Best results with 10-30 second selections; typically requires 2-5 attempts for seamless transitions.
 
-**v5.5 Editing Paradigm:** v5.5 favors generate → inspect → section replace → refine (not regenerate from scratch). This preserves good material and spends fewer credits. For complete Studio and Editor workflows, see [STUDIO-EDITOR-REFERENCE.md](../../suno-agent-band-manager/references/STUDIO-EDITOR-REFERENCE.md).
+**v5.5 Editing Paradigm:** v5.5 favors generate → inspect → section replace → refine (not regenerate from scratch). This preserves good material and spends fewer credits. For complete Studio and Editor workflows, see [STUDIO-EDITOR-REFERENCE.md](../../_shared/references/STUDIO-EDITOR-REFERENCE.md).

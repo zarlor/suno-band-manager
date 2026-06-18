@@ -262,11 +262,19 @@ def main():
 
     audio_dir = args.audio_dir
 
+    if not os.path.isdir(audio_dir):
+        print(f"Audio directory not found: {audio_dir}", file=sys.stderr)
+        sys.exit(1)
+
     mp3s = sorted([
         os.path.join(audio_dir, f)
         for f in os.listdir(audio_dir)
         if f.endswith('.mp3')
     ])
+
+    if not mp3s:
+        print(f"No .mp3 files found in {audio_dir}", file=sys.stderr)
+        sys.exit(1)
 
     results = []
     for filepath in mp3s:
@@ -315,6 +323,8 @@ def main():
         md_body = title_block + "\n".join(body_lines[cut:])
         res = update_companion(companion_target, SCRIPT_NAME, md_body)
         print(f"  COMPANION: {res['status']} {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["pyyaml>=6.0"]
 # ///
 """Scaffold a per-band playlist YAML.
 
@@ -84,9 +83,16 @@ def _is_published(md_path: Path) -> bool:
     return "status: published" in fm or "status: \"published\"" in fm
 
 
-def discover_songbook_tracks(project_root: Path, band_slug: str) -> list[dict]:
-    """Find published songbook entries for the band and return their titles."""
-    band_dir = project_root / "docs" / "songbook" / band_slug
+def discover_songbook_tracks(
+    project_root: Path, band_slug: str, docs_dir: Path | None = None
+) -> list[dict]:
+    """Find published songbook entries for the band and return their titles.
+
+    docs_dir: the project's docs/ directory holding `songbook/{band_slug}/`.
+    Defaults to `{project_root}/docs`, preserving the prior derivation exactly.
+    """
+    base_docs = docs_dir if docs_dir is not None else project_root / "docs"
+    band_dir = base_docs / "songbook" / band_slug
     if not band_dir.is_dir():
         return []
     tracks = []
@@ -95,7 +101,13 @@ def discover_songbook_tracks(project_root: Path, band_slug: str) -> list[dict]:
             continue
         title = _extract_title_from_songbook(md_path)
         if title:
-            tracks.append({"name": title, "songbook_path": str(md_path.relative_to(project_root))})
+            # Report relative to project_root when possible; otherwise the
+            # absolute path (a --docs-dir outside the project root).
+            try:
+                songbook_path = str(md_path.relative_to(project_root))
+            except ValueError:
+                songbook_path = str(md_path)
+            tracks.append({"name": title, "songbook_path": songbook_path})
     return tracks
 
 
@@ -150,6 +162,14 @@ def main():
         help="Project root (default: current directory).",
     )
     parser.add_argument(
+        "--docs-dir",
+        help=(
+            "Project docs/ directory where the playlist YAML is written "
+            "({docs-dir}/{slug}-playlist.yaml) and songbook entries are read "
+            "from ({docs-dir}/songbook/{slug}/). Default: {project-root}/docs."
+        ),
+    )
+    parser.add_argument(
         "--album-name",
         help="Album/band name to use in the YAML (default: derived from slug).",
     )
@@ -165,6 +185,17 @@ def main():
         print(json.dumps({"status": "error", "message": f"Project root not found: {project_root}"}))
         sys.exit(1)
 
+    # docs/ dir: explicit --docs-dir wins; else {project-root}/docs (prior default).
+    docs_dir = Path(args.docs_dir).resolve() if args.docs_dir else project_root / "docs"
+
+    def _report_path(p: Path) -> str:
+        """Path relative to project_root when possible; absolute otherwise
+        (e.g. a --docs-dir pointing outside the project)."""
+        try:
+            return str(p.relative_to(project_root))
+        except ValueError:
+            return str(p)
+
     slug = args.band_slug.strip()
     if not re.match(r"^[a-z0-9][a-z0-9_-]*$", slug):
         print(json.dumps({
@@ -176,19 +207,19 @@ def main():
         }))
         sys.exit(1)
 
-    target = project_root / "docs" / f"{slug}-playlist.yaml"
+    target = docs_dir / f"{slug}-playlist.yaml"
     if target.exists() and not args.force:
         print(json.dumps({
             "status": "exists",
             "message": f"Playlist YAML already exists at {target}. Use --force to overwrite.",
-            "path": str(target.relative_to(project_root)),
+            "path": _report_path(target),
         }))
         sys.exit(0)
 
     album_name = args.album_name or _band_name_from_slug(slug)
     tracks: list[dict] = []
     if args.from_songbook:
-        tracks = discover_songbook_tracks(project_root, slug)
+        tracks = discover_songbook_tracks(project_root, slug, docs_dir=docs_dir)
 
     body = render_playlist_yaml(album_name, tracks, from_songbook=args.from_songbook)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -197,7 +228,7 @@ def main():
 
     print(json.dumps({
         "status": "created" if not args.force else "overwritten",
-        "path": str(target.relative_to(project_root)),
+        "path": _report_path(target),
         "album": album_name,
         "tracks_seeded": len(tracks),
         "from_songbook": args.from_songbook,

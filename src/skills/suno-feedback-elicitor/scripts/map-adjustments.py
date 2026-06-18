@@ -23,7 +23,13 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
-from suno_constants import CRITICAL_ZONE, EXCLUSION_RECOMMENDED_MAX, PAID_TIERS
+from suno_constants import (
+    CRITICAL_ZONE,
+    EXCLUSION_RECOMMENDED_MAX,
+    PAID_TIERS,
+    STYLE_PROMPT_DEFAULT_MAX,
+    STYLE_PROMPT_LIMITS,
+)
 
 # Adjustment lookup tables
 # Each dimension maps to a set of possible adjustments categorized by direction
@@ -238,9 +244,50 @@ SLIDER_DIRECTION_MAP = {
 }
 
 
+def check_style_prompt_overflow(
+    style_prompt: str,
+    add_descriptors: list[str],
+    model: str,
+) -> dict[str, Any] | None:
+    """Project post-edit style-prompt length against the model's character limit.
+
+    v4 Pro silently truncates at 200 chars; other models cap at 1000. Returns a
+    warning dict when the projected length (current prompt + added descriptors)
+    exceeds the model's limit, else None.
+    """
+    if not style_prompt:
+        return None
+
+    limit = STYLE_PROMPT_LIMITS.get(model, STYLE_PROMPT_DEFAULT_MAX)
+    current_len = len(style_prompt)
+    # Added descriptors are appended ", "-joined onto the existing prompt.
+    added_len = sum(len(d) + 2 for d in add_descriptors)
+    projected = current_len + added_len
+
+    if projected <= limit:
+        return None
+
+    return {
+        "type": "style_prompt_overflow",
+        "model": model or "unknown (default 1000-char limit assumed)",
+        "limit": limit,
+        "current_chars": current_len,
+        "projected_chars": projected,
+        "overflow_chars": projected - limit,
+        "detail": (
+            f"Projected style prompt (~{projected} chars after adds) exceeds the "
+            f"{limit}-char limit for model '{model or 'default'}' by ~{projected - limit} chars. "
+            f"Content beyond {limit} is silently truncated — prioritize the strongest descriptors "
+            f"in the first {CRITICAL_ZONE} chars and drop or shorten the rest."
+        ),
+    }
+
+
 def generate_adjustments(
     dimensions: list[dict[str, str]],
     current_tier: str = "",
+    style_prompt: str = "",
+    model: str = "",
 ) -> dict[str, Any]:
     """Generate adjustment recommendations from feedback dimensions."""
     style_add: list[str] = []
@@ -318,6 +365,12 @@ def generate_adjustments(
             result["notes"] = []
         result["consistency_warnings"] = consistency_warnings
 
+    overflow = check_style_prompt_overflow(
+        style_prompt, result["style_prompt"]["add_descriptors"], model
+    )
+    if overflow:
+        result.setdefault("consistency_warnings", []).append(overflow)
+
     return result
 
 
@@ -378,6 +431,10 @@ Input JSON schema:
 
   Optional:
     tier (string) - User's Suno tier (free, pro, premier) — affects slider recommendations
+    original_style_prompt (string) - Current style prompt; enables model-specific overflow validation
+    model (string) - Suno model (v4 Pro = 200-char limit; others = 1000) for overflow validation
+
+  (CLI flags --style-prompt / --model override the JSON keys above.)
 
 Dimension/Direction combinations:
   instrumentation: too_much, too_little, wrong_type
@@ -389,9 +446,12 @@ Dimension/Direction combinations:
   music: general_issue
   structure: needs_bridge, chorus_weak, too_long, too_short
   lyrics: phrasing_unnatural, content_mismatch, vocal_style_inconsistent
+  quality: artifacts, robotic_vocals, clipping, muffled
+  length: too_short, too_long, intro_too_long, outro_cuts_off, pacing_drags
 
 Example:
   echo '{"dimensions": [{"dimension": "vocals", "direction": "too_polished"}, {"dimension": "energy", "direction": "too_low"}], "tier": "pro"}' | python3 map-adjustments.py --stdin
+  echo '{"dimensions": [{"dimension": "vocals", "direction": "too_polished"}]}' | python3 map-adjustments.py --stdin --style-prompt "warm indie rock, ..." --model "v4 Pro"
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -399,6 +459,16 @@ Example:
     input_group.add_argument("--input", "-i", help="Path to dimensions JSON file")
     input_group.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
     parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
+    parser.add_argument(
+        "--style-prompt",
+        help="Original style prompt text — enables model-specific overflow validation "
+        "(overrides 'original_style_prompt'/'style_prompt' in the input JSON)",
+    )
+    parser.add_argument(
+        "--model",
+        help="Suno model (v4 Pro, v4.5 Pro, v5 Pro, …) — sets the style-prompt char "
+        "limit for overflow validation (overrides 'model' in the input JSON)",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output to stderr")
 
     args = parser.parse_args()
@@ -443,8 +513,12 @@ Example:
 
     dimensions = data["dimensions"]
     tier = data.get("tier", "")
+    # CLI flags win; fall back to input-JSON keys (matching the headless contract's
+    # original_style_prompt / model naming).
+    style_prompt = args.style_prompt or data.get("original_style_prompt") or data.get("style_prompt", "")
+    model = args.model or data.get("model", "")
 
-    adjustments = generate_adjustments(dimensions, tier)
+    adjustments = generate_adjustments(dimensions, tier, style_prompt, model)
 
     result = {
         "script": "map-adjustments",

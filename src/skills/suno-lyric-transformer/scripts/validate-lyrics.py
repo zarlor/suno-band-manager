@@ -35,7 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"
 from suno_constants import SUNO_LYRICS_HARD_LIMIT, SUNO_LYRICS_QUALITY_BUDGET
 
 SCRIPT_NAME = "validate-lyrics"
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 # Valid section metatags (case-insensitive matching)
 VALID_SECTIONS = {
@@ -346,6 +346,15 @@ def build_report(findings: list, text: str, skill_path: str = "") -> dict:
     lyric_lines = [line.strip() for line in text.split('\n')
                    if line.strip() and not re.match(r'^\[.*\]$', line.strip())]
 
+    # Derive the lyrics-vs-metatags character split so the LLM reads it from
+    # JSON instead of counting brackets by hand (Suno counts everything; the
+    # split lets the budget breakout attribute chars to words vs. tags).
+    metatag_character_count = sum(
+        len(line) for line in text.split('\n')
+        if re.match(r'^\[.*\]$', line.strip())
+    )
+    lyric_character_count = len(text) - metatag_character_count
+
     return {
         "script": SCRIPT_NAME,
         "version": VERSION,
@@ -356,6 +365,8 @@ def build_report(findings: list, text: str, skill_path: str = "") -> dict:
             "total_lines": parsed["total_lines"],
             "lyric_lines": len(lyric_lines),
             "character_count": len(text),
+            "lyric_character_count": lyric_character_count,
+            "metatag_character_count": metatag_character_count,
             "section_count": len(parsed["sections"]),
             "sections": [s["tag"] for s in parsed["sections"]]
         },

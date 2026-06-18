@@ -1,0 +1,9 @@
+# Customization surface for suno-playlist-sequencer.
+# Teams override via {project-root}/_bmad/custom/suno-playlist-sequencer.toml
+# Users override via {project-root}/_bmad/custom/suno-playlist-sequencer.user.toml
+# Merge order: this base -> team -> user. Scalars override; plain arrays append.
+
+[workflow]
+activation_steps_prepend = []
+activation_steps_append = []
+persistent_facts = ["file:{project-root}/**/project-context.md"]

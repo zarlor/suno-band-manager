@@ -17,7 +17,18 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
+# Graceful degradation: pyyaml is required to parse profiles. If missing,
+# emit a clear JSON error so the caller can list profiles by hand rather than
+# crashing on an uncaught ImportError.
+try:
+    import yaml
+except ImportError:
+    print(json.dumps({
+        "script": "list-profiles",
+        "status": "error",
+        "error": "pyyaml is not installed. Run with `uv run`, or read docs/band-profiles/*.yaml directly.",
+    }))
+    sys.exit(2)
 
 
 def check_profile(profiles_dir: Path, profile_name: str) -> dict:
@@ -132,6 +143,15 @@ def main():
         default="docs/band-profiles",
         help="Path to band profiles directory (default: docs/band-profiles)"
     )
+    parser.add_argument(
+        "--profiles-dir",
+        dest="profiles_dir_opt",
+        help=(
+            "Band profiles directory as a named flag (overrides the positional "
+            "argument; lets callers pass the configured {band_profiles_folder}). "
+            "Default: the positional argument, i.e. docs/band-profiles."
+        ),
+    )
     parser.add_argument("-o", "--output", help="Output file (defaults to stdout)")
     parser.add_argument("--verbose", action="store_true", help="Print diagnostics to stderr")
     parser.add_argument(
@@ -141,7 +161,10 @@ def main():
     )
     args = parser.parse_args()
 
-    profiles_dir = Path(args.profiles_dir)
+    # Named --profiles-dir wins when provided; otherwise the positional
+    # argument (which carries the docs/band-profiles default) is used —
+    # so omitting --profiles-dir reproduces the prior behavior exactly.
+    profiles_dir = Path(args.profiles_dir_opt or args.profiles_dir)
 
     if args.verbose:
         print(f"Scanning: {profiles_dir}", file=sys.stderr)

@@ -30,17 +30,22 @@ from pathlib import Path
 SCRIPT_NAME = "validate-options"
 VERSION = "1.0.0"
 
-VALID_CODES = {"ST", "CE", "CC", "RA", "FR", "CD", "WF"}
-
+# Canonical option codes and human-readable meanings.
+# SOURCE OF TRUTH: src/skills/suno-lyric-transformer/SKILL.md "Full menu" table
+# (Step 2: Select Transformations). Keep this dict in lockstep with that table
+# and with the identical CODE_DESCRIPTIONS in assemble-summary.py.
 CODE_DESCRIPTIONS = {
-    "ST": "Structural Transformation",
-    "CE": "Cliche Elimination",
-    "CC": "Consistency Check",
-    "RA": "Rhyme Analysis",
+    "ST": "Structure Tagging",
+    "CE": "Chorus Extraction",
+    "CC": "Chorus Creation",
+    "RA": "Rhythmic Adjustment",
+    "RE": "Rhyme Enhancement",
     "FR": "Full Rewrite",
     "CD": "Cliche Detection",
-    "WF": "Word Flow",
+    "WF": "Word Fidelity Mode",
 }
+
+VALID_CODES = set(CODE_DESCRIPTIONS)
 
 
 def validate_options(codes_str: str) -> dict:
@@ -97,7 +102,7 @@ def validate_options(codes_str: str) -> dict:
         findings.append({
             "severity": "high",
             "category": "exclusion",
-            "issue": "FR (Full Rewrite) and WF (Word Flow) are mutually exclusive.",
+            "issue": "FR (Full Rewrite) and WF (Word Fidelity Mode) are mutually exclusive.",
             "fix": "Choose either FR or WF, not both."
         })
 
@@ -108,8 +113,8 @@ def validate_options(codes_str: str) -> dict:
         findings.append({
             "severity": "medium",
             "category": "dependency",
-            "issue": "CE (Cliche Elimination) auto-removed: redundant when FR (Full Rewrite) is selected.",
-            "fix": "FR already encompasses cliche elimination."
+            "issue": "CE (Chorus Extraction) auto-removed: redundant when FR (Full Rewrite) is selected.",
+            "fix": "FR already rewrites the whole piece, so a separate chorus extraction is unnecessary."
         })
 
     # CC is skipped if CE is selected (info, can be overridden)
@@ -117,8 +122,8 @@ def validate_options(codes_str: str) -> dict:
         findings.append({
             "severity": "info",
             "category": "dependency",
-            "issue": "CC (Consistency Check) may be redundant when CE (Cliche Elimination) is selected.",
-            "fix": "CE may alter consistency; CC can still be kept if desired."
+            "issue": "CC (Chorus Creation) may be redundant when CE (Chorus Extraction) is selected.",
+            "fix": "If CE finds a strong existing chorus, CC can be skipped; keep CC if you still want a newly written chorus."
         })
 
     validated_codes = working
@@ -170,7 +175,7 @@ Examples:
   %(prog)s --codes "ST,CC,RA,CD"
   %(prog)s "FR,CE" -o results.json --verbose
 
-Valid codes: ST, CE, CC, RA, FR, CD, WF
+Valid codes: ST, CE, CC, RA, RE, FR, CD, WF
 Rules:
   - FR and WF are mutually exclusive
   - CE is auto-removed when FR is selected

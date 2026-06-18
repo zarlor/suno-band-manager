@@ -47,13 +47,23 @@ def parse_args():
     )
     parser.add_argument(
         "--answers",
-        required=True,
-        help="Path to JSON file with collected answers",
+        help="Path to JSON file with collected answers (required unless --create-dirs)",
     )
     parser.add_argument(
         "--user-config-path",
-        required=True,
-        help="Path to the target _bmad/config.user.yaml file",
+        help="Path to the target _bmad/config.user.yaml file (required unless --create-dirs)",
+    )
+    parser.add_argument(
+        "--create-dirs",
+        action="store_true",
+        help="Directory-creation mode: read the resolved config + module.yaml "
+        "'directories:' list and create any output directories that don't exist. "
+        "Skips the merge entirely. Requires --project-root.",
+    )
+    parser.add_argument(
+        "--project-root",
+        help="Actual project root, used to resolve the {project-root} token on disk "
+        "for --create-dirs. The stored config values keep the literal token.",
     )
     parser.add_argument(
         "--legacy-dir",
@@ -69,12 +79,28 @@ def parse_args():
 
 
 def load_yaml_file(path: str) -> dict:
-    """Load a YAML file, returning empty dict if file doesn't exist."""
+    """Load a YAML file, returning empty dict if file doesn't exist.
+
+    On a malformed YAML file, exits 1 with a clean, actionable error rather
+    than letting a raw YAMLError stack trace escape.
+    """
     file_path = Path(path)
     if not file_path.exists():
         return {}
-    with open(file_path, "r", encoding="utf-8") as f:
-        content = yaml.safe_load(f)
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        print(
+            json.dumps(
+                {
+                    "status": "error",
+                    "error": f"Malformed YAML in {file_path}: {e}. "
+                    "Fix the file by hand or delete it to recreate, then re-run.",
+                }
+            )
+        )
+        sys.exit(1)
     return content if content else {}
 
 
@@ -381,6 +407,57 @@ def write_init_compatible_configs(config, user_config, module_code, bmad_dir, ve
     return written
 
 
+def resolve_output_directories(config: dict, module_yaml: dict) -> list:
+    """Collect the output directories that should exist on disk.
+
+    Honors the module.yaml `directories:` declaration (entries may reference
+    module variables like `{band_profiles_folder}`, resolved against the written
+    module section) plus the shared `output_folder`. Returns values that still
+    carry the literal `{project-root}` token — the caller resolves it for disk.
+    """
+    module_code = module_yaml.get("code", "")
+    module_section = config.get(module_code, {})
+
+    candidates = []
+    # output_folder lives at config root (shared core value)
+    if config.get("output_folder"):
+        candidates.append(str(config["output_folder"]))
+
+    for entry in module_yaml.get("directories", []) or []:
+        value = str(entry)
+        # Resolve {var} references against the written module section values
+        for var_name, var_value in module_section.items():
+            value = value.replace("{" + var_name + "}", str(var_value))
+        candidates.append(value)
+
+    # Keep only path-type values (those carrying the project-root token) and dedupe
+    seen = set()
+    resolved = []
+    for value in candidates:
+        if "{project-root}" in value and value not in seen:
+            seen.add(value)
+            resolved.append(value)
+    return resolved
+
+
+def create_output_dirs(config: dict, module_yaml: dict, project_root: str) -> dict:
+    """Create configured output directories on disk, resolving {project-root}.
+
+    Returns {created, existed}. The stored config values are untouched — only
+    the on-disk directories use the resolved path.
+    """
+    created = []
+    existed = []
+    for value in resolve_output_directories(config, module_yaml):
+        disk_path = Path(value.replace("{project-root}", project_root))
+        if disk_path.exists():
+            existed.append(value)
+        else:
+            disk_path.mkdir(parents=True, exist_ok=True)
+            created.append(value)
+    return {"created": created, "existed": existed}
+
+
 def main():
     args = parse_args()
 
@@ -388,6 +465,35 @@ def main():
     module_yaml = load_yaml_file(args.module_yaml)
     if not module_yaml:
         print(f"Error: Could not load module.yaml from {args.module_yaml}", file=sys.stderr)
+        sys.exit(1)
+
+    # Directory-creation mode: read resolved config, create output dirs, exit.
+    if args.create_dirs:
+        if not args.project_root:
+            print(
+                json.dumps(
+                    {
+                        "status": "error",
+                        "error": "--project-root is required with --create-dirs",
+                    }
+                )
+            )
+            sys.exit(1)
+        config = load_yaml_file(args.config_path)
+        result = create_output_dirs(config, module_yaml, args.project_root)
+        result["status"] = "success"
+        print(json.dumps(result, indent=2))
+        return
+
+    if not args.answers or not args.user_config_path:
+        print(
+            json.dumps(
+                {
+                    "status": "error",
+                    "error": "--answers and --user-config-path are required for merge mode",
+                }
+            )
+        )
         sys.exit(1)
 
     answers = load_json_file(args.answers)

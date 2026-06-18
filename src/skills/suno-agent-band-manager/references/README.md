@@ -112,8 +112,7 @@ suno-agent-band-manager/
 │   ├── refine-song.md          # Post-generation refinement loop
 │   ├── research-discipline.md  # Detailed research rules
 │   ├── save-memory.md          # Session persistence
-│   ├── SUNO-REFERENCE.md       # Suno platform reference
-│   └── STUDIO-EDITOR-REFERENCE.md
+│   └── SUNO-REFERENCE.md       # Suno platform reference
 └── scripts/
     ├── pre-activate.py         # First-run detection, scaffolding, menu rendering
     ├── validate-path.py        # Access boundary enforcement
@@ -123,6 +122,8 @@ suno-agent-band-manager/
         ├── test-validate-path.py
         └── test-check-memory-health.py
 ```
+
+The canonical Studio & Editor reference now lives at `../../_shared/references/STUDIO-EDITOR-REFERENCE.md` (shared across the module's skills).
 
 ## License
 

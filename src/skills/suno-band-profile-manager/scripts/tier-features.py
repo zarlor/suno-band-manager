@@ -16,8 +16,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Graceful degradation: if the _shared constants module can't be imported
+# (relocated skill, web sandbox), fall back to the literal tier set so the
+# script still runs rather than crashing on an uncaught ImportError.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
-from suno_constants import VALID_TIERS
+try:
+    from suno_constants import VALID_TIERS
+except ImportError:
+    VALID_TIERS = {"free", "pro", "premier"}
 
 
 TIER_FEATURES = {

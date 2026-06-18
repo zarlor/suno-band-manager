@@ -2,7 +2,7 @@
 
 This reference covers album-level playlist sequencing: how to evaluate and order a body of tracks into a coherent listening experience. The focus is on the **album-craft layer** that sits above pairwise transition scoring — narrative structure, energy arcs, key positions, locked arcs, encore design.
 
-For the **transition-evaluation layer** (Camelot wheel rules, BPM tolerances, felt-vs-librosa BPM corrections, listening-experience-as-primary criterion, parallel-key insights), see [`gemini-audio-analysis.md`](./gemini-audio-analysis.md) — particularly the "DJ Harmonic Mixing (Camelot Wheel)" section and the "Felt BPM" subsection. This doc assumes that material as foundational and builds on it.
+For the **transition-evaluation layer** (Camelot wheel rules, BPM tolerances, felt-vs-librosa BPM corrections, listening-experience-as-primary criterion, parallel-key insights), see `gemini-audio-analysis.md` in the `suno-feedback-elicitor` skill's `references/` directory — particularly the "DJ Harmonic Mixing (Camelot Wheel)" section and the "Felt BPM" subsection. This doc assumes that material as foundational and builds on it.
 
 ## When to Use
 
@@ -53,7 +53,7 @@ The data layer is the *input* to the methodology; it doesn't make sequencing dec
 For each track in the playlist, gather and reason about all nine of these. Earlier variables tend to dominate when conflicts arise — but every variable matters and a "perfect score" on one (e.g., Camelot) doesn't override a poor score on another (e.g., tempo).
 
 1. **BPM** (raw librosa) — the measured tempo
-2. **Felt BPM** (human-verified) — the *perceived* tempo, often half or double the librosa raw value. **Felt BPM is what governs listening experience**; librosa raw is a measurement that may need halftime/double-time correction. Always verify felt BPM by ear before trusting raw numbers for sequencing decisions. (See `gemini-audio-analysis.md` "Felt BPM" subsection for the correction patterns.)
+2. **Felt BPM** (human-verified) — the *perceived* tempo, often half or double the librosa raw value. **Felt BPM is what governs listening experience**; librosa raw is a measurement that may need halftime/double-time correction. Always verify felt BPM by ear before trusting raw numbers for sequencing decisions. (See `gemini-audio-analysis.md` in the `suno-feedback-elicitor` skill's `references/` directory, "Felt BPM" subsection, for the correction patterns.)
 3. **Overall key + Camelot code** — the dominant key center
 4. **Entry key + Camelot code** (first 30 sec) — the key the track *opens* in. May differ from overall.
 5. **Exit key + Camelot code** (last 30 sec) — the key the track *ends* in. May differ from overall and from entry.
@@ -74,7 +74,7 @@ The transition between two adjacent tracks is the actual moment the listener exp
 
 **Exit key matters more than overall key.** A track that's "overall in C minor" but ends in G minor will transition into the next track via G minor, not C minor. Use exit-Camelot of track N → entry-Camelot of track N+1 as the actual transition assessment. The script's `transition_to_next` field already does this.
 
-**Camelot wheel scoring is one input, not the verdict.** See `gemini-audio-analysis.md` "DJ Harmonic Mixing (Camelot Wheel)" for the rules and "Camelot framework limitations" for what it misses. In particular: parallel-key transitions (same root, different mode — e.g., D# major → D# minor) score JARRING on Camelot but are musically a deliberate emotional pivot on the same harmonic center. The listener may hear continuity even when the wheel says discontinuity.
+**Camelot wheel scoring is one input, not the verdict.** See `gemini-audio-analysis.md` (in the `suno-feedback-elicitor` skill's `references/` directory) "DJ Harmonic Mixing (Camelot Wheel)" for the rules and "Camelot framework limitations" for what it misses. In particular: parallel-key transitions (same root, different mode — e.g., D# major → D# minor) score JARRING on Camelot but are musically a deliberate emotional pivot on the same harmonic center. The listener may hear continuity even when the wheel says discontinuity.
 
 **BPM transition tolerance:** <3% smooth, 3-6% noticeable, >6% requires intentional contrast. Halftime/double-time pairs (e.g., felt 70 and felt 140) share a pulse grid and can mix coherently even though the felt-tempo difference is dramatic — but treat this as a *deliberate* breath-in / breath-out move, not a "smooth" transition.
 
@@ -156,7 +156,7 @@ If your final stretch lacks this shape (e.g., averages mid-energy throughout wit
 
 ## What the Methodology Doesn't Capture
 
-**Listening experience is the ultimate arbiter.** Per `gemini-audio-analysis.md`: *"describe the listening experience (smooth / fluid / abrupt / jarring) as the primary criterion. Camelot is one input. Explicitly call out tempo gaps, genre register gaps, and energy gaps alongside Camelot when significant."*
+**Listening experience is the ultimate arbiter.** Per `gemini-audio-analysis.md` (in the `suno-feedback-elicitor` skill's `references/` directory): *"describe the listening experience (smooth / fluid / abrupt / jarring) as the primary criterion. Camelot is one input. Explicitly call out tempo gaps, genre register gaps, and energy gaps alongside Camelot when significant."*
 
 **Parallel-key transitions** (same root, different mode) are musically a deliberate emotional pivot — minor → major lifts; major → minor darkens. Camelot wheel scores them JARRING because the wheel positions are different, but the listener hears the same harmonic center. When evaluating transitions, name parallel-key relationships explicitly when they appear; don't let the JARRING score override what the ear knows.
 
@@ -209,10 +209,10 @@ The output isn't a metrics dump — it's an opinionated proposal grounded in the
 
 ## Cross-References
 
-- `gemini-audio-analysis.md` — Camelot wheel mechanics, felt-BPM corrections, listening-experience-as-primary criterion (foundational; this doc builds on it)
+- `gemini-audio-analysis.md` (in the `suno-feedback-elicitor` skill's `references/` directory) — Camelot wheel mechanics, felt-BPM corrections, listening-experience-as-primary criterion (foundational; this doc builds on it)
 - `scripts/playlist-sequencing-data.py` — generates the per-track sequencing data
 - `scripts/batch-full-analysis.py` — generates the catalog-wide deeper analysis (energy shifts, section boundaries, dynamic character)
-- `scripts/audio-deep-analysis.py` — per-song deep analysis
+- `suno-feedback-elicitor/scripts/audio-deep-analysis.py` — per-song deep analysis (lives in the Feedback Elicitor skill)
 - `docs/audio-analysis/playlists/<album>.json` — JSON archive of the playlist sequencing data
 - `docs/audio-analysis/catalog/<date>-deep.json` — JSON archive of the deep catalog analysis
 - `docs/playlist-sequencing-data.md` — auto-refreshed Markdown companion to the playlist sequencing JSON

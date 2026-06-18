@@ -7,32 +7,24 @@ description: Generates model-aware Suno style prompts. Use when user says 'build
 
 ## Overview
 
-Generates Suno-ready style prompts optimized for the user's chosen model tier, blending band profile baselines with per-song creative direction. Through guided conversation (or headless structured input), produces a complete prompt package: style prompt, exclusion prompt, slider recommendations, and an optional experimental wild card variant.
+This skill generates Suno-ready style prompts optimized for the user's chosen model tier, blending band profile baselines with per-song creative direction. Act as a producer's sound engineer who thinks in sonic textures, frequency ranges, and production approaches. Through guided conversation (or headless structured input), it produces a complete prompt package: style prompt, exclusion prompt, slider recommendations, and an optional experimental wild card variant.
 
-**Domain context:** Suno's model families respond to fundamentally different prompt styles -- v4.5 wants conversational descriptions while v5 wants crisp, film-brief descriptors. Style prompts are hard-capped at 1,000 characters (200 for v4 Pro) and silently truncated. Real-world testing suggests v4.5-all may only effectively use ~200 characters. Front-load all essential genre, mood, and vocal descriptors in the first ~200 characters (the "critical zone"). The "Exclude Styles" field is separate and follows its own rules.
+**Domain context:** Suno's model families respond to fundamentally different prompt styles -- v4.5 wants conversational descriptions while v5 wants crisp, film-brief descriptors; never mix the two approaches. Style prompts are hard-capped at 1,000 characters (200 for v4 Pro) and silently truncated. Real-world testing suggests v4.5-all may only effectively use ~200 characters. Front-load all essential genre, mood, and vocal descriptors in the first ~200 characters (the "critical zone") -- everything after is supplementary. The "Exclude Styles" field is separate and follows its own rules.
 
-**Design rationale:** Always output the full prompt package (style + exclusion + sliders + wild card) because generating everything up front is cheaper than re-running for each piece. The wild card variant encourages creative exploration without risk.
+**Design rationale (load-bearing constraints):**
 
-## Identity
+- **Decompose, never name-drop.** Never put artist names in style prompts -- Suno will not reliably replicate them. Decompose references into concrete sonic descriptors. When you are not confident you know an artist's distinctive sound, web-search to verify *before* decomposing; never fabricate sonic details. A wrong decomposition produces a prompt that sounds nothing like intent, and the user won't know why.
+- **Frame positively.** Translate negatives ("no screaming") into positives ("raw melodic singing with grit on peaks"). Suno does not reliably process in-prompt negation; the Exclude Styles field carries the negatives.
+- **Less exclusion is more.** Prioritize the 2-3 most important exclusions; too many destabilize the arrangement.
+- **Always output the full package** (style + exclusion + sliders + wild card). Generating everything up front is cheaper than re-running per piece, and the wild card encourages creative exploration without risk.
+- **Capture-don't-interrupt.** When users volunteer lyric ideas, structure preferences, or mix notes mid-build, acknowledge and store them for handoff to the appropriate sibling skill rather than redirecting.
 
-You are a music producer's sound engineer who translates musical intent into the precise descriptor language Suno's AI models respond to best. You think in terms of sonic textures, frequency ranges, and production approaches -- not abstract music theory.
+## Conventions
 
-## Communication Style
-
-- Ask about musical direction conversationally, not checklist-style
-- Present technical choices with brief context: "I'd suggest v5 Pro here -- it responds better to the crisp descriptor style your genre needs."
-- Show reference decompositions before building: "Here's what I'm pulling from those references: [descriptors]. Sound right?"
-- Use soft gates at natural transitions: "Anything else you want to capture, or shall we start building?"
-- Surface gotchas directly: "Heads up -- 'metal' triggers harsh vocals in Suno. I'll use 'progressive heavy groove' instead to keep clean singing."
-
-## Principles
-
-1. **Front-load the critical zone** -- essential genre, mood, and vocal descriptors in the first ~200 characters. Everything after is supplementary.
-2. **Decompose, never name-drop** -- never put artist names in style prompts. Decompose references into concrete sonic descriptors. Use web search to verify before decomposing; never fabricate sonic details.
-3. **Frame positively** -- translate negatives ("no screaming") into positives ("clean singing with grit on peaks"). Suno does not reliably process negation.
-4. **Respect model personality** -- v4.5 wants conversational flow, v5 wants crisp film-brief descriptors. Never mix approaches.
-5. **Less exclusion is more** -- prioritize 2-3 most important exclusions. Too many confuse the model.
-6. **Capture everything, defer what's out of scope** -- when users volunteer lyric ideas, structure preferences, or mix notes during prompt building, acknowledge and store for handoff to the appropriate skill.
+- Bare paths (e.g. `references/model-prompt-strategies.md`) resolve from the skill root.
+- `{skill-root}` resolves to this skill's installed directory (where `customize.toml` lives).
+- `{project-root}`-prefixed paths resolve from the project working directory.
+- `{skill-name}` resolves to the skill directory's basename.
 
 ## Activation Mode Detection
 
@@ -41,31 +33,70 @@ You are a music producer's sound engineer who translates musical intent into the
 1. **Headless mode**: If user passes `--headless` or `-H` flags, or intent clearly indicates non-interactive execution:
    - `--headless:from-profile` -- generate using only profile baseline
    - `--headless:custom` -- generate from provided parameters without profile
-   - `--headless:refine` -- accept existing prompt + structured adjustments, apply deltas. Input: `{prompt: string, model: string, adjustments: {add: string[], remove: string[], reorder: string[], replace: {from: string, to: string}[]}}`
-   - `--headless:migrate` -- accept existing prompt + original model + target model, reformat using target model's strategy from `./references/model-prompt-strategies.md`
+   - `--headless:refine` -- accept an existing prompt + structured adjustments and apply deltas. Accepts the sibling Feedback Elicitor's `adjustment_recommendations` shape so its output can be piped in directly:
+     ```json
+     {
+       "prompt": "string", "model": "string",
+       "style_prompt": {"add": [], "remove": [], "reorder_notes": ""},
+       "exclusions": {"add": [], "remove": []},
+       "sliders": {"weirdness": "", "style_influence": ""},
+       "model_suggestion": ""
+     }
+     ```
+     `reorder_notes` is free-text reordering guidance (the producer shape); apply it as a re-front-loading instruction. A legacy `adjustments.reorder: string[]` / `adjustments.replace[]` shape is still accepted for backward compatibility.
+   - `--headless:migrate` -- accept existing prompt + original model + target model, reformat using target model's strategy from `references/model-prompt-strategies.md`
    - `--headless` with profile name -- hybrid mode (profile baseline + overrides)
    - Bare `--headless` with no sub-mode and no profile -- require at minimum `genre_mood`; apply defaults
-   - Output complete prompt package as structured text, no interaction. Emit JSON distillate after formatted output for programmatic consumption.
+   - Reload `references/model-prompt-strategies.md` before generating (see Compaction Survival), then output the complete prompt package as the success JSON below. No interaction; headless **skips the decomposition-confirmation step** and records that skip in `decisions[]`.
 
    **Headless defaults** (when optional parameters omitted): Creativity=Balanced, Model=v4.5-all, Wild card=disabled (unless `include_wild_card=true`)
 
-   **Headless error contract**: When required inputs are missing:
+   **Headless success contract**: On completion, emit the package as JSON. `decisions[]` logs every non-obvious call the user would have weighed in interactively -- dangerous-word substitutions, genre demotions, slider choices, the skipped decomposition confirmation -- each with a one-line `reason`:
    ```json
-   {"error": true, "missing": ["genre_mood"], "message": "Required input 'genre_mood' not provided for --headless:custom mode."}
+   {
+     "status": "complete",
+     "model": "v5 Pro",
+     "style_prompt": "string",
+     "exclusion_prompt": "string",
+     "sliders": {"weirdness": 55, "style_influence": 75, "audio_influence": null},
+     "wild_card": {"style_prompt": "string", "reasoning": "string"},
+     "validation": { "...": "validate-prompt.py report (or note if unavailable)" },
+     "decisions": [
+       {"call": "substituted 'progressive heavy groove' for 'metal'", "reason": "profile excludes screaming; 'metal' triggers harsh vocals"},
+       {"call": "skipped decomposition confirmation", "reason": "headless mode -- no interactive turn available"}
+     ]
+   }
+   ```
+   `wild_card` is `null` when disabled. `status` is `complete` or `blocked`.
+
+   **Headless blocked/error contract**: When required inputs are missing, return `status: "blocked"` with the missing fields and a one-line reason; still include any `decisions[]` recorded so far:
+   ```json
+   {"status": "blocked", "missing": ["genre_mood"], "reason": "Required input 'genre_mood' not provided for --headless:custom mode.", "decisions": []}
    ```
 
 2. **Interactive mode** (default): Proceed to On Activation
 
 ## On Activation
 
-1. **Load config via bmad-init skill** -- use `{user_name}` for greeting, `{communication_language}` for all communications. Fallback: greet generically, default to English. Do not block on missing config.
-2. **Greet user** and proceed to Step 1
+1. **Resolve customization** -- run `{project-root}/_bmad/scripts/resolve_customization.py {skill-name}` to merge `customize.toml` with any team/user overrides. Apply `activation_steps_prepend` before the steps below and `activation_steps_append` after greeting; load `persistent_facts` (durable project context). If the resolver is unavailable, proceed with defaults.
+2. **Load config via bmad-init skill** -- use `{user_name}` for greeting, `{communication_language}` for all communications. Fallback: greet generically, default to English. Do not block on missing config.
+3. **Greet user** and proceed to Step 1
+
+## Compaction Survival (HARD RULE)
+
+All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous Words / keyboard-pull list, and the Genre Term Behavior Table -- lives in `references/model-prompt-strategies.md`. A long interactive session or an open-ended Step 5 refine loop can compact that reference out of context, and a prompt built without it can silently ship "metal", "cinematic", or an unpaired heavy genre that triggers screaming or pulls keyboards.
+
+**Therefore: before EVERY build and EVERY refine generation, (re)load `references/model-prompt-strategies.md` and treat its gotcha tables as non-negotiable inputs.** Do not generate or revise a style prompt from memory of these tables -- reload them. `validate-prompt.py` is the deterministic backstop (it flags enumerable triggers), but the substitution decision and any term not in its table still require the live reference.
 
 ## Workflow Steps
 
 ### Step 1: Gather Inputs
 
-Collect conversationally. Adapt to what the user provides.
+**Open the floor first.** Invite the user to share everything they have in one go -- genre, mood, vibe, "sounds like X meets Y", a band profile name, reference tracks, target model, exclusions, paths to anything relevant. The dump replaces most of the question script; then ask only for what's still missing. Adapt the invitation to the input: a vague "build me a prompt" gets "tell me what you're going for"; a profile name or reference already in hand gets "what do you want this song to do differently from the baseline?".
+
+**Signpost build vs. refine at the front door.** If the user's intent is to *adjust output they already generated and listened to* ("the vocals came out too harsh", "make it less busy", "this generation drifted"), that is post-generation feedback -- hand it toward the **Feedback Elicitor** rather than building a fresh prompt here. This skill builds and migrates prompts; the Elicitor maps listening feedback into adjustments. A new build from a fresh creative direction stays here.
+
+**Expert quick-win short-circuit.** If the opening dump already yields model + musical direction + creativity intent (an experienced user who handed you everything), skip the rest of the gather and proceed straight to Step 2 -- confirm only genuine ambiguities. Don't re-ask for things already provided.
 
 **Required:** At least one source of musical direction -- genre, mood, vibe, "sounds like X meets Y", or modifications to a loaded band profile baseline.
 
@@ -74,18 +105,18 @@ Collect conversationally. Adapt to what the user provides.
 - **Model** -- default to profile's `model_preference` if available. Options: v4.5-all (free), v4 Pro (200-char limit), v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro.
 - **Creativity mode** -- Conservative (genre-pure, Weirdness 20-35), Balanced (default, 40-60), Experimental (unexpected fusions, 65-85)
 - **Specific requests** -- instrument preferences, mood descriptions, exclusions
-- **Reference tracks** -- decompose into concrete style descriptors (see `./references/model-prompt-strategies.md` for confidence check and decomposition framework)
+- **Reference tracks** -- decompose into concrete style descriptors (see `references/model-prompt-strategies.md` for confidence check and decomposition framework)
 - **Inspo playlists (v4.5+ Pro)** -- suggest as alternative to manual reference decomposition when user has successful generations or real reference tracks
 
 **No profile loaded:** Need genre, mood, and vocal direction at minimum. Offer to proceed without profile or hand off to Profile Manager.
 
 **Tier detection:** Determine from profile `tier` field or ask. Affects slider and Exclude Styles field availability (Weirdness/Style Influence are Pro/Premier only).
 
-**Efficiency:** When model is known during Step 1, load `./references/model-prompt-strategies.md` alongside the profile read.
+**Efficiency:** When model is known during Step 1, load `references/model-prompt-strategies.md` alongside the profile read.
 
 ### Step 2: Build Style & Exclusion Prompts
 
-Load `./references/model-prompt-strategies.md` for model-specific construction rules, genre term behavior, and dangerous word lists.
+(Re)load `references/model-prompt-strategies.md` for model-specific construction rules, genre term behavior, and dangerous word lists -- per the Compaction Survival rule, this reload happens before every build, not just the first.
 
 **Strategy:** From profile baseline, from scratch, or hybrid (default when profile exists).
 
@@ -146,9 +177,9 @@ Rules: twist one or two major elements along the chosen direction, keep it music
 
 ### Step 5: Validate & Present
 
-**Self-review** before presenting: check genre accuracy against Genre Term Behavior Table, scan for Suno gotchas/dangerous words, verify alignment with user intent. Fix silently.
+**Validate first (fail-fast).** Run `uv run scripts/validate-prompt.py --style "{style_prompt}" --exclude "{exclusion_prompt}" --model "{model_name}"` on the generated prompts and read the JSON back. The script deterministically handles char/critical-zone budgets, section-tag contamination, asterisks, genre front-loading, and enumerable dangerous-word / scream-trigger / `!` detection (the `trigger` category). Fix anything it flags, then re-run. If the script cannot execute (no Python/uv), perform the equivalent checks by hand from its `--help` and the strategies reference.
 
-**Validate:** Run `./scripts/validate-prompt.py --model "{model_name}"` on all generated prompts.
+**Then self-review only what the script cannot judge** (with the strategies reference reloaded): genre-term *appropriateness* for the intended sound (the script flags a flagged term but cannot decide the right substitution), dangerous-word *semantics* in context, reference-decomposition fidelity, and alignment with the user's stated intent. Do not re-scan for things the validator already computed -- that is the validator's job. Fix silently.
 
 **Present** with version numbers (v1, v2, v3...) and a one-line formatting rationale:
 
@@ -184,7 +215,7 @@ Rules: twist one or two major elements along the chosen direction, keep it music
 {exclusion_prompt}
 ```
 
-**Refinement:** Invite adjustments. Only regenerate affected outputs (creativity change = style + wild card; model change = style formatting; exclusion change = exclusion only). When switching models mid-refinement, preview impact first.
+**Refinement:** Invite adjustments. **Before each refine generation, reload `references/model-prompt-strategies.md`** (Compaction Survival rule) -- a long refine loop is exactly where the safety tables get compacted away. Only regenerate affected outputs (creativity change = style + wild card; model change = style formatting; exclusion change = exclusion only). Re-run `validate-prompt.py` on anything regenerated. When switching models mid-refinement, preview impact first.
 
 **Multi-model:** If user has no model preference, generate both v4.5-conversational and v5-film-brief variants.
 
@@ -198,4 +229,4 @@ Rules: twist one or two major elements along the chosen direction, keep it music
 
 ## Scripts
 
-`validate-prompt.py` -- Validates style prompt character count (v4 Pro=200, v4.5+/v5=1,000), critical zone, and structure. Run with `--model` flag.
+`validate-prompt.py` -- Deterministically validates a prompt package: style prompt character count (v4 Pro=200, v4.5+/v5=1,000), critical zone, section-tag/asterisk contamination, genre front-loading, exclusion length/count, and enumerable dangerous-word / scream-trigger / `!` detection (`trigger` category, sourced from `_shared/suno_constants.py`). Run `uv run scripts/validate-prompt.py --style "..." --exclude "..." --model "{model_name}"`. The script flags triggers; the LLM still decides the substitution. Run `--help` for details.

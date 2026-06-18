@@ -1,0 +1,10 @@
+# Customization overrides for suno-band-profile-manager.
+# Teams override at {project-root}/_bmad/custom/suno-band-profile-manager.toml;
+# users at the matching .user.toml. Merge order: base -> team -> user.
+# Persona/tone variance belongs in persistent_facts (project-context.md),
+# not in workflow scalars — this skill is a workflow, not an agent.
+
+[workflow]
+activation_steps_prepend = []
+activation_steps_append = []
+persistent_facts = ["file:{project-root}/**/project-context.md"]

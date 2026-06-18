@@ -37,10 +37,67 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
-from suno_constants import STYLE_PROMPT_LIMITS, STYLE_PROMPT_DEFAULT_MAX, CRITICAL_ZONE, EXCLUSION_RECOMMENDED_MAX, EXCLUSION_HARD_MAX
+from suno_constants import (
+    STYLE_PROMPT_LIMITS, STYLE_PROMPT_DEFAULT_MAX, CRITICAL_ZONE,
+    EXCLUSION_RECOMMENDED_MAX, EXCLUSION_HARD_MAX,
+    GENRE_SIGNALS, HEAVY_VOCAL_TRIGGERS, VOCAL_SAFE_PAIRINGS,
+    KEYBOARD_PULL_WORDS, SHOUT_TRIGGER_CHAR,
+)
 
 SCRIPT_NAME = "validate-prompt"
-VERSION = "1.1.0"
+VERSION = "1.2.0"
+
+
+def detect_triggers(text: str) -> list[dict]:
+    """Flag enumerable safety triggers in a style prompt.
+
+    Deterministic detection only — the SUBSTITUTION decision stays with the LLM.
+    See _shared/suno_constants.py and the strategies reference for fix guidance.
+    """
+    findings = []
+    lowered = text.lower()
+
+    # Heavy-genre scream triggers, flagged only when UNPAIRED with a positive
+    # vocal instruction in the same prompt.
+    paired = any(p in lowered for p in VOCAL_SAFE_PAIRINGS)
+    # Word-boundary match so "blackbird" / "deathless" don't false-trip.
+    found_triggers = sorted({
+        word for word in HEAVY_VOCAL_TRIGGERS
+        if re.search(r'\b' + re.escape(word) + r'\b', lowered)
+    })
+    if found_triggers and not paired:
+        findings.append({
+            "severity": "high",
+            "category": "trigger",
+            "issue": f"Heavy-genre scream trigger(s) without a paired positive vocal instruction: {found_triggers}. These pull screaming/harsh vocals.",
+            "fix": "Either pair with an explicit positive vocal phrase (e.g. 'raw melodic singing', 'gritty male vocals, no screaming') or substitute a safe heavy term (e.g. 'progressive heavy groove', 'heavy swamp metal' with vocal guidance). LLM decides which.",
+            "data": {"triggers": found_triggers, "paired": paired}
+        })
+
+    # Keyboard-pull / cinematic-light dangerous words.
+    found_kb = sorted({
+        word for word in KEYBOARD_PULL_WORDS if word in lowered
+    })
+    if found_kb:
+        findings.append({
+            "severity": "medium",
+            "category": "trigger",
+            "issue": f"Keyboard-pull dangerous word(s): {found_kb}. These pull theatrical/keyboard/synth-heavy or cinematic-light arrangements when guitars/bass should lead.",
+            "fix": "Replace per the Dangerous Words table — e.g. 'cinematic' -> 'dynamic shifts, building from gentle to crushing'; 'orchestral' -> 'cello, heavy strings, kettle drums'; avoid 'baroque' (describe the qualities instead).",
+            "data": {"words": found_kb}
+        })
+
+    # Exclamation marks push delivery toward shouting/screaming.
+    if SHOUT_TRIGGER_CHAR in text:
+        findings.append({
+            "severity": "low",
+            "category": "trigger",
+            "issue": "Exclamation mark(s) found. '!' pushes vocal delivery toward shouting/screaming.",
+            "fix": "Remove exclamation marks unless a shouted delivery is intended.",
+            "data": {"count": text.count(SHOUT_TRIGGER_CHAR)}
+        })
+
+    return findings
 
 
 def get_limit_for_model(model: str) -> int:
@@ -96,14 +153,12 @@ def validate_style_prompt(text: str, model: str = "") -> list[dict]:
         })
         return findings
 
-    # Front-loading check — genre/mood keywords should appear in first 200 chars
+    # Front-loading check — genre/mood keywords should appear in first 200 chars.
+    # Genre vocabulary is centralized in _shared/suno_constants.GENRE_SIGNALS so
+    # it stays in sync across the module and covers this module's heavy/southern
+    # lanes (swamp metal, heartland rock, prog rock, slowcore, doom, ...).
     first_segment = text[:200].lower()
-    genre_signals = ["rock", "pop", "folk", "jazz", "blues", "electronic", "hip hop", "r&b",
-                     "country", "classical", "metal", "punk", "indie", "soul", "funk",
-                     "ambient", "lo-fi", "lofi", "dance", "edm", "house", "techno",
-                     "rap", "acoustic", "orchestral", "cinematic", "reggae", "latin",
-                     "alternative", "grunge", "shoegaze", "post-punk", "synth", "disco"]
-    has_genre = any(g in first_segment for g in genre_signals)
+    has_genre = any(g in first_segment for g in GENRE_SIGNALS)
     if not has_genre:
         findings.append({
             "severity": "medium",
@@ -130,6 +185,9 @@ def validate_style_prompt(text: str, model: str = "") -> list[dict]:
             "issue": "Asterisks found in style prompt. Suno does not use markdown formatting in style prompts.",
             "fix": "Remove all asterisks from the style prompt."
         })
+
+    # Enumerable safety-trigger detection (scream triggers, keyboard-pull words, '!')
+    findings.extend(detect_triggers(text))
 
     return findings
 

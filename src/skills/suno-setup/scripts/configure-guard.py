@@ -19,6 +19,9 @@ Options:
     --guard-script-path Relative path from project root to pipeline-guard.py
     --agents-md-path    Path to AGENTS.md (or CLAUDE.md / GEMINI.md)
     -o, --output        Write JSON output to file instead of stdout
+
+Exit codes: 0=success, 1=validation error (no targets), 2=runtime error
+    (e.g. malformed settings JSON)
 """
 
 import argparse
@@ -116,7 +119,8 @@ def main():
     if args.agents_md_path:
         results.append(configure_standing_order(Path(args.agents_md_path)))
 
-    if not results:
+    no_targets = not results
+    if no_targets:
         results.append({"status": "error", "message": "No configuration targets specified. Use --settings-path and/or --agents-md-path."})
 
     output = json.dumps({"results": results}, indent=2)
@@ -126,6 +130,13 @@ def main():
         print(f"Results written to {args.output}", file=sys.stderr)
     else:
         print(output)
+
+    # Exit codes: 0=success, 1=validation error (no targets), 2=runtime error
+    if no_targets:
+        sys.exit(1)
+    if any(r.get("status") == "error" for r in results):
+        sys.exit(2)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

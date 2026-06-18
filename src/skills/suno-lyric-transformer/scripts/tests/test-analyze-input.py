@@ -5,6 +5,7 @@
 # ///
 """Tests for analyze-input.py"""
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -87,6 +88,23 @@ class TestAnalyzeInput:
         assert report is not None
         m = report["metrics"]
         assert m["estimated_structure"] == "long"
+
+    def test_source_hash_matches_sha256(self):
+        # The hash is the authoritative LT-STATE / headless change-tracking
+        # value the LLM reads instead of fabricating one.
+        text = "come back to me tonight\nunder the pale moonlight"
+        report, code = run_script("--text", text)
+        assert report is not None
+        m = report["metrics"]
+        # Script normalizes literal "\n" to real newlines before hashing.
+        expected = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        assert m["source_hash"] == expected
+        assert len(m["source_hash"]) == 64
+
+    def test_source_hash_changes_with_text(self):
+        a, _ = run_script("--text", "first draft of the words")
+        b, _ = run_script("--text", "second draft of the words")
+        assert a["metrics"]["source_hash"] != b["metrics"]["source_hash"]
 
     def test_report_structure(self):
         report, code = run_script("--text", "Some text")

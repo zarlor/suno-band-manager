@@ -34,7 +34,7 @@ When using multiple analysis sources, you'll often get different answers for the
 
 Requirements: Python 3, librosa, numpy (`pip install librosa numpy`)
 
-**Persistent JSON archive + companion-doc auto-refresh:** `analyze-audio.py`, `audio-deep-analysis.py`, `batch-full-analysis.py`, and `playlist-sequencing-data.py` write JSON archives to `docs/audio-analysis/{songs,playlists,catalog}/` and refresh markdown companion docs at `docs/{...}.md` by default. Companion docs use AUTOGEN markers to preserve hand-curated sections across regeneration. Pass `--no-archive` / `--no-companion` to skip.
+**Persistent JSON archive + companion-doc auto-refresh:** `analyze-audio.py` and `audio-deep-analysis.py` write JSON archives to `docs/audio-analysis/songs/` and refresh markdown companion docs at `docs/{...}.md` by default. Companion docs use AUTOGEN markers to preserve hand-curated sections across regeneration. Pass `--no-archive` / `--no-companion` to skip. (The album-level `batch-full-analysis.py` and `playlist-sequencing-data.py`, with their `playlists/` and `catalog/` archives, now live in the `suno-playlist-sequencer` skill.)
 
 **analyze-audio.py** — Batch BPM and key detection for all MP3s in a directory. Uses Krumhansl-Kessler chroma correlation for key estimation. Outputs a summary table with BPM, key, key confidence, and duration.
 ```bash
@@ -51,10 +51,7 @@ python scripts/audio-deep-analysis.py track.mp3
 python scripts/tempo-detail.py track.mp3
 ```
 
-**batch-full-analysis.py** — Batch full analysis across a catalog: tempo stability, energy arc, section boundaries, spectral balance. Outputs a comprehensive summary report.
-```bash
-python scripts/batch-full-analysis.py /path/to/mp3s/
-```
+**batch-full-analysis.py** (album/catalog scope — now in the `suno-playlist-sequencer` skill) — Batch full analysis across a catalog: tempo stability, energy arc, section boundaries, spectral balance. Outputs a comprehensive summary report. Run it from that skill: `uv run scripts/batch-full-analysis.py --audio-dir docs/audio`.
 
 #### librosa Notes
 
@@ -314,16 +311,15 @@ Neither dimension alone is sufficient. Adjacent tracks need to work musically AN
 - Peak-end rule: audiences remember the best moment and the final moment most vividly
 - Encore: a planned 3-5 song mini-set at high energy following a breath-catching break
 
-### Playlist Sequencing Scripts
-
-**playlist-sequencing-data.py** — Generates a full sequencing report: BPM, overall/entry/exit keys, Camelot codes, energy levels, intro/outro energy percentages, and transition quality ratings between adjacent tracks.
-```bash
-python scripts/playlist-sequencing-data.py /path/to/mp3s/
-```
+### Single-Track Harmonic Scripts
 
 **chord-progression.py** — Analyzes chord changes and key centers in 30-second windows within a single track. Measure-by-measure detection is too noisy with distorted guitars, but 30-second key center summaries are useful.
 ```bash
 python scripts/chord-progression.py track.mp3
 ```
 
-**Camelot wheel mapping** is embedded in the sequencing script — all 24 keys (12 major, 12 minor) mapped to codes 1A-12A (minor) and 1B-12B (major).
+**Camelot wheel mapping** is embedded in `chord-progression.py` and in the `suno-playlist-sequencer` skill's `playlist-sequencing-data.py` — all 24 keys (12 major, 12 minor) mapped to codes 1A-12A (minor) and 1B-12B (major).
+
+### Playlist Sequencing (moved to `suno-playlist-sequencer`)
+
+Album/playlist sequencing — the `playlist-sequencing-data.py` full sequencing report (BPM, overall/entry/exit keys, Camelot codes, energy levels, intro/outro energy %, per-transition quality) and the album-craft methodology — now lives in the **`suno-playlist-sequencer`** skill. Route album/playlist/tracklist work there. The Camelot-mixing and felt-BPM material above remains the foundational reference that skill builds on.

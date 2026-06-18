@@ -21,10 +21,39 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
+# Graceful degradation: pyyaml and the _shared constants module are the two
+# things this script can't run without. If either is missing (e.g. claude.ai
+# web with no uv, or a relocated skill), emit a clear JSON error so the calling
+# LLM can fall back to validating the profile by hand against profile-schema.md
+# rather than crashing on an uncaught ImportError.
+try:
+    import yaml
+except ImportError:
+    print(json.dumps({
+        "script": "validate-profile",
+        "status": "error",
+        "error": (
+            "pyyaml is not installed. Run with `uv run` (auto-installs it), or "
+            "validate the profile by hand against profile-schema.md."
+        ),
+    }))
+    sys.exit(2)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
-from suno_constants import VALID_MODELS, VALID_TIERS, STYLE_PROMPT_LIMITS, STYLE_PROMPT_DEFAULT_MAX, FREE_TIER_MODEL
+try:
+    from suno_constants import VALID_MODELS, VALID_TIERS, STYLE_PROMPT_LIMITS, STYLE_PROMPT_DEFAULT_MAX, FREE_TIER_MODEL
+except ImportError:
+    print(json.dumps({
+        "script": "validate-profile",
+        "status": "error",
+        "error": (
+            "Could not import suno_constants from the module's _shared/ directory. "
+            "Ensure the skill is installed under its module, or validate against "
+            "profile-schema.md by hand (valid tiers: free/pro/premier; style_baseline "
+            "max 1000 chars, 200 for v4 Pro)."
+        ),
+    }))
+    sys.exit(2)
 
 VALID_GENDERS = {"male", "female", "nonbinary", "any"}
 VALID_CREATIVITY = {"conservative", "balanced", "experimental"}
@@ -43,8 +72,16 @@ def derive_filename(band_name: str) -> str:
     return f"{name}.yaml"
 
 
-def validate_profile(profile_path: Path) -> dict:
-    """Validate a profile YAML file and return structured findings."""
+def validate_profile(profile_path: Path, docs_dir: Path | None = None) -> dict:
+    """Validate a profile YAML file and return structured findings.
+
+    docs_dir: the project's docs/ directory, used to locate the per-band
+    songbook entries (`{docs_dir}/songbook/{slug}/`) and the canonical
+    playlist YAML (`{docs_dir}/{slug}-playlist.yaml`). Defaults to the
+    profile's grandparent dir (i.e. `{profile_path}/../..`), which for the
+    standard `{project-root}/docs/band-profiles/{slug}.yaml` layout resolves
+    to `{project-root}/docs` — identical to the prior hardcoded derivation.
+    """
     findings = []
     script_name = "validate-profile"
 
@@ -324,9 +361,15 @@ def validate_profile(profile_path: Path) -> dict:
     # bands independent (see playlist-sequencing-methodology.md "Per-Band
     # Playlist YAML" section).
     band_slug = profile_path.stem  # e.g., docs/band-profiles/lennys-voice.yaml -> lennys-voice
-    project_root = profile_path.parent.parent.parent  # band-profiles -> docs -> project_root
-    songbook_dir = project_root / "docs" / "songbook" / band_slug
-    playlist_yaml = project_root / "docs" / f"{band_slug}-playlist.yaml"
+    # docs/ dir: explicit --docs-dir wins; else derive from the profile's
+    # grandparent (band-profiles -> docs) to preserve the prior behavior
+    # exactly for the standard {project-root}/docs/band-profiles layout.
+    if docs_dir is not None:
+        resolved_docs_dir = docs_dir
+    else:
+        resolved_docs_dir = profile_path.parent.parent  # band-profiles -> docs
+    songbook_dir = resolved_docs_dir / "songbook" / band_slug
+    playlist_yaml = resolved_docs_dir / f"{band_slug}-playlist.yaml"
     if songbook_dir.is_dir() and any(songbook_dir.glob("*.md")):
         if not playlist_yaml.exists():
             findings.append({
@@ -407,6 +450,14 @@ def main():
         metavar="BAND_NAME",
         help="Convert a band name to kebab-case filename and exit"
     )
+    parser.add_argument(
+        "--docs-dir",
+        help=(
+            "Project docs/ directory used to locate the band's songbook entries "
+            "and canonical playlist YAML (default: the profile's grandparent dir, "
+            "i.e. {project-root}/docs for the standard layout)."
+        ),
+    )
     args = parser.parse_args()
 
     if args.derive_filename:
@@ -425,11 +476,14 @@ def main():
         parser.error("profile_path is required when not using --derive-filename")
 
     profile_path = Path(args.profile_path)
+    docs_dir = Path(args.docs_dir) if args.docs_dir else None
 
     if args.verbose:
         print(f"Validating profile: {profile_path}", file=sys.stderr)
+        if docs_dir is not None:
+            print(f"Using docs dir: {docs_dir}", file=sys.stderr)
 
-    result = validate_profile(profile_path)
+    result = validate_profile(profile_path, docs_dir=docs_dir)
     output = json.dumps(result, indent=2)
 
     if args.output:

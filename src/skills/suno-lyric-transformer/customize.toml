@@ -1,0 +1,10 @@
+# Customization overrides for suno-lyric-transformer.
+# Teams/users override without editing this file:
+#   {project-root}/_bmad/custom/suno-lyric-transformer.toml       (team, committed)
+#   {project-root}/_bmad/custom/suno-lyric-transformer.user.toml  (personal, gitignored)
+# Merge order: this file -> team -> user. See standard-fields.md for the [workflow] shape.
+
+[workflow]
+activation_steps_prepend = []
+activation_steps_append = []
+persistent_facts = ["file:{project-root}/**/project-context.md"]

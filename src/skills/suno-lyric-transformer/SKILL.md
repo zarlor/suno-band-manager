@@ -33,29 +33,36 @@ Transforms poems, raw text, and rough lyrics into Suno-ready structured song lyr
 
 **Design rationale:** Transformation is a menu of options (not all-or-nothing) because users have varying attachment to their original words. Word fidelity mode exists because some writers prefer a less-perfect song over losing their language. Cliche detection defaults on because Suno amplifies cliches in vocal delivery.
 
-## Config
-
-Load via bmad-init skill on activation:
-- `user_name` — for greeting
-- `communication_language` — for all communications (default: English)
-- `document_output_language` — for lyrics output (default: source text language)
-
-**Fallback:** If bmad-init unavailable, greet generically, use English, note defaults are in effect. Never block the workflow.
+## Conventions
+- Bare paths (e.g. `references/metatag-reference.md`) resolve from the skill root.
+- `{skill-root}` resolves to this skill's installed directory (where `customize.toml` lives).
+- `{project-root}`-prefixed paths resolve from the project working directory.
+- `{skill-name}` resolves to the skill directory's basename.
 
 ## Activation Mode Detection
 
-1. **Headless mode** (`--headless` or `-H`): Accept structured input (text, options, profile, direction, language). Sub-modes:
+**Check activation context immediately:**
+
+1. **Headless mode** (`--headless` or `-H`): Accept structured input (text, options, profile, direction, language). Skip greeting and route directly to the matching sub-mode. Sub-modes:
    - `--headless:analyze` — return analysis JSON only
    - `--headless:transform` — full transformation with defaults
    - `--headless:refine` — accept adjustment spec from Feedback Elicitor (see Refinement Mode)
    - `--headless` with text — analyze + transform with balanced defaults
    - Validate options via `validate-options.py` before proceeding. Output JSON per contract below.
 
-2. **Interactive mode** (default): Greet user as `{user_name}` in `{communication_language}`, proceed to Step 1.
+2. **Interactive mode** (default): Proceed to On Activation.
+
+## On Activation
+
+1. **Resolve customization** — run `python3 {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --key workflow`. This merges the `[workflow]` block (base `customize.toml` → team `{project-root}/_bmad/custom/{skill-name}.toml` → user `{project-root}/_bmad/custom/{skill-name}.user.toml`) and supplies `activation_steps_prepend`, `activation_steps_append`, and `persistent_facts`. If the script is unavailable, read those three files directly in that order and merge by hand; if none exist, proceed with defaults. Run any `activation_steps_prepend` before the next step and load `persistent_facts` (durable project context, e.g. `project-context.md`).
+2. **Load config via bmad-init skill** — use `{user_name}` for greeting, `{communication_language}` for all communications, `{document_output_language}` for lyrics output (default: source text language). Module config supplies `{songbook_folder}` (default `docs/songbook`) and `{band_profiles_folder}` (default `docs/band-profiles`). **Fallback:** If bmad-init is unavailable, greet generically, default to English, note defaults are in effect. Never block the workflow.
+3. **Greet** `{user_name}`, run any `activation_steps_append`, and proceed to Step 1.
 
 **Headless Output Contract:**
 ```json
 {
+  "status": "complete | blocked",
+  "reason": "one line — only when status is blocked",
   "transformed_lyrics": "string — complete lyrics with metatags",
   "transformation_summary": {
     "sections": ["Verse 1", "Chorus", "Verse 2", "Chorus", "Bridge", "Final Chorus"],
@@ -64,25 +71,38 @@ Load via bmad-init skill on activation:
     "transformations_applied": ["ST", "CC", "RA", "CD"],
     "syllable_range": "6-10",
     "character_count": 1850,
+    "lyric_character_count": 1640,
+    "metatag_character_count": 210,
     "character_budget": "1850/3000 (62%)"
   },
   "cliche_report": {"flagged": 3, "replaced": 2, "kept": ["phrase"]},
   "validation_result": {"status": "pass", "findings": []},
-  "original_hash": "sha256 of source text for change tracking",
+  "source_hash": "sha256 from analyze-input.py metrics.source_hash — never fabricated",
+  "decision_log": [
+    {"assumption": "non-Latin script → skipped syllable/rhyme/cliche, focused on structure/arc", "basis": "script-type detection"},
+    {"assumption": "band profile 'x' not found → proceeded without voice constraints", "basis": "missing file"},
+    {"assumption": "kept cliché 'broken heart' — central to the poem's thesis", "basis": "CD craft call"}
+  ],
   "adjustments_applied": [{"type": "section-restructure", "status": "applied|partial|skipped", "detail": "..."}]
 }
 ```
 
+**Hashes are read, never computed.** `source_hash` (and the LT-STATE `source_hash`) come from `analyze-input.py`'s `metrics.source_hash`; the `draft_hash` after a transform comes from re-running `analyze-input.py` (or `validate-lyrics.py` extended the same way) on the current draft. An LLM cannot compute sha256 by hand — if the script did not run, mark the hash `unavailable` rather than inventing one.
+
+**Headless decision log.** Capture every assumption a headless run makes without the user: inferred transformation options, profile-not-found-proceeded, budget trims, cliche keep/replace calls, and the non-Latin fork. **Headless non-Latin default:** auto-skip syllable/rhyme/cliche detection and focus on structure + emotional arc (interactive mode leaves this a user choice); record the skip in `decision_log`. On `blocked` (e.g. no source text, mutually exclusive options that cannot be reconciled), set `status: "blocked"` with a one-line `reason` and still return the `decision_log`.
+
 ## Workflow Steps
 
 ### Step 1: Gather Input
+
+**Open the floor.** Invite the user to share everything up front — the poem or text (paste or path), what it's about, any band profile, genre/mood direction, reference tracks, and how attached they are to their exact words. The dump replaces most of the question script; ask only for what's missing afterward.
 
 **Intent check:** This skill transforms existing text. If the user has no source text, redirect to Band Manager or Style Prompt Builder. For instrumental-only requests, redirect to Style Prompt Builder or offer to convert text into descriptor metatags for instrumental interpretation.
 
 **Required:** Source text (pasted or file path). Validate file paths before passing to scripts.
 
 **Optional inputs:**
-- **Band profile** — from `docs/band-profiles/{name}.yaml`; constrains voice/vocabulary. If not found, list available profiles or proceed without.
+- **Band profile** — from `{band_profiles_folder}/{name}.yaml`; constrains voice/vocabulary. If not found, list available profiles or proceed without.
 - **Song direction** — genre, mood, energy (informs structure, vocabulary, cliche alternatives)
 - **Reference tracks** — "sounds like X meets Y" (informs vocabulary, line length, rhyme style)
 - **Transformation options** — see Step 2; present if not specified
@@ -91,22 +111,32 @@ Load via bmad-init skill on activation:
 Capture ambient creative context users share alongside their text ("this is about my grandmother") — it informs arc mapping, chorus creation, and metatag choices.
 
 **Input analysis (parallel batch):**
-- `analyze-input.py` — existing metatags, repeated phrases, rhyme pairs, counts, structure, script type detection
+- `analyze-input.py` — existing metatags, repeated phrases, rhyme pairs, counts, `source_hash`, structure size, script type detection
 - `syllable-counter.py` — line-by-line syllable counts and rhythm (skip for non-Latin scripts)
-- Pre-load `./references/section-jobs.md` and `./references/metatag-reference.md`
+- Load `references/section-jobs.md` (section roles + short-poem strategies) now. **Defer `references/metatag-reference.md`** to Step 3 — load it only when ST or RA is selected (it is large; pre-loading it on every run wastes context).
 - In headless mode: also batch `validate-options.py`
 
 If any script fails, continue with LLM-based analysis, noting approximation.
 
-**Non-English input:** For non-Latin scripts (CJK, Arabic, Cyrillic), auto-skip syllable counting, rhyme detection, and cliche detection — focus on structure and emotional arc, which work across all languages. For Latin-script non-English, offer choice to skip or proceed with caveats.
+**Read `source_hash` from `analyze-input.py` output** — it is the authoritative change-tracking hash for the LT-STATE marker, version increments, and the headless contract. Never hand-compute it.
+
+**Non-English input:** For non-Latin scripts (CJK, Arabic, Cyrillic), auto-skip syllable counting, rhyme detection, and cliche detection — focus on structure and emotional arc, which work across all languages. For Latin-script non-English, offer choice to skip or proceed with caveats. (Headless: apply the documented non-Latin default and log it.)
 
 **Pre-structured input:** If existing metatags detected, acknowledge and default to RA + CD rather than full pipeline. Raw text defaults to ST + CC + RA + CD.
 
+**Short input** (under ~15 content lines, per `analyze-input.py` `estimated_structure: short`): a default full-poem pipeline produces aimless looping instrumental. Route to the very-short-poem strategies in `references/section-jobs.md` (double-delivery, chorus extraction, thesis isolation) and surface them as the recommended path in Step 2.
+
+**Em-dash narrative section tags:** If the source already carries section tags with em-dash/colon narrative labels like `[Verse 1 — THE ROOM]` or `[Breakdown — THE TURN]`, flag them for translation to Suno-actionable direction (`[Verse 1: hushed, tense]`) — Suno has no signal for the narrative label and may sing it. See `references/metatag-reference.md` (Section Structure Tags). Keep the human-readable label in songbook notes, not the paste-ready block.
+
+**Oversized input:** If `analyze-input.py` flags character count far over the 5,000 hard limit (not just over the 3,000 quality budget), offer split/focus **now** — split into multiple songs, or focus on the strongest section — rather than transforming the whole thing and discovering the overflow at Step 3.
+
 Present analysis: structure, emotional arc, hooks, syllable patterns, character count vs. budget.
+
+**Soft-gate before transforming:** "Anything else you want me to know — a dual-vocalist band, a theatrical-horror vibe, a line you refuse to lose — or shall we pick transformations?" These asides routinely determine which metatag rules apply.
 
 ### Refinement Mode
 
-When invoked with `--headless:refine` or via Feedback Elicitor adjustment spec, skip the full pipeline and apply targeted changes.
+When invoked with `--headless:refine` or via Feedback Elicitor adjustment spec, skip the full pipeline and apply targeted changes. If a `.decision-log.md` exists next to the song in the songbook, **read it first** — it records why prior craft choices were made and which keeps were intentional, so refinement doesn't silently undo a cliché the writer kept on purpose or a hedge/certainty-level they insisted on. If an adjustment contradicts a logged intentional keep, surface the conflict before applying. Every refinement appends a new session entry to the log.
 
 **Adjustment spec format:**
 ```json
@@ -130,6 +160,20 @@ Apply each adjustment, run quality checks, return via Headless Output Contract.
 
 ### Step 2: Select Transformations
 
+**Quick-win path:** If the user already stated their options ("just tag structure, keep my words, don't ask"), skip the menu — map their intent to codes (here: ST + WF), confirm in one line, and go. Don't make an expert read an 8-row table.
+
+**Lead with the recommendation.** Present the recommended set for *this* input plus a one-line rationale per code, derived from Step 1 analysis (and the short-poem strategy when input is short). Frame the full code table below as "the full menu if you want to adjust" — not the opening move.
+
+**Dynamic defaults** from Step 1 analysis:
+- Raw text → ST + CC + RA + CD
+- Pre-structured with metatags → RA + CD
+- Short poem (<~15 lines) → ST + a short-poem strategy (double-delivery / chorus extraction / thesis isolation) instead of CC; padding produces instrumental filler
+- High char count (>2500) → ST + RA + CD, skip CC (would exceed budget)
+- Strong existing rhymes → skip RE
+- Include a 1-sentence rationale per recommendation
+
+**Full menu** (offer when the user wants to adjust):
+
 | Code | Transformation | Description |
 |------|---------------|-------------|
 | **ST** | Structure Tagging* | Add section metatags (`[Verse]`, `[Chorus]`, etc.) and descriptor metatags |
@@ -148,52 +192,32 @@ Apply each adjustment, run quality checks, return via Headless Output Contract.
 - CE skipped if FR selected
 - CC skipped if CE finds strong existing chorus (user can override)
 
-**Dynamic defaults** based on Step 1 analysis:
-- Pre-structured with metatags → RA + CD
-- High char count (>2500) → ST + RA + CD, skip CC (would exceed budget)
-- Strong existing rhymes → skip RE
-- Include 1-sentence rationale per recommendation
+Headless default: ST + CC + RA + CD (record any deviation forced by the input in `decision_log`).
 
-Headless default: ST + CC + RA + CD.
+**Seed the LT-STATE marker now** — once Step 1 analysis and option selection are complete, emit the compaction-survival block (see Step 3) so the source hash, chosen codes, profile, and emotional core survive a compaction before transformation even begins.
 
 ### Step 3: Transform
 
-Apply transformations in order below. Reference `./references/section-jobs.md` for section roles and `./references/metatag-reference.md` for tag syntax and vocal delivery cues.
+`references/metatag-reference.md` is the **canonical, dated, confidence-graded source** for all Suno tag syntax, vocal-delivery cues, and production-tested findings. When ST or RA is selected, load it now (deferred from Step 1) and apply it rather than from memory; the outcome bullets below are pointers into it, not a second copy of the rules. `references/section-jobs.md` (already loaded) governs section roles, poem-to-song mapping, and short-poem strategy.
 
-**Compaction survival block** — emit before transformations, re-emit after structural changes:
+Apply transformations in the order below.
+
+**Compaction survival block** — already seeded at Step 2; re-emit after every structural change. Read `source_hash` (and, after a transform, `draft_hash`) from `analyze-input.py` output on the relevant text — never hand-compute a hash; mark `unavailable` if the script could not run.
 ```
-<!-- LT-STATE: source_hash={hash}, draft_hash={hash}, transforms={codes}, profile={name|none}, voice_constraints={key patterns}, emotional_core={1 sentence}, character_budget=3000, version={n} -->
+<!-- LT-STATE: source_hash={from analyze-input.py}, draft_hash={from analyze-input.py on current draft}, transforms={codes}, profile={name|none}, voice_constraints={key patterns}, emotional_core={1 sentence}, character_budget=3000, version={n} -->
 ```
 
 **Source analysis (all modes):** Map the emotional arc (setup/tension/peak/resolution), identify which lines serve which section job, extract voice profile constraints and reference track influences.
 
-**ST — Structure Tagging:** Produce lyrics with section tags aligned to the emotional arc and section-job framework. Desired outcome: each section tagged with appropriate metatag, descriptor metatags added sparingly where they guide Suno's interpretation, blank lines between sections, `[End]` appended (with optional `[Fade Out]` before it).
-
-Key Suno tagging knowledge:
-- Consult `./references/metatag-reference.md` for tag syntax, vocal cues, production-tested findings
-- Dual-vocalist bands: default `[Vocal Style: harmonized]` on all sections
-- Global descriptors at top, section-specific before the section; keep metatag text to 1-3 words
-- Apply scream bleed-through prevention after aggressive sections (per metatag reference)
-- Prefer `[Mood:]` over `[Energy:]` for style shifts — vivid, visceral mood words
-- Prog/metal/experimental: relax section length expectations (16-line verse is normal)
-- Flag ALL CAPS and `(parentheses)` — both affect Suno vocal interpretation, must be intentional
-- Structural metaphors: when thematically fitting, suggest structure that embodies meaning (odd time for chaos, 4/4 for stability)
+**ST — Structure Tagging:** Produce lyrics with section tags aligned to the emotional arc and section-job framework — each section on a recognized tag, descriptor metatags added sparingly where they guide Suno, blank lines between sections, `[End]` appended (optional `[Fade Out]` before it). Apply `references/metatag-reference.md` for tag validity, descriptor syntax, scream bleed-through prevention, `[Mood:]`-over-`[Energy:]` for style shifts, ALL-CAPS / `(parentheses)` intentionality, and dual-vocalist `[Vocal Style: harmonized]` defaults. Prog/metal/experimental relax section-length expectations. Where a theme fits, consider structural metaphor (see `references/section-jobs.md`). **Translate any em-dash narrative section tags** flagged in Step 1 to Suno-actionable direction before output.
 
 **CE — Chorus Extraction:** Identify repeated phrases, emotional peaks, or hook-quality lines (short, punchy, imagistic) and promote to `[Chorus]` at appropriate positions.
 
-**CC — Chorus Creation:** Distill the poem's emotional core into a 2-4 line chorus with shorter lines than verses, built-in repetition, and vocabulary matching the voice profile if loaded. Place after first verse, repeat 2-3 times.
+**CC — Chorus Creation:** Distill the poem's emotional core into a 2-4 line chorus with shorter lines than verses, built-in repetition, and vocabulary matching the voice profile if loaded. Place after first verse, repeat 2-3 times. (Short poems: prefer a short-poem strategy from `references/section-jobs.md` over inventing a chorus.)
 
 **Impact preview (CE/CC):** Show structural comparison (current stanzas vs. proposed sections with chorus placement) and character budget impact before applying.
 
-**RA — Rhythmic Adjustment:** Produce lines with consistent syllable counts within each section (not across sections — inter-section variance may be intentional). Run `syllable-counter.py` on current draft.
-
-Key RA knowledge:
-- WF mode: only break/combine lines, never substitute words
-- Punctuation shapes vocal delivery: commas = breath pauses, dashes = sharp breaks, ellipses = trailing. Use intentionally.
-- Flag high syllable density lines (polysyllabic word clusters) as singability concerns
-- In heavy/aggressive genres, flag `!` — triggers aggressive vocal attacks that bleed forward
-- Use line density variation between sections for tempo contrast
-- **Verification mandate:** Never claim rhythmic properties without `syllable-counter.py` output confirming them
+**RA — Rhythmic Adjustment:** Produce lines with consistent syllable counts within each section (not across sections — inter-section variance may be intentional). Run `syllable-counter.py` on the current draft and apply its output. WF mode: only break/combine lines, never substitute words. Punctuation, `!`-triggered aggressive attacks, polysyllabic density, and line-density tempo contrast all shape delivery — see `references/metatag-reference.md` for the specifics. **Verification mandate:** never claim a rhythmic property without `syllable-counter.py` output confirming it.
 
 **RE — Rhyme Enhancement:** Strengthen rhyme patterns using genre-appropriate schemes (AABB for energy, ABAB for narrative, ABCB for folk). WF mode: only suggest minor word swaps at line endings. Suno's vocal engine responds better to clear rhyme patterns.
 
@@ -201,12 +225,12 @@ Key RA knowledge:
 
 **CD — Cliche Detection:** Run `cliche-detector.py`, suggest 2-3 genre-aware alternatives per flagged phrase. WF mode: flag only, don't auto-replace.
 
-**Character budget check (after all transformations):** Break out: "Lyrics: X chars / Metatags: Y chars / Total: Z/3,000 quality budget (5,000 hard limit)." Flag sections to trim if approaching 3,000. Flag critical if over 5,000 (silent truncation).
+**Character budget check (after all transformations):** Read the split from `validate-lyrics.py` (`lyric_character_count` / `metatag_character_count` / `character_count`) — don't count brackets by hand. Break out: "Lyrics: X / Metatags: Y / Total: Z/3,000 quality budget (5,000 hard limit)." Flag sections to trim if approaching 3,000; flag critical if over 5,000 (silent truncation). If far over the hard limit, offer split/focus (same as the Step 1 oversized-input path).
 
 ### Step 4: Quality Check & Present
 
 **Validation (parallel batch):**
-- `validate-lyrics.py` — metatag formatting, blank lines, style cue contamination, character budget
+- `validate-lyrics.py` — metatag formatting, blank lines, style cue contamination, character budget, and the lyric-vs-metatag char split (`lyric_character_count` / `metatag_character_count`)
 - `syllable-counter.py --estimate-duration` — syllable balance and duration estimate (present as rough heuristic with caveats, not hard limit)
 - `section-length-checker.py` — section lengths vs. section-jobs expectations (supports `--genre prog` for relaxed constraints)
 
@@ -225,7 +249,7 @@ If RA was applied and no further changes made, reuse those syllable results. If 
 ## Transformation Summary
 - Sections: {count} ({list})
 - Estimated duration: {duration}
-- Character budget: Lyrics {lyric_chars} + Metatags {tag_chars} = {total}/3,000 ({pct}%)
+- Character budget: Lyrics {lyric_character_count} + Metatags {metatag_character_count} = {character_count}/3,000 ({pct}%) — all from validate-lyrics.py
 - Transformations applied: {list}
 - Syllable range per line: {min}-{max} (target: {target})
 
@@ -247,12 +271,12 @@ If RA was applied and no further changes made, reuse those syllable results. If 
 
 After user approval:
 - Remind: lyrics go into Suno's **lyrics input**, not the style prompt field
-- **Starter style prompt:** Generate a brief style prompt snippet from genre/mood/energy/vocal cues. Present as starting point for Style Prompt Builder or direct Suno use.
+- **Starter style prompt:** Generate a brief snippet from genre/mood/energy/vocal cues only — label it "a seed; run it through Style Prompt Builder before using" so the user doesn't paste a hand-built prompt straight into Suno and bypass that skill's guardrails.
 - **Iteration tip:** "Generate 3-5 versions — Suno interprets the same lyrics differently each time."
 - Suggest Style Prompt Builder if they have a band profile
 - Note Feedback Elicitor availability for post-listen refinement (feeds back into Refinement Mode)
 - For multi-song projects, recommend establishing a band profile first
-- **Save to songbook (optional):** Save to `docs/songbook/{band-profile-or-untitled}/{song-title}.md` with frontmatter (source hash, transformations, date, version, profile, char count). Increment version for iterative refinement.
+- **Save to songbook (optional):** Save to `{songbook_folder}/{band-profile-or-untitled}/{song-title}.md` with frontmatter (`source_hash` from analyze-input.py, transformations, date, version, profile, char count). Alongside it, write `.decision-log.md` — the load-bearing memory for refinement: key structural decisions (why the chorus landed there, why a line was broken) and **intentional keeps** (a cliché kept on purpose, a hedge or certainty-level the writer insisted on, a line they refused to lose). Increment version for iterative refinement; append a new session heading rather than overwriting.
 
 ## Scripts
 
@@ -263,8 +287,8 @@ After user approval:
 | `syllable-counter.py` | Per-line syllable counts, rhythmic consistency, duration estimate |
 | `validate-options.py` | Transformation option mutual exclusion rules |
 | `section-length-checker.py` | Section lengths vs. section-jobs expected ranges |
-| `analyze-input.py` | Pre-analysis: structure, repeated phrases, rhyme pairs, char count |
+| `analyze-input.py` | Pre-analysis: structure, repeated phrases, rhyme pairs, char count, `source_hash` |
 | `lyrics-diff.py` | Structured diff between original and transformed lyrics |
 | `assemble-summary.py` | Assembles Transformation Summary from script outputs |
 
-All scripts support `--help`. Located in `./scripts/`.
+All scripts support `--help`. Located in `scripts/`.

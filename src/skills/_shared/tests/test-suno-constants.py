@@ -14,6 +14,8 @@ from suno_constants import (
     STYLE_PROMPT_LIMITS, STYLE_PROMPT_DEFAULT_MAX,
     CRITICAL_ZONE, EXCLUSION_RECOMMENDED_MAX, EXCLUSION_HARD_MAX,
     SUNO_LYRICS_HARD_LIMIT, SUNO_LYRICS_QUALITY_BUDGET,
+    HEAVY_VOCAL_TRIGGERS, VOCAL_SAFE_PAIRINGS, KEYBOARD_PULL_WORDS,
+    SHOUT_TRIGGER_CHAR, GENRE_SIGNALS,
 )
 
 
@@ -62,3 +64,46 @@ class TestSunoConstants:
         """v5.5 Pro must be in both VALID_MODELS and STYLE_PROMPT_LIMITS."""
         assert "v5.5 Pro" in VALID_MODELS
         assert "v5.5 Pro" in STYLE_PROMPT_LIMITS
+
+
+class TestStylePromptTriggers:
+    """Tests for the style-prompt safety trigger tables."""
+
+    def test_heavy_vocal_triggers_are_frozenset(self):
+        assert isinstance(HEAVY_VOCAL_TRIGGERS, frozenset)
+
+    def test_heavy_vocal_triggers_cover_documented_terms(self):
+        """The reference documents metal/sludge/death/thrash/black as scream triggers."""
+        for term in ("metal", "sludge", "death", "thrash", "black"):
+            assert term in HEAVY_VOCAL_TRIGGERS
+
+    def test_keyboard_pull_words_cover_documented_terms(self):
+        """The reference documents baroque/orchestral/cinematic as keyboard pulls."""
+        for term in ("baroque", "orchestral", "cinematic"):
+            assert term in KEYBOARD_PULL_WORDS
+
+    def test_keyboard_pull_words_are_frozenset(self):
+        assert isinstance(KEYBOARD_PULL_WORDS, frozenset)
+
+    def test_vocal_safe_pairings_nonempty_strings(self):
+        assert len(VOCAL_SAFE_PAIRINGS) > 0
+        assert all(isinstance(p, str) and p for p in VOCAL_SAFE_PAIRINGS)
+
+    def test_shout_trigger_char_is_exclamation(self):
+        assert SHOUT_TRIGGER_CHAR == "!"
+
+    def test_genre_signals_is_frozenset(self):
+        assert isinstance(GENRE_SIGNALS, frozenset)
+
+    def test_genre_signals_cover_module_lanes(self):
+        """Front-loading detection must not false-trip on this module's heavy/southern lanes."""
+        for term in ("swamp metal", "heartland rock", "prog rock", "slowcore", "doom",
+                     "southern rock", "americana"):
+            assert term in GENRE_SIGNALS, f"GENRE_SIGNALS missing '{term}'"
+
+    def test_genre_signals_lowercase(self):
+        """Detection lowercases the prompt before matching, so signals must be lowercase."""
+        assert all(g == g.lower() for g in GENRE_SIGNALS)
+
+    def test_pairings_lowercase(self):
+        assert all(p == p.lower() for p in VOCAL_SAFE_PAIRINGS)

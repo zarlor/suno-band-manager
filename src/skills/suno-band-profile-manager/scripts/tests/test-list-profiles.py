@@ -5,6 +5,8 @@
 # ///
 """Tests for list-profiles.py"""
 
+import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -14,9 +16,11 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from importlib.util import spec_from_file_location, module_from_spec
 
+SCRIPT_PATH = Path(__file__).parent.parent / "list-profiles.py"
+
 spec = spec_from_file_location(
     "list_profiles",
-    Path(__file__).parent.parent / "list-profiles.py"
+    SCRIPT_PATH,
 )
 list_profiles_mod = module_from_spec(spec)
 spec.loader.exec_module(list_profiles_mod)
@@ -149,3 +153,67 @@ def test_check_profile_not_exists(tmp_path):
     result = check_profile(profiles_dir, "nonexistent")
     assert result["exists"] is False
     assert result["query"] == "nonexistent"
+
+
+# --- CLI: positional vs --profiles-dir flag ---
+
+def _run(*args):
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT_PATH), *args],
+        capture_output=True, text=True,
+    )
+    return proc
+
+
+def test_cli_positional_profiles_dir(tmp_path):
+    profiles_dir = tmp_path / "store"
+    profiles_dir.mkdir()
+    with open(profiles_dir / "test-band.yaml", "w") as f:
+        yaml.dump(SAMPLE_PROFILE, f)
+    proc = _run(str(profiles_dir))
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads(proc.stdout)
+    assert payload["count"] == 1
+    assert payload["profiles_dir"] == str(profiles_dir)
+
+
+def test_cli_profiles_dir_flag_overrides_positional(tmp_path):
+    # Positional points at an EMPTY dir; --profiles-dir points at the populated
+    # one and must win.
+    empty_dir = tmp_path / "empty"
+    empty_dir.mkdir()
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    with open(real_dir / "test-band.yaml", "w") as f:
+        yaml.dump(SAMPLE_PROFILE, f)
+    proc = _run(str(empty_dir), "--profiles-dir", str(real_dir))
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads(proc.stdout)
+    assert payload["count"] == 1
+    assert payload["profiles_dir"] == str(real_dir)
+
+
+def test_cli_profiles_dir_flag_with_check(tmp_path):
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    with open(real_dir / "test-band.yaml", "w") as f:
+        yaml.dump(SAMPLE_PROFILE, f)
+    proc = _run("--profiles-dir", str(real_dir), "--check", "test-band")
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads(proc.stdout)
+    assert payload["exists"] is True
+    assert payload["name"] == "Test Band"
+
+
+def test_cli_default_positional_unchanged(tmp_path):
+    # No args at all: default positional is docs/band-profiles (relative).
+    # Run from an empty tmp cwd so the default dir doesn't exist -> count 0,
+    # confirming the default derivation is untouched.
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT_PATH)],
+        capture_output=True, text=True, cwd=str(tmp_path),
+    )
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads(proc.stdout)
+    assert payload["count"] == 0
+    assert payload["profiles_dir"] == "docs/band-profiles"

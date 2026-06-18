@@ -5,12 +5,35 @@
 # ///
 """Tests for validate-options.py"""
 
+import importlib.util
 import json
 import subprocess
 import sys
 from pathlib import Path
 
 SCRIPT = str(Path(__file__).parent.parent / "validate-options.py")
+
+# Canonical code -> meaning, mirrored from SKILL.md "Full menu" table
+# (Step 2: Select Transformations). This is the source of truth; both
+# validate-options.py and assemble-summary.py must agree with it.
+CANONICAL_CODE_DESCRIPTIONS = {
+    "ST": "Structure Tagging",
+    "CE": "Chorus Extraction",
+    "CC": "Chorus Creation",
+    "RA": "Rhythmic Adjustment",
+    "RE": "Rhyme Enhancement",
+    "FR": "Full Rewrite",
+    "CD": "Cliche Detection",
+    "WF": "Word Fidelity Mode",
+}
+
+
+def _load_module():
+    """Import validate-options.py as a module despite the hyphenated filename."""
+    spec = importlib.util.spec_from_file_location("validate_options", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def run_script(*args):
@@ -99,6 +122,25 @@ class TestValidateOptions:
         assert "removed_codes" in report
         assert "findings" in report
         assert "summary" in report
+
+    def test_re_is_a_valid_code(self):
+        # RE (Rhyme Enhancement) is part of the canonical 8-code menu; it must
+        # validate cleanly rather than be reported as an invalid code.
+        report, code = run_script("ST,RE,CD")
+        assert report is not None
+        assert report["status"] == "pass"
+        assert set(report["validated_codes"]) == {"ST", "RE", "CD"}
+
+    def test_code_descriptions_match_canonical(self):
+        # Guard against silent drift: validate-options.py CODE_DESCRIPTIONS must
+        # match the canonical SKILL.md "Full menu" mapping exactly.
+        module = _load_module()
+        assert module.CODE_DESCRIPTIONS == CANONICAL_CODE_DESCRIPTIONS
+
+    def test_valid_codes_match_canonical_keys(self):
+        # The set of accepted codes must be exactly the canonical menu codes.
+        module = _load_module()
+        assert module.VALID_CODES == set(CANONICAL_CODE_DESCRIPTIONS)
 
 
 if __name__ == "__main__":

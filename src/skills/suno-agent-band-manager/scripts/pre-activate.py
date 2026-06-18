@@ -5,24 +5,29 @@
 # ///
 """Pre-activation script for Band Manager agent.
 
-Checks first-run status, scaffolds sidecar directory if needed, and
-renders the capability menu from module-help.csv.
+Checks first-run status, scaffolds the v2 sanctum if needed (by delegating to
+init-sanctum.py — NOT by writing the old inline stubs), and renders the
+capability menu from module-help.csv.
 
 Usage:
-    python3 scripts/pre-activate.py <project-root> [--scaffold] [-o OUTPUT]
+    python3 scripts/pre-activate.py <project-root> [--scaffold] [--sanctum-dir PATH] [-o OUTPUT]
     python3 scripts/pre-activate.py --help
 
 Arguments:
     project-root    Project root directory path
 
 Options:
-    --scaffold      Create sidecar directory and static files if missing
+    --scaffold      Scaffold the v2 sanctum (via init-sanctum.py) if missing
+    --sanctum-dir   Override the sanctum directory (for first-run detection /
+                    scaffolding against a staging copy). Default is the real
+                    sanctum under the project root.
     -o, --output    Write JSON output to file instead of stdout
 """
 
 import argparse
 import csv
 import json
+import subprocess
 import sys
 from io import StringIO
 from pathlib import Path
@@ -32,6 +37,27 @@ SETUP_SKILL_NAME = "suno-setup"
 MODULE_CODE = "Suno Band Manager"
 VOICE_FILE_PREFIX = "voice-context-"
 VOICE_FILE_SUFFIX = ".md"
+
+# Default sanctum location (preserved bespoke divergence: double-underscore parent,
+# fixed dir name). The v2 sanctum is scaffolded by init-sanctum.py.
+DEFAULT_SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
+
+# Files the agent loads on every rebirth (per references/activation.md). Surfaced
+# in the pre-activate output so the activation router references the new file set.
+SANCTUM_LOAD_ORDER = [
+    "access-boundaries.md",  # Dominion contract — loads FIRST, before any file op
+    "INDEX.md",              # thin map of the sanctum
+    "MEMORY.md",             # curated long-term memory (carries derived sections)
+    "CREED.md",              # always-loaded creed CORE (Package Assembly Rule core)
+    "PERSONA.md",            # Mac's living self
+]
+
+
+def resolve_sanctum_dir(project_root: Path, sanctum_dir: str | None) -> Path:
+    """Resolve the sanctum directory, honoring a --sanctum-dir override."""
+    if sanctum_dir:
+        return Path(sanctum_dir)
+    return project_root.joinpath(*DEFAULT_SANCTUM_REL)
 
 
 def normalize_username(name: str) -> str:
@@ -86,53 +112,63 @@ def detect_sync_package(project_root: Path) -> dict:
     return {"found": False, "path": None}
 
 
-def check_first_run(project_root: Path) -> bool:
-    """Check if sidecar memory directory exists."""
-    sidecar = project_root / "_bmad" / "_memory" / "band-manager-sidecar"
-    return not sidecar.exists()
+def check_first_run(project_root: Path, sanctum_dir: str | None = None) -> bool:
+    """Check if the sanctum directory exists (first run when it doesn't)."""
+    sanctum = resolve_sanctum_dir(project_root, sanctum_dir)
+    return not sanctum.exists()
 
 
-def scaffold_sidecar(project_root: Path) -> dict:
-    """Create sidecar directory and static files."""
-    sidecar = project_root / "_bmad" / "_memory" / "band-manager-sidecar"
-    sidecar.mkdir(parents=True, exist_ok=True)
+def scaffold_sidecar(
+    project_root: Path, skill_dir: Path, sanctum_dir: str | None = None
+) -> dict:
+    """Scaffold the v2 sanctum by delegating to init-sanctum.py.
 
-    created = []
+    The old inline 3-stub scaffold (access-boundaries.md / patterns.md /
+    chronology.md) is superseded — init-sanctum.py builds the full v2 sanctum
+    from the templates in assets/ (INDEX.md, MEMORY.md, PERSONA.md, CREED.md,
+    BOND.md, PULSE.md, CAPABILITIES.md + sessions/ + capabilities/). After
+    scaffolding, the conversational First Breath (references/init.md) calibrates.
+    """
+    init_script = skill_dir / "scripts" / "init-sanctum.py"
+    if not init_script.is_file():
+        return {
+            "scaffolded": False,
+            "error": True,
+            "message": f"init-sanctum.py not found at {init_script}",
+        }
 
-    # access-boundaries.md - static template.
-    # Paths are all relative to project root — validate-path.py resolves them
-    # against project-root at parse time. Bare relative paths keep the file
-    # portable across machines (no user-specific absolute paths embedded).
-    ab_path = sidecar / "access-boundaries.md"
-    if not ab_path.exists():
-        ab_path.write_text(
-            "# Access Boundaries for Mac\n\n"
-            "All paths below are relative to the project root.\n\n"
-            "## Read Access\n"
-            "- docs/band-profiles/\n"
-            "- docs/voice-context-*.md\n"
-            "- _bmad/_memory/band-manager-sidecar/\n\n"
-            "## Write Access\n"
-            "- _bmad/_memory/band-manager-sidecar/\n"
-            "- docs/voice-context-{user}.md (current user's file only)\n\n"
-            "## Deny Zones\n"
-            "- All other directories\n"
-        )
-        created.append("access-boundaries.md")
+    cmd = [
+        sys.executable,
+        str(init_script),
+        str(project_root),
+        str(skill_dir),
+        "--format",
+        "json",
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    except OSError as exc:
+        return {
+            "scaffolded": False,
+            "error": True,
+            "message": f"could not invoke init-sanctum.py: {exc}",
+        }
 
-    # patterns.md - empty
-    pat_path = sidecar / "patterns.md"
-    if not pat_path.exists():
-        pat_path.write_text("# Musical Patterns\n\nLearned preferences will appear here over time.\n")
-        created.append("patterns.md")
+    payload: dict = {}
+    if result.stdout.strip():
+        try:
+            payload = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            payload = {"raw_output": result.stdout.strip()}
 
-    # chronology.md - empty
-    chron_path = sidecar / "chronology.md"
-    if not chron_path.exists():
-        chron_path.write_text("# Session Chronology\n\nSession summaries will appear here.\n")
-        created.append("chronology.md")
-
-    return {"scaffolded": True, "files_created": created, "sidecar_path": str(sidecar)}
+    sanctum = resolve_sanctum_dir(project_root, sanctum_dir)
+    return {
+        "scaffolded": result.returncode == 0,
+        "via": "init-sanctum.py",
+        "sanctum_path": str(sanctum),
+        "init_result": payload,
+        "files_created": payload.get("created", []),
+    }
 
 
 def find_module_csv(project_root: Path, skill_dir: Path) -> Path | None:
@@ -229,7 +265,19 @@ def build_routing_table(csv_path: Path, include_modules: list[str] | None = None
 def main():
     parser = argparse.ArgumentParser(description="Band Manager pre-activation checks")
     parser.add_argument("project_root", help="Project root directory")
-    parser.add_argument("--scaffold", action="store_true", help="Create sidecar if missing")
+    parser.add_argument(
+        "--scaffold",
+        action="store_true",
+        help="Scaffold the v2 sanctum (via init-sanctum.py) if missing",
+    )
+    parser.add_argument(
+        "--sanctum-dir",
+        default=None,
+        help=(
+            "Override the sanctum directory for first-run detection (default: "
+            "<project_root>/_bmad/_memory/band-manager-sidecar)."
+        ),
+    )
     parser.add_argument("--user-name", help="Current user name (for voice file matching)")
     parser.add_argument("-o", "--output", help="Output file path")
     args = parser.parse_args()
@@ -249,15 +297,19 @@ def main():
     menu_modules = [MODULE_CODE]
 
     result = {
-        "first_run": check_first_run(project_root),
+        "first_run": check_first_run(project_root, args.sanctum_dir),
         "sync_package": detect_sync_package(project_root),
         "menu": render_menu(csv_path, menu_modules),
         "routing_table": build_routing_table(csv_path, menu_modules),
         "voice_context": detect_voice_files(project_root, args.user_name),
+        # The activation router loads these sanctum files, in this order, on rebirth.
+        "sanctum_load_order": SANCTUM_LOAD_ORDER,
     }
 
     if args.scaffold and result["first_run"]:
-        result["scaffold"] = scaffold_sidecar(project_root)
+        result["scaffold"] = scaffold_sidecar(
+            project_root, skill_dir, args.sanctum_dir
+        )
 
     output = json.dumps(result, indent=2)
 

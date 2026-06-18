@@ -31,43 +31,58 @@ SAMPLE_CSV = (
 )
 
 
+# The real skill directory — init-sanctum.py reads its assets/ templates from here.
+SKILL_DIR = Path(__file__).parent.parent.parent
+
+
 def test_check_first_run_true(tmp_path):
-    """First run when sidecar doesn't exist."""
+    """First run when sanctum doesn't exist."""
     assert mod.check_first_run(tmp_path) is True
 
 
 def test_check_first_run_false(tmp_path):
-    """Not first run when sidecar exists."""
-    sidecar = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
-    sidecar.mkdir(parents=True)
+    """Not first run when sanctum exists."""
+    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+    sanctum.mkdir(parents=True)
     assert mod.check_first_run(tmp_path) is False
 
 
-def test_scaffold_sidecar(tmp_path):
-    """Scaffold creates all expected files."""
-    result = mod.scaffold_sidecar(tmp_path)
-    assert result["scaffolded"] is True
-    assert "access-boundaries.md" in result["files_created"]
-    assert "patterns.md" in result["files_created"]
-    assert "chronology.md" in result["files_created"]
+def test_check_first_run_honors_sanctum_dir_override(tmp_path):
+    """--sanctum-dir override controls first-run detection."""
+    staging = tmp_path / "staging"
+    # Override points at a non-existent dir → first run.
+    assert mod.check_first_run(tmp_path, sanctum_dir=str(staging)) is True
+    staging.mkdir()
+    assert mod.check_first_run(tmp_path, sanctum_dir=str(staging)) is False
 
-    sidecar = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
-    assert (sidecar / "access-boundaries.md").exists()
-    assert (sidecar / "patterns.md").exists()
-    assert (sidecar / "chronology.md").exists()
+
+def test_scaffold_delegates_to_init_sanctum(tmp_path):
+    """Scaffold builds the v2 sanctum via init-sanctum.py (not the old stubs)."""
+    (tmp_path / "_bmad").mkdir()
+    result = mod.scaffold_sidecar(tmp_path, SKILL_DIR)
+    assert result["scaffolded"] is True
+    assert result["via"] == "init-sanctum.py"
+
+    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+    # v2 sanctum skeleton files (from assets/ templates), not the old 3 stubs.
+    assert (sanctum / "INDEX.md").exists()
+    assert (sanctum / "MEMORY.md").exists()
+    assert (sanctum / "CREED.md").exists()
+    assert (sanctum / "PERSONA.md").exists()
+    assert (sanctum / "sessions").is_dir()
 
 
 def test_scaffold_idempotent(tmp_path):
-    """Scaffold doesn't overwrite existing files."""
-    mod.scaffold_sidecar(tmp_path)
-    sidecar = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+    """Scaffold is a no-op when the sanctum already exists (init-sanctum guards)."""
+    (tmp_path / "_bmad").mkdir()
+    mod.scaffold_sidecar(tmp_path, SKILL_DIR)
+    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+    (sanctum / "MEMORY.md").write_text("custom content")
 
-    # Write custom content
-    (sidecar / "patterns.md").write_text("custom content")
-
-    result = mod.scaffold_sidecar(tmp_path)
-    assert "patterns.md" not in result["files_created"]
-    assert (sidecar / "patterns.md").read_text() == "custom content"
+    # Second scaffold: init-sanctum.py reports "exists" and creates nothing.
+    result = mod.scaffold_sidecar(tmp_path, SKILL_DIR)
+    assert result["init_result"].get("status") == "exists"
+    assert (sanctum / "MEMORY.md").read_text() == "custom content"
 
 
 def _write_csv(tmp_path, content=SAMPLE_CSV):

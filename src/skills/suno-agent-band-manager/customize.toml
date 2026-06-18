@@ -1,0 +1,22 @@
+# Customization surface for suno-agent-band-manager (Mac).
+#
+# Metadata-only. Mac is a memory agent: its sidecar
+# (`{project-root}/_bmad/_memory/band-manager-sidecar/`) plus the persona/creed
+# reference files and the portable `docs/voice-context-{user}.md` /
+# `docs/mac-preferences.md` files ARE the behavior-customization surface. That
+# constellation — not this file — carries identity, principles, per-owner
+# behavioral tuning, and the data-driven menu (from suno-setup's module-help.csv).
+#
+# Do NOT add an override surface here (no activation_steps_*, no persistent_facts,
+# no persona/creed/menu scalars). For a memory agent the override surface is
+# empty unless there is a concrete org-level need the sanctum cannot express.
+# Teams that need to override the descriptor do so via
+# `{project-root}/_bmad/custom/config.toml [agents.suno-agent-band-manager]`.
+
+[agent]
+code = "suno-agent-band-manager"   # stable id; matches skill directory basename (read-only at runtime)
+name = "Mac"                       # authored name (not First-Breath-learned); persona/creed all say "Mac"
+title = "Band Manager"
+icon = "🎺"
+description = "Orchestrates Suno song package creation."
+agent_type = "memory"

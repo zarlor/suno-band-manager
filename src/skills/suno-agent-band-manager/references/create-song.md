@@ -51,6 +51,8 @@ If invoked with `--headless` or structured JSON input, skip all interactive step
 
 ## Step 2: Gather Direction
 
+> **Load the relevant creed shards as the work calls for them.** When you start drafting or processing any creative material inline (a lyric swing, a structural sketch, pasted external text), load `{project-root}/_bmad/_memory/band-manager-sidecar/creed-workshop-capture.md` and capture the verbatim material to its WIP file BEFORE discussing it. When you build a song-direction candidates list or make any "this is fresh/new territory for the band" claim, load `{project-root}/_bmad/_memory/band-manager-sidecar/creed-disciplines.md` (Catalog Verification + Thematic Discipline) and verify against the band's `docs/{band-slug}-genre-coverage.md` index (regenerate it first if stale) before asserting.
+
 Collect what you need based on the mode. Not everything is required — adapt.
 
 **Capture-Don't-Interrupt:** During direction gathering, the user may mention things outside the current step — preferences ("I always want raw vocals"), profile ideas ("maybe I should make a band for this"), or refinement thoughts ("last time the chorus was too long"). Silently capture these for later routing. Do not interrupt the creative flow to address them. Route captured items after the package is presented:
@@ -129,6 +131,8 @@ After Steps 3 and 4 return, apply the **Transparency** step: compare skill outpu
 
 ## Steps 3 & 4: Run Skills in Parallel (Headless Mode)
 
+> **Load the Package Assembly shard.** This is a package-assembly path — before assembling, load the sanctum creed shard `{project-root}/_bmad/_memory/band-manager-sidecar/creed-package-assembly.md` for the full Package Assembly Rule (Violation Tells, Agent-vs-Skill tool choice, highest-risk contexts, refinement presentation scope). The always-loaded `CREED.md` core carries the Package Assembly Rule *core*; this shard carries the rest and loads on demand on every package path.
+>
 > **Reference:** For detailed metatag behavior, section tag selection, and structural decisions, consult `suno-lyric-transformer/references/metatag-reference.md` and `section-jobs.md`. Key: only use recognized section tags (custom tags get sung as lyrics), and understand Bridge (something new) vs Breakdown (something less) when choosing section types.
 
 **CRITICAL: Use headless mode and suppress intermediate output.**
@@ -179,7 +183,7 @@ Invoke `suno-style-prompt-builder` with the `--headless` flag, passing:
 
 ### Parallel Execution Pattern
 
-Both skill calls go in a **single assistant message** using two Agent subagent invocations — each subagent invokes one skill in headless mode. Per `creed.md`, Agent is the correct tool for headless skill invocation: it isolates the called skill's JSON output as a tool result rather than a visible turn, which is what Step 4 (Suppress intermediate skill output) requires. After both return, Mac has both structured outputs in context and can proceed to Step 5 assembly.
+Both skill calls go in a **single assistant message** using two Agent subagent invocations — each subagent invokes one skill in headless mode. Per the Package Assembly shard (`creed-package-assembly.md`, "Tool Choice: Use Agent for Headless Skill Invocation"), Agent is the correct tool for headless skill invocation: it isolates the called skill's JSON output as a tool result rather than a visible turn, which is what Step 4 (Suppress intermediate skill output) requires. After both return, Mac has both structured outputs in context and can proceed to Step 5 assembly.
 
 **Silence between Step 3/4 invocations and Step 5 presentation is mandatory.** Do not narrate "running the lyric transformer now..." or present intermediate skill output. The user sees only the Step 5 assembled package.
 
@@ -302,9 +306,9 @@ The pipeline produces consistent data across all catalog files — the audio ana
 
 After publishing a song (adding audio, finalizing the title, saving to songbook), check for stale references:
 
-1. If the song title changed from its working title during the session, load `./references/reconcile.md` and run reconciliation with the old and new titles
+1. If the song title changed from its working title during the session, load `references/reconcile.md` and run reconciliation with the old and new titles
 2. If a new songbook entry was created, check that any playlist YAMLs and the voice context catalog section reference the final title correctly
-3. If the song was developed from a WIP fragment file (`docs/wip-*.md`), **mark the WIP file COMPLETED** — do NOT delete it. The fragments are historical record of the brainstorming that led to the song and should be preserved, but the file must not appear as active work on future sessions. Load `./references/reconcile.md` → "The COMPLETED WIP convention" for the exact marker format and the rationale. Apply the marker before ending the session — without it, the next session (especially on a different machine after a portable sync) will incorrectly treat the finished song as pending work.
+3. If the song was developed from a WIP fragment file (`docs/wip-*.md`), **mark the WIP file COMPLETED** — do NOT delete it. The fragments are historical record of the brainstorming that led to the song and should be preserved, but the file must not appear as active work on future sessions. Load `references/reconcile.md` → "The COMPLETED WIP convention" for the exact marker format and the rationale. Apply the marker before ending the session — without it, the next session (especially on a different machine after a portable sync) will incorrectly treat the finished song as pending work.
 4. If audio analysis produced data that updates the songbook entry (BPM, key, duration), verify the voice context and playlist docs have current data
 
 Keep it light — only trigger reconciliation if something actually changed. A song that published with its original title and no metadata changes needs no reconciliation. **But the WIP→COMPLETED marker in step 3 is mandatory whenever a song originated from a WIP file, even if nothing else changed** — skipping it creates the cross-machine sync drift that Layer 1 of the WIP-sync fix is designed to prevent.
@@ -315,5 +319,6 @@ Keep it light — only trigger reconciliation if something actually changed. A s
 - Placing the song in a playlist → update the playlist ordering doc in the same batch as the playlist YAML edit
 - Marking a WIP file COMPLETED → drop the WIP entry from the sidecar Pending / Parked Work section in the same batch
 - Finalizing a title different from the working title → update all in-session references (sidecar `Current Work`, voice file WIP mentions, chronology drafts) in the same batch as the rename
+- Adding a songbook entry that changes the band's recorded territory → regenerate the band's genre-coverage index with `python3 scripts/genre-coverage.py "{project-root}" --band {band-slug} --timestamp "{today's date}"` so `docs/{band-slug}-genre-coverage.md` reflects the new song. This is the same regeneration `save-memory.md` step 4a-bis runs; doing it here at publish time keeps the Catalog Verification ground truth current the moment the catalog actually changes.
 
 If any of these sub-step writes land without their cross-referenced companion updates, the Step 7 reconciliation catches it — but the goal is to not need that catch.

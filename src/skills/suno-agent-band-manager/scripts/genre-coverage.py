@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# ///
 """Genre coverage index (v2) — COMPREHENSIVE: genre anchors AND artist / reference territory.
 
 The point: Mac must KNOW what a band has actually used so it never again claims
@@ -25,6 +28,7 @@ Writes docs/<band>-genre-coverage.md (AUTOGEN section preserved-around).
 import os
 import re
 import sys
+import json
 import argparse
 
 AUTOGEN_START = "<!-- AUTOGEN-START: genre-coverage -->"
@@ -211,10 +215,16 @@ def write_doc(project_root, band, body):
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("project_root")
-    ap.add_argument("--band")
-    ap.add_argument("--timestamp", default="(unspecified)")
+    ap = argparse.ArgumentParser(
+        description="Build the genre-coverage index per band (anchors + artist/"
+        "reference territory) so Mac never claims a direction is 'fresh' when it "
+        "isn't. Writes docs/<band>-genre-coverage.md (AUTOGEN section preserved).")
+    ap.add_argument("project_root", help="Project root directory")
+    ap.add_argument("--band", help="Limit to a single band slug (default: all bands)")
+    ap.add_argument("--timestamp", default="(unspecified)",
+                    help="ISO timestamp stamped into the generated doc header")
+    ap.add_argument("--format", choices=["text", "json"], default="text",
+                    help="Output format for the run summary (default: text)")
     args = ap.parse_args()
     songbook = os.path.join(args.project_root, "docs", "songbook")
     if not os.path.isdir(songbook):
@@ -222,6 +232,7 @@ def main():
         sys.exit(2)
     bands = [args.band] if args.band else sorted(
         d for d in os.listdir(songbook) if os.path.isdir(os.path.join(songbook, d)))
+    results = []
     for band in bands:
         bd = os.path.join(songbook, band)
         if not os.path.isdir(bd):
@@ -229,8 +240,21 @@ def main():
         rows, influences, applied, clauses, scanned = collect_band(args.project_root, band, bd)
         out = write_doc(args.project_root, band,
                         render(band, rows, influences, applied, clauses, scanned, args.timestamp))
-        print(f"{band}: {len(rows)} entries, profile={'yes' if scanned else 'NO'}, "
-              f"{len(influences)} influences, {len(applied)} applied, {len(clauses)} prose refs -> {out}")
+        results.append({
+            "band": band,
+            "entries": len(rows),
+            "profile_scanned": scanned,
+            "influences": len(influences),
+            "applied": len(applied),
+            "prose_refs": len(clauses),
+            "output": out,
+        })
+        if args.format == "text":
+            print(f"{band}: {len(rows)} entries, profile={'yes' if scanned else 'NO'}, "
+                  f"{len(influences)} influences, {len(applied)} applied, "
+                  f"{len(clauses)} prose refs -> {out}")
+    if args.format == "json":
+        print(json.dumps({"bands": results, "band_count": len(results)}, indent=2))
 
 
 if __name__ == "__main__":

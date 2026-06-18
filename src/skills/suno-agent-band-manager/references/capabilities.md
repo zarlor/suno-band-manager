@@ -1,5 +1,21 @@
 # Mac — Capabilities
 
+## Creed Shards — Load On Demand
+
+The always-loaded `CREED.md` core (Mission, Three Laws, Sacred Truth, Principles,
+Package Assembly Rule **core**, Dominion pointer) loads on every activation. The
+heavy disciplines live in capability-scoped sanctum shards loaded on demand —
+load the relevant shard when its trigger context arises (NOT the skill's authored
+`references/creed.md`, which is source/template lineage and is not loaded on
+rebirth):
+
+| Shard | Load when |
+|-------|-----------|
+| `{project-root}/_bmad/_memory/band-manager-sidecar/creed-package-assembly.md` | Assembling or refining any Suno package (create-song Steps 3–5, refine-song Step 3) |
+| `{project-root}/_bmad/_memory/band-manager-sidecar/creed-workshop-capture.md` | Drafting/processing any lyric swing, structural sketch, or pasted external creative material |
+| `{project-root}/_bmad/_memory/band-manager-sidecar/creed-disciplines.md` | Making thematic claims (Thematic Discipline) or catalog-state claims (Catalog Verification Discipline), capturing user observations (Hedge Preservation), or editing durable files (Document State Marker) |
+| `{project-root}/_bmad/_memory/band-manager-sidecar/creed-incident-log.md` | Reference only (NOT loaded on rebirth) — the verbose "why" narratives behind the documented discipline-failure incidents |
+
 ## External Skills
 
 This agent orchestrates the following registered skills:

@@ -19,18 +19,18 @@ Reconciliation is triggered after these events:
 - A band profile name or key attributes change
 - A WIP is abandoned or superseded
 - Tier/preference changes (Free → Pro, default mode changes)
-- **Files are deleted** (WIP files, old voice files, obsolete references) — stale entries pointing to deleted files need cleanup in companion files tables, sidecar index, chronology, and any docs that listed them
+- **Files are deleted** (WIP files, old voice files, obsolete references) — stale entries pointing to deleted files need cleanup in companion files tables, sanctum MEMORY.md/INDEX.md, chronology, and any docs that listed them
 
 ## Authoritative Sources
 
 | Data | Authoritative Source | May Be Referenced In |
 |------|---------------------|---------------------|
-| Song title | Songbook entry (`docs/songbook/{band}/{song}.md`) | Per-band playlist YAML, playlist ordering doc, voice context, sidecar index/chronology, WIP files, companion files |
-| Song status (WIP/published) | Songbook entry | Voice context (WIP sections, catalog), sidecar index, per-band playlist YAML, WIP files that should be deleted |
-| Playlist order & track numbers | **Per-band playlist YAML** (`docs/{band-slug}-playlist.yaml`) — authoritative as of v1.7.2 | Playlist ordering doc (derived narrative companion), voice context (catalog section), songbook placement notes, sidecar position references, script-generated companion at `docs/{band-slug}-playlist-sequencing.md` |
-| Band profile (genre, vocal, name) | Band profile YAML (`docs/band-profiles/*.yaml`) | Voice context, songbook entries referencing profile values, sidecar index. **Note:** the band profile YAML must NOT carry a `playlist:` block as of v1.7.2 — playlist data lives in the per-band playlist YAML to avoid drift. |
-| Tier/preferences | Sidecar index / config (`_bmad/config*.yaml`) | Voice context (Suno Setup section), band profile tier field |
-| Voice file location | The file itself (`docs/voice-context-*.md`) | Pre-activate expectations, sidecar index (Key Files section) |
+| Song title | Songbook entry (`docs/songbook/{band}/{song}.md`) | Per-band playlist YAML, playlist ordering doc, voice context, sanctum MEMORY.md/chronology, WIP files, companion files |
+| Song status (WIP/published) | Songbook entry | Voice context (WIP sections, catalog), sanctum MEMORY.md, per-band playlist YAML, WIP files that should be deleted |
+| Playlist order & track numbers | **Per-band playlist YAML** (`docs/{band-slug}-playlist.yaml`) — authoritative as of v1.7.2 | Playlist ordering doc (derived narrative companion), voice context (catalog section), songbook placement notes, sanctum MEMORY.md position references, script-generated companion at `docs/{band-slug}-playlist-sequencing.md` |
+| Band profile (genre, vocal, name) | Band profile YAML (`docs/band-profiles/*.yaml`) | Voice context, songbook entries referencing profile values, sanctum MEMORY.md. **Note:** the band profile YAML must NOT carry a `playlist:` block as of v1.7.2 — playlist data lives in the per-band playlist YAML to avoid drift. |
+| Tier/preferences | Sanctum MEMORY.md / config (`{project-root}/_bmad/config*.yaml`) | Voice context (Suno Setup section), band profile tier field |
+| Voice file location | The file itself (`docs/voice-context-*.md`) | Pre-activate expectations, sanctum INDEX.md (map row) |
 
 ## Process
 
@@ -54,7 +54,7 @@ Search these locations for the OLD value:
 - `docs/voice-context-*.md` — voice/context files (including the Companion Files table)
 - `docs/wip-*.md` — WIP files (may need deletion if song published)
 - Any companion files listed in the voice file's Companion Files table — discover dynamically from that table rather than guessing patterns
-- `{project-root}/_bmad/_memory/band-manager-sidecar/` — index.md, chronology.md, patterns.md
+- `{project-root}/_bmad/_memory/band-manager-sidecar/` — MEMORY.md, INDEX.md, chronology.md, patterns.md, sessions/
 
 Use exact string matching first, then check for variations:
 - Title with/without subtitle
@@ -138,15 +138,15 @@ exclude styles, settings, and the full generation log.
 3. The explicit "NOT active work — do not list in pending/parked work" line — this is the instruction to future Mac sessions
 4. A `---` horizontal rule below to separate the marker block from the original fragments
 
-### Listing discipline (sidecar index maintenance)
+### Listing discipline (sanctum MEMORY.md maintenance)
 
-When building or updating the "Pending / Parked Work" section of the sidecar `index.md`, Mac MUST:
+When building or updating the "Pending / Parked Work" section of the sanctum `MEMORY.md`, Mac MUST:
 
 1. **Scan every `docs/wip-*.md` file** for the `## STATUS: COMPLETED` marker before listing it
 2. **Skip files with the marker** — they are resolved, not pending
 3. **When including resolved WIPs in the index for historical reference**, put them under a separate "Resolved WIP fragments (historical record only — not active work)" subsection, clearly delineated from active pending/parked work, with a pointer to the songbook entry they became
 
-The sidecar index's Pending / Parked Work section is the primary place a future Mac session looks to decide what to work on next. A stale WIP listed there will be picked up as a candidate. The scan-before-list rule prevents this.
+The sanctum `MEMORY.md`'s Pending / Parked Work section is the primary place a future Mac session looks to decide what to work on next. A stale WIP listed there will be picked up as a candidate. The scan-before-list rule prevents this.
 
 ### Applying the marker to existing unmarked WIPs
 

@@ -30,9 +30,38 @@ The script reads JSON from stdin (Claude Code hook input) and outputs
 a JSON decision to stdout.
 """
 
+import argparse
 import json
 import re
 import sys
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Self-documentation for the Stop-hook interface.
+
+    The script's real input is a Claude Code hook JSON payload on stdin
+    (no positional args); argparse exists so `--help` documents what the
+    guard checks and how to wire it up, satisfying the graceful-degradation
+    contract (the LLM can perform the equivalent check from the help text
+    when the hook can't run).
+    """
+    parser = argparse.ArgumentParser(
+        description=(
+            "Claude Code Stop-hook guard: reads the hook JSON payload on "
+            "stdin, detects whether the last assistant message contains a "
+            "Suno-ready package (style prompt + lyrics + settings), and "
+            "verifies suno-style-prompt-builder and suno-lyric-transformer "
+            "were invoked. Emits a JSON block decision on stdout when the "
+            "pipeline was skipped; otherwise stays silent. Exit code is "
+            "always 0 (a hook must not crash the turn)."
+        ),
+        epilog=(
+            "Input (stdin JSON): last_assistant_message, transcript_path, "
+            "stop_hook_active. Output (stdout JSON, only on violation): "
+            "{\"decision\": \"block\", \"reason\": \"...\"}."
+        ),
+    )
+    return parser
 
 
 def detect_suno_package(message: str) -> bool:
@@ -123,6 +152,9 @@ def check_skill_invocations(transcript_path: str) -> set[str]:
 
 
 def main():
+    # Parse args so `--help` works; the guard takes no positional args and
+    # reads its real payload from stdin.
+    build_parser().parse_args()
     try:
         input_data = json.load(sys.stdin)
     except json.JSONDecodeError:

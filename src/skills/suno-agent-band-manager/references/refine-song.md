@@ -60,6 +60,8 @@ Invoke `suno-feedback-elicitor` with:
 
 ## Step 3: Route Adjustments
 
+> **Load the Package Assembly shard.** Re-running the pipeline is a package-assembly path — load the sanctum creed shard `{project-root}/_bmad/_memory/band-manager-sidecar/creed-package-assembly.md` for the full Package Assembly Rule, especially its **Refinement presentation scope** (present ONLY what changed) and **Tool Choice** (use Agent for headless skill invocation). The `CREED.md` core carries the Package Assembly Rule core; this shard carries the refinement specifics.
+
 Based on the Feedback Elicitor's recommendations, offer to re-run the appropriate skills:
 
 **If style prompt adjustments recommended:**
@@ -106,7 +108,7 @@ Based on the Feedback Elicitor's recommendations, offer to re-run the appropriat
 **Always include a "What Changed" bullet list at the top** regardless of scope, so the user can see the deltas at a glance:
 
 ```
-## Schizo Refinement Update
+## {band-name} Refinement Update
 
 ### What Changed
 - {Bullet list of adjustments and why}
@@ -136,7 +138,7 @@ Per the "Sync at the point of change" principle in `creed.md`, refinement edits 
 - Updating a published songbook entry's key/tempo/Camelot → update the playlist YAML's track metadata and any voice file catalog references in the same batch
 - Updating a published song's voice clone or Voice character settings → update the songbook entry's Settings block AND any voice context file that references the song's vocal identity in the same batch
 - Reordering a published song's playlist position → update the playlist ordering doc AND the voice file catalog section in the same batch as the playlist YAML edit
-- Renaming a published song → load `./references/reconcile.md` and run a full reconciliation in this same batch, not after "a few more refinements"
+- Renaming a published song → load `references/reconcile.md` and run a full reconciliation in this same batch, not after "a few more refinements"
 
 If a refinement touches only the **current-iteration** package (not yet written to the songbook), no cross-file sync applies — there are no references to stale yet. The rule scopes to edits that modify authoritative data other files already point at.
 

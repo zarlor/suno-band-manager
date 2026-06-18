@@ -6,13 +6,26 @@ name: init
 description: First-run setup — progressive preference discovery with sensible defaults.
 ---
 
-# First-Run Setup for Mac
+# First-Run Setup for Mac (First Breath)
 
 Welcome! Let's get you making music fast. Setup happens naturally — not as an interview.
 
-## Memory Location
+## The sanctum is already scaffolded — this is calibration
 
-Creating `{project-root}/_bmad/_memory/band-manager-sidecar/` for persistent memory.
+By the time this prompt runs, `scripts/init-sanctum.py` has already scaffolded
+the v2 sanctum at `{project-root}/_bmad/_memory/band-manager-sidecar/` from the
+`assets/` templates: `INDEX.md`, `MEMORY.md`, `PERSONA.md`, `CREED.md`,
+`BOND.md`, `PULSE.md`, `CAPABILITIES.md`, plus the `sessions/` and
+`capabilities/` directories. The skeleton files are **born already-migrated** —
+`MEMORY.md` already carries the required derived-section marker pairs, and
+`access-boundaries.md` is in place.
+
+**You do NOT hand-create the structure or hand-write the templates here.** The
+script did that. First Breath is the *conversational calibration* that fills the
+scaffolded `MEMORY.md` with the owner's real preferences as you discover them.
+(If the scaffold is somehow missing — `init-sanctum.py` didn't run or errored —
+re-run it: `uv run scripts/init-sanctum.py "{project-root}" "{skill-root}"`,
+then continue here. Per the Sacred Truth, a fresh start is always valid.)
 
 ## Progressive Preference Discovery
 
@@ -34,84 +47,53 @@ Instead of asking four questions before any creative work, use sensible defaults
 
 4. **After the first song is complete**, briefly mention what you learned: "By the way, I noticed you're pretty hands-on — Studio mode might be your speed. And I saved your preference for raw vocals. You can change any of this anytime, just tell me."
 
+**Save as you go — don't wait for the end.** Write each preference into the
+scaffolded `MEMORY.md` (User Preferences / Active Band Profiles sections) the
+moment you discover it, not in one batch when setup "finishes." First Breath can
+get cut short — the user closes the laptop, the session drops, life happens. A
+setup that gets interrupted keeps whatever you already saved; a setup that holds
+everything in conversation until the end loses all of it. The same don't-lose-work
+posture that governs Mac's whole creed (Workshop Capture, Sync at the point of
+change) applies to onboarding too: discover the tier → write it; discover an
+exclusion → write it; discover the active band → write it. `init-sanctum.py`
+scaffolded `MEMORY.md` already-migrated (with the derived-section marker pairs in
+place), precisely so these incremental writes always have a valid file to land in.
+
 **Help with tier discovery:** If the user doesn't know their tier, help them figure it out: "When you open Suno, check the top-right — it'll say Free, Pro, or Premier. Or just tell me what you see in the interface and I'll figure it out."
 
-## Initial Structure
+## What the scaffold already created
 
-Creating:
-- `index.md` — your preferences, active work, essential context
-- `patterns.md` — musical preferences I learn over time
-- `chronology.md` — session timeline
+`init-sanctum.py` created these from the `assets/` templates — you fill them in
+conversationally, you do not re-create them:
 
-### `index.md` template (REQUIRED marker pairs)
+- `MEMORY.md` — curated live state. Born already-migrated: it carries the
+  `<!-- derived:recently-published:start/end -->` and
+  `<!-- derived:catalog-status:start/end -->` marker pairs (with stub content the
+  first `[SM]` regeneration replaces). Write the owner's discovered preferences
+  into its User Preferences / Default Exclusions / Active Band Profiles sections
+  as you go.
+- `INDEX.md` — the thin sanctum map.
+- `PERSONA.md`, `CREED.md`, `BOND.md`, `PULSE.md`, `CAPABILITIES.md` — Mac's
+  living identity, creed core, owner-orienting file, maintenance routine, and
+  capability roster.
+- `sessions/` and `capabilities/` directories.
 
-New sidecars MUST be born already-migrated. The `## Recently Published` and `## Catalog Status` sections are regenerated from songbook ground truth by `./scripts/regenerate-index-sections.py` (inside the agent skill), which requires HTML comment marker pairs to locate the rewrite targets. Missing markers cause every `save-memory` regeneration call and every post-unpack integration to error out until the sidecar is hand-migrated.
+`access-boundaries.md` is part of the scaffolded skeleton (the Dominion contract).
+If a fresh scaffold did not include it on this install, create it with the
+project's read/write/deny zones (see `references/memory-system.md` and the
+sanctum's own `access-boundaries.md` for the canonical content).
 
-Include the marker pairs below verbatim when creating `index.md` for the first time. Stub content between markers is fine — the regenerator will replace it on the first `[SM]` cycle. Narrative sections (Current Work, Pending / Parked Work, Session History, User Preferences, etc.) fill in organically as sessions accumulate.
-
-```markdown
-# Band Manager Sidecar — {user_name}
-
-## User Preferences
-- Suno tier: {discovered tier or "Free (default)"}
-- Interaction mode: {Demo/Studio/Jam}
-- Default exclusions: {list or "none"}
-- Active band profile: {name or "none"}
-
-## Current Work
-_(empty — first session)_
-
-## Pending / Parked Work
-_(empty — first session)_
-
-## Recently Published
-
-<!-- derived:recently-published:start -->
-
-_(auto-generated from songbook on next save — no songs published yet)_
-
-<!-- derived:recently-published:end -->
-
-## Catalog Status
-
-<!-- derived:catalog-status:start -->
-
-_(auto-generated from songbook on next save — catalog is empty)_
-
-<!-- derived:catalog-status:end -->
-
-## Session History
-- {YYYY-MM-DD}: First Breath — initial setup, {brief summary of discovery}
-```
-
-**Do not omit the marker pairs**, even if the catalog is empty. The regenerator treats "no songs" as a normal case and writes stub content between the markers, but it cannot insert the markers themselves.
-
-## Access Boundaries
-
-Create `access-boundaries.md` with:
-
-```markdown
-# Access Boundaries for Mac
-
-## Read Access
-- docs/band-profiles/
-- docs/voice-context-*.md
-- {project-root}/_bmad/_memory/band-manager-sidecar/
-
-## Write Access
-- {project-root}/_bmad/_memory/band-manager-sidecar/
-- docs/voice-context-{user}.md (current user's file only)
-
-## Deny Zones
-- All other directories
-```
+**Do NOT hand-author the `MEMORY.md` marker pairs here** — the scaffold already
+wrote them, and the regenerator (`scripts/regenerate-index-sections.py`) treats an
+empty catalog as a normal case, writing stub content between the existing markers
+on the first `[SM]` cycle.
 
 ## Voice File
 
 After the first session — or any time the user shares significant personal or creative context — offer to create a voice/context file: "I'm getting to know your creative style. Want me to start a voice file so I remember all this next time? It'll live in your docs/ folder."
 
-If yes, create `docs/voice-context-{username}.md` (username normalized: lowercase, spaces→hyphens). See `memory-system.md` for the file structure. Populate initial content from what was learned during the session.
+If yes, create `docs/voice-context-{username}.md` (username normalized: lowercase, spaces→hyphens). See `references/memory-system.md` for the file structure. Populate initial content from what was learned during the session.
 
 ## Ready
 
-Setup complete! Store all discovered preferences in `index.md`. **When complete:** Return to main activation flow and present the menu.
+Setup complete! Store all discovered preferences in `MEMORY.md` as you go. **When complete:** Return to main activation flow and present the menu.

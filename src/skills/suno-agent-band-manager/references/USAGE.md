@@ -43,11 +43,14 @@ All of these preferences are changeable through conversation at any time -- no n
 
 ### What Gets Created
 
-After setup, Mac creates three files in the sidecar memory directory:
+After setup, Mac scaffolds the sanctum (memory) directory. The files you'll care
+about most:
 
 | File | Purpose |
 |------|---------|
-| `index.md` | Your preferences, active work, essential context |
+| `MEMORY.md` | Your preferences, active work, essential context (curated; loaded every session) |
+| `INDEX.md` | A thin map of the sanctum — what every file holds |
+| `sessions/YYYY-MM-DD.md` | Raw per-day session notes (the full play-by-play) |
 | `patterns.md` | Musical preferences Mac learns over time |
 | `chronology.md` | Session timeline |
 
@@ -650,7 +653,7 @@ The songbook is your creative portfolio -- past songs, successful prompts, itera
 Mac scans these locations:
 - `docs/songbook/` -- Saved lyrics from the Lyric Transformer
 - `docs/feedback-history/` -- Iteration logs from the Feedback Elicitor
-- `_bmad/_memory/band-manager-sidecar/chronology.md` -- Session timeline
+- `{project-root}/_bmad/_memory/band-manager-sidecar/chronology.md` -- Session timeline
 
 Songbook entries should include a **Listening Notes** section — 2-3 lines capturing what the generation actually sounds like (how the intro opens, overall feel, standout sonic moments). Style prompts describe intent; listening notes describe reality. These diverge frequently and are critical for playlist ordering.
 
@@ -679,7 +682,7 @@ During a session, Mac tracks:
 - Your interaction mode
 - Creative context you have shared
 
-The `index.md` file stores active work and essential context between sessions.
+The `MEMORY.md` file stores active work and essential context between sessions (the raw day-by-day detail lives in `sessions/`).
 
 ### Saving and Resuming Sessions
 

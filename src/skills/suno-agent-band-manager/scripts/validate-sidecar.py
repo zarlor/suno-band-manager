@@ -1,9 +1,19 @@
-#!/usr/bin/env python3
-"""Validate the Mac sidecar index against songbook + band-profile ground truth.
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pyyaml>=6.0"]
+# ///
+"""Validate the Mac sanctum against songbook + band-profile ground truth.
 
 Reads every songbook entry and band profile, derives the ground-truth catalog
-state, and compares it against the claims in the sidecar index.md. Reports
-drift as structured findings. Exits 0 on clean, 1 on drift (CI-friendly).
+state, and compares it against the derived-section claims in the v2 sanctum's
+MEMORY.md. Reports drift as structured findings. Exits 0 on clean, 1 on drift
+(CI-friendly).
+
+(In the pre-v2 layout the derived Recently Published / Catalog Status sections
+lived in `index.md`; the v2 sanctum carries them in the curated `MEMORY.md`.
+INDEX.md in the v2 sanctum is a thin map and carries no derived claims, so the
+catalog cross-checks read MEMORY.md.)
 
 Cross-platform: pure Python stdlib + PyYAML (already a module dependency).
 
@@ -11,18 +21,19 @@ Usage:
     python3 scripts/validate-sidecar.py [project_root]
     python3 scripts/validate-sidecar.py --format json
     python3 scripts/validate-sidecar.py --warn-only  # exit 0 even with findings
+    python3 scripts/validate-sidecar.py --sanctum-dir PATH  # test a staging copy
 
 Checks performed:
     1. Songbook internal consistency — frontmatter status/date vs. body status marker
     2. Audio file existence for published songs
-    3. Sidecar Recently Published list matches songbook ground truth
-    4. Sidecar Catalog Status counts match actual songbook counts
+    3. Sanctum Recently Published list (MEMORY.md) matches songbook ground truth
+    4. Sanctum Catalog Status counts (MEMORY.md) match actual songbook counts
     5. Playlist YAML track count matches songbook count for that band
     6. Markdown cross-references in docs/ resolve to existing files
 
 Called by:
     - pack-portable.{sh,ps1} before packing (gates sync)
-    - save-memory workflow after index.md writes (validates derivation)
+    - save-memory workflow after MEMORY.md writes (validates derivation)
     - Standalone by user any time for a consistency check
 """
 
@@ -43,7 +54,10 @@ except ImportError:
         json.dumps(
             {
                 "status": "error",
-                "message": "PyYAML required. Install with: pip install pyyaml",
+                "message": (
+                    "PyYAML required. Run via `uv run` so the PEP 723 inline "
+                    "dependency block installs it automatically."
+                ),
             }
         )
     )
@@ -105,6 +119,23 @@ STATUS_MARKER_RE = re.compile(
     re.DOTALL,
 )
 AUDIO_REF_RE = re.compile(r"`(docs/audio/[^`]+\.(?:mp3|wav|flac|m4a))`")
+
+# Default sanctum location (preserved bespoke divergence: double-underscore parent,
+# fixed dir name). The derived catalog sections live in MEMORY.md in the v2 sanctum.
+DEFAULT_SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
+MEMORY_FILENAME = "MEMORY.md"
+
+
+def resolve_sanctum_dir(project_root: Path, sanctum_dir: str | None) -> Path:
+    """Resolve the sanctum directory, honoring a --sanctum-dir override.
+
+    Default is the real bespoke sanctum under the project root. The override
+    exists so the memory scripts can be tested against a staging copy without
+    touching live data.
+    """
+    if sanctum_dir:
+        return Path(sanctum_dir).resolve()
+    return project_root.joinpath(*DEFAULT_SANCTUM_REL)
 
 
 def parse_song(path: Path, project_root: Path) -> tuple[Song | None, str | None]:
@@ -268,16 +299,16 @@ def check_audio_exists(song: Song, project_root: Path) -> list[Finding]:
 
 
 def check_index_recently_published(
-    index_text: str, songs: list[Song]
+    memory_text: str, songs: list[Song], memory_display: str
 ) -> list[Finding]:
     """Every song listed in Recently Published must match songbook ground truth."""
     findings: list[Finding] = []
-    index_path = "_bmad/_memory/band-manager-sidecar/index.md"
+    index_path = memory_display
 
     # Extract the Recently Published block (from that heading until the next ## heading)
     recent_match = re.search(
         r"^##\s+Recently Published\s*\n(.*?)(?=\n##\s)",
-        index_text,
+        memory_text,
         re.MULTILINE | re.DOTALL,
     )
     if not recent_match:
@@ -359,16 +390,16 @@ def check_index_recently_published(
 
 
 def check_index_catalog_counts(
-    index_text: str, songs: list[Song], project_root: Path
+    memory_text: str, songs: list[Song], project_root: Path, memory_display: str
 ) -> list[Finding]:
     """Catalog Status counts must match actual songbook + playlist ground truth."""
     findings: list[Finding] = []
-    index_path = "_bmad/_memory/band-manager-sidecar/index.md"
+    index_path = memory_display
 
     # Extract the Catalog Status block
     catalog_match = re.search(
         r"^##\s+Catalog Status\s*\n(.*?)(?=\n##\s)",
-        index_text,
+        memory_text,
         re.MULTILINE | re.DOTALL,
     )
     if not catalog_match:
@@ -648,7 +679,9 @@ def check_markdown_cross_references(project_root: Path) -> list[Finding]:
 # ---------------------------------------------------------------------------
 
 
-def run_checks(project_root: Path) -> tuple[list[Finding], dict[str, int]]:
+def run_checks(
+    project_root: Path, sanctum_dir: str | None = None
+) -> tuple[list[Finding], dict[str, int]]:
     songs, parse_findings = load_all_songs(project_root)
 
     findings: list[Finding] = list(parse_findings)
@@ -656,11 +689,22 @@ def run_checks(project_root: Path) -> tuple[list[Finding], dict[str, int]]:
         findings.extend(check_songbook_consistency(song))
         findings.extend(check_audio_exists(song, project_root))
 
-    index_path = project_root / "_bmad" / "_memory" / "band-manager-sidecar" / "index.md"
-    if index_path.exists():
-        index_text = index_path.read_text(encoding="utf-8")
-        findings.extend(check_index_recently_published(index_text, songs))
-        findings.extend(check_index_catalog_counts(index_text, songs, project_root))
+    sanctum = resolve_sanctum_dir(project_root, sanctum_dir)
+    memory_path = sanctum / MEMORY_FILENAME
+    try:
+        memory_display = str(memory_path.relative_to(project_root))
+    except ValueError:
+        memory_display = str(memory_path)
+    if memory_path.exists():
+        memory_text = memory_path.read_text(encoding="utf-8")
+        findings.extend(
+            check_index_recently_published(memory_text, songs, memory_display)
+        )
+        findings.extend(
+            check_index_catalog_counts(
+                memory_text, songs, project_root, memory_display
+            )
+        )
 
     findings.extend(check_playlist_songbook_parity(songs, project_root))
     findings.extend(check_markdown_cross_references(project_root))
@@ -714,7 +758,7 @@ def format_text(findings: list[Finding], stats: dict[str, int]) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Validate Mac sidecar index against songbook ground truth."
+        description="Validate Mac sanctum (MEMORY.md) against songbook ground truth."
     )
     parser.add_argument(
         "project_root",
@@ -733,6 +777,15 @@ def main() -> int:
         action="store_true",
         help="Exit 0 even when errors are found (for advisory runs)",
     )
+    parser.add_argument(
+        "--sanctum-dir",
+        default=None,
+        help=(
+            "Override the sanctum directory (default: "
+            "<project_root>/_bmad/_memory/band-manager-sidecar). Use to test "
+            "against a staging copy without touching live data."
+        ),
+    )
     args = parser.parse_args()
 
     project_root = Path(args.project_root).resolve()
@@ -740,7 +793,7 @@ def main() -> int:
         print(f"ERROR: project root not found: {project_root}", file=sys.stderr)
         return 2
 
-    findings, stats = run_checks(project_root)
+    findings, stats = run_checks(project_root, args.sanctum_dir)
 
     if args.format == "json":
         payload: dict[str, Any] = {

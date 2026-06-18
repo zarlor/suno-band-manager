@@ -1,9 +1,16 @@
-#!/usr/bin/env python3
-"""Regenerate the derivable sections of the Mac sidecar index.md.
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pyyaml>=6.0"]
+# ///
+"""Regenerate the derivable sections of the Mac sanctum MEMORY.md.
 
-Replaces the Recently Published and Catalog Status sections in
-_bmad/_memory/band-manager-sidecar/index.md with content derived from
+Replaces the Recently Published and Catalog Status sections in the v2 sanctum's
+_bmad/_memory/band-manager-sidecar/MEMORY.md with content derived from
 songbook frontmatter + body Status markers + playlist YAMLs.
+
+(In the pre-v2 layout these sections lived in `index.md`; the v2 sanctum carries
+the same derived-section marker pairs in the curated `MEMORY.md` instead.)
 
 The narrative sections (Current Work, Pending / Parked Work, Session History)
 are preserved unchanged — only the derivable sections are rewritten.
@@ -13,7 +20,7 @@ Section boundaries are HTML comment markers:
     ...auto-generated content...
     <!-- derived:recently-published:end -->
 
-If the markers are missing from index.md, the script reports what to add and
+If the markers are missing from MEMORY.md, the script reports what to add and
 exits non-zero without modifying the file. Pass --migrate to wrap existing
 "## Recently Published" and "## Catalog Status" sections with the markers
 in-place, then continue with regeneration.
@@ -24,11 +31,13 @@ Usage:
     python3 scripts/regenerate-index-sections.py [project_root]
     python3 scripts/regenerate-index-sections.py --dry-run  # print diff only
     python3 scripts/regenerate-index-sections.py --migrate  # add missing markers
+    python3 scripts/regenerate-index-sections.py --sanctum-dir PATH  # override sanctum
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -36,7 +45,11 @@ from pathlib import Path
 try:
     import yaml
 except ImportError:
-    print("ERROR: PyYAML required. Install with: pip install pyyaml", file=sys.stderr)
+    print(
+        "ERROR: PyYAML required. Run via `uv run` so the PEP 723 inline "
+        "dependency block installs it automatically.",
+        file=sys.stderr,
+    )
     sys.exit(2)
 
 
@@ -51,6 +64,35 @@ STATUS_MARKER_RE = re.compile(
 
 # How many entries to include in Recently Published
 RECENT_LIMIT = 7
+
+# Default sanctum location (preserved bespoke divergence: double-underscore parent,
+# fixed dir name). The derived sections live in MEMORY.md in the v2 sanctum.
+DEFAULT_SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
+MEMORY_FILENAME = "MEMORY.md"
+
+
+def resolve_sanctum_dir(project_root: Path, sanctum_dir: str | None) -> Path:
+    """Resolve the sanctum directory, honoring a --sanctum-dir override.
+
+    Default is the real bespoke sanctum under the project root. The override
+    exists so the memory scripts can be tested against a staging copy without
+    touching live data.
+    """
+    if sanctum_dir:
+        return Path(sanctum_dir).resolve()
+    return project_root.joinpath(*DEFAULT_SANCTUM_REL)
+
+
+def display_path(path: Path, project_root: Path) -> str:
+    """Project-root-relative display when possible, else the absolute path.
+
+    An overridden --sanctum-dir may live outside the project root (e.g. a
+    staging copy), so relative_to can fail — fall back to the absolute path.
+    """
+    try:
+        return str(path.relative_to(project_root))
+    except ValueError:
+        return str(path)
 
 # Display name lookups are derived dynamically from band profile YAMLs at
 # runtime (see `band_display_map()` below) so this script works for any
@@ -292,7 +334,7 @@ def migrate_section(text: str, heading: str, marker_name: str) -> tuple[str, boo
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Regenerate derivable sections of Mac sidecar index.md."
+        description="Regenerate derivable sections of Mac sanctum MEMORY.md."
     )
     parser.add_argument(
         "project_root",
@@ -309,23 +351,44 @@ def main() -> int:
         "--migrate",
         action="store_true",
         help=(
-            "If index.md is missing derived-section markers, wrap the existing "
+            "If MEMORY.md is missing derived-section markers, wrap the existing "
             "## Recently Published and ## Catalog Status sections with them "
-            "before regenerating. One-shot migration for pre-v1.6.5 sidecars."
+            "before regenerating. One-shot migration for pre-marker sanctums."
+        ),
+    )
+    parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format for the run result (default: text)",
+    )
+    parser.add_argument(
+        "--sanctum-dir",
+        default=None,
+        help=(
+            "Override the sanctum directory (default: "
+            "<project_root>/_bmad/_memory/band-manager-sidecar). Use to test "
+            "against a staging copy without touching live data."
         ),
     )
     args = parser.parse_args()
+
+    def emit(result: dict, stream=sys.stdout) -> None:
+        """Print the run result as JSON or human text per --format."""
+        if args.format == "json":
+            print(json.dumps(result, indent=2), file=stream)
+        elif result.get("message"):
+            print(result["message"], file=stream)
 
     project_root = Path(args.project_root).resolve()
     if not project_root.is_dir():
         print(f"ERROR: project root not found: {project_root}", file=sys.stderr)
         return 2
 
-    index_path = (
-        project_root / "_bmad" / "_memory" / "band-manager-sidecar" / "index.md"
-    )
-    if not index_path.exists():
-        print(f"ERROR: sidecar index not found at {index_path}", file=sys.stderr)
+    sanctum_dir = resolve_sanctum_dir(project_root, args.sanctum_dir)
+    memory_path = sanctum_dir / MEMORY_FILENAME
+    if not memory_path.exists():
+        print(f"ERROR: sanctum MEMORY.md not found at {memory_path}", file=sys.stderr)
         return 2
 
     songs = load_all_songs(project_root)
@@ -333,13 +396,20 @@ def main() -> int:
     catalog_status = generate_catalog_status(songs, project_root)
 
     if args.dry_run:
-        print("=== Recently Published ===\n")
-        print(recently_published)
-        print("\n=== Catalog Status ===\n")
-        print(catalog_status)
+        if args.format == "json":
+            emit({
+                "status": "dry_run",
+                "recently_published": recently_published,
+                "catalog_status": catalog_status,
+            })
+        else:
+            print("=== Recently Published ===\n")
+            print(recently_published)
+            print("\n=== Catalog Status ===\n")
+            print(catalog_status)
         return 0
 
-    text = index_path.read_text(encoding="utf-8")
+    text = memory_path.read_text(encoding="utf-8")
 
     if args.migrate:
         migrated_text = text
@@ -382,11 +452,16 @@ def main() -> int:
         if migrated_any:
             text = migrated_text
             if not args.dry_run:
-                index_path.write_text(text, encoding="utf-8")
-                print(
-                    f"Migrated: wrapped existing sections with derived-section "
-                    f"markers in {index_path.relative_to(project_root)}"
-                )
+                memory_path.write_text(text, encoding="utf-8")
+                emit({
+                    "status": "migrated",
+                    "message": (
+                        f"Migrated: wrapped existing sections with "
+                        f"derived-section markers in "
+                        f"{display_path(memory_path, project_root)}"
+                    ),
+                    "memory_path": display_path(memory_path, project_root),
+                })
 
     new_text = text
     missing_markers = []
@@ -403,7 +478,7 @@ def main() -> int:
 
     if missing_markers:
         print(
-            "ERROR: index.md is missing required section markers:", file=sys.stderr
+            "ERROR: MEMORY.md is missing required section markers:", file=sys.stderr
         )
         for m in missing_markers:
             print(
@@ -421,11 +496,21 @@ def main() -> int:
         return 1
 
     if new_text == text:
-        print("No changes needed — derivable sections already up to date.")
+        emit({
+            "status": "unchanged",
+            "message": "No changes needed — derivable sections already up to date.",
+        })
         return 0
 
-    index_path.write_text(new_text, encoding="utf-8")
-    print(f"Regenerated derivable sections in {index_path.relative_to(project_root)}")
+    memory_path.write_text(new_text, encoding="utf-8")
+    emit({
+        "status": "regenerated",
+        "message": (
+            f"Regenerated derivable sections in "
+            f"{display_path(memory_path, project_root)}"
+        ),
+        "memory_path": display_path(memory_path, project_root),
+    })
     return 0
 
 

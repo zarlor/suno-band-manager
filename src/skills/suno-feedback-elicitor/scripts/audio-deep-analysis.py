@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = ["librosa>=0.10", "numpy>=1.24"]
@@ -7,13 +7,13 @@
 section boundaries, and harmonic/percussive separation analysis.
 
 Usage:
-    python audio-deep-analysis.py <audio-file> [options]
+    uv run audio-deep-analysis.py <audio-file> [options]
 
     # Analyze a single track
-    python audio-deep-analysis.py track.mp3
+    uv run audio-deep-analysis.py track.mp3
 
     # JSON output to file
-    python audio-deep-analysis.py track.mp3 --format json -o results.json
+    uv run audio-deep-analysis.py track.mp3 --format json -o results.json
 
 Exit codes:
   0 = success

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -6,8 +6,8 @@
 """Validates file paths against access boundaries.
 
 Usage:
-    python3 scripts/validate-path.py <path> <operation> [--boundaries BOUNDARIES_FILE]
-    python3 scripts/validate-path.py --help
+    uv run scripts/validate-path.py <path> <operation> [--boundaries BOUNDARIES_FILE]
+    uv run scripts/validate-path.py --help
 
 Arguments:
     path           File path to validate

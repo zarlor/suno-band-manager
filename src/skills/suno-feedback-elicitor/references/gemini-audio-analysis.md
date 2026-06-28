@@ -38,17 +38,17 @@ Requirements: Python 3, librosa, numpy (`pip install librosa numpy`)
 
 **analyze-audio.py** — Batch BPM and key detection for all MP3s in a directory. Uses Krumhansl-Kessler chroma correlation for key estimation. Outputs a summary table with BPM, key, key confidence, and duration.
 ```bash
-python scripts/analyze-audio.py /path/to/mp3s/
+uv run scripts/analyze-audio.py /path/to/mp3s/
 ```
 
 **audio-deep-analysis.py** — Deep single-track analysis: chord progression over time, energy curve, spectral features, section boundaries, harmonic/percussive separation.
 ```bash
-python scripts/audio-deep-analysis.py track.mp3
+uv run scripts/audio-deep-analysis.py track.mp3
 ```
 
 **tempo-detail.py** — Detailed tempo analysis showing BPM over time in windows. Detects tempo changes, off-beats, and stability.
 ```bash
-python scripts/tempo-detail.py track.mp3
+uv run scripts/tempo-detail.py track.mp3
 ```
 
 **batch-full-analysis.py** (album/catalog scope — now in the `suno-playlist-sequencer` skill) — Batch full analysis across a catalog: tempo stability, energy arc, section boundaries, spectral balance. Outputs a comprehensive summary report. Run it from that skill: `uv run scripts/batch-full-analysis.py --audio-dir docs/audio`.
@@ -267,7 +267,7 @@ Opus 4.6 (Claude) as primary prompter/orchestrator, Gemini 3.1 as audio analysis
 
 **chord-progression.py** — Analyzes chord changes and key centers in 30-second windows within a single track. Measure-by-measure detection is too noisy with distorted guitars, but 30-second key center summaries are useful.
 ```bash
-python scripts/chord-progression.py track.mp3
+uv run scripts/chord-progression.py track.mp3
 ```
 
 **Camelot wheel mapping** is embedded in `chord-progression.py` — all 24 keys (12 major, 12 minor) mapped to codes 1A-12A (minor) and 1B-12B (major). The same mapping in the `suno-playlist-sequencer` skill's `playlist-sequencing-data.py` is what that skill uses for cross-track sequencing.

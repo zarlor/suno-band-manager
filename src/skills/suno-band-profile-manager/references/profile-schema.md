@@ -250,7 +250,7 @@ The two required fields per track are `name` (the human-readable song title — 
 If a band already has songbook entries but no playlist YAML, scaffold one:
 
 ```bash
-python3 src/skills/suno-band-profile-manager/scripts/scaffold-playlist.py {band-slug} --from-songbook
+uv run src/skills/suno-band-profile-manager/scripts/scaffold-playlist.py {band-slug} --from-songbook
 ```
 
 This writes `docs/{band-slug}-playlist.yaml` with discovered song titles populated and `file:` fields left as empty strings (TODO: fill in from `docs/audio/`). The user reviews, fills in audio filenames, sets the order, and saves.

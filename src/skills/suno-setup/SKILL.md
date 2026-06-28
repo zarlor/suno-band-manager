@@ -27,6 +27,14 @@ Installs and configures a BMad module into a project. Module identity (name, cod
 
 ## On Activation
 
+**Preflight — ensure `uv` is available.** This module's Python tooling runs via `uv run`, which reads each script's PEP 723 inline metadata and provisions dependencies (e.g. `pyyaml`) automatically — so the setup itself depends on `uv`. Check once, up front:
+
+```bash
+command -v uv >/dev/null 2>&1 && uv --version || echo "uv not found"
+```
+
+If `uv` is missing, tell the user it's required for the module's scripts and offer to install it — the standalone installer is `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux) or `pip install uv`. This is the "install and set up uv" step the BMad v6.9.0 release flags ahead of the v7 standardization on `uv run`. The dependency-free scripts can fall back to `python3`, but `merge-config.py` needs `pyyaml`, so without `uv` the user would install that by hand (`pip install pyyaml`). Proceed once `uv` is available (or the user explicitly opts for the manual `python3` + `pip` path).
+
 1. Read `assets/module.yaml` for module metadata and variable definitions (the `code` field is the module identifier)
 2. **Detect installation mode deterministically** with the pre-pass — it classifies the install the same way the merge will, so the narrated mode never drifts from what gets written or returned:
 
@@ -64,7 +72,7 @@ Write a temp JSON file with the collected answers structured as `{"core": {...},
 
 ```bash
 uv run scripts/merge-config.py --config-path "{project-root}/_bmad/config.yaml" --user-config-path "{project-root}/_bmad/config.user.yaml" --module-yaml assets/module.yaml --answers {temp-file} --legacy-dir "{project-root}/_bmad"
-python3 scripts/merge-help-csv.py --target "{project-root}/_bmad/module-help.csv" --source assets/module-help.csv --legacy-dir "{project-root}/_bmad" --module-code suno
+uv run scripts/merge-help-csv.py --target "{project-root}/_bmad/module-help.csv" --source assets/module-help.csv --legacy-dir "{project-root}/_bmad" --module-code suno
 ```
 
 Both scripts output JSON to stdout with results. If either exits non-zero, surface the error and stop. The scripts automatically read legacy config values as fallback defaults, then delete the legacy files after a successful merge. `merge-config.py` also writes per-module config files (`{project-root}/_bmad/core/config.yaml` and `{project-root}/_bmad/suno/config.yaml`) that `bmad-init` reads at runtime. Check `legacy_configs_deleted`, `legacy_csvs_deleted`, and `init_configs_written` in the output to confirm.
@@ -97,7 +105,7 @@ Pass the real project root for `--project-root` so the token resolves on disk. T
 After both merge scripts complete successfully, remove the installer's package directories. Skills and agents in these directories are already installed at `.claude/skills/` — the `{project-root}/_bmad/` directory should only contain config files.
 
 ```bash
-python3 scripts/cleanup-legacy.py --bmad-dir "{project-root}/_bmad" --module-code suno --also-remove _config --skills-dir "{project-root}/.claude/skills"
+uv run scripts/cleanup-legacy.py --bmad-dir "{project-root}/_bmad" --module-code suno --also-remove _config --skills-dir "{project-root}/.claude/skills"
 ```
 
 The script verifies that every skill in the legacy directories exists at `.claude/skills/` before removing anything. Directories without skills (like `_config/`) are removed directly. The script preserves `config.yaml` files in directories being cleaned — `bmad-init` needs these per-module config files at runtime. If the script exits non-zero, surface the error and stop. Missing directories (already cleaned by a prior run) are not errors — the script is idempotent.
@@ -119,7 +127,7 @@ If the user accepts, configure both layers. The two commands write to different 
 If the project has a `.claude/` directory (indicating Claude Code usage), configure the deterministic Stop hook:
 
 ```bash
-python3 scripts/configure-guard.py --settings-path "{project-root}/.claude/settings.local.json" --guard-script-path ".claude/skills/suno-agent-band-manager/scripts/pipeline-guard.py"
+uv run scripts/configure-guard.py --settings-path "{project-root}/.claude/settings.local.json" --guard-script-path ".claude/skills/suno-agent-band-manager/scripts/pipeline-guard.py"
 ```
 
 The script merges the hook into existing settings without overwriting other configuration. It's idempotent — skips if already configured. Check the JSON output for `status` ("configured", "already_configured", or "error").
@@ -131,7 +139,7 @@ The script merges the hook into existing settings without overwriting other conf
 Configure the cross-platform standing order in `AGENTS.md` — readable by Codex CLI, Cursor, GitHub Copilot, Windsurf, Amp, and Gemini CLI (when configured to read AGENTS.md):
 
 ```bash
-python3 scripts/configure-guard.py --agents-md-path "{project-root}/AGENTS.md"
+uv run scripts/configure-guard.py --agents-md-path "{project-root}/AGENTS.md"
 ```
 
 The script appends the standing order section to AGENTS.md (creates the file if it doesn't exist). Idempotent — skips if the section already exists.

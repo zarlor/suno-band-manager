@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -9,19 +9,19 @@ Checks metatag formatting, section structure, blank line separators,
 style cue contamination, and reasonable song length.
 
 Usage:
-    python validate-lyrics.py <lyrics-file-or-text> [options]
+    uv run validate-lyrics.py <lyrics-file-or-text> [options]
 
     # Validate lyrics from a file
-    python validate-lyrics.py lyrics.txt
+    uv run validate-lyrics.py lyrics.txt
 
     # Validate lyrics from stdin
-    echo "[Verse 1]\\nHello world" | python validate-lyrics.py --stdin
+    echo "[Verse 1]\\nHello world" | uv run validate-lyrics.py --stdin
 
     # Validate with text argument
-    python validate-lyrics.py --text "[Verse 1]\\nHello world"
+    uv run validate-lyrics.py --text "[Verse 1]\\nHello world"
 
     # Output to file
-    python validate-lyrics.py lyrics.txt -o results.json
+    uv run validate-lyrics.py lyrics.txt -o results.json
 """
 
 import argparse

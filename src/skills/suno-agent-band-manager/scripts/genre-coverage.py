@@ -1,6 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
+# dependencies = []
 # ///
 """Genre coverage index (v2) — COMPREHENSIVE: genre anchors AND artist / reference territory.
 
@@ -22,7 +23,7 @@ v2 scans, per band:
       * explicit "Reference territory:" lines
 
 Usage:
-    python genre-coverage.py <project-root> [--band <slug>] [--timestamp <iso>]
+    uv run genre-coverage.py <project-root> [--band <slug>] [--timestamp <iso>]
 Writes docs/<band>-genre-coverage.md (AUTOGEN section preserved-around).
 """
 import os

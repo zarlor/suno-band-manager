@@ -33,7 +33,7 @@ Multi-band projects keep each band's playlist independent — a band's YAML live
 If a band exists with songbook entries but no playlist YAML, scaffold one:
 
 ```bash
-python3 src/skills/suno-band-profile-manager/scripts/scaffold-playlist.py {band-slug} --from-songbook
+uv run src/skills/suno-band-profile-manager/scripts/scaffold-playlist.py {band-slug} --from-songbook
 ```
 
 The schema and lifecycle rules (creation on band profile creation, deprecation of the `playlist:` block in band profile YAML, workflow rules on song publish) are documented in `suno-band-profile-manager/references/profile-schema.md` "Per-Band Playlist YAML" section.

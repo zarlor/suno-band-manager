@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -9,16 +9,16 @@ Collects outputs from validate-lyrics.py, syllable-counter.py, and cliche-detect
 and assembles a formatted Transformation Summary markdown block.
 
 Usage:
-    python assemble-summary.py --validation val.json --syllables syl.json --cliches cli.json [options]
+    uv run assemble-summary.py --validation val.json --syllables syl.json --cliches cli.json [options]
 
     # Assemble from three JSON files
-    python assemble-summary.py --validation val.json --syllables syl.json --cliches cli.json
+    uv run assemble-summary.py --validation val.json --syllables syl.json --cliches cli.json
 
     # With transformation codes
-    python assemble-summary.py --validation val.json --syllables syl.json --cliches cli.json --transformations "ST,CC,RA"
+    uv run assemble-summary.py --validation val.json --syllables syl.json --cliches cli.json --transformations "ST,CC,RA"
 
     # Output to file
-    python assemble-summary.py --validation val.json --syllables syl.json --cliches cli.json -o summary.md
+    uv run assemble-summary.py --validation val.json --syllables syl.json --cliches cli.json -o summary.md
 """
 
 import argparse

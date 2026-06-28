@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = ["librosa>=0.10", "numpy>=1.24"]
@@ -9,16 +9,16 @@ Extracts BPM (librosa + aubio), estimated key, and duration for all MP3s
 in a directory.
 
 Usage:
-    python analyze-audio.py [audio-directory] [options]
+    uv run analyze-audio.py [audio-directory] [options]
 
     # Analyze default directory
-    python analyze-audio.py
+    uv run analyze-audio.py
 
     # Analyze specific directory
-    python analyze-audio.py /path/to/audio
+    uv run analyze-audio.py /path/to/audio
 
     # JSON output to file
-    python analyze-audio.py /path/to/audio --format json -o results.json
+    uv run analyze-audio.py /path/to/audio --format json -o results.json
 
 Exit codes:
   0 = success

@@ -259,7 +259,7 @@ very next interaction.
 **The protocol is mandatory, not optional:**
 
 1. `unpack-portable.{sh,ps1}` invokes `reconcile-sidecar.py` automatically after extraction and prints a report.
-2. Re-run reconcile explicitly — `python3 scripts/reconcile-sidecar.py "{project-root}" --format json` (or `uv run` if deps are missing) — and walk every entry in `newer_files` (files modified more recently than the sanctum store — the newest of `MEMORY.md` / `INDEX.md`) plus every validator finding with the user via the Handoff Checkpoint Pattern.
+2. Re-run reconcile explicitly — `uv run scripts/reconcile-sidecar.py "{project-root}" --format json` — and walk every entry in `newer_files` (files modified more recently than the sanctum store — the newest of `MEMORY.md` / `INDEX.md`) plus every validator finding with the user via the Handoff Checkpoint Pattern.
 3. Integrate approved changes: append the raw arrival detail to the relevant `sessions/` file as needed, distill the live state up into `MEMORY.md`.
 4. Run `regenerate-index-sections.py` to refresh the derived sections in `MEMORY.md`.
 5. Only then proceed into the normal activation flow (greeting, menu, etc.).

@@ -2,6 +2,8 @@
 
 Mac follows the [Agent Skills](https://agentskills.io) open standard. The same SKILL.md files work across multiple LLM CLI tools. Choose the installation path that matches your setup.
 
+> **Requirement: `uv`.** The module's Python scripts run via `uv run`, which reads each script's [PEP 723](https://peps.python.org/pep-0723/) inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`) — no virtualenv or manual `pip install` to manage. Install it once: `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux/WSL) or `pip install uv`. Dependency-free scripts can fall back to plain `python3` (3.10+) if `uv` is unavailable. (BMad v6.9.0 flags this ahead of the v7 standardization on `uv run`.)
+
 ## Standalone Installation (Recommended)
 
 Works with any LLM CLI that supports Agent Skills: Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, OpenCode.
@@ -145,7 +147,7 @@ If you have your own `CLAUDE.md`/`GEMINI.md`/`AGENTS.md` in the project root tha
 Primary development and testing platform. Full feature support including:
 - Skill invocation via `/bmad-suno-agent-band-manager`
 - Sub-agent spawning for parallel skill execution
-- Bash tool for Python script execution (validation, analysis)
+- Bash tool for `uv run` script execution (validation, analysis)
 - Full read/write file access for memory, profiles, songbook
 - Pipeline guard Stop hook (see above)
 
@@ -315,13 +317,13 @@ bash scripts/unpack-portable.sh
 
 ## Optional: Audio Analysis
 
-For objective audio measurements (BPM, key, energy, chord progressions, playlist sequencing):
+For objective audio measurements (BPM, key, energy, chord progressions, playlist sequencing), the audio scripts depend on `librosa` + `numpy`. Running them via `uv run` provisions both automatically from each script's PEP 723 metadata — no manual install needed. Only if you're running without `uv` do you install them by hand:
 
 ```bash
 pip install librosa numpy
 ```
 
-Mac will offer to help install these if you try to use audio analysis features without them. The full song creation and refinement workflow works without them.
+Without `uv` and without these deps, the audio scripts return JSON with install instructions (exit code 2). The full song creation and refinement workflow works without audio analysis.
 
 ---
 
@@ -331,7 +333,7 @@ Mac will offer to help install these if you try to use audio analysis features w
 
 **Permission denied on link-skills.sh:** Run `chmod +x link-skills.sh` first.
 
-**Python scripts fail:** Ensure Python 3.9+ is available. Mac's scripts use only standard library modules (no pip dependencies except optional librosa/numpy).
+**Python scripts fail:** The module's scripts run via `uv run`, which reads each script's PEP 723 inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`). If `uv` is missing, install it (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`). Most scripts are dependency-free and also run under plain Python 3.10+ (`python3 scripts/<name>.py`); scripts that need `pyyaml` require either `uv` or a manual `pip install pyyaml`. The one exception is the `pipeline-guard.py` Stop-hook command, which is invoked directly with `python3` (a hot path — kept off `uv` to avoid per-call startup latency).
 
 **Config not found warnings:** Safe to ignore on standalone installs. Mac uses defaults and discovers preferences through conversation.
 

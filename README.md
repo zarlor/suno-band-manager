@@ -84,12 +84,13 @@ For multi-machine projects, `audio-files-manifest.py` generates a small `docs/au
 ## Prerequisites
 
 - **An LLM CLI with skill support** — Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, or OpenCode
+- **[`uv`](https://docs.astral.sh/uv/)** — the module's Python scripts run via `uv run`, which reads each script's [PEP 723](https://peps.python.org/pep-0723/) inline metadata and auto-provisions dependencies (no virtualenv or manual `pip install`). Install with `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`. Dependency-free scripts can fall back to plain `python3` (3.10+) if needed.
 - **Suno account** (free tier works; Pro/Premier unlocks additional features)
 - **BMad Method** (optional) — Mac was built with BMad and can be installed as a BMad module, but runs independently without it
 
 ### Optional: Audio Analysis
 
-For objective audio measurements, install:
+For objective audio measurements, the audio scripts use `librosa` + `numpy`. Running them via `uv run` provisions both automatically — no manual step. Only when running without `uv` do you install them by hand:
 
 ```bash
 pip install librosa numpy

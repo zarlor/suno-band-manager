@@ -196,7 +196,7 @@ After any operation: "Anything else you'd like to do with your profiles, or are 
 
 ## Scripts
 
-All in `scripts/`. Run any script with `--help` for usage details (the help output documents what each checks, so the work can be done by hand when Python or `uv` is unavailable).
+All in `scripts/`. **Invoke every script via `uv run scripts/<name>.py`** — uv reads each script's PEP 723 inline metadata and auto-provisions its dependencies (e.g. `pyyaml`), so no manual `pip install` is needed. If `uv` is unavailable, install it (`pip install uv`) or run a dependency-free script directly with `python3`. Run any script with `--help` for usage details (the help output documents what each checks, so the work can be done by hand when neither `uv` nor Python is available).
 
 | Script | Purpose |
 |--------|---------|

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = ["pyyaml>=6.0"]
@@ -437,7 +437,7 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None) -> dict:
                     f"single source of truth for sequencing."
                 ),
                 "fix": (
-                    f"Run `python3 src/skills/suno-band-profile-manager/scripts/scaffold-playlist.py "
+                    f"Run `uv run src/skills/suno-band-profile-manager/scripts/scaffold-playlist.py "
                     f"{band_slug} --from-songbook` to bootstrap from songbook entries, then fill in "
                     f"audio file names and order. See profile-schema.md 'Per-Band Playlist YAML' section."
                 ),

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -9,16 +9,16 @@ Parses lyrics by metatag headers and validates that each section falls within
 recommended line count ranges for Suno compatibility.
 
 Usage:
-    python section-length-checker.py <lyrics-file> [options]
+    uv run section-length-checker.py <lyrics-file> [options]
 
     # Check section lengths in a file
-    python section-length-checker.py lyrics.txt
+    uv run section-length-checker.py lyrics.txt
 
     # Check from text argument
-    python section-length-checker.py --text "[Verse 1]\\nLine one\\nLine two"
+    uv run section-length-checker.py --text "[Verse 1]\\nLine one\\nLine two"
 
     # Output to file
-    python section-length-checker.py lyrics.txt -o results.json
+    uv run section-length-checker.py lyrics.txt -o results.json
 """
 
 import argparse

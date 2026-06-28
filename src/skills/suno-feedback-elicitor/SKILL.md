@@ -236,6 +236,8 @@ After user approves, offer next steps (outcomes first, skill names parenthetical
 
 ## Scripts
 
+**Invoke every script via `uv run scripts/<name>.py`** — uv reads each script's PEP 723 inline metadata and auto-provisions its dependencies (`pyyaml` for the manifest pair; `librosa` + `numpy` for the audio-analysis scripts), so no manual `pip install` is needed. If `uv` is unavailable, install it (`pip install uv`) or run a dependency-free script directly with `python3`.
+
 ### Core Scripts (no external dependencies)
 
 - `parse-feedback.py` -- Validates and extracts structured dimensions from feedback input (headless mode). Run `--help` for usage.
@@ -246,9 +248,9 @@ After user approves, offer next steps (outcomes first, skill names parenthetical
 - `audio-files-manifest.py` -- Generates `docs/audio-files-manifest.yaml` (name + size + mtime per file) on the canonical machine. Travels in the portable-sync archive instead of the audio MP3s themselves.
 - `verify-audio-files.py` -- Receiving machine reads the manifest and detects missing / wrong-gen / extra audio. Filename-normalization-aware (handles `-Redux`, `-Lenny`, `(NSFW)`, em-dash variants) and size-tolerance-aware (default 1024 bytes for ID3 metadata variance). `--playlist-context` cross-references playlist YAMLs.
 
-### Audio Analysis Scripts (optional -- requires `pip install librosa numpy`)
+### Audio Analysis Scripts (optional -- `librosa` + `numpy`, auto-provisioned by `uv run`)
 
-Objective audio measurements to complement subjective feedback. If dependencies missing, returns JSON with install instructions. Core workflow works fully without them.
+Objective audio measurements to complement subjective feedback. Running them via `uv run` provisions `librosa` + `numpy` automatically from each script's PEP 723 metadata; if `uv` is unavailable and the deps are missing, the script returns JSON with install instructions (exit code 2). Core workflow works fully without them.
 
 - `analyze-audio.py` -- Batch analysis (BPM, key, duration) for all tracks in a directory.
 - `audio-deep-analysis.py` -- Deep single-track analysis (energy arc, chords, section boundaries, spectral balance).

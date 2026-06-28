@@ -1,6 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
+# dependencies = []
 # ///
 """Post-unpack reconciliation helper for the Mac sanctum.
 
@@ -27,9 +28,9 @@ content, surfacing the decision to the user via the usual handoff
 checkpoint.
 
 Usage:
-    python3 scripts/reconcile-sidecar.py [project_root]
-    python3 scripts/reconcile-sidecar.py --format json
-    python3 scripts/reconcile-sidecar.py --sanctum-dir PATH  # test a staging copy
+    uv run scripts/reconcile-sidecar.py [project_root]
+    uv run scripts/reconcile-sidecar.py --format json
+    uv run scripts/reconcile-sidecar.py --sanctum-dir PATH  # test a staging copy
 
 Exit codes:
     0 — sanctum and files are in sync (or sanctum absent — nothing to check)

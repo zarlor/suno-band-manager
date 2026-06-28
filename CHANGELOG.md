@@ -4,6 +4,51 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [2.1.0] - 2026-06-27
+
+A focused maintenance release that standardizes the module's entire Python script layer on **`uv run`**, getting ahead of the BMad v6.9.0 heads-up that **v7 will standardize every Python-running skill on `uv run`** (memlog and other working-memory primitives depend on it). This is about *how* scripts are invoked — nothing about song creation, profiles, lyrics, feedback, sequencing, or the memory store changes. All `docs/` content is untouched and fully compatible.
+
+### Upgrade at a glance (existing installs)
+
+- **Install `uv`** if you don't already have it: `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux/WSL) or `pip install uv`. Every script now runs via `uv run`, which reads each script's PEP 723 inline metadata and **auto-provisions its dependencies** (`pyyaml`, and optionally `librosa`/`numpy`) — no virtualenv to manage, no manual `pip install`.
+- **Nothing else changes for you.** Band profiles, the songbook, the voice-context file, `mac-preferences.md`, playlists, WIPs, and the memory store all keep working exactly as before. The standing orders (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) now tell the agent to invoke scripts with `uv run`, so existing sessions just work once `uv` is present.
+- **Graceful fallback retained:** if `uv` is unavailable, dependency-free (stdlib-only) scripts still run under plain `python3`; only scripts that need third-party deps require `uv` (or a manual dep install).
+- **Re-run `suno-setup`** to pick up the new **uv preflight** — it checks for `uv` up front and offers install guidance before running anything.
+
+### Every directly-invoked script standardized on `uv run`
+
+The module previously used a two-tier convention: `uv run` for dependency-bearing scripts, plain `python3` for the stdlib-only ones (with an "(or `uv run` if deps are missing)" parenthetical). That split is now collapsed into one consistent rule, matching the coming v7 standard.
+
+- **31 script shebangs** moved to `#!/usr/bin/env -S uv run --script` (joining the 8 already on it), so direct execution routes through `uv` too. The two deliberate exceptions are noted below.
+- **All documented invocations** across every `SKILL.md`, reference doc, the in-script `Usage:` examples, and the `PULSE-template.md` now use `uv run scripts/<name>.py`; the redundant fallback parentheticals were removed.
+- **PEP 723 completeness** — the three scripts whose inline metadata omitted an explicit `dependencies` line (`genre-coverage.py`, `reconcile-sidecar.py`, `scaffold-playlist.py`) now declare it, so `uv run <script>.py` is unambiguous everywhere.
+- **One "Running the scripts" note per skill** — each skill's `## Scripts` section now states the `uv run` convention and the fallback once (DRY) instead of scattering it across invocations.
+
+### suno-setup uv preflight
+
+`suno-setup` now checks for `uv` on PATH before its first script call and, if it's missing, surfaces install guidance (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`) — the "install and set up uv" step BMad v6.9.0 calls out. Dependency-free scripts can still fall back to `python3`, but `merge-config.py` needs `pyyaml`, so the preflight makes the requirement explicit up front.
+
+### Docs + standing orders
+
+- `README.md` and `INSTALLATION.md` gained a `uv` prerequisite / requirement callout; the audio-analysis sections now note that `uv run` auto-provisions `librosa`/`numpy`.
+- A new **"Script Execution — `uv run` (MANDATORY)"** section was added to the `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` standing orders (loaded every session, so the live agent always knows the runner + fallback).
+- The INSTALLATION troubleshooting entry that wrongly claimed Mac's scripts have "no pip dependencies" was corrected (several declare `pyyaml`), and `_shared/audio_deps.py`'s missing-dependency message now leads with `uv run`.
+
+### Deliberate exceptions
+
+- **The `pipeline-guard.py` Stop/PreToolUse hook stays on `python3`.** It fires on every tool call, so it is kept off `uv` to avoid per-invocation startup latency. The code in `configure-guard.py` that writes the hook command is unchanged.
+- **BMad-owned scripts are untouched.** The `resolve_customization.py` references (a BMad *core* script, not part of this module) remain `python3` with their existing by-hand fallback; they'll align when BMad ships them uv-ready.
+
+### Marketplace manifest fix
+
+`.claude-plugin/marketplace.json` now lists **all seven skills** — `suno-playlist-sequencer` (added in v2.0.0) had been missing from the plugin manifest's `skills` array and is now included.
+
+### Validation
+
+Full test suite green via `uv run`: **493 tests pass** (436 + 57 librosa-dependent), with smoke tests confirming stdlib invocation, `pyyaml` auto-provisioning, and direct `uv run` shebang execution.
+
+---
+
 ## [2.0.0] - 2026-06-18
 
 A major release. The whole module is brought up to the **BMad Module Builder v2 (BMB v2) standard**: every workflow skill modernized, a new dedicated playlist-sequencing skill extracted, and the Mac agent rebuilt as a v2 **autonomous sanctum agent** whose memory store now stays bounded instead of growing without limit. The only thing that touches existing installs is the memory layout — and it **auto-migrates losslessly on first activation** (details below). All `docs/` content is untouched and fully compatible.

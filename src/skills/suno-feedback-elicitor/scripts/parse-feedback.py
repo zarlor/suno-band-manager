@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -167,8 +167,8 @@ Input JSON schema:
     dimensions (array) - Problem dimensions: music, vocals, energy, structure, lyrics, vibe, production, tempo, instrumentation
 
 Example:
-  echo '{"feedback_text": "The guitar is too loud", "model": "v5 Pro"}' | python3 parse-feedback.py --stdin
-  python3 parse-feedback.py --input feedback.json
+  echo '{"feedback_text": "The guitar is too loud", "model": "v5 Pro"}' | uv run parse-feedback.py --stdin
+  uv run parse-feedback.py --input feedback.json
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

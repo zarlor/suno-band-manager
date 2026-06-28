@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = ["librosa>=0.10", "numpy>=1.24"]
@@ -7,13 +7,13 @@
 and off-beats.
 
 Usage:
-    python tempo-detail.py <audio-file> [options]
+    uv run tempo-detail.py <audio-file> [options]
 
     # Analyze a single track
-    python tempo-detail.py track.mp3
+    uv run tempo-detail.py track.mp3
 
     # JSON output to file
-    python tempo-detail.py track.mp3 --format json -o results.json
+    uv run tempo-detail.py track.mp3 --format json -o results.json
 
 Exit codes:
   0 = success

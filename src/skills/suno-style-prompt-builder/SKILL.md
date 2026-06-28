@@ -240,4 +240,6 @@ Rules: twist one or two major elements along the chosen direction, keep it music
 
 ## Scripts
 
+**Invoke via `uv run scripts/<name>.py`** — uv reads the PEP 723 inline metadata and provisions any dependencies automatically. `validate-prompt.py` is dependency-free (stdlib only), so if `uv` is unavailable you can install it (`pip install uv`) or run it directly with `python3`.
+
 `validate-prompt.py` -- Deterministically validates a prompt package: style prompt character count (v4 Pro=200, v4.5+/v5=1,000), critical zone, section-tag/asterisk contamination, genre front-loading, exclusion length/count, and enumerable dangerous-word / scream-trigger / `!` detection (`trigger` category, sourced from `_shared/suno_constants.py`). Run `uv run scripts/validate-prompt.py --style "..." --exclude "..." --model "{model_name}"`. The script flags triggers; the LLM still decides the substitution. Run `--help` for details.

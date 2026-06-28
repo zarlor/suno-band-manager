@@ -28,10 +28,10 @@ in-place, then continue with regeneration.
 Cross-platform: pure Python stdlib + PyYAML.
 
 Usage:
-    python3 scripts/regenerate-index-sections.py [project_root]
-    python3 scripts/regenerate-index-sections.py --dry-run  # print diff only
-    python3 scripts/regenerate-index-sections.py --migrate  # add missing markers
-    python3 scripts/regenerate-index-sections.py --sanctum-dir PATH  # override sanctum
+    uv run scripts/regenerate-index-sections.py [project_root]
+    uv run scripts/regenerate-index-sections.py --dry-run  # print diff only
+    uv run scripts/regenerate-index-sections.py --migrate  # add missing markers
+    uv run scripts/regenerate-index-sections.py --sanctum-dir PATH  # override sanctum
 """
 
 from __future__ import annotations

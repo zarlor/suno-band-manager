@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -9,16 +9,16 @@ Compares two versions of lyrics and categorizes changes by type (added,
 removed, modified) and tracks which sections they fall in.
 
 Usage:
-    python lyrics-diff.py --original orig.txt --transformed trans.txt [options]
+    uv run lyrics-diff.py --original orig.txt --transformed trans.txt [options]
 
     # Compare two files
-    python lyrics-diff.py --original orig.txt --transformed trans.txt
+    uv run lyrics-diff.py --original orig.txt --transformed trans.txt
 
     # Compare two text strings
-    python lyrics-diff.py --original-text "old lyrics" --transformed-text "new lyrics"
+    uv run lyrics-diff.py --original-text "old lyrics" --transformed-text "new lyrics"
 
     # Output to file
-    python lyrics-diff.py --original orig.txt --transformed trans.txt -o diff.json
+    uv run lyrics-diff.py --original orig.txt --transformed trans.txt -o diff.json
 """
 
 import argparse

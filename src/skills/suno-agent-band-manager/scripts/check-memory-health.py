@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -16,8 +16,8 @@ Tuned for the v2 sanctum model:
     healthy, not a problem).
 
 Usage:
-    python3 scripts/check-memory-health.py <sanctum-path> [--sanctum-dir PATH] [-o OUTPUT]
-    python3 scripts/check-memory-health.py --help
+    uv run scripts/check-memory-health.py <sanctum-path> [--sanctum-dir PATH] [-o OUTPUT]
+    uv run scripts/check-memory-health.py --help
 
 Arguments:
     sanctum-path    Path to the sanctum (band-manager-sidecar) directory

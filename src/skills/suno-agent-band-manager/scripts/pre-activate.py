@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -10,8 +10,8 @@ init-sanctum.py — NOT by writing the old inline stubs), and renders the
 capability menu from module-help.csv.
 
 Usage:
-    python3 scripts/pre-activate.py <project-root> [--scaffold] [--sanctum-dir PATH] [-o OUTPUT]
-    python3 scripts/pre-activate.py --help
+    uv run scripts/pre-activate.py <project-root> [--scaffold] [--sanctum-dir PATH] [-o OUTPUT]
+    uv run scripts/pre-activate.py --help
 
 Arguments:
     project-root    Project root directory path

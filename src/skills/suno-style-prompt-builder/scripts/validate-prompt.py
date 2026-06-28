@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -14,19 +14,19 @@ Validates:
 - Front-loading check (genre/mood should appear early)
 
 Usage:
-    python validate-prompt.py <prompt-file-or-text> [options]
+    uv run validate-prompt.py <prompt-file-or-text> [options]
 
     # Validate a prompt text directly
-    python validate-prompt.py --style "indie folk-rock, warm..." --exclude "no autotune"
+    uv run validate-prompt.py --style "indie folk-rock, warm..." --exclude "no autotune"
 
     # Validate with model-specific limits
-    python validate-prompt.py --style "indie folk-rock..." --model "v4 Pro"
+    uv run validate-prompt.py --style "indie folk-rock..." --model "v4 Pro"
 
     # Validate from a file (expects YAML with style_prompt and exclusion_prompt fields)
-    python validate-prompt.py prompt-output.yaml
+    uv run validate-prompt.py prompt-output.yaml
 
     # Output to file
-    python validate-prompt.py --style "..." -o results.json
+    uv run validate-prompt.py --style "..." -o results.json
 """
 
 import argparse

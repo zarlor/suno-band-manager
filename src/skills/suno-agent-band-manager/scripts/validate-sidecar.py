@@ -18,10 +18,10 @@ catalog cross-checks read MEMORY.md.)
 Cross-platform: pure Python stdlib + PyYAML (already a module dependency).
 
 Usage:
-    python3 scripts/validate-sidecar.py [project_root]
-    python3 scripts/validate-sidecar.py --format json
-    python3 scripts/validate-sidecar.py --warn-only  # exit 0 even with findings
-    python3 scripts/validate-sidecar.py --sanctum-dir PATH  # test a staging copy
+    uv run scripts/validate-sidecar.py [project_root]
+    uv run scripts/validate-sidecar.py --format json
+    uv run scripts/validate-sidecar.py --warn-only  # exit 0 even with findings
+    uv run scripts/validate-sidecar.py --sanctum-dir PATH  # test a staging copy
 
 Checks performed:
     1. Songbook internal consistency — frontmatter status/date vs. body status marker

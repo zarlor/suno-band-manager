@@ -37,7 +37,8 @@ def require_audio_deps():
             "install_command": _INSTALL_CMD,
             "message": (
                 f"Audio analysis requires: {', '.join(missing)}.\n"
-                f"Install with: {_INSTALL_CMD}\n"
+                "Run this script via `uv run` — uv reads the PEP 723 metadata and "
+                f"provisions these automatically. Or install manually: {_INSTALL_CMD}\n"
                 "These are optional — the rest of the module works without them."
             ),
         }

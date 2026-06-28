@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -10,9 +10,9 @@ and/or appends the standing order to AGENTS.md. Idempotent — skips
 if already configured.
 
 Usage:
-    python3 scripts/configure-guard.py --settings-path PATH --guard-script-path PATH
-    python3 scripts/configure-guard.py --agents-md-path PATH
-    python3 scripts/configure-guard.py --settings-path PATH --agents-md-path PATH
+    uv run scripts/configure-guard.py --settings-path PATH --guard-script-path PATH
+    uv run scripts/configure-guard.py --agents-md-path PATH
+    uv run scripts/configure-guard.py --settings-path PATH --agents-md-path PATH
 
 Options:
     --settings-path     Path to .claude/settings.local.json

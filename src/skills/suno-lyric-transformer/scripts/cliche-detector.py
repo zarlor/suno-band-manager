@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -9,16 +9,16 @@ Scans lyrics against a curated list of overused songwriting phrases and
 returns flagged matches with line numbers and suggested alternatives.
 
 Usage:
-    python cliche-detector.py <lyrics-file> [options]
+    uv run cliche-detector.py <lyrics-file> [options]
 
     # Detect cliches in a file
-    python cliche-detector.py lyrics.txt
+    uv run cliche-detector.py lyrics.txt
 
     # Detect from text argument
-    python cliche-detector.py --text "Fire in my soul keeps burning bright"
+    uv run cliche-detector.py --text "Fire in my soul keeps burning bright"
 
     # Output to file
-    python cliche-detector.py lyrics.txt -o results.json
+    uv run cliche-detector.py lyrics.txt -o results.json
 """
 
 import argparse

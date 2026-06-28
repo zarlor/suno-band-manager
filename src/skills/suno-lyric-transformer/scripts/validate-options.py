@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -9,16 +9,16 @@ Checks that selected transformation option codes are valid and consistent,
 enforcing mutual exclusion and dependency rules between options.
 
 Usage:
-    python validate-options.py <option-codes> [options]
+    uv run validate-options.py <option-codes> [options]
 
     # Validate option codes from positional argument
-    python validate-options.py "ST,CC,RA,CD"
+    uv run validate-options.py "ST,CC,RA,CD"
 
     # Validate with --codes flag
-    python validate-options.py --codes "ST,CC,RA,CD"
+    uv run validate-options.py --codes "ST,CC,RA,CD"
 
     # Output to file
-    python validate-options.py "ST,CC,RA" -o results.json
+    uv run validate-options.py "ST,CC,RA" -o results.json
 """
 
 import argparse

@@ -24,6 +24,16 @@ The skills contain critical guardrails (artist name detection, production descri
 
 **The Package Assembly Rule core (marked INVARIANT) lives in the sanctum's loaded `CREED.md`** (`_bmad/_memory/band-manager-sidecar/CREED.md` → "Package Assembly Rule — CORE"), which `references/activation.md` loads on **every** agent activation — so the guarantee holds: whenever a package is assembled, the rule is loaded. **The full rule** — Pre-Output Self-Check, Violation Tells, Agent-vs-Skill tool choice, highest-risk contexts, and refinement presentation scope — lives in the on-demand `creed-package-assembly.md` shard (loaded before any package-assembly work). This root file is a brief cross-tool reinforcement — the authoritative rule is in the sanctum creed core and its package-assembly shard, NOT in the authored-source `references/creed.md` (which is no longer loaded on activation).
 
+## Script Execution — `uv run` (MANDATORY)
+
+Every Python script in this module runs via `uv run scripts/<name>.py` (or `uv run <path-to-script>.py`). `uv` reads each script's PEP 723 inline metadata (the `# /// script … # ///` header) and auto-provisions its dependencies — `pyyaml`, `librosa`, `numpy` — with no virtualenv to activate and no manual `pip install`. When an activation block, reference doc, or skill instruction says to run a script, invoke it with `uv run`.
+
+**Fallback:** if `uv` is unavailable, install it (`curl -LsSf https://astral.sh/uv/install.sh | sh`, or `pip install uv`). Dependency-free (stdlib-only) scripts can also run with `python3 scripts/<name>.py`; scripts that declare third-party dependencies need either `uv` or a manual install of those deps.
+
+**Exception:** the `pipeline-guard.py` hook is invoked directly with `python3` — it fires on every tool call, so it is deliberately kept off `uv` to avoid per-invocation startup latency. Do not rewrite the hook's `python3` invocation.
+
+This aligns the module with the BMad v6.9.0 heads-up that v7 standardizes every Python-running skill on `uv run`.
+
 ## Why This File Exists
 
 The activation rules used to live only inside individual `SKILL.md` files in a declarative style ("Load config...", "Route by state..."). That style works in Claude Code because the harness adds scaffolding around skill activation, but in Gemini CLI, Codex CLI, OpenCode, and other LLM CLIs, the model sees the `SKILL.md` text more literally and may treat the activation steps as optional reading rather than mandatory tool calls.

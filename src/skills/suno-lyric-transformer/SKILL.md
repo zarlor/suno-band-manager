@@ -301,4 +301,4 @@ After user approval:
 | `lyrics-diff.py` | Structured diff between original and transformed lyrics |
 | `assemble-summary.py` | Assembles Transformation Summary from script outputs |
 
-All scripts support `--help`. Located in `scripts/`.
+All scripts support `--help`. Located in `scripts/`. **Invoke each via `uv run scripts/<name>.py`** — uv reads the PEP 723 inline metadata and provisions any dependencies automatically. These scripts are dependency-free (stdlib only), so if `uv` is unavailable you can install it (`pip install uv`) or run them directly with `python3`.

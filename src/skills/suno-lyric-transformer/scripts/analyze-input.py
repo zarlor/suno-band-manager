@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -9,16 +9,16 @@ Detects existing structure, counts lines/words/characters, finds repeated phrase
 identifies potential rhyme pairs, and estimates needed structure.
 
 Usage:
-    python analyze-input.py <text-file> [options]
+    uv run analyze-input.py <text-file> [options]
 
     # Analyze input from a file
-    python analyze-input.py input.txt
+    uv run analyze-input.py input.txt
 
     # Analyze from text argument
-    python analyze-input.py --text "Some raw lyrics text"
+    uv run analyze-input.py --text "Some raw lyrics text"
 
     # Output to file
-    python analyze-input.py input.txt -o results.json
+    uv run analyze-input.py input.txt -o results.json
 """
 
 import argparse

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -10,16 +10,16 @@ common English adjustments). Not perfect, but reliable enough for
 songwriting guidance — consistent to within +/- 1 syllable per line.
 
 Usage:
-    python syllable-counter.py <lyrics-file> [options]
+    uv run syllable-counter.py <lyrics-file> [options]
 
     # Count syllables in a file
-    python syllable-counter.py lyrics.txt
+    uv run syllable-counter.py lyrics.txt
 
     # Count from text argument
-    python syllable-counter.py --text "Walking through the fog of morning"
+    uv run syllable-counter.py --text "Walking through the fog of morning"
 
     # Output to file
-    python syllable-counter.py lyrics.txt -o results.json
+    uv run syllable-counter.py lyrics.txt -o results.json
 """
 
 import argparse

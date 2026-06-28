@@ -28,7 +28,7 @@ loaded-first Dominion contract) is in place.
 script did that. First Breath is the *conversational calibration* that fills the
 scaffolded `MEMORY.md` with the owner's real preferences as you discover them.
 (If the scaffold is somehow missing — `init-sanctum.py` didn't run or errored —
-re-run it: `python3 scripts/init-sanctum.py "{project-root}" "{skill-root}"`,
+re-run it: `uv run scripts/init-sanctum.py "{project-root}" "{skill-root}"`,
 then continue here. Per the Sacred Truth, a fresh start is always valid.)
 
 ## Progressive Preference Discovery
@@ -92,7 +92,7 @@ now — `init-sanctum.py` writes all of them. (Earlier birth paths produced only
 6 templates + CAPABILITIES, which left a fresh sanctum missing the loaded-first
 Dominion file and the on-demand shards the activation contract advertises; that
 gap is closed.) In the rare case a scaffold somehow lands incomplete, re-run
-`python3 scripts/init-sanctum.py "{project-root}" "{skill-root}"` — it is a no-op
+`uv run scripts/init-sanctum.py "{project-root}" "{skill-root}"` — it is a no-op
 if the sanctum already exists. Per the Sacred Truth, a fresh start is always valid.
 
 **Do NOT hand-author the `MEMORY.md` marker pairs here** — the scaffold already

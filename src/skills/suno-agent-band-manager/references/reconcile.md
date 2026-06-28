@@ -144,7 +144,7 @@ exclude styles, settings, and the full generation log.
 
 When building or updating the "Pending / Parked Work" section of the sanctum `MEMORY.md`, Mac MUST:
 
-1. **Run `python3 scripts/scan-wip-status.py "{project-root}" --format json`** (or `uv run` if deps are missing) — this is the marker scan. It reports each `docs/wip-*.md` file as `status: completed | active`, with `completed_as` / `songbook_ref` for resolved ones and a `correlation_warning` for any active WIP that looks like the source of a published song. Do NOT hand-scan the files — the marker is "machine-readable … that listings should grep for," and this is the grep.
+1. **Run `uv run scripts/scan-wip-status.py "{project-root}" --format json`** — this is the marker scan. It reports each `docs/wip-*.md` file as `status: completed | active`, with `completed_as` / `songbook_ref` for resolved ones and a `correlation_warning` for any active WIP that looks like the source of a published song. Do NOT hand-scan the files — the marker is "machine-readable … that listings should grep for," and this is the grep.
 2. **Skip files reported `status: completed`** — they are resolved, not pending. Partition the script output: `active` (with no warning) → pending; `completed` → resolved.
 3. **When including resolved WIPs in the index for historical reference**, put them under a separate "Resolved WIP fragments (historical record only — not active work)" subsection, clearly delineated from active pending/parked work, with a pointer to the songbook entry they became (`songbook_ref` from the script).
 

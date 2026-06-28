@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
 # dependencies = []
@@ -450,8 +450,8 @@ Dimension/Direction combinations:
   length: too_short, too_long, intro_too_long, outro_cuts_off, pacing_drags
 
 Example:
-  echo '{"dimensions": [{"dimension": "vocals", "direction": "too_polished"}, {"dimension": "energy", "direction": "too_low"}], "tier": "pro"}' | python3 map-adjustments.py --stdin
-  echo '{"dimensions": [{"dimension": "vocals", "direction": "too_polished"}]}' | python3 map-adjustments.py --stdin --style-prompt "warm indie rock, ..." --model "v4 Pro"
+  echo '{"dimensions": [{"dimension": "vocals", "direction": "too_polished"}, {"dimension": "energy", "direction": "too_low"}], "tier": "pro"}' | uv run map-adjustments.py --stdin
+  echo '{"dimensions": [{"dimension": "vocals", "direction": "too_polished"}]}' | uv run map-adjustments.py --stdin --style-prompt "warm indie rock, ..." --model "v4 Pro"
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

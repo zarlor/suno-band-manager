@@ -61,6 +61,8 @@ Use this skill directly when you already have a band profile or clear musical di
 | v5.5 Pro | Same as v5 Pro, more expressive + Voices/Custom Models | 1,000 |
 | v4 Pro | Simple, straightforward descriptors | 200 |
 
+**Character-limit provenance (2026-08-13):** these limits are community-attested and validated by our own use — **no official Suno documentation states them.** Keep enforcing them; don't present them as documented platform facts. Suno has also announced that current models will be retired when the next model ships, with no versions or dates published.
+
 ## Part of the Suno Band Manager Module
 
 This skill is part of the Suno Band Manager module and works with any LLM CLI supporting the [Agent Skills](https://agentskills.io) standard. For the full guided experience, invoke Mac — the orchestrating agent — instead of using this skill directly.

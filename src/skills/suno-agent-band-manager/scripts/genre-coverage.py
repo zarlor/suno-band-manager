@@ -8,7 +8,7 @@
 The point: Mac must KNOW what a band has actually used so it never again claims
 "X is fresh / never done" when it isn't. v1 was an abject failure — it only read
 songbook style-prompt anchors plus explicitly-labeled "Reference territory:" lines,
-so inline artist references (e.g. From Now Until's "(Songs:Ohia / Red House Painters
+so inline artist references (e.g. a song's "(artist A / artist B
 / Magnolia Electric Co territory)") — which live in the BAND PROFILE catalog's
 genre_applied / reference_tracks / voice_profiles use_case — slipped right through.
 
@@ -36,12 +36,28 @@ AUTOGEN_START = "<!-- AUTOGEN-START: genre-coverage -->"
 AUTOGEN_END = "<!-- AUTOGEN-END: genre-coverage -->"
 
 # Capitalized terms that are NOT artist/territory references (reduce noise).
+# Band-specific names are NOT hardcoded here — band_stopwords() derives them
+# from the band being scanned, so this list stays portable across projects.
 STOP = {
     "new orleans", "nola", "crescent city", "gulf coast", "camelot", "aeolian",
-    "solitary fire", "lenny's voice", "lenny", "mac", "suno", "gemini", "bpm",
+    "mac", "suno", "gemini", "bpm",
     "wip", "professional", "create", "creates", "voice", "intro", "verse",
     "chorus", "bridge", "outro", "breakdown", "fade out", "the room",
 }
+
+
+def band_stopwords(band, profile_text=""):
+    """Terms to ignore for THIS band: its slug, its slug de-hyphenated, and the
+    `name:` from its profile (plus an apostrophe-stripped variant, so a name like
+    "Someone's Voice" also filters as "someones voice"). A band's own name is not
+    an artist reference, and hardcoding any project's band names here would make
+    the script non-portable."""
+    words = {band.lower(), band.replace("-", " ").lower()}
+    m = re.search(r'^name:\s*["\']?(.+?)["\']?\s*$', profile_text, re.M)
+    if m:
+        nm = m.group(1).strip().lower()
+        words |= {nm, nm.replace("'", "").replace("\u2019", "")}
+    return {w for w in words if w}
 
 NAME = r"[A-Z][\w.'’&:!?+-]*(?:\s+[A-Z0-9][\w.'’&:!?+-]*){0,4}"
 
@@ -94,8 +110,9 @@ SECTION_WORDS = re.compile(
     r'Final Chorus|Hook|Interlude|Drop|Build|Solo)\b', re.I)
 
 
-def _noise(c):
-    return (not c) or len(c) < 3 or c.lower() in STOP or bool(NOISE_RE.search(c))
+def _noise(c, extra=frozenset()):
+    lc = (c or "").lower()
+    return (not c) or len(c) < 3 or lc in STOP or lc in extra or bool(NOISE_RE.search(c))
 
 
 def free_text_clauses(text):
@@ -159,14 +176,18 @@ def collect_band(project_root, band, songbook_dir):
         rows.append({"title": title_of(text, fn[:-3]), "status": status_of(text),
                      "anchor": a1, "anchor2": a2})
     influences, applied, profile_scanned = set(), [], False
+    ptext = ""
     profile = os.path.join(project_root, "docs", "band-profiles", f"{band}.yaml")
     if os.path.exists(profile):
         ptext = read(profile)
         profile_scanned = True
-        influences = {c for c in reference_tracks_block(ptext) if c and c.lower() not in STOP}
         applied = genre_applied_map(ptext)
         clauses |= free_text_clauses(ptext)
-    clauses = {c for c in clauses if not _noise(c)}
+    own = band_stopwords(band, ptext)
+    if profile_scanned:
+        influences = {c for c in reference_tracks_block(ptext)
+                      if c and c.lower() not in STOP and c.lower() not in own}
+    clauses = {c for c in clauses if not _noise(c, own)}
     return (rows, sorted(influences, key=str.lower), applied,
             sorted(clauses, key=str.lower), profile_scanned)
 

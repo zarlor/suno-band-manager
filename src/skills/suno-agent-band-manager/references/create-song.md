@@ -204,11 +204,11 @@ Note: Voice handles vocal identity — gender descriptors have been omitted from
 {custom_model_name}
 Note: Production descriptors covered by this model have been omitted from the style prompt below. Prompt focuses on song-specific direction.
 
-{If pre-v5.5 Pro/Premier and Persona applies:}
+{If Pro/Premier and Persona applies:}
 ### Persona
 {persona_name} (from: {source_song})
 Note: This auto-populates the Style of Music field. Keep style modifications simple below.
-Note: In v5.5, Personas have been replaced by Voices.
+Note: Personas still work and are found inside the Voices menu — they were relocated, not removed. On v5.5, a Voice is the stronger tool for locking vocal identity; a Persona captures style essence instead.
 
 {If v4.5+ Pro and Inspo applies:}
 ### Inspo
@@ -247,8 +247,8 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 - Style Influence: {value}% — {reasoning} (controls prompt adherence: lower = looser interpretation, higher = tighter to your style prompt)
 {If Persona selected:}
 - Audio Influence: {value}% — {reasoning}
-  Persona: 15-25% effective range (25% default, reduce for era mismatch)
-  Voice: 35-45% subtle flavor, 55-70% balanced (default starting point), 75-85% identity-focused, 85-95% maximum fidelity
+  Persona slot: 15-25% effective range (25% default, reduce for era mismatch)
+  Voice slot: runs much higher and is per-voice — start ~50% and profile. Pull the value from `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Voices" (canonical ranges + Suno's raise-then-rebuild escalation); do not recite a scale from memory here
 
 ### Song Title
 {suggested_title}

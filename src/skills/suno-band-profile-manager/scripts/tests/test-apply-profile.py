@@ -59,7 +59,7 @@ class Args:
 
 def test_derive_slug():
     assert _derive_slug("Test Band") == "test-band"
-    assert _derive_slug("Lenny's Voice!") == "lennys-voice"
+    assert _derive_slug("Rider's Hymn!") == "riders-hymn"
     assert _derive_slug("  Multiple   Spaces ") == "multiple-spaces"
 
 

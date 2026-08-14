@@ -23,7 +23,8 @@ reference_tracks:
 model_preference: "v4.5-all"  # v4.5-all | v4 Pro (legacy) | v4.5 Pro | v4.5+ Pro | v5 Pro | v5.5 Pro
 tier: "free"                   # free | pro | premier
 
-# Style Prompt — 1,000 char limit (v4.5+/v5/v5.5; 200 for v4 Pro). Front-load essentials in first ~200 chars (critical zone).
+# Style Prompt — 1,000 char limit (v4.5+/v5/v5.5; 200 for v4 Pro) — community-attested, not
+# officially documented. Front-load essentials in first ~200 chars (critical zone).
 style_baseline: >
   Indie folk-rock with electronic textures, atmospheric and layered.
   Warm analog synths underneath acoustic guitar, subtle ambient pads.
@@ -40,13 +41,13 @@ vocal:
   delivery: "intimate, conversational"
   energy: "restrained, building"
   diction: "clear, slightly slurred on emotional peaks"
-  persona_reference: ""    # Suno Persona name, if exists (v4.5/v5 only; replaced by voice_id in v5.5)
+  persona_reference: ""    # Suno Persona name, if exists (Pro/Premier; still supported — Personas live inside the Voices menu)
   persona_source_song: ""  # Song the Persona was derived from (for recreation)
   # NOTE: Personas pull the sound toward the era/style of the source song.
   # Audio Influence at 10-15% reduces this era-anchoring but doesn't fully
   # overcome it. For era-specific pieces, consider generating without a persona,
   # or creating era-specific personas from era-appropriate source songs.
-  voice_id: ""             # Suno Voice identifier (v5.5, Pro/Premier only). Replaces persona_reference for v5.5.
+  voice_id: ""             # Suno Voice identifier (v5.5, Pro/Premier only). Distinct from persona_reference — a Voice is cloning, a Persona is style-essence capture. Both can exist; set the one this band actually uses.
   # NOTE: When voice_id is set, omit gender vocal descriptors from style_baseline —
   # the Voice defines the vocal identity (gender, tone, character from the audio sample).
 
@@ -149,16 +150,16 @@ generation_history: []
 | `reference_tracks` | No | list of strings | Free-form "sounds like" descriptions |
 | `model_preference` | Yes | string | One of: v4.5-all, v4 Pro (legacy), v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro |
 | `tier` | Yes | string | One of: free, pro, premier |
-| `style_baseline` | Yes | string | Max 1000 chars (v4.5+/v5/v5.5). Max 200 chars for v4 Pro. Front-load essentials in first ~200 chars (critical zone — strongest influence). Content beyond 200 is supplementary, not wasted. |
+| `style_baseline` | Yes | string | Max 1000 chars (v4.5+/v5/v5.5). Max 200 chars for v4 Pro. These limits are community-attested, not officially documented by Suno — enforce them, don't cite them as platform docs. Front-load essentials in first ~200 chars (critical zone — strongest influence). Content beyond 200 is supplementary, not wasted. |
 | `exclusion_defaults` | No | list of strings | Keep each entry concise and specific. Max 5 entries recommended |
 | `vocal.gender` | Yes* | string | One of: male, female, nonbinary, any. *Optional if `instrumental: true` |
 | `vocal.tone` | Yes* | string | Non-empty. *Optional if `instrumental: true` |
 | `vocal.delivery` | Yes* | string | Non-empty. *Optional if `instrumental: true` |
 | `vocal.energy` | Yes* | string | Non-empty. *Optional if `instrumental: true` |
 | `vocal.diction` | No | string | Optional refinement |
-| `vocal.persona_reference` | No | string | Suno Persona name if exists (Pro/Premier only). v4.5/v5 models only; replaced by `voice_id` for v5.5 |
+| `vocal.persona_reference` | No | string | Suno Persona name if exists (Pro/Premier only). Personas were relocated into the Voices menu, **not** removed, and still work — this field is not deprecated |
 | `vocal.persona_source_song` | No | string | Song the Persona was derived from (for recreation if lost) |
-| `vocal.voice_id` | No | string | Suno Voice identifier (Pro/Premier only, v5.5). Replaces `persona_reference` for v5.5. When set, omit gender vocal descriptors from `style_baseline`. Single-Voice default; use `voices` for a multi-Voice band |
+| `vocal.voice_id` | No | string | Suno Voice identifier (Pro/Premier only, v5.5). A separate mechanism from `persona_reference`, not a replacement for it. When set, omit gender **and timbre** vocal descriptors from `style_baseline` — the Voice defines both. Single-Voice default; use `voices` for a multi-Voice band |
 | `voices` | No | list of objects | Multi-Voice mapping (Pro/Premier, v5.5). Each entry: `voice_id` (required), `label` (short name), `use_case` (which track types it serves). Source of truth for per-track Voice selection when a band has more than one cloned Voice; `vocal.voice_id` stays the primary/default |
 | `creativity_default` | No | string | One of: conservative, balanced, experimental. Defaults to balanced |
 | `sliders.weirdness` | No | integer | 0-100, only valid for pro/premier tiers |
@@ -205,9 +206,9 @@ generation_history: []
 - **Lyric Transformer** reads: `writer_voice`, `language`
 - **Feedback Elicitor** reads: `style_baseline`, `sliders`, `model_preference`; writes BOTH `generation_history` and `generation_learnings` via headless:edit.
 - **`generation_learnings` vs `generation_history` (the data contract):** `generation_learnings` holds **durable learned patterns across songs** — the distilled "what works / what doesn't" for this band's sound, not tied to any single generation. `generation_history` holds **per-generation snapshots** — this round's exact settings (style prompt, model, sliders) plus the reaction. The Feedback Elicitor writes both: it appends the round's snapshot to `generation_history` and promotes any durable pattern that snapshot taught into `generation_learnings`. Treat `generation_learnings` (alongside `known_working_patterns` / `known_limitations`) as the band's institutional memory; `generation_history` as the changelog those learnings were distilled from.
-- When a Persona is active (v4.5/v5), its style auto-populates the Style of Music field — keep additional style modifications simple (1-2 genres, 1 mood, 2-4 instruments max)
-- **Persona Era-Anchoring (v4.5/v5):** Personas pull the sound toward the era/style of the source song. Audio Influence at 10-15% reduces this but doesn't eliminate it. For era-specific pieces, generate without a persona or create era-specific personas from era-appropriate source songs.
-- **Voices (v5.5):** Voices replace Personas for v5.5. When `voice_id` is set, the Voice defines the vocal identity — omit gender vocal descriptors from `style_baseline`. The style prompt should focus on instrumentation, production, and mood rather than vocal character.
+- When a Persona is active, its style auto-populates the Style of Music field — keep additional style modifications simple (1-2 genres, 1 mood, 2-4 instruments max)
+- **Persona Era-Anchoring:** Personas pull the sound toward the era/style of the source song. Audio Influence at 10-15% reduces this but doesn't eliminate it. For era-specific pieces, generate without a persona or create era-specific personas from era-appropriate source songs.
+- **Voices (v5.5):** Voices sit alongside Personas rather than replacing them (both live in the Voices menu; Personas still work). When `voice_id` is set, the Voice defines the vocal identity — omit gender **and timbre** descriptors from `style_baseline`; delivery descriptors still matter and should stay. The style prompt should focus on instrumentation, production, and mood rather than vocal character.
 - **v5.5 Voice-Character Principle:** Voices capture vocal *character* — timbre, lilt, vibrato tendencies, attack patterns, dynamics behavior, mic artifacts. They don't carry trained genre gravity; Suno adapts the captured character to whatever genre the prompt directs. Six practical rules for Voice-aware profiles (see `suno-style-prompt-builder/references/model-prompt-strategies.md` for full details and validated case study):
   1. **Drop descriptors that duplicate what the Voice already delivers** — if the Voice captures vulnerable-breathy delivery, drop "warm," "vulnerable," "clean," "storytelling vocal" from `style_baseline`. They're redundant and can conflict with the captured character.
   2. **Load descriptors that specify what the song needs from the arrangement.** The style prompt drives arrangement (instrumentation, genre, production, dynamics); the Voice provides vocal character. Be explicit about arrangement — "overdriven rhythm guitar with crunch," "driving mid-tempo rock groove" — rather than relabeling what the Voice does.
@@ -229,7 +230,7 @@ Each band in the project owns exactly **one** canonical playlist file:
 docs/{band-slug}-playlist.yaml
 ```
 
-The slug matches the band profile filename — `docs/band-profiles/solitary-fire.yaml` pairs with `docs/solitary-fire-playlist.yaml`. This file is the single source of truth for the band's track sequence; **do not duplicate the track list elsewhere.** Other files (sidecar narrative, voice context, ordering doc) reference or derive from this YAML.
+The slug matches the band profile filename — `docs/band-profiles/iron-meridian.yaml` pairs with `docs/iron-meridian-playlist.yaml`. This file is the single source of truth for the band's track sequence; **do not duplicate the track list elsewhere.** Other files (sidecar narrative, voice context, ordering doc) reference or derive from this YAML.
 
 ### Schema
 

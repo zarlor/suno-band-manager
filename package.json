@@ -1,10 +1,10 @@
 {
   "name": "suno-band-manager",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "AI-powered music production assistant for creating Suno-ready song packages — a BMad Method module",
   "main": "src/module.yaml",
   "keywords": ["bmad", "bmad-method", "suno", "ai-music", "music-production", "song-creation"],
-  "author": "Lenny Zimmermann",
+  "author": "zarlor",
   "license": "MIT",
   "repository": {
     "type": "git",

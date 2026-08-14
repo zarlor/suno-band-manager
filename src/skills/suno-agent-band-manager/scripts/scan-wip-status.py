@@ -78,7 +78,7 @@ SONGBOOK_REF_RE = re.compile(r"`(docs/songbook/[^`]+\.md)`")
 def _normalize_title(title: str) -> str:
     """Lowercase + collapse whitespace + drop a trailing version suffix.
 
-    So "The Slide", "the slide", and "The Slide v2" all compare equal enough to
+    So "Harbor Lights", "harbor lights", and "Harbor Lights v2" all compare equal enough to
     flag a correlation. Matching here is intentionally loose — it only raises a
     *warning* for the LLM to confirm, never an automatic state change.
     """

@@ -34,16 +34,16 @@ _is_published = scaffold_mod._is_published
 # --- slug -> name ---
 
 def test_band_name_from_slug():
-    assert _band_name_from_slug("solitary-fire") == "Solitary Fire"
-    assert _band_name_from_slug("lennys-voice") == "Lennys Voice"
+    assert _band_name_from_slug("iron-meridian") == "Iron Meridian"
+    assert _band_name_from_slug("riders-hymn") == "Riders Hymn"
     assert _band_name_from_slug("band_under_score") == "Band Under Score"
 
 
 # --- render: empty template ---
 
 def test_render_empty_template():
-    out = render_playlist_yaml("Solitary Fire", [], from_songbook=False)
-    assert 'album: "Solitary Fire"' in out
+    out = render_playlist_yaml("Iron Meridian", [], from_songbook=False)
+    assert 'album: "Iron Meridian"' in out
     assert "tracks:" in out
     # Empty template carries instructional comments, no real track entries.
     assert "Add tracks below as they are published" in out

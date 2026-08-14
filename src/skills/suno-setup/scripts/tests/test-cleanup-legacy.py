@@ -43,7 +43,7 @@ def test_verified_removal_with_skills_installed():
         make_skill(skills_dir, "suno-agent-band-manager")
         # core/ with config.yaml to preserve
         (bmad / "core").mkdir(parents=True)
-        (bmad / "core" / "config.yaml").write_text("user_name: Lenny\n")
+        (bmad / "core" / "config.yaml").write_text("user_name: Ada\n")
         (bmad / "core" / "junk.txt").write_text("junk")
 
         code, data = run([

@@ -29,7 +29,7 @@ include:
   # Playlist artifacts and audio analysis outputs.
   # The per-band patterns (added with the v1.7.2 multi-band architecture)
   # work for any current or future band in the project — they catch
-  # `solitary-fire-playlist.yaml`, `your-band-playlist.yaml`, etc.
+  # `iron-meridian-playlist.yaml`, `your-band-playlist.yaml`, etc.
   # without needing to enumerate each band by name.
   # - "docs/*-playlist.yaml"             # canonical per-band playlist YAMLs (single source of truth for sequencing)
   # - "docs/*-playlist-ordering.md"      # narrative ordering docs per band

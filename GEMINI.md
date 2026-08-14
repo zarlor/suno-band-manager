@@ -34,15 +34,7 @@ Every Python script in this module runs via `uv run scripts/<name>.py` (or `uv r
 
 This aligns the module with the BMad v6.9.0 heads-up that v7 standardizes every Python-running skill on `uv run`.
 
-## Why This File Exists
-
-The activation rules used to live only inside individual `SKILL.md` files in a declarative style ("Load config...", "Route by state..."). That style works in Claude Code because the harness adds scaffolding around skill activation, but in Gemini CLI, Codex CLI, OpenCode, and other LLM CLIs, the model sees the `SKILL.md` text more literally and may treat the activation steps as optional reading rather than mandatory tool calls.
-
-This file makes the activation discipline explicit and tool-agnostic. It is loaded into every session automatically by the LLM CLI, so the standing orders are always present regardless of which skill activates or how the model interprets `SKILL.md`.
-
 ## Cross-References
 
 - `INSTALLATION.md` — Setup instructions for all supported LLM CLIs (Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, OpenCode, Cursor, Aider)
 - `src/skills/suno-agent-band-manager/references/USAGE.md` — End-user guide
-- `README.md` — Module overview and architecture
-- `src/skills/*/SKILL.md` — Per-skill activation and capability definitions

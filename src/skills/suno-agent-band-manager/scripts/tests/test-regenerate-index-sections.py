@@ -21,8 +21,8 @@ spec.loader.exec_module(mod)
 
 SONG_TEXT = (
     "---\n"
-    'title: "The Slide"\n'
-    "band_profile: lennys-voice\n"
+    'title: "Harbor Lights"\n'
+    "band_profile: paper-lanterns\n"
     "status: published\n"
     "date: 2026-01-15\n"
     "---\n\n"
@@ -32,12 +32,12 @@ SONG_TEXT = (
 
 def _scaffold(tmp_path, memory_body):
     (tmp_path / "docs" / "band-profiles").mkdir(parents=True)
-    (tmp_path / "docs" / "band-profiles" / "lennys-voice.yaml").write_text(
-        'name: "Lenny\'s Voice"\n', encoding="utf-8"
+    (tmp_path / "docs" / "band-profiles" / "paper-lanterns.yaml").write_text(
+        'name: "Paper Lanterns"\n', encoding="utf-8"
     )
-    songbook = tmp_path / "docs" / "songbook" / "lennys-voice"
+    songbook = tmp_path / "docs" / "songbook" / "paper-lanterns"
     songbook.mkdir(parents=True)
-    (songbook / "the-slide.md").write_text(SONG_TEXT, encoding="utf-8")
+    (songbook / "harbor-lights.md").write_text(SONG_TEXT, encoding="utf-8")
     sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
     sanctum.mkdir(parents=True)
     memory = sanctum / "MEMORY.md"
@@ -49,8 +49,8 @@ def test_parse_song_reads_frontmatter_and_body(tmp_path):
     p = tmp_path / "song.md"
     p.write_text(SONG_TEXT, encoding="utf-8")
     song = mod.parse_song(p)
-    assert song["title"] == "The Slide"
-    assert song["band"] == "lennys-voice"
+    assert song["title"] == "Harbor Lights"
+    assert song["band"] == "paper-lanterns"
     assert song["frontmatter_status"] == "published"
     assert song["body_status"] == "LOCKED"
     assert song["body_date"] == "2026-01-15"
@@ -64,20 +64,20 @@ def test_is_published_requires_both_markers():
 
 def test_band_display_map_uses_profile_name(tmp_path):
     (tmp_path / "docs" / "band-profiles").mkdir(parents=True)
-    (tmp_path / "docs" / "band-profiles" / "lennys-voice.yaml").write_text(
-        'name: "Lenny\'s Voice"\n', encoding="utf-8"
+    (tmp_path / "docs" / "band-profiles" / "paper-lanterns.yaml").write_text(
+        'name: "Paper Lanterns"\n', encoding="utf-8"
     )
     out = mod.band_display_map(tmp_path)
-    assert out["lennys-voice"] == "Lenny's Voice"
+    assert out["paper-lanterns"] == "Paper Lanterns"
 
 
 def test_band_display_map_falls_back_to_titlecased_slug(tmp_path):
     (tmp_path / "docs" / "band-profiles").mkdir(parents=True)
-    (tmp_path / "docs" / "band-profiles" / "solitary-fire.yaml").write_text(
+    (tmp_path / "docs" / "band-profiles" / "iron-meridian.yaml").write_text(
         "tier: pro\n", encoding="utf-8"
     )
     out = mod.band_display_map(tmp_path)
-    assert out["solitary-fire"] == "Solitary Fire"
+    assert out["iron-meridian"] == "Iron Meridian"
 
 
 def test_replace_section_swaps_marked_content():
@@ -127,7 +127,7 @@ def test_main_regenerates_into_marked_memory(tmp_path, monkeypatch, capsys):
     assert rc == 0
     result = json.loads(capsys.readouterr().out)
     assert result["status"] in ("regenerated", "unchanged")
-    assert "The Slide" in memory.read_text(encoding="utf-8")
+    assert "Harbor Lights" in memory.read_text(encoding="utf-8")
 
 
 def test_main_errors_when_markers_missing(tmp_path, monkeypatch):
@@ -144,12 +144,12 @@ def test_main_honors_sanctum_dir_override(tmp_path, monkeypatch, capsys):
     import json
     # Songbook/profiles live under tmp_path; the sanctum lives in a sibling dir.
     (tmp_path / "docs" / "band-profiles").mkdir(parents=True)
-    (tmp_path / "docs" / "band-profiles" / "lennys-voice.yaml").write_text(
-        'name: "Lenny\'s Voice"\n', encoding="utf-8"
+    (tmp_path / "docs" / "band-profiles" / "paper-lanterns.yaml").write_text(
+        'name: "Paper Lanterns"\n', encoding="utf-8"
     )
-    songbook = tmp_path / "docs" / "songbook" / "lennys-voice"
+    songbook = tmp_path / "docs" / "songbook" / "paper-lanterns"
     songbook.mkdir(parents=True)
-    (songbook / "the-slide.md").write_text(SONG_TEXT, encoding="utf-8")
+    (songbook / "harbor-lights.md").write_text(SONG_TEXT, encoding="utf-8")
 
     staging = tmp_path / "staging-copy"
     staging.mkdir()
@@ -167,4 +167,4 @@ def test_main_honors_sanctum_dir_override(tmp_path, monkeypatch, capsys):
     assert rc == 0
     result = json.loads(capsys.readouterr().out)
     assert result["status"] in ("regenerated", "unchanged")
-    assert "The Slide" in (staging / "MEMORY.md").read_text(encoding="utf-8")
+    assert "Harbor Lights" in (staging / "MEMORY.md").read_text(encoding="utf-8")

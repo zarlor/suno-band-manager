@@ -9,7 +9,7 @@ description: Generates model-aware Suno style prompts. Use when user says 'build
 
 This skill generates Suno-ready style prompts optimized for the user's chosen model tier, blending band profile baselines with per-song creative direction. Act as a producer's sound engineer who thinks in sonic textures, frequency ranges, and production approaches. Through guided conversation (or headless structured input), it produces a complete prompt package: style prompt, exclusion prompt, slider recommendations, and an optional experimental wild card variant.
 
-**Domain context:** Suno's model families respond to fundamentally different prompt styles -- v4.5 wants conversational descriptions while v5 wants crisp, film-brief descriptors; never mix the two approaches. Style prompts are hard-capped at 1,000 characters (200 for v4 Pro) and silently truncated. Real-world testing suggests v4.5-all may only effectively use ~200 characters. Front-load all essential genre, mood, and vocal descriptors in the first ~200 characters (the "critical zone") -- everything after is supplementary. The "Exclude Styles" field is separate and follows its own rules.
+**Domain context:** Suno's model families respond to fundamentally different prompt styles -- v4.5 wants conversational descriptions while v5 wants crisp, film-brief descriptors; never mix the two approaches. Style prompts are hard-capped at 1,000 characters (200 for v4 Pro) and silently truncated -- figures community-attested and validated by use, not documented by Suno. Real-world testing suggests v4.5-all may only effectively use ~200 characters. Front-load all essential genre, mood, and vocal descriptors in the first ~200 characters (the "critical zone") -- everything after is supplementary. The "Exclude Styles" field is separate and follows its own rules.
 
 **Design rationale (load-bearing constraints):**
 
@@ -80,7 +80,7 @@ This skill generates Suno-ready style prompts optimized for the user's chosen mo
 
 ## On Activation
 
-1. **Resolve customization** -- run `{project-root}/_bmad/scripts/resolve_customization.py {skill-name}` to merge `customize.toml` with any team/user overrides. Apply `activation_steps_prepend` before the steps below and `activation_steps_append` after greeting; load `persistent_facts` (durable project context). If the resolver is unavailable, proceed with defaults.
+1. **Resolve customization** -- run `python3 {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --key workflow`. This reads the merged `[workflow]` block (base `customize.toml` -> team `{project-root}/_bmad/custom/{skill-name}.toml` -> user `{project-root}/_bmad/custom/{skill-name}.user.toml`) and supplies `activation_steps_prepend`, `activation_steps_append`, and `persistent_facts`. Apply `activation_steps_prepend` before the steps below and `activation_steps_append` after greeting; load `persistent_facts` (durable project context). If the resolver is unavailable, read those three files directly in that order and merge by hand; if none exist, proceed with defaults.
 2. **Load config via bmad-init skill** -- use `{user_name}` for greeting, `{communication_language}` for all communications. Fallback: greet generically, default to English. Do not block on missing config.
 3. **Greet user** and proceed to Step 1
 
@@ -106,7 +106,7 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 
 **Optional but valuable:**
 - **Band profile** -- read from `docs/band-profiles/{profile-name}.yaml`. Use `reference_tracks` if present. If not found, list available profiles. If fields are missing, warn and fill from conversation.
-- **Model** -- default to profile's `model_preference` if available. Options: v4.5-all (free), v4 Pro (200-char limit), v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro.
+- **Model** -- default to profile's `model_preference` if available. Options: v4.5-all (free), v4 Pro (200-char limit), v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro. Suno has announced that current models will be retired when the next model ships, without publishing which versions or when (see the strategies reference) -- avoid building a workflow that assumes a specific legacy model persists.
 - **Creativity mode** -- Conservative (genre-pure, Weirdness 20-35), Balanced (default, 40-60), Experimental (unexpected fusions, 65-85)
 - **Specific requests** -- instrument preferences, mood descriptions, exclusions
 - **Reference tracks** -- decompose into concrete style descriptors (see `references/model-prompt-strategies.md` for confidence check and decomposition framework)
@@ -145,6 +145,8 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 
 **Keyboard-pull dangerous words** -- **"baroque"**, **"orchestral"**, **"cinematic"**, and **"rock opera"** pull theatrical/keyboard/synth-heavy or cinematic-light arrangements when guitars/bass should lead. These are texture modifiers, not genres. Replace per the Dangerous Words and Keyboard Triggers table in the strategies reference (e.g. "rock opera" -> "power ballad, dynamic shifts, building from gentle to crushing"). `validate-prompt.py` flags them; the reference carries the per-word rewrite.
 
+**The "live" word family pulls crowd noise** -- `live recording`, `live-band drums`, `live energy`, any form. Production testing has hit this repeatedly on v5.5: the word carries "live album" as its dominant association and brings audience texture with it, even when the intent is band-in-a-room performance energy. Say the quality instead: `unpolished room sound`, `natural room ambience`, `single-take band performance`.
+
 **Rhythm nouns over tempo adjectives:** "halftime", "double-time", "four-on-the-floor", "shuffle", "breakbeat" lock feel more effectively than "slow", "fast", "upbeat"
 
 **Instrument bleed-through:** The style prompt sets a GLOBAL instrument palette; instruments bleed into ALL sections regardless of section-level tags. Warn users requiring section-specific instrumentation. See strategies reference for mitigation (accents suffix, end-placement, stems workflow).
@@ -169,7 +171,7 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 - Lyrics Mode (Manual/Auto), Song title suggestion
 - Persona reference from profile if available (Pro/Premier). When Persona active: keep additional style simple (1-2 genres, 1 mood, 2-4 instruments), Persona auto-populates Style of Music field -- build on it, don't replace
 - Persona sourcing: use clear, stable lead vocals; dual Personas unreliable
-- v5.5 Voices: drop gender descriptors (Voice defines them), start Audio Influence at 55-70%
+- v5.5 Voices: drop gender **and timbre** descriptors (the Voice defines both; delivery descriptors still matter), start Audio Influence around 50% and iterate in 5-10% increments, profiling per voice -- the community ceiling is general guidance, not a limit, and Suno's own escalation for a clone that doesn't sound right is to RAISE Audio Influence first, then rebuild the profile from a clean acapella
 - v5.5 Custom Models: drop generic production descriptors the model already knows
 
 **Exclude Styles output:** Always comma-separated list for direct copy-paste: `screaming vocals, steel guitar, autotune, heavy distortion`
@@ -228,11 +230,11 @@ Rules: twist one or two major elements along the chosen direction, keep it music
 
 **Multi-model:** If user has no model preference, generate both v4.5-conversational and v5-film-brief variants.
 
-**Iteration guidance:** Generate 3-5 versions on Suno before modifying the prompt. Change only 1-2 variables per iteration. For v5 Pro, Suno Studio's section editing, stems, and alternates can address issues without re-prompting. At session end, offer collected summary of all versions with deltas.
+**Iteration guidance:** Generate 3-5 versions on Suno before modifying the prompt. Change only 1-2 variables per iteration. Structural problems are often better edited than re-prompted -- Replace Section and stems at Pro and Premier, Suno Studio 2.0 at Premier only (Studio has never been available on Pro). At session end, offer collected summary of all versions with deltas.
 
 **Version ledger (compaction-proof).** A multi-version refine loop is exactly long enough to compact away the version history before you can offer the end-of-session summary. As each version is presented, append a one-line entry -- `vN | {one-line prompt or its key change} | {changed variable}` -- to a `.style-prompt-ledger.md` scratch file in the working directory (create on v1). The end-of-session summary reads from this ledger, so it survives compaction regardless of how long the refine loop ran. This is a lightweight scratch log, not a Decision-Log Workspace -- one appended line per version, nothing more.
 
-**Pro tier tip:** Legacy Editor can replace/regenerate individual sections, rearrange via drag-and-drop, and preview alternatives. Recommend for dramatic section contrasts.
+**Pro tier tip:** The Song Editor (Legacy Editor) can replace/regenerate individual sections, rearrange via drag-and-drop, and preview alternatives. Recommend for dramatic section contrasts -- noting that production testing found audible seams at the replacement boundary even on small targets, so it trades one problem for another when the join matters.
 
 **Scope note:** Cover/remix prompt building not supported. Use Suno's built-in Cover feature (see strategies reference).
 

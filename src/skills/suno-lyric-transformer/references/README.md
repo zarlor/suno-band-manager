@@ -2,7 +2,7 @@
 
 > This file is a human-facing overview, not loaded at activation. The canonical, drift-free definitions live in `SKILL.md` and the two reference files beside this one — this overview points to them rather than restating them, so there is one source of truth per fact.
 
-The Lyric Transformer converts poems, raw text, and rough lyrics into Suno-ready structured song lyrics with metatags, proper section architecture, and rhythmic consistency. It offers **eight** transformation options that users mix and match based on how much creative control they want to retain — from lightweight structure tagging to full rewrites — plus a Word Fidelity mode for writers who want their exact words preserved. It enforces Suno's character limits (5,000 hard limit on v4.5+, ~3,000 quality budget), runs cliche detection by default (Suno's vocal engine amplifies cliches), and integrates with band-profile writer-voice data to maintain authentic voice.
+The Lyric Transformer converts poems, raw text, and rough lyrics into Suno-ready structured song lyrics with metatags, proper section architecture, and rhythmic consistency. It offers **eight** transformation options that users mix and match based on how much creative control they want to retain — from lightweight structure tagging to full rewrites — plus a Word Fidelity mode for writers who want their exact words preserved. It enforces Suno's character limits (5,000 hard limit on v4.5+, ~3,000 quality budget — community-attested figures, not officially documented by Suno), runs cliche detection by default (Suno's vocal engine amplifies cliches), and integrates with band-profile writer-voice data to maintain authentic voice.
 
 ## When to Use Directly vs. Through Mac
 

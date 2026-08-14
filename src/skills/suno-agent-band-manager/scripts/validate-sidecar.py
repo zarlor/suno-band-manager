@@ -327,7 +327,7 @@ def check_index_recently_published(
         claimed_date = match.group("date")
         claimed_status = match.group("status").upper()
 
-        # Match title allowing for minor suffix (e.g., "Observation v2" matches "Observation").
+        # Match title allowing for minor suffix (e.g., "Harbor Lights v2" matches "Harbor Lights").
         # Multiple songs can share a title across bands (same poem, different interpretations),
         # so disambiguate by date: prefer the song whose body or frontmatter date matches
         # what the index claims.

@@ -1,8 +1,10 @@
 # Suno Studio & Editor Reference
 
-Comprehensive reference for Suno's post-generation editing tools. This covers **Suno Studio** (Premier-only full DAW), the **Legacy Song Editor** (Pro/Premier section-level editor), and all related features. Companion to the [Suno Reference](SUNO-REFERENCE.md) (which covers prompting, models, and generation) and the [Usage Guide](USAGE.md) (which covers Mac's workflows).
+Comprehensive reference for Suno's post-generation editing tools. This covers **Suno Studio 2.0** (Premier-only generative DAW), the **Song Editor / Legacy Editor** (Pro/Premier section-level editor), and all related features. Companion to the [Suno Reference](../../suno-agent-band-manager/references/SUNO-REFERENCE.md) (which covers prompting, models, and generation) and the [Usage Guide](../../suno-agent-band-manager/references/USAGE.md) (which covers Mac's workflows).
 
-> **Last validated:** April 6, 2026 (Suno Studio v1.2, Legacy Editor, v5.5 Pro). Updated with community workflow findings for Replace Section, Heal Edits, Remaster, Remove FX, Warp Markers, EQ, and credit waste prevention. Suno updates Studio features frequently — use web search to verify capabilities against current documentation when uncertain.
+> **Last validated:** August 14, 2026 (Suno Studio **2.0**, Song Editor / Legacy Editor, v5.5 Pro; day-one primary-source field reports folded in). Suno updates Studio features frequently — use web search to verify capabilities against current documentation when uncertain.
+
+> **READ THIS FIRST — Studio 2.0 shipped 2026-08-13 and this file is split accordingly.** Suno "totally overhauled" Studio on 2026-08-13 ([release note](https://suno.com/release-notes/studio-2), [blog](https://suno.com/blog/studio-2) — OFFICIAL). Suno's own help centre now splits into a **"Studio 2.0"** category (11 articles) and a **"Studio Archive"** (14 articles) — [help.suno.com/en/categories/1708865](https://help.suno.com/en/categories/1708865). This file mirrors that split: the **Studio 2.0** section below is current; the **Studio 1.x Archive** section that follows it documents features (Warp Markers, Remove FX, Alternates, Quick Replace, EQ, Context Window, Sounds Mode, Stem Cover, Heal Edits, MILO-1080, 12-track stem export) that **no longer appear in current official Suno copy**. **Take Lanes and comping are the exception — they survived into the current docs and are safe to recommend**; only the *Alternates* / *Quick Replace* names went away. Do not present archived features as available without re-verifying in the live UI. **Field evidence is day-one only** — a primary-source pass on 2026-08-14 captured first user reports (see "Day-one field reports" below), but the software was hours old. Re-verify in a few weeks; this remains the highest-value open question in the module's Suno knowledge.
 
 ---
 
@@ -12,14 +14,26 @@ Suno provides two distinct editing tools:
 
 | Environment | Tier | Purpose |
 |-------------|------|---------|
-| **Legacy Song Editor** | Pro + Premier | Section-level waveform editor for quick fixes — replace, extend, crop, fade, rearrange |
-| **Suno Studio** | Premier only | Full browser-based Generative Audio Workstation (GAW) — multitrack timeline, AI generation, recording, mixing, EQ, export |
+| **Song Editor** (a.k.a. Legacy Editor) | Pro + Premier | Section-level waveform editor for quick fixes — replace, extend, crop, fade, rearrange |
+| **Suno Studio 2.0** | Premier only | Full browser-based generative DAW — multitrack timeline, MIDI, AI generation, custom plugins, mixing, export |
 
-**Key distinction:** The Legacy Editor works on individual songs. Studio works on multitrack projects with multiple clips, stems, and recordings on a timeline. Most Pro-tier users will use the Legacy Editor; Premier users get both.
+**Key distinction:** The Song Editor works on individual songs. Studio works on multitrack projects with multiple clips, stems, and recordings on a timeline. Most Pro-tier users will use the Song Editor; Premier users get both.
+
+**VERIFIED-ABSENT — does Studio 2.0 replace the Song Editor?** No official statement says it does. The Studio 2 blog, the Studio 2 release note, and help's "Introduction to Studio" were all checked on 2026-08-13 and none announce deprecation of the Song Editor / Legacy Editor; Replace Section is documented live at Pro today. The safe reading is **coexistence**. This is a verified absence of a claim, not positive confirmation.
+
+**Tier availability is unchanged: Studio is Premier-only.** "Studio 2.0 is available exclusively to Premier tier subscribers" ([help](https://help.suno.com/en/articles/13670529)); "Available now for Premier subscribers" ([blog](https://suno.com/blog/studio-2)). **Nothing in Studio 2.0 reaches the Pro tier.** OFFICIAL.
 
 ---
 
-## Legacy Song Editor (Pro + Premier)
+## Downloads Are Now Capped — and Studio Is the Exemption
+
+Effective **2026-09-03**, downloads are metered: Free 7 lifetime trial downloads, Pro 20/month, Premier 60/month, resetting on the billing date with no carryover, retroactive to the whole back catalogue. One song counts once regardless of format or re-downloads, and **all stems from a song are part of that song's single download**. Commercial rights attach only to outputs obtained as a permitted download, and stripping watermarks, fingerprints, or metadata is prohibited. OFFICIAL — [download limits FAQ](https://help.suno.com/en/articles/13614785), [ToS update](https://suno.com/blog/suno-updates-tos) (2026-08-10), [terms effective Sept 3 2026](https://suno.com/terms-september-2026).
+
+**Studio is explicitly exempt:** Premier users "will still be able to download their work from Studio without limitation," and Studio exports 32-bit/48kHz multitracks and stems "without limitations." (Note for expectation-setting: Studio outputs are still watermarked — the exemption is from the *count*, not from provenance marking.) This changes the economics of the workflows in this file — for a Premier user, finishing inside Studio and exporting from Studio costs nothing against the cap, while exporting the same material from the Library does. COMMUNITY commentary notes the exemption sits awkwardly with the stated anti-mass-export rationale; that is context, not guidance.
+
+---
+
+## Song Editor / Legacy Editor (Pro + Premier)
 
 ### Access
 
@@ -30,7 +44,7 @@ From Library or Create view, click the three-dot menu (...) on any song → sele
 The most important editing feature. Regenerates a selected portion while preserving the rest. Suno uses surrounding audio context to blend new content seamlessly.
 
 **How to use:**
-1. Highlight a region on the waveform (**15-20 seconds** is the sweet spot for section length — under 5 seconds produces disjointed transitions, over 30 seconds and the model loses the melodic thread. 10-30 seconds works, but 15-20 is optimal (community consensus).)
+1. Highlight a region on the waveform (see Tips below for the 15-20 second sweet spot)
 2. Optionally modify lyrics in the Replace Lyrics box
 3. Click "Replace Section" / "Recreate Section"
 4. Two alternate versions appear in the Edits Library
@@ -62,7 +76,7 @@ The most important editing feature. Regenerates a selected portion while preserv
 
 **Production-Tested Limitation (2026-04-29 — single-word fix attempt):**
 
-Even at the documented sweet-spot scale (single-word / short-phrase target), Replace Section can produce **audible transition seams at the section boundaries**. Lenny's Damned If I Don't fix attempt: targeted a single word (`-ing` suffix dropped on "They call it living") with phonetic anchor `They call it liv-ing` in the Replace Lyrics box. **Both returned variations correctly fixed the targeted word** but **both also produced obviously audible joins** where the new replacement section met the surrounding original audio. Replace Section's localized-fix value is therefore bounded by transition-quality, not just by section size.
+Even at the documented sweet-spot scale (single-word / short-phrase target), Replace Section can produce **audible transition seams at the section boundaries**. Module production fix attempt: targeted a single word (`-ing` suffix dropped on "They call it living") with phonetic anchor `They call it liv-ing` in the Replace Lyrics box. **Both returned variations correctly fixed the targeted word** but **both also produced obviously audible joins** where the new replacement section met the surrounding original audio. Replace Section's localized-fix value is therefore bounded by transition-quality, not just by section size.
 
 **Practical takeaway:** Even within Replace Section's documented sweet-spot, expect to evaluate transition smoothness alongside content correctness. If the fix lands the content but the seams are obvious, the song-level result may not be acceptable — fall back to Cover (full re-render preserving structure) or full re-gen with phonetic anchor in lyric source. Cover and re-gen produce single-coherent audio without seams; Replace Section's localized scope means transition seams are an inherent risk.
 
@@ -125,9 +139,68 @@ The right panel that collects all alternate versions generated during editing. B
 
 ---
 
-## Suno Studio (Premier Only)
+## Suno Studio 2.0 (Premier Only) — CURRENT
+
+Launched **2026-08-13**: "We have totally overhauled Suno Studio, our browser-based generative DAW, with features including MIDI, audio effects, built-in synths, and more." OFFICIAL — [release note](https://suno.com/release-notes/studio-2), [blog](https://suno.com/blog/studio-2), [help](https://help.suno.com/en/articles/13670529).
 
 ### Access
+
+Select the **Studio** icon under **Create** in the left sidebar at suno.com. Desktop only. **Browser constraint:** Safari does not implement Web MIDI — Suno recommends Chrome ([help](https://help.suno.com/en/articles/13670593)).
+
+### MIDI (the headline addition)
+
+- Import, record, and edit MIDI on the timeline, with a piano-roll editor.
+- **Audio-to-MIDI transcription** of existing clips.
+- Web MIDI hardware controllers, plus **musical typing** with arpeggiator and chord mode.
+- **MIDI as prompt:** a played or imported MIDI clip can be used as the prompt for a new audio generation, in place of text. This appears in the release note and blog but is *not* repeated in the MIDI help article. Suno's own framing de-emphasizes text prompting here ("no substitute" for playing the part) — vendor claim, ANECDOTAL as to how well it works, since no field testing exists yet.
+
+### Chat bar
+
+A session-aware chat bar that can "generate instruments and vocals, create new and totally unique plugins and synth presets." It is grounded in context (the focused track, the current selection, the project tempo), every chat edit is undoable, and chat history persists per project ([help](https://help.suno.com/en/articles/13670721)).
+
+**VERIFIED-ABSENT:** no model name, credit cost, or usage limit is published for Studio Chat.
+
+### Audio effects and custom plugins
+
+- Built-in effects: Compressor, Convolution, Delay, Distortion, EQ, Gate, Reverb — the two Suno highlights are **sidechain compression** and **convolution reverb**.
+- **Custom plugin generation via chat** — describe an effect ("warm tape saturation with a wobble") and it is generated, saved to a personal library, and supports presets and automation.
+- **No VST or third-party plugin support** — only Suno's own synth and effects. COMMUNITY.
+- **Plugin creation is credit-free "at launch,"** with a future credit structure signalled; multiple outlets flag the hedge. COMMUNITY — do not promise it stays free.
+
+### Synth, automation, and mixing
+
+- **Wavetable synth:** two oscillators, three envelopes, four LFOs.
+- **Automation:** drawable curves for track and plugin parameters; MIDI Learn for hardware.
+
+### Export
+
+Full song, selected time range, or multitrack, in **32-bit WAV or MP3**; individual stems as WAV ([help](https://help.suno.com/en/articles/13670529)). Suno's copy: 32-bit/48kHz multitracks and stems "without limitations." Studio exports do **not** count against the Sept 3 download cap.
+
+### Day-one field reports (COMMUNITY / ANECDOTAL, 2026-08-13-14)
+
+First-hand user reports from launch day. Small sample, hours-old software — but this is the only field evidence that exists, and some of it contradicts the marketing.
+
+- **MIDI extraction is real and standard-format** — right-click a stem, "Get MIDI"; staff confirm the files import into other DAWs (Reaper named). ANECDOTAL, officially sourced.
+- **The chat bar executes but misfires.** Three users independently critical, with verbatim failures: a mid-run stop ("Nothing in the selected area on this track to transform"), generated takes not surfacing in the UI, and the assistant denying the existence of a chat-history button that is on screen. One comparison: "a communication mess." COMMUNITY.
+- **Markedly faster and snappier than the laggy 1.x** — two independent users. COMMUNITY. This is the clearest win reported.
+- **Stem quality appears unchanged despite the upgraded-splitter framing** — a vocal stem "sounding nothing like the singer," out of sync, with audio bleed after the first hook. OP plus one confirmation. COMMUNITY. If a user upgrades expecting better stems, set expectations accordingly.
+- **Hands-on regressions:** dB adjustments are integer-only by mouse, and the public-facing style description is hard to edit (you get either a rigid summary or the entire prompt string). Gains in the same report: a full effects suite including a limiter, and preset saving. ANECDOTAL.
+- **In-Studio generation length: drag-select up to 8 minutes** (1.x capped stems at 4). Staff statement, unconfirmed. ANECDOTAL.
+- **The synth accepts user one-shot samples** (about one per track), savable as presets. ANECDOTAL. Same thread reports the copyright filter firing on an *uploaded pure sine wave* ("Audio Matches an existing recording") — consistent with a month of upload-flagging complaints including a self-recorded improvisation.
+- **Studio outputs are still watermarked** — reported even for original music with original lyrics through a custom model. Relevant because Studio's download exemption is sometimes read as an unrestricted export path; the provenance marking is still applied, and removing it violates the Sept 3 ToS.
+- **The Studio download exemption caused real confusion on launch day** ("No download limit with studio 2.0" versus "documentation still says 60/mo — what am I missing?"). The official answer settles it: Studio exports are exempt, Library downloads are not.
+
+### Quality caveats — carried forward from Studio 1.x, NOT re-tested on 2.0
+
+MusicTech's 6/10 review of the Studio 1.x beta (2026-01-13) reported smeared transients, over-reverbed and over-polished vocals, "generic" Persona voices, a pull toward over-produced EDM, unpredictability despite detailed prompting, and credits burned on unusable regenerations; its conclusion was to use Studio as a **stem-and-MIDI source feeding a real DAW**. ANECDOTAL, and pre-2.0 — the overhaul may have changed some or all of it. Worth knowing before recommending Studio as a finishing environment; not worth asserting as current behavior. Source: [musictech.com Suno Studio review](https://musictech.com/reviews/digital-audio-workstations/suno-studio-review/).
+
+---
+
+## Studio 1.x Archive (pre-2026-08-13 — verify before relying on)
+
+> **Everything from here to the end of the Studio section is archived.** These features were documented for Studio 1.1/1.2. After the 2026-08-13 overhaul, **Remove FX, Alternates, Quick Replace, 12-track stem export, EQ, Warp Markers, Context Window, Sounds Mode, Stem Cover, Heal Edits, and MILO-1080 do not appear in current official Studio 2.0 copy**, and Suno moved their articles into a "Studio Archive" help category. **Take Lanes and comping are the exception — they SURVIVED into the current Studio docs and are not archived**; so did multitrack editing, AI stem generation, and the Full Song / Selected Time Range / Multitracks export set. Note the split inside the old "Alternates / Take Lanes" pairing: *Alternates* (and *Quick Replace*) are archived names, *Take Lanes* and comping are current. Treat the rest as unverified: it may have been removed, renamed, or folded into the new effects and chat surfaces. Do not recommend an archived feature by name without checking the live UI first.
+
+### Access (1.x)
 
 Select the **Studio** icon under **Create** in the left sidebar at suno.com. Desktop only.
 
@@ -165,7 +238,7 @@ Studio auto-saves projects with timestamped **Versions** accessible through the 
 
 ---
 
-## Studio Features
+## Studio Features (1.x Archive — names not in current Studio 2.0 copy)
 
 ### Warp Markers (Studio v1.2, Premier)
 
@@ -208,7 +281,9 @@ Source: [Fix Timing with Warp + Quantize — Jack Righteous](https://jackrighteo
 
 **Troubleshooting:** "After quantize, sounds weird" → Undo, re-quantize lighter, target only the worst region, use manual markers for specific hits, or regenerate and audition alternates.
 
-### Alternates / Take Lanes (Studio v1.2, Premier)
+### Alternates (archived name) / Take Lanes and comping (still current) — Premier
+
+> **Split status.** This section was written for Studio 1.2, but only half of it is archived. **Take Lanes and comping remain in the current Studio docs** — the capability and those names are safe to use. **"Alternates" and "Quick Replace" are the archived names** and do not appear in current official Studio 2.0 copy. The mechanics below still describe how per-take auditioning works; treat the *Alternates* label, not the workflow, as the stale part.
 
 An improved system for creating, previewing, and selecting between multiple generated variations of a section on a single track.
 
@@ -282,7 +357,7 @@ Allows composing beyond standard 4/4 time. Supports signatures like 6/8, 7/8, 11
 
 **How to access:** Time signature picker in the bottom info panel of Studio. Set numerator (1-99 beats per bar) and denominator (beat duration).
 
-**IMPORTANT limitation:** This setting is **NOT yet sent to generative models** when creating new clips. It affects the grid, metronome display, and editing alignment — but does NOT influence AI generation. You still need to prompt for the desired meter via style prompt or lyric metatags.
+**Limitation — now UNVERIFIED for Studio 2.0, previously confirmed for 1.2.** The Studio 1.2 article still carries the line verbatim: the setting is "not yet sent to generative models," affecting grid, metronome display, and editing alignment but not AI generation. **That article now sits in Suno's "Studio Archive" and describes Studio 1.2; none of the 11 Studio 2.0 articles restate or retract it** ([help.suno.com/en/articles/10625089](https://help.suno.com/en/articles/10625089), [category index](https://help.suno.com/en/categories/1708865), checked 2026-08-13). Treat the claim as unverified for 2.0 rather than confirmed — and keep prompting for the desired meter via style prompt or lyric metatags, which is the behavior that holds either way.
 
 **Best practices:**
 - Set meter early so edits and quantize decisions stay coherent
@@ -379,14 +454,21 @@ A 16-track step sequencer and synth designer:
 
 AI-powered separation of a mixed track into individual component tracks. Suno exports individual generation layers directly rather than performing post-hoc source separation, yielding cleaner results than third-party tools like LALAL.AI or Demucs.
 
-### Two Modes
+### Three Modes (current — replaces the old 2-stem / 12-stem framing)
 
-| Mode | Output | Tier |
-|------|--------|------|
-| **2-stem** | Vocals + Instrumental | Pro + Premier |
-| **12-stem** | Up to 12 individual parts | Pro + Premier |
+OFFICIAL — [Stem separation](https://help.suno.com/en/articles/12702337), fetched 2026-08-13. The legacy "Vocals + Instrumental" mode was **replaced by Split from Mix**.
 
-### 12-Stem Categories
+| Mode | Output | Tier | Credit cost |
+|------|--------|------|-------------|
+| **Auto Split** | Up to 12 stems | Pro + Premier | 50 credits per extraction |
+| **Split from Mix** | Split derived from the mixed audio — you get the extracted stem plus its complement | Pro + Premier | 10 credits per extraction (20 total for both stems created) |
+| **Advanced Split** | ~100 instruments; choose which stems to create | **Premier only** | 10 credits per extraction; **20 total per stem**, because each extraction returns the chosen stem plus its complement (everything except that stem). Budget at 20 per stem. OFFICIAL — [help.suno.com/en/articles/12702337](https://help.suno.com/en/articles/12702337) |
+
+**COMMUNITY:** Advanced Split reportedly regenerates tracks from scratch rather than filtering the mix — the basis for its artifact-free multitrack claim, with reduced noise and phase issues. It does not change how prompts are written.
+
+**Download accounting:** from 2026-09-03, all stems from a song are part of that song's **single** download. Extracting and downloading a full stem set costs one download, not twelve — but it is the *same* download the song itself would have used.
+
+### Auto Split Stem Categories
 
 Vocals, Backing Vocals, Drums, Bass, Guitar, Keys, Strings, **Brass**, Woodwinds, Percussion, Synth, FX.
 
@@ -394,7 +476,7 @@ Vocals, Backing Vocals, Drums, Bass, Guitar, Keys, Strings, **Brass**, Woodwinds
 
 ### How to Access
 
-- **Library/Workspace**: Click More Actions (...) → hover over "Get Stems" → choose 2-stem or 12-stem
+- **Library/Workspace**: Click More Actions (...) → hover over "Get Stems" → choose the split mode
 - **Legacy Editor**: "Get Stems" icon at top right
 - **Studio**: Stems panel — click arrow icons next to each stem to add to Timeline. Click three dots next to any stem's arrow for additional options. "Insert All" adds all stems at once.
 
@@ -495,7 +577,9 @@ Generates instrumentation behind an existing vocal track.
 
 ---
 
-## MIDI Export (Premier Only)
+## MIDI Export (Premier Only) — 1.x Archive
+
+> **Archived.** This describes the Studio 1.x "Get MIDI" flow at 10 credits per stem. Studio 2.0 has a much larger MIDI surface (import, record, edit, piano roll, audio-to-MIDI transcription, MIDI-as-prompt, MIDI controllers) and **no credit cost is published** for it. Treat the 10-credits-per-stem figure as unverified and check the live UI before quoting a price.
 
 ### What It Does
 
@@ -535,6 +619,8 @@ Recreates an existing song in a new musical style while preserving melody and st
 **Compatible inputs:** Suno-generated songs, uploaded audio (demos, voice memos, loops), instrumentals, vocal tracks.
 
 **CRITICAL:** Covers are **NOT eligible for commercial use** — even on your own songs. For commercial releases, create a fresh generation instead.
+
+**Related, from the Sept 3 2026 ToS (OFFICIAL, [terms](https://suno.com/terms-september-2026)):** **Remixes** — where another user remixes your song or you remix theirs — are a *joint work owned jointly and equally by you and the Remixer* and "may only be used for lawful, personal and non-commercial purposes," on every tier. This is a separate restriction from the Cover limitation above; both point the same way, which is that anything derived from another rendering is off the commercial path.
 
 ### Stem Cover (Studio, Premier)
 
@@ -589,27 +675,24 @@ Source: [Cut Credit Waste — Jack Righteous](https://jackrighteous.com/en-us/bl
 
 ## Tier Summary
 
-| Feature | Free | Pro ($10/mo) | Premier ($30/mo) |
+Current as of 2026-08-13. Pricing is shown as the pricing page displays it ($8 / $24 with a "Monthly / Annual save 20%" toggle) — see the pricing-display ambiguity note in `suno-band-profile-manager/references/tier-features.md`.
+
+| Feature | Free | Pro ($8 displayed) | Premier ($24 displayed) |
 |---------|------|-------------|------------------|
-| **Legacy Editor** (Replace, Extend, Crop, Fade, Rearrange) | No | Yes | Yes |
-| **Stems** (2-stem and 12-stem) | No | Yes | Yes |
+| **Song Editor / Legacy Editor** (Replace, Extend, Crop, Fade, Rearrange) | No | Yes | Yes |
+| **Auto Split stems** (up to 12) | No | Yes (50 credits) | Yes |
+| **Split from Mix** | No | Yes (20 credits total) | Yes |
+| **Advanced Split** (~100 instruments) | No | **No** | Yes (20 credits per stem — 10/extraction, and each extraction returns the stem plus its complement) |
 | **Add Vocals / Add Instrumental** | No | Yes (beta) | Yes (beta) |
 | **Covers** | No | Yes (beta) | Yes (beta) |
 | **Remaster** | No | Yes | Yes |
-| **Suno Studio** (full GAW) | No | No | Yes |
-| **Warp Markers** | No | No | Yes |
-| **Remove FX** | No | No | Yes |
-| **Alternates / Take Lanes** | No | No | Yes |
-| **EQ** (6-band per track) | No | No | Yes |
-| **Time Signature** control | No | No | Yes |
-| **Context Window** | No | No | Yes |
-| **Recording** (microphone) | No | No | Yes |
-| **Loop Recording** | No | No | Yes |
-| **Sounds Mode** (text-to-sound) | No | No | Yes |
-| **Stem Cover** | No | No | Yes |
-| **Heal Edits** | No | No | Yes |
-| **MIDI Export** (10 credits/stem) | No | No | Yes |
-| **MILO-1080 Sequencer** | No | No | Yes |
+| **Suno Studio 2.0** | No | **No** | Yes |
+| **Studio MIDI / chat bar / custom plugins / wavetable synth / automation** | No | No | Yes (Studio 2.0) |
+| **32-bit multitrack + stem export** | No | No | Yes (Studio 2.0) |
+| **Song downloads** (from 2026-09-03) | 7 lifetime | 20/month | 60/month + unlimited from Studio |
+| **Commercial use** | No | Yes, via permitted downloads | Yes, via permitted downloads |
+
+**Archived 1.x features** (Warp Markers, Remove FX, Alternates, Quick Replace, EQ, Time Signature control, Context Window, Recording, Loop Recording, Sounds Mode, Stem Cover, Heal Edits, MIDI Export at 10 credits/stem, MILO-1080) were Premier-only when documented and are **not in current official Studio 2.0 copy**. Verify in the live UI before recommending any of them by name. **Take Lanes and comping are NOT archived** — they remain in the current Studio docs, so per-take auditioning and comping stay safe to recommend at Premier.
 
 ---
 
@@ -624,7 +707,7 @@ Source: [Cut Credit Waste — Jack Righteous](https://jackrighteous.com/en-us/bl
 | Warp markers sound weird after quantize | Over-correction | Undo, re-quantize lighter, target worst region only, use manual markers |
 | Remove FX sounds thin | Spatial effects add perceived body | Export and rebuild with your own reverb/EQ in a DAW; blend wet + dry |
 | MIDI export doesn't match audio | MIDI extraction is approximate | Use as a starting point; hand-edit in your DAW |
-| Time signature doesn't affect generation | Not yet sent to generative models | Set for grid/editing alignment only; prompt for desired meter |
+| Time signature doesn't affect generation | Documented for Studio 1.2 as "not yet sent to generative models" — unverified for Studio 2.0 | Prompt for the desired meter via style prompt or lyric metatags either way; treat the picker as grid/editing alignment until re-verified |
 | Studio generation ignores earlier sections | Context Window too narrow | Expand the Context Window to include the sections you want Suno to reference |
 | 'Scratched CD' effect — track loops/skips | v5 bug: repetitive loop in first 20 seconds | Regenerate — no known fix beyond regeneration |
 | Replace Section lyrics don't update | 'Lyric Cache' bug on subsequent attempts | Use Cover on original source track with Persona selected to reinforce vocal identity, then generate new material |
@@ -632,6 +715,23 @@ Source: [Cut Credit Waste — Jack Righteous](https://jackrighteous.com/en-us/bl
 ---
 
 ## Sources
+
+### Studio 2.0 and the Sept 2026 policy changes (fetched 2026-08-13)
+
+- [Suno Studio 2.0 — Release Note](https://suno.com/release-notes/studio-2) (2026-08-13)
+- [Introducing Suno Studio 2.0 — Suno Blog](https://suno.com/blog/studio-2) (2026-08-13)
+- [Studio 2.0 export and tier availability — Suno Help](https://help.suno.com/en/articles/13670529)
+- [Studio Chat — Suno Help](https://help.suno.com/en/articles/13670721)
+- [Studio browser requirements (Web MIDI) — Suno Help](https://help.suno.com/en/articles/13670593)
+- [Studio help category — Studio 2.0 vs Studio Archive](https://help.suno.com/en/categories/1708865)
+- [Download limits FAQ — Suno Help](https://help.suno.com/en/articles/13614785)
+- [Updates to our Terms of Service — Suno Blog](https://suno.com/blog/suno-updates-tos) (2026-08-10)
+- [Terms of Service effective Sept 3 2026](https://suno.com/terms-september-2026)
+- [Stem separation modes and credits — Suno Help](https://help.suno.com/en/articles/12702337)
+- [Suno Studio 2.0 coverage — MusicTech](https://musictech.com/news/gear/suno-studio-2-0-upgrade-new-features/) (COMMUNITY)
+- [Suno Studio review (1.x beta, 6/10) — MusicTech](https://musictech.com/reviews/digital-audio-workstations/suno-studio-review/) (ANECDOTAL, pre-2.0)
+
+### Studio 1.x era (archived — several now live in Suno's "Studio Archive")
 
 - [Introduction to Studio — Suno Help](https://help.suno.com/en/articles/7940161)
 - [Introducing Suno Studio 1.2 — Suno Help](https://help.suno.com/en/articles/10625089)

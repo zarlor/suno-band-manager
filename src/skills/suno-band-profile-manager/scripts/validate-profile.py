@@ -415,7 +415,7 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None) -> dict:
     # truth for playlist sequencing. Multi-band projects need this to keep
     # bands independent (see playlist-sequencing-methodology.md "Per-Band
     # Playlist YAML" section).
-    band_slug = profile_path.stem  # e.g., docs/band-profiles/lennys-voice.yaml -> lennys-voice
+    band_slug = profile_path.stem  # e.g. docs/band-profiles/paper-lanterns.yaml -> paper-lanterns
     # docs/ dir: explicit --docs-dir wins; else derive from the profile's
     # grandparent (band-profiles -> docs) to preserve the prior behavior
     # exactly for the standard {project-root}/docs/band-profiles layout.

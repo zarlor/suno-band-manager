@@ -1,6 +1,6 @@
 # Feedback Triage Guide
 
-> **Last validated:** March 2026 (updated for v5.5). Elicitation techniques are craft-based (not Suno-specific) and do not require frequent re-validation. The Suno parameter mappings in the opposing pairs table should be verified via web search if Suno model behavior has changed since this date.
+> **Last validated:** August 2026 (parameter mappings re-checked against the 2026-08-13 platform sweep). Elicitation techniques are craft-based (not Suno-specific) and do not require frequent re-validation. The Suno parameter mappings in the opposing pairs table should be verified via web search if Suno model behavior has changed since this date.
 
 ## Classification Rules
 
@@ -62,7 +62,7 @@
 - "It mispronounces the word 'ethereal'"
 - "There's clipping in the chorus"
 
-**Action:** Route to Suno Studio features (Replace Section, Warp Markers, Remove FX) or regeneration. These issues are typically generation-specific, not prompt-specific — try regenerating 3-5 times before modifying the prompt. See suno-parameter-map.md "Audio Quality & Artifacts" and "Suno Studio Resolution Paths" sections.
+**Action:** Route to post-generation tools — Replace Section at Pro or Premier, Studio 2.0 at Premier — or to regeneration. (Name outcomes rather than Studio 1.x tools: Warp Markers and Remove FX are archived and no longer appear in official Studio 2.0 copy.) These issues are typically generation-specific, not prompt-specific — try regenerating 3-5 times before modifying the prompt. See suno-parameter-map.md "Audio Quality & Artifacts" and "Editor and Studio Resolution Paths" sections.
 
 **v5.5 recommended approach:** Use the **generate -> inspect -> refine** workflow rather than regenerating from scratch. If the structure and melody are good, use section replacement for the problem area instead of full regeneration. Only regenerate fully when the structure or emotional direction is fundamentally wrong. See suno-parameter-map.md "v5.5 Workflow Paradigm" for the full decision framework.
 
@@ -72,7 +72,7 @@ When the user has a Voice or Custom Model active, technical feedback often maps 
 
 | Feedback | Root Cause | Resolution Path |
 |----------|-----------|----------------|
-| "Vocals don't sound like me" (Voice active) | Audio Influence too low, poor source recording quality, or style prompt overriding Voice identity | 1. Increase Audio Influence — start at 55-70%, go to 75-85% if identity is paramount (see use-case table in suno-parameter-map.md). 2. Re-record a cleaner voice sample (less background noise, consistent mic distance). 3. Use delivery metatags (`[Whispered]`, `[Belted]`) instead of style prompt vocal descriptors — the Voice provides identity, metatags shape performance. |
+| "Vocals don't sound like me" (Voice active) | Audio Influence too low, poor source recording quality, or style prompt overriding Voice identity | 1. Increase Audio Influence — raising it first is also Suno's official escalation for this exact complaint. The sweet spot is per-voice, so iterate in 5-10% increments rather than jumping to a fixed number; canonical ranges live in `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Voices". If raising it doesn't recover identity, Suno's next official step is rebuilding the voice profile from a clean acapella. 2. Re-record a cleaner voice sample (less background noise, consistent mic distance). 3. Use delivery metatags (`[Whispered]`, `[Belted]`) instead of style prompt vocal descriptors — the Voice provides identity, metatags shape performance. |
 | "Production doesn't match my style" (Custom Model active) | Generic prompt descriptors being absorbed by the model's trained defaults | 1. Use more specific prompt overrides — name the exact elements to change rather than broad descriptors. 2. If the model consistently misses the target, retrain with a better-curated catalog that more accurately represents the desired production style. |
 | "Voice sounds right but delivery is wrong" (Voice active) | Style prompt vocal descriptors conflicting with Voice identity | Remove vocal descriptors from the style prompt. Use delivery metatags in the lyrics field instead: `[Whispered]`, `[Belted]`, `[Tender]`, `[Aggressive]`. The Voice handles identity; metatags handle performance. |
 | "Changed multiple things and now it's worse" (Voice + Custom Model) | Multiple simultaneous changes making it impossible to isolate the cause | Apply the one-variable-at-a-time rule: adjust delivery metatags first, then Audio Influence, then style prompt. Regenerate after each single change. |
@@ -148,7 +148,7 @@ Map subjective feelings to Suno-actionable parameters.
 | Atmospheric ↔ Punchy | Reverb, space, ambient pads, "atmospheric" | Low-end presence, tight transients, "punchy" |
 | Lo-fi Warmth ↔ Polished Radio-Ready | Vintage character, low-pass filtering, "lo-fi warmth" | Clean, modern, commercial mix, "polished radio-ready" |
 | Driving ↔ Lush | Forward momentum, energetic basslines, "driving" | Layered pads, dense production, "lush" |
-| Raw Live ↔ Produced | Less processed, room sound, "raw live recording" | Spatial separation, "wide stereo", processed |
+| Unpolished ↔ Produced | Less processed, room sound, "unpolished room sound", "single-take band performance" (avoid the word "live" — it pulls crowd noise) | Spatial separation, "wide stereo", processed |
 
 **Rules:**
 - Only present pairs relevant to the narrowed dimension

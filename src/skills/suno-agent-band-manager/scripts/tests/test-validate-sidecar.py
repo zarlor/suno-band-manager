@@ -23,8 +23,8 @@ spec.loader.exec_module(mod)
 
 PUBLISHED_SONG = (
     "---\n"
-    'title: "The Slide"\n'
-    "band_profile: lennys-voice\n"
+    'title: "Harbor Lights"\n'
+    "band_profile: paper-lanterns\n"
     "status: published\n"
     "date: 2026-01-15\n"
     "---\n\n"
@@ -33,7 +33,7 @@ PUBLISHED_SONG = (
 
 
 def _write_song(tmp_path, name, text):
-    songbook = tmp_path / "docs" / "songbook" / "lennys-voice"
+    songbook = tmp_path / "docs" / "songbook" / "paper-lanterns"
     songbook.mkdir(parents=True, exist_ok=True)
     p = songbook / name
     p.write_text(text, encoding="utf-8")
@@ -41,11 +41,11 @@ def _write_song(tmp_path, name, text):
 
 
 def test_parse_song_published(tmp_path):
-    p = _write_song(tmp_path, "the-slide.md", PUBLISHED_SONG)
+    p = _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
     song, err = mod.parse_song(p, tmp_path)
     assert err is None
     assert song.is_published is True
-    assert song.title == "The Slide"
+    assert song.title == "Harbor Lights"
     assert song.body_date == "2026-01-15"
 
 
@@ -67,7 +67,7 @@ def test_check_songbook_consistency_flags_status_disagreement(tmp_path):
     text = (
         "---\n"
         'title: "Mismatch"\n'
-        "band_profile: lennys-voice\n"
+        "band_profile: paper-lanterns\n"
         "status: published\n"
         "---\n\n"
         "**Status: WIP — still drafting.**\n"
@@ -82,7 +82,7 @@ def test_check_songbook_consistency_warns_on_missing_marker(tmp_path):
     text = (
         "---\n"
         'title: "NoMarker"\n'
-        "band_profile: lennys-voice\n"
+        "band_profile: paper-lanterns\n"
         "status: published\n"
         "---\n\n"
         "Body with no status marker.\n"
@@ -113,7 +113,7 @@ def test_check_markdown_cross_references_accepts_existing(tmp_path):
 
 
 def test_run_checks_clean_published_song(tmp_path):
-    _write_song(tmp_path, "the-slide.md", PUBLISHED_SONG)
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
     findings, stats = mod.run_checks(tmp_path)
     assert stats["songs_scanned"] == 1
     assert stats["songs_published"] == 1
@@ -122,7 +122,7 @@ def test_run_checks_clean_published_song(tmp_path):
 
 def test_run_checks_detects_index_drift(tmp_path):
     # One published song, but MEMORY.md claims a different title in Recently Published.
-    _write_song(tmp_path, "the-slide.md", PUBLISHED_SONG)
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
     sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
     sanctum.mkdir(parents=True)
     (sanctum / "MEMORY.md").write_text(
@@ -144,7 +144,7 @@ def test_run_checks_detects_index_drift(tmp_path):
 
 def test_run_checks_honors_sanctum_dir_override(tmp_path):
     """--sanctum-dir reads the derived sections from a staging copy."""
-    _write_song(tmp_path, "the-slide.md", PUBLISHED_SONG)
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
     staging = tmp_path / "staging-copy"
     staging.mkdir()
     (staging / "MEMORY.md").write_text(

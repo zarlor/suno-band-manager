@@ -34,7 +34,7 @@ Mac asks these conversationally -- not as a form:
 
 | # | Question | Why It Matters |
 |---|----------|----------------|
-| 1 | **What's your Suno setup?** (Free, Pro, Premier) | Determines which models, sliders, and features Mac can recommend. Free users get v4.5-all only; Pro/Premier unlock v5 Pro, v5.5, Weirdness/Style Influence sliders, Voices, Custom Models, and more. If you upgrade later, just tell Mac. |
+| 1 | **What's your Suno setup?** (Free, Pro, Premier) | Determines which models, sliders, and features Mac can recommend. Free users get v4.5-all only; Pro/Premier unlock v5 Pro, v5.5, Weirdness/Style Influence sliders, Voices, Custom Models, and more. Suno Studio is Premier-only. It also sets your **download budget** -- from 2026-09-03 Suno caps downloads (Free 7 lifetime, Pro 20/month, Premier 60/month, with Studio exports exempt), and commercial rights attach to a permitted download rather than to the plan itself, so Mac will steer you toward picking a keeper before you download rather than downloading every take. If you upgrade later, just tell Mac. |
 | 2 | **How do you like to work?** (Demo, Studio, Jam) | Sets your default interaction mode. You can switch modes anytime -- even mid-song. Try Demo first and explore from there. You can change your default anytime by telling Mac. |
 | 3 | **Do you have a band or project?** | If yes, Mac offers to create a band profile right away. If not, you can work one-off. |
 | 4 | **Anything you always want or never want?** | Captures your baseline exclusions ("no autotune, ever"), preferred genres, and vocal preferences. These are just starting points -- you can change any of this anytime. |
@@ -344,7 +344,7 @@ A band profile is the sonic equivalent of a brand book. It captures the DNA of a
 
 **A note on vocal consistency:** Band profiles maintain consistency in your *prompts* -- genre, style, exclusions, and vocal direction. However, Suno interprets the same style prompt differently on every generation. The only way to get a truly consistent vocal identity across songs is with the **Voice** feature (Pro/Premier plans on v5.5), which locks in a specific vocal character. Without a Voice, you are relying on descriptive prompt language, which gets you in the right neighborhood but not an exact match. If consistent vocal identity across an album or project matters to you, a Pro plan with Voices is strongly recommended.
 
-**Personas to Voices (v5.5):** If you previously used Personas, note that v5.5 replaces them with Voices. Voices serve the same purpose -- consistent vocal identity -- but are a distinct feature in the v5.5 interface. Mac handles this transition automatically when you update your model selection.
+**Personas and Voices (v5.5):** Personas were **not** discontinued -- they were moved inside the Voices menu, which is why they can look gone. They still work. Voices is a separate, additional feature that serves the same goal by a different mechanism: a Persona captures the *style essence* of a source generation, while a Voice is actual voice cloning from an audio sample you provide. For a locked vocal identity on v5.5, a Voice is the stronger tool; a Persona is still useful when the thing you want to carry forward is a whole sonic character rather than a specific singer. Mac will suggest the move when it fits, and will not tell you Personas are gone.
 
 ### Creating Your First Profile
 
@@ -779,7 +779,7 @@ Headless modes enable batch workflows. Example: generate style prompts for multi
 | Mac does not ask enough questions | You are in Demo mode | Say "let's go Studio mode" for the full songwriter's workshop. |
 | Mac forgot my preferences | Session was not saved | Select SM (Save Memory) before ending your session. |
 | Profile says wrong tier | Your Suno plan changed | Tell Mac "I upgraded to Pro" -- he updates memory and offers to update your profiles. Mac also detects tier drift when loading profiles. |
-| Profile references Personas but I'm on v5.5 | Personas replaced by Voices in v5.5 | Tell Mac your model version -- he handles the Persona-to-Voice transition and updates your profiles. |
+| Profile references Personas but I'm on v5.5 | Personas moved inside the Voices menu -- they were relocated, not removed, and still work | Nothing is broken. Tell Mac your model version if you want him to suggest a Voice instead; a Voice locks vocal identity more tightly than a Persona does. |
 | Mutually exclusive transformation error | Selected FR + WF or other conflicts | Full Rewrite and Word Fidelity cannot be used together. Chorus Extraction is skipped if Full Rewrite is selected. |
 
 ### What to Do When Skills Are Unavailable

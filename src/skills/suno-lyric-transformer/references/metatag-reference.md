@@ -1,6 +1,8 @@
 # Suno Metatag Reference
 
-Metatags are keywords in square brackets `[ ]` placed in the lyrics field to guide Suno's generation. This reference covers all known working tags as of April 2026. Suno evolves frequently — when uncertain about a tag's effectiveness, use web search to verify against current documentation.
+Metatags are keywords in square brackets `[ ]` placed in the lyrics field to guide Suno's generation. This reference covers all known working tags as of **August 2026** (metatag re-check 2026-08-13 found **no official change** to section tags or metatags since July 2026). Suno evolves frequently — when uncertain about a tag's effectiveness, use web search to verify against current documentation.
+
+**Field separation discipline (COMMUNITY, re-confirmed 2026-08):** every bracketed instruction, section label, and performance note belongs in the **Lyrics** field. The Style field describes only sound. Bracketed content in the Style field is not parsed the way it is here — this is also why bracketed BPM in Style fails.
 
 > **Related references:** For how metatags interact with style prompts, see `suno-style-prompt-builder/references/model-prompt-strategies.md`. For mapping user feedback to metatag adjustments, see `suno-feedback-elicitor/references/suno-parameter-map.md`. For section emotional roles and poem-to-song mapping, see `section-jobs.md` (same directory).
 
@@ -12,7 +14,7 @@ Core tags that define song structure. Suno uses these to organize musical sectio
 
 **CRITICAL: Only use recognized tags.** Custom/invented tags like `[The Questions]` or `[Reflection]` are NOT recognized by Suno. At best they are ignored; at worst **Suno sings the tag text as lyrics** ("The Questions" becomes a sung line). Always map sections to recognized tags and use parameterized syntax or descriptor tags to shape the musical feel.
 
-**Intensity/feel words are NOT section tags — and they mis-parse the structure.** `[Heavy]`, `[Loud]`, `[Soft]`, `[Quiet]` etc. used as section headers are invalid. **Documented failure (Stillness, 2026-06-08): `[Heavy]` as a section header caused Suno to SKIP the `[Intro]` and start on the `[Heavy]` section** on more than a few gens — an unrecognized section tag breaks Suno's structural parse. Carry the intensity via descriptor tags on a RECOGNIZED section instead — e.g. `[Verse]` + `[Energy: dense, engulfing, peak]` + `[Vocal Style: full power]`; use `[Bridge]` when the section needs to be harmonically/energetically NEW. **If `validate-lyrics.py` flags a section tag as unrecognized, it is invalid — map it to a recognized tag; do NOT override the flag because the tag appeared in an old songbook entry.**
+**Intensity/feel words are NOT section tags — and they mis-parse the structure.** `[Heavy]`, `[Loud]`, `[Soft]`, `[Quiet]` etc. used as section headers are invalid. **Documented failure (production testing): `[Heavy]` as a section header caused Suno to SKIP the `[Intro]` and start on the `[Heavy]` section** on more than a few gens — an unrecognized section tag breaks Suno's structural parse. Carry the intensity via descriptor tags on a RECOGNIZED section instead — e.g. `[Verse]` + `[Energy: dense, engulfing, peak]` + `[Vocal Style: full power]`; use `[Bridge]` when the section needs to be harmonically/energetically NEW. **If `validate-lyrics.py` flags a section tag as unrecognized, it is invalid — map it to a recognized tag; do NOT override the flag because the tag appeared in an old songbook entry.**
 
 **Section-tag content: direction, not narrative labels.** The space inside section tags — the text between `[` and `]` — is valuable real estate Suno can act on. Use it for **functional direction** (tempo, dynamics, vocal style, mood, energy) Suno can interpret, NOT for **human-readable narrative labels** Suno has no training on.
 
@@ -37,7 +39,7 @@ When a source songbook uses em-dashed descriptive labels in section tags (common
 | `[End]` | Hard stop | Use to signal a definitive ending |
 | `[Final Chorus]` | Last chorus iteration | Often bigger/louder than standard chorus |
 | `[Hook]` | Short catchy phrase | Distinct from chorus — can be a repeated motif |
-| `[Refrain]` | Repeated line or phrase | Simpler than a full chorus |
+| `[Refrain]` | Repeated line or phrase | Simpler than a full chorus. **In heavy genres this is the tag for a quiet repeating section** — see "[Chorus] Peak-Default in Heavy Lanes" below (LOCAL-CONFIRMED). External sources document `[Refrain]` only as a genre-tied structural tag (blues, folk, hymns) |
 | `[Instrumental Intro]` | Instrumental-only opening | More reliable than bare `[Intro]` for ensuring no vocals (HIGH) |
 | `[Instrumental Break]` | Explicit instrumental mid-song break | Clearer intent than `[Break]` alone (HIGH) |
 | `[Drum Break]` | Percussion-only break section | Strips everything except drums (HIGH) |
@@ -58,6 +60,23 @@ These serve fundamentally different purposes:
 - Song needs a new harmonic direction → `[Bridge]`
 - Song needs to strip down and spotlight the vocal → `[Breakdown]`
 - Song needs both (strip down AND new perspective) → `[Bridge | Half-Time]` + `[Energy: stripped, minimal]`
+
+### [Chorus] Peak-Default in Heavy Lanes — Use [Refrain] for Quiet Repeats (LOCAL-CONFIRMED)
+
+`[Chorus]` carries a trained expectation that the section is the song's peak. **How strong that expectation is depends on the genre lane, and the difference is large enough to change how you tag.**
+
+- **In restrained lanes** (folk, singer-songwriter, ballad, ambient, quiet alt), the peak-default is weak. A quiet chorus is achievable with descriptors alone — `[Chorus]` plus quiet-section wording behaves.
+- **In heavy lanes** (metal, hard rock, metalcore, thrash-adjacent), the peak-default is **dominant and overrides descriptors.** Quiet-chorus descriptors and soft section tags fail there: the section renders as a peak regardless — full band, raised vocal, often yelled or gang-chanted.
+
+**The working fix — confirmed in module production testing across multiple generations (2026-07), three parts, used together:**
+
+1. **Retag the quiet repeating section `[Refrain]` instead of `[Chorus]`.** `[Refrain]` carries "repeated line" without carrying "this is the peak."
+2. **Assign the roles explicitly at the prompt level** — state the inversion in the style prompt, e.g. "the verses carry the power; the refrains fall away to near-silence." The tag alone does not tell Suno where the song's energy lives.
+3. **Exclude `anthemic chorus`.** This blocks the arrangement convention the lane keeps reaching for.
+
+**Reserve `[Chorus]` for sections that are allowed to peak.** In a heavy-lane song where the loud material is in the verses, tagging any section `[Chorus]` reintroduces the problem you just solved.
+
+**External status (2026-08):** primary-source community reports now **replicate the problem side** of this finding — users in heavy genres describe the model as "hellbent on having the singer yell/scream in the refrain" and forcing thrash beats, gang chants, and stadium choruses. Their mitigations are inline tag descriptors (`[Chorus spoken, emotional]`, reported to "not always work") and constraint-doubling — stating the constraint in both the dynamics wording and the negatives. COMMUNITY for the problem; **the `[Refrain]` retag fix remains ours alone** — no external source proposes it.
 
 ### [Pre-Chorus] and [Post-Chorus] — Distinct Musical Sections
 
@@ -236,7 +255,7 @@ These follow the same `[Category: value]` pattern as the core descriptors above:
 | `[Harmony: ...]` | `[Harmony: High]` | Harmony register/style guidance |
 | `[Voice: ...]` | `[Voice: Auto-tune]` | Vocal processing direction |
 | `[Vibe: ...]` | `[Vibe: Cinematic]` | Overall vibe/feel — similar to Mood but more production-oriented |
-| `[Tempo: ...]` | `[Tempo: slow]` | Tempo suggestion (note: BPM-specific tags remain ineffective — see Experimental Section Tags) |
+| `[Tempo: ...]` | `[Tempo: slow]` | Tempo suggestion (note: BPM-specific tags remain ineffective — see Experimental Section Tags). **Numeric forms like `[Tempo: 90 BPM]` are CONTESTED vendor guidance — do not use;** see "CONTESTED — do NOT adopt new colon-modifier tag forms" below |
 
 ### Standalone Mood Tags (bare bracket — no colon needed) (HIGH)
 These work as simple bracket tags without the `[Mood: ...]` prefix:
@@ -261,20 +280,43 @@ These energy and vocal style descriptors have been tested across multiple gens w
 | `[Energy: building]` | Works for gradual intensity increase (consistent across observed gens) |
 | `[Vocal Style: whispered]` | More consistently quiet than `[Vocal Style: clean, distant]` across observed gens — preferred go-to for quiet sections |
 | `[Vocal Style: acapella]` | Sometimes works, sometimes Suno adds light instrumentation anyway |
-| `[Whispered, vulnerable]` | Worked consistently across observed folk-intimate / acoustic-singer-songwriter / ballad-intimate gens. **Context-dependent caveat (April 2026, single-song observation on DM-LV):** In theatrical-horror / voodoo-rock / dramatic-narrative contexts, `[Whispered, vulnerable]` may pull Suno into spoken-word delivery rather than sung-quiet. Working alternative when sung-quiet is required in those genres: `[Vocal Style: soft, sung]` — the explicit `sung` token defeated spoken-word drift on DM-LV. Whether the tag-pull and the alt-tag fix generalize across more theatrical-horror songs needs more observations. |
+| `[Whispered, vulnerable]` | Worked consistently across observed folk-intimate / acoustic-singer-songwriter / ballad-intimate gens. **Context-dependent caveat (single-song observation):** In theatrical-horror / voodoo-rock / dramatic-narrative contexts, `[Whispered, vulnerable]` may pull Suno into spoken-word delivery rather than sung-quiet. Working alternative when sung-quiet is required in those genres: `[Vocal Style: soft, sung]` — the explicit `sung` token defeated spoken-word drift on that track. Whether the tag-pull and the alt-tag fix generalize across more theatrical-horror songs needs more observations. |
 
 ### Three-Phase Dynamic Arcs (Up, Peak, Down)
 For songs that need to build UP and come back DOWN, place descent tags at the **transition point**, not just the outro. The mistake is saving all the quiet tags for `[Outro]` — by then the energy has already carried through. Instead:
 
 1. Place `[Energy: minimal, fading to silence]` and `[Vocal Style: whispered, vulnerable]` **before** the final lines, at the moment the song should begin its descent.
-2. `[Whispered, vulnerable]` is reliable for quiet sections in folk-intimate / acoustic-singer-songwriter / ballad contexts. Prefer it over `[Soft]` or `[Gentle]` when you need a guaranteed drop — but see caveat: in theatrical-horror / voodoo-rock / dramatic-narrative territory, it can pull Suno into spoken-word delivery. Use `[Vocal Style: soft, sung]` there; the explicit `sung` token defeats spoken-word drift.
+2. `[Whispered, vulnerable]` is reliable for quiet sections in folk-intimate / acoustic-singer-songwriter / ballad contexts. Prefer it over `[Soft]` or `[Gentle]` when you need a guaranteed drop — but see the caveat above: in theatrical-horror / voodoo-rock / dramatic-narrative territory, it can pull Suno into spoken-word delivery. Use `[Vocal Style: soft, sung]` there; the explicit `sung` token defeats spoken-word drift.
 3. The descent tag placement matters more than the outro tags. If the transition into the final section is already quiet, the outro follows naturally.
+
+### Section-Tag Wording Can Itself Invite Choir Effects (ANECDOTAL, 2026-08)
+
+An extension to the anti-choir stack (style prompt + Exclude Styles + section tags — the full stack lives in Mac's `docs/suno-production-patterns.md`): **the wording inside a section tag can invite the very group vocals you are excluding**, when the label implies group participation. A bare `[Chorus]` in a genre whose choruses are conventionally stacked is already a nudge toward extra voices.
+
+- **Refined positive wording** (source's phrasing): "Solo lead vocal performance by one singer only… Chorus energy comes from instruments and arrangement, not extra voices."
+- **Section-tag form:** `[Chorus - Solo Lead Vocal, Instrumental Lift Only]` — states where the lift comes from instead of only forbidding voices.
+- **The limit, stated plainly by the same source:** "Exclude improves your odds, but it cannot override a prompt that strongly asks for group-vocal energy." Exclusion is probability reduction; the prompt is the stronger signal.
+
+COMMUNITY for the stack itself (it matches our existing three-layer approach); ANECDOTAL for the label-invites-choir refinement. Related **local finding, still ours alone:** the "live"-family terms (`live`, `live recording`, `live performance`) pull crowd noise and crowd-vocal texture — external anti-choir guidance does not list them among its risk terms, and a 2026-08 re-search found nothing confirming it.
+
+### Duet Recipe (ANECDOTAL — single aggregation, multi-user-replicated within it)
+
+For male/female duets specifically, the reported working recipe splits across both fields: put the word **"Duet" in the STYLE field**, and put `[Male vocals]` / `[Female vocals]` in the **Lyrics** field at the switch points. Cap voice switches at **4-6 per track** — past that the model starts averaging the voices together.
+
+This is consistent with our own harder-won finding below: gender contrast is the only reliably working duet axis, and `[Duet]` *alone* in the lyrics is unreliable. Treat this as a refinement of "gender contrast is the easiest path," not as a solution to the same-gender dual-voice problem, which remains unsolved.
+
+**Screamed or harsh delivery: tag it in the Style field; do not phonetically spell the scream in the lyrics** (ANECDOTAL). Spelled-out screams get sung as words.
 
 ### Vocal Style Findings — Harmonized as Sweet Spot
 `[Vocal Style: gritty]` combined with high energy and high Weirdness produces screaming even with Exclude Styles set to block it. `[Vocal Style: clean]` removes too much edge — it strips the character out of the vocals. **`[Vocal Style: harmonized]` on all sections is the sweet spot for dual-vocalist work** — it blends both voices naturally without pushing into scream territory or losing grit. "Raw gritty melodic singing" in the style prompt works fine when paired with `[Vocal Style: harmonized]` in the metatags — the style prompt provides the tonal character while the metatag controls the delivery mode.
 
-### Structural Metaphor via Time Signature Changes
-Using different time signatures for different section types creates structural metaphor where musical form embodies lyrical meaning. For example: odd time signatures for verses (chaos, instability) paired with straight 4/4 for choruses (resolution, arrival). This is a powerful technique for prog — the musical structure itself becomes a storytelling device. Implement via experimental time signature tags (e.g., `[Verse 1: 7/8]`, `[Chorus: 4/4]`), acknowledging these are inconsistently respected but worth attempting for the payoff when they land. Note: BPM tags are confirmed ineffective (see Experimental Section Tags), but time signature tags are a separate mechanism worth trying.
+### Structural Metaphor via Time Signature Changes — Aspirational, Not a Control
+
+Using different time signatures for different section types creates structural metaphor where musical form embodies lyrical meaning: odd meters for verses (chaos, instability) against straight 4/4 for choruses (resolution, arrival). It is a powerful *idea* for prog — the musical structure becomes a storytelling device.
+
+**Expect it not to land.** Module production testing (2026-07, three data points, style-side compound-meter work) found that meter signals move **feel and tempo but not meter** — the sway and the slower pulse arrive, the subdivision stays 4/4. This matches the long-standing finding that "odd time signatures" is consistently ignored in a 4/4 rock/metal context, and it is the same class of behavior as `[Fade Out]`: **the directive reads as flavor, not as an instruction.** See `suno-style-prompt-builder/references/model-prompt-strategies.md` → "6/8 and 12/8 Compound Meter" for the style-side detail.
+
+**How to use it anyway:** keep at most one meter signal (`[Verse 1: 7/8]`, `[Chorus: 4/4]`) as aspiration, spend the rest of the budget on tempo and feel words that do land, and plan the arrangement so the song works in 4/4. Do not build a song whose structural point depends on the meter changing.
 
 ### Dual Vocals — What Works and What Doesn't (updated 2026-04-09 with community research)
 
@@ -323,6 +365,10 @@ Tags that control energy flow and transitions within the song.
 | `[Crescendo]` | Building volume/intensity |
 | `[Decrescendo]` | Decreasing volume/intensity |
 | `[Silence]` | Brief moment of silence |
+| `[pause]` | Total silence; optionally timed as `[Pause 2s]` (ANECDOTAL — single source, V5-era) |
+| `[space]` | Not silence — pads, reverb tails, room tone (ANECDOTAL — single source) |
+| bare empty line | A short instrumental phrase or breath (ANECDOTAL — single source) |
+| `[hard cut]` | **BACKFIRES — Suno often sings the words "hard cut."** Same failure class as negation-backfire and `[Stop]`. Do not use (ANECDOTAL) |
 | `[Stop]` | **WARNING: Suno VOCALIZES this tag** — sings/yells the word "Stop" instead of treating it as a stop instruction. DO NOT use for ending control. |
 | `[End]` | Hard stop — prevents trailing instrumental generation after lyrics. Most reliable single ending tag, but may still produce 5-15 seconds of trailing instrumental. |
 | `[Soft End]` | Gentle ending variation (HIGH) |
@@ -339,12 +385,37 @@ Tags that control energy flow and transitions within the song.
 | `[Accelerando]` | Gradually speed up tempo (HIGH) |
 | `[Ritardando]` | Gradually slow down tempo (HIGH) |
 
+### Ending Control — the Sources Disagree; Our Toolkit Is the Baseline
+
+**Read this before the two subsections that follow.** Ending guidance now splits cleanly by source class, and the split is not resolvable from outside:
+
+- **Vendor and guide sources (2026-08)** describe a working recipe: `[Outro]` + `[End]` paired, `[End]` on the absolute last line, `[Fade Out]` only as a modifier. COMMUNITY.
+- **Primary-source user reports (r/SunoAI, 2026-08)** describe ending control on v5.5 as broadly unreliable: **nobody reports `[Fade Out]` working**, FX tails get cut, roughly two-bar outros are appended to nearly everything, no ending prompt stops a 7:59 runaway, and `[end]` submitted as the entire lyric came back as improvised sung lyrics. COMMUNITY.
+- **Our production testing** sits closer to the primary sources: no tag combination reliably produces a clean stop, and **crop in the editor is the only deterministic path.**
+
+**Practical stance:** treat the vendor recipe as the best *tagging* attempt and our toolkit as the trusted *outcome* — tag with `[Outro]`+`[End]` (or `[Final Verse]`+`[Unresolved tension]`+`[End]` when you want it short), then expect to crop. Do not promise a user a clean ending from tags alone.
+
+### Ending Control — Vendor-Guide Consensus (updated 2026-08-13)
+
+Rules with multi-source agreement among guide publishers, added on top of the production-tested strategies below. They do not overturn our own testing — our finding that *nothing* reliably produces a clean immediate stop still stands — but they sharpen how the tags should be combined.
+
+1. **`[Outro]` + `[End]` paired is the consensus reliable ending.** Neither alone is as good as the pair. COMMUNITY.
+2. **`[End]` goes on the absolute last line — nothing below it, not even whitespace.** A trailing blank line after `[End]` is reported to weaken it. COMMUNITY. This is cheap to comply with, so comply with it.
+3. **`[Fade Out]` is never a standalone ending signal.** Guide sources call it unreliable alone but fine as a modifier alongside `[Outro]` + `[End]`; primary-source users report **it working in no configuration at all**. Our own high-Weirdness note (use `[Fade Out]` + `[End]` together) is the middle position and stays — but do not present `[Fade Out]` as something that produces a fade. If a real fade is required, apply it in the editor after generation.
+4. **Outro length and entry point:** aim for a **15-25 second** outro, and start it during a **stable section** rather than over a fill or a vocal run. COMMUNITY.
+
+**Post-generation ending repair — decision tree** (ANECDOTAL, but it matches how we already triage): trailing material → **Crop**; abrupt final second → **Fade Out** in the editor; mid-song repeats → **Replace Section**; missing ending → **Extend**. **Don't regenerate a whole song over a bad ending.**
+
+**Interaction with the Duration slider:** the v5.5 web Duration slider's characteristic failure is a hard cutoff at the target with no resolution, which makes an explicit `[Outro]` more important than it used to be, not less. Recommended form seen in the wild: `[Outro – short resolved ending]` (ANECDOTAL). See `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Duration Slider."
+
 ### Ending Control — Practical Strategies (2026-04 production testing)
 
 Suno's ending behavior is one of its **least controllable** aspects. No tag combination reliably produces a clean stop immediately after vocals. Strategies ranked by effectiveness:
 
 1. **Crop/trim in the editor** — most reliable. Let Suno generate, then cut at the desired point. Apply a short fade if no natural stopping point exists. This is the recommended approach for precise endings.
 2. **Remove `[Outro]` tag entirely** — `[Outro]` tells Suno "this is a conclusion section, play it out" which generates long instrumental tails. Using `[Final Verse]` instead avoids triggering conclusion behavior and produces shorter tails.
+
+    **This conflicts with the community consensus above, and the conflict is real — pick by goal.** Community guidance ("`[Outro]` + `[End]`") optimizes for a *resolved* ending; our production testing optimizes for a *short* one, and found `[Outro]` is what buys the long tail we were trying to kill. Use `[Outro]` + `[End]` when the song should land and resolve (and especially when the Duration slider is set, where the risk is a hard cutoff rather than a long tail). Drop `[Outro]` for `[Final Verse]` when the goal is to stop close to the last vocal. Do not stack both intentions in one lyric block.
 3. **`[Final Verse]` + `[Unresolved tension]` + `[End]`** — avoids conclusion behavior, avoids tonic resolution (less incentive for Suno to add resolving coda), hard stop. Best combo found in testing.
 4. **"abrupt ending" in style prompt** — small effect but stacks with structural changes. More effective in genres that naturally have short endings (punk, hardcore).
 5. **`[Fade Out]` + `[End]` combo** — documented as "more reliable stop signal than `[End]` alone" but in testing still produced 14 seconds trailing on a thrash track.
@@ -356,7 +427,7 @@ Suno's ending behavior is one of its **least controllable** aspects. No tag comb
 - Stacking/doubling `[End]` tags — treated same as single `[End]`
 - `[Outro: fading, sparse]` — may actively encourage MORE instrumental by signaling conclusion mode
 
-**Grid-loss warning:** When using `[Accelerando]` or `[Ritardando]`, the AI can lose the rhythmic grid for the remainder of the track. Always provide a 'return to home' command — if you speed up for a Bridge, make the first line of your final Chorus or Outro include a stabilizing tag like `[Tempo: 120 BPM]` or a strong structural tag like `[Chorus]` to force recalibration. BPM tags are normally ineffective for setting tempo, but may serve as 'recalibration anchors' after dynamic tempo disruptions — this warrants further testing.
+**Grid-loss warning:** When using `[Accelerando]` or `[Ritardando]`, the AI can lose the rhythmic grid for the remainder of the track. Always provide a 'return to home' command — if you speed up for a Bridge, make the first line of your final Chorus or Outro a strong structural tag like `[Chorus]` to force recalibration. Some sources suggest a numeric stabilizing tag (`[Tempo: 120 BPM]`) as a 'recalibration anchor' after dynamic tempo disruptions, on the theory that it behaves differently from a BPM tag used to *set* tempo. **Treat that as unsupported:** BPM tags are librosa-confirmed ineffective here, and numeric colon-modifier forms are CONTESTED vendor guidance (see below). Use the structural tag, which is the part of the advice that rests on established behavior.
 
 ## Sound Effect Tags
 
@@ -403,9 +474,9 @@ Confirmed working examples (atmosphere, not percussion):
 ### Reliable Alternatives to In-Lyrics Sound Effects
 
 1. **Style prompt descriptors** — describe the atmospheric intent in the style prompt ("mechanical, industrial atmosphere") rather than using in-lyrics effect tags
-2. **Suno Sounds** (beta) — separate Suno feature for generating standalone sound effects, instrument samples, and ambient clips as separate audio files. Layer in a DAW.
+2. **Suno Sounds** (Studio 1.x feature, Premier) — generated standalone sound effects, instrument samples, and ambient clips as separate audio files, to layer in a DAW. **Archived:** Sounds Mode does not appear in current Studio 2.0 copy — verify in the live UI before relying on it.
 3. **Post-production** — generate the song cleanly, then add effects in a DAW. This is the most reliable approach for specific sound design.
-4. **Stems extraction** (Pro/Premier) — separate into up to 12 stems, add effects to individual stems externally
+4. **Stems extraction** (Pro/Premier) — Auto Split gives up to 12 stems; add effects to individual stems externally
 
 Source: [Suno AI Sound Effects with Asterisks — Jack Righteous](https://jackrighteous.com/en-us/blogs/guides-using-suno-ai-music-creation/suno-ai-sound-effects-asterisks)
 
@@ -455,7 +526,9 @@ These work as bare bracket tags in the lyrics field — not just via `[Instrumen
 `[Saxophone]`, `[Tenor Sax]`, `[Alto Sax]`, `[Trumpet]`, `[Trombone]`, `[French Horn]`, `[Tuba]`, `[Brass Section]`, `[Flute]`, `[Clarinet]`, `[Oboe]`, `[Harmonica]`, `[Accordion]`, `[Bagpipes]`, `[Didgeridoo]`
 
 ### Percussion
-`[Drums]`, `[Acoustic Drums]`, `[Electronic Drums]`, `[Brushed Drums]`, `[Live Drums]`, `[808s]`, `[808 Bass]`, `[808 Drums]`, `[Drum Machine]`, `[TR-909]`, `[Trap Hi-Hats]`, `[Taiko Drums]`, `[Congas]`, `[Bongos]`, `[Tambourine]`, `[Shaker]`, `[Handclaps]`, `[Claps]`, `[Gong]`, `[Timpani]`, `[Cinematic Percussion]`
+`[Drums]`, `[Acoustic Drums]`, `[Electronic Drums]`, `[Brushed Drums]`, `[Live Drums]` (see caveat below), `[808s]`, `[808 Bass]`, `[808 Drums]`, `[Drum Machine]`, `[TR-909]`, `[Trap Hi-Hats]`, `[Taiko Drums]`, `[Congas]`, `[Bongos]`, `[Tambourine]`, `[Shaker]`, `[Handclaps]`, `[Claps]`, `[Gong]`, `[Timpani]`, `[Cinematic Percussion]`
+
+**⚠ `[Live Drums]` and the "live" word family.** In the **Style** field, any form of the word — `live recording`, `live-band drums`, `live energy` — pulls crowd and audience texture on v5.5 (LOCAL-CONFIRMED, recurring; see `suno-style-prompt-builder/references/model-prompt-strategies.md`). That finding is about the **Style field**, and this is the **Lyrics** field, where a bracketed instrument tag is scoped to a section rather than describing the whole production — so `[Live Drums]` is not automatically contaminated by it. It has not been isolated in testing either way. **Safe practice: get the un-programmed drum character from the Style field with wording that avoids the word ("acoustic kit, natural room ambience, single-take feel"), and if you want the section-level tag as well, listen for crowd texture on the first generation before trusting it.** Separately, `[Live Version]` is confirmed not-working (see Tags Confirmed NOT Working) — a different tag with a different failure, not evidence about this one.
 
 ### Orchestral
 `[Orchestra]`, `[Full Orchestra]`, `[Chamber Orchestra]`, `[Brass Stabs]`
@@ -463,6 +536,18 @@ These work as bare bracket tags in the lyrics field — not just via `[Instrumen
 ## Per-Section Instrument Control
 
 Suno does NOT support per-section instrument exclusion — there is no `[No Brass]` or `[Instrument: exclude X]` tag. The Exclude Styles field is global and inconsistent for instrument exclusion. Instead, use these strategies:
+
+### Negation Inside Standalone Brackets Backfires (COMMUNITY, 2026-08)
+
+A bare negative bracket tag — `[no vocals]`, `[no drums]`, `[No Brass]` — **acts as a positive prompt.** The reported mechanism is that the model reads the noun and drops the negation, so `[no vocals]` *invites* vocals. Three independent threads report this, one with an OP-confirmed fix after switching the term to Exclude Styles.
+
+This is the same failure class as `[hard cut]` (sung literally) and `[Stop]` (vocalized) — the bracket contents reach the model as content, not as an instruction to withhold.
+
+**Rule: route every negative to the Exclude Styles field, or to positive filling in the lyrics** (name the instruments a section *should* have — Strategy 1 below). Never spend a lyric-side bracket on a negation.
+
+**Unresolved exception:** the author of the ghost-vocal mumbling work reports explicit negatives working **inside compound pipe tags** (`[Break | Instrumental Only | No Vocals | ...]`). Standalone-bracket versus pipe-tag context is a plausible reconciliation but nobody has tested it. Until someone does: standalone negatives are known-bad, pipe-tag negatives are unproven, and Exclude Styles is the path that works.
+
+**Hyphen-prefix exclude syntax (ANECDOTAL leaning COMMUNITY):** in the Exclude Styles field, a minus prefix per term — `-oohs, -aahs, -humming, -vocalise, -scatting, -crowd chants` — is reported working, and corroborates the minus-prefix form already used in our own catalog. This is Exclude-Styles-field syntax, not a lyric-side tag.
 
 ### Strategy 1: Positive Instrument Filling
 Tell Suno what instruments a section SHOULD have — this fills the "instrument attention" and crowds out unwanted elements:
@@ -501,9 +586,9 @@ Even with these strategies, Suno's instrument control is probabilistic — the s
 Per-section instrument control via prompting alone is unreliable. The most reliable workflow for songs requiring different instruments in different sections:
 
 1. **Generate** with ALL desired instruments in the style prompt (accepting that they'll bleed into all sections)
-2. **Extract stems** — Suno Pro splits into up to 12 stems: vocals, backing vocals, drums, bass, guitar, keys, strings, **brass**, woodwinds, percussion, synth, FX
+2. **Extract stems** — Pro's **Auto Split** produces up to 12 stems: vocals, backing vocals, drums, bass, guitar, keys, strings, **brass**, woodwinds, percussion, synth, FX (50 credits). Premier's **Advanced Split** goes to ~100 instruments
 3. **Edit in a DAW** (e.g., Audacity) — mute/remove unwanted instrument stems per section
-4. **Export** the final mix
+4. **Export** the final mix — note that from 2026-09-03 all stems from a song count as that song's **single** download against the monthly cap
 
 Brass separates well as a dedicated stem. This is the recommended approach for songs with section-specific instrumentation.
 
@@ -528,9 +613,24 @@ Section tags support inline arrangement instructions via colon (`:`) or pipe (`|
 [Verse 3 | Swung Feel]
 ```
 
+**Compound pipe tags (COMMUNITY, 2026-08).** Users chain several instructions through one section tag, e.g. `[Break | Instrumental Only | No Vocals | Do Not Use Lyrics as FX]`, and the same syntax turns up independently in unrelated users' lyric sheets — which is what raises it above one person's habit. Note the tension with the "no X" finding below: negation inside a *standalone* bracket backfires, but the author of the ghost-vocal work reports explicit negatives working **inside compound pipe tags.** That reconciliation — pipe-tag context versus standalone bracket — is plausible but unresolved. Use compound pipe tags for positive direction with confidence; treat the embedded negatives as unproven.
+
 Both syntaxes are confirmed working on v5. The colon syntax is more flexible (accepts comma-separated arrangement descriptions), while the pipe syntax is cleaner for single modifiers. These can be combined with separate descriptor tags on subsequent lines for maximum control, but the inline approach is often sufficient and saves character budget.
 
 **Relationship to BPM tags:** Note that `[Verse 1: 65 BPM]` style BPM parameterization remains ineffective (see Experimental Section Tags below). The parameterized syntax works for arrangement/feel instructions, not for tempo numbers.
+
+### CONTESTED — do NOT adopt new colon-modifier tag forms on vendor evidence
+
+**Status as of 2026-08-13: CONTESTED, actively disputed.** A family of colon-modifier tags — `[Chorus: powerful]`, `[Energy: High]`, `[Tempo: 90 BPM]` and similar — circulates widely, but it is **asserted only by tag-generator vendors with a commercial interest in a large tag vocabulary.** Two independent exhaustive metatag references contain **no** colon syntax at all, and one explicitly flags invented tags as a common user mistake. There is no neutral source confirming that Suno parses a colon modifier as a modifier rather than as text.
+
+**What this does and does not change here:**
+
+- **Keeps its place:** the parameterized *section* tags documented immediately above (`[Verse: whispered vocals, acoustic guitar only]`, `[Chorus | Half-Time]`) and the core descriptor families (`[Mood: ...]`, `[Energy: ...]`, `[Vocal Style: ...]`, `[Instrument: ...]`). These are in the file because **our own production generations** showed the effects, not because a vendor listed them. Local evidence outranks vendor lists.
+- **Do not adopt:** any *new* colon-modifier form on the strength of a tag-generator site, tag-count marketing, or a "1000+ tags" list. The failure mode is not neutral — an unrecognized tag can be **sung as lyrics** or, as our own Stillness finding showed, break Suno's structural parse.
+- **Already-known-bad within this family:** `[Tempo: 90 BPM]` and every other numeric-BPM colon form. BPM tags are librosa-confirmed ineffective here (see "BPM Tags — Confirmed Ineffective"), so a vendor list recommending them is evidence about the list, not about Suno.
+- **Bearing on our quiet-section work:** this is why the `[Refrain]`-in-heavy-lanes technique is **not** safe to generalize from tag lists — nothing external validates it (see the note under Section Structure Tags).
+
+When in doubt, use a recognized section tag plus an established descriptor tag on its own line. That path is validated; the colon-modifier path is not.
 
 ## Experimental Section Tags
 
@@ -538,14 +638,14 @@ These are partially supported and may not work consistently across all models.
 
 | Tag Syntax | Purpose | Notes |
 |-----------|---------|-------|
-| `[Verse 1: 7/8]` / `[Chorus: 4/4]` | Time signature hint per section | Inconsistently respected but worth attempting for prog/experimental work. Studio 1.2's time signature picker does NOT yet send to generative models — in-lyric tags are currently the only way to attempt this |
+| `[Verse 1: 7/8]` / `[Chorus: 4/4]` | Time signature hint per section | **Aspirational — expect 4/4.** Module production testing (2026-07) found meter signals move feel and tempo, not subdivision; see "Structural Metaphor via Time Signature Changes" above. The Studio time-signature picker was documented as "not yet sent to generative models" for Studio **1.2**; that article is now archived and the claim is **unverified for Studio 2.0**, so in-lyric tags remain the only lever we can reason about |
 | `[Callback: ...]` | During Extend/Replace, references a prior section's feel | HIGH reliability for Extend/Replace workflows — 'Callback phrasing is respected reliably across Extend chains' (community-validated). Experimental for standard generation. e.g., `[Callback: Verse 1 energy]` — useful for maintaining continuity across generations |
 
 ### BPM Tags — Confirmed Ineffective
 
 **BPM tags in lyrics have ZERO detectable effect on Suno's actual output.** This was tested across 5 songs with librosa analysis:
-- "Want" tagged at 60 BPM throughout — Suno delivered 95.7 BPM
-- "Back Woods" tagged 65-150 BPM across sections — Suno delivered 123 BPM steady, no variation
+- A track tagged at 60 BPM throughout — Suno delivered 95.7 BPM
+- A track tagged 65-150 BPM across sections — Suno delivered 123 BPM steady, no variation
 
 Tags like `[Verse: 65 BPM]` or `[Chorus: 130 BPM]` are ignored by the generative model. Suno picks its own tempo based on genre, style prompt, and arrangement context. **Do not use BPM tags in lyrics — they waste character budget and create false expectations.**
 
@@ -563,33 +663,57 @@ These tags are commonly recommended online but have been tested and found to hav
 | `[Mono]` / `[Wide Stereo]` | Subtle and inconsistent — Suno v5 does not reliably obey them | Community testing |
 | `[Clean Lyrics]` / `[Explicit]` | Do not override the content filter | Community testing |
 | `[Key Change]` (for precise control) | May nudge toward modulation but does NOT guarantee a specific key change — for precise transposition, export to a DAW | Community testing |
-| Time signature tags in lyrics | Inconsistently respected; Studio 1.2 picker also not sent to generative models | Production + official docs |
+| Time signature tags in lyrics | Move feel/tempo but not the subdivision — expect 4/4 (module production testing, 2026-07, 3 data points). The Studio 1.2 "not sent to generative models" line is archived and unverified for Studio 2.0 | Production testing + archived official docs |
 
 ## Lyric Formatting as Suno Controls
 
 These are NOT metatags but critical formatting techniques that directly control Suno's vocal and rhythmic interpretation.
 
 ### Punctuation Effects
+
+Symbol-to-pacing mapping. The comma / dash / ellipsis / `!` / `?` rows are long-established here; the period, `~`, trailing-dots, in-word-hyphen, and stacking rows are COMMUNITY (3+ independent sources, carried in from the 2026-07-18 research sweep).
+
 | Character | Effect | Guidance |
 |-----------|--------|----------|
-| `,` (comma) | Breath pause | Use to shape natural phrasing |
+| `.` (period) | Full break — end of a phrase, singer resets | COMMUNITY. The strongest of the pause marks; use where a line should genuinely land, not merely breathe |
+| `,` (comma) | Breath pause / one beat | Use to shape natural phrasing |
 | `—` / `--` (dash) | Hard pause / extended syllable linkage | Creates a harder pause than comma or ellipsis |
 | `...` (ellipsis) | Micro-pause / trailing delivery | Suggests trailing off — more subtle than a dash |
+| trailing dots after a word (`hold...`) | Note hold — sustains the final syllable | COMMUNITY. Distinct from a mid-line ellipsis pause: at the end of a line it reads as sustain rather than gap |
+| `~` (tilde) | Vibrato / wavering on the marked syllable | COMMUNITY. Sparse use only — it is a single-purpose ornament, not a pacing mark |
+| in-word hyphen (`to-night`) | Syllable stretch / syllable separation | **Dual role — see the collision flag under Pronunciation / Phonetics.** It is our pacing-stretch device *and* the community's phonetic separator, and we have not established which dominates |
 | `!` (exclamation) | **BARK/ATTACK TRIGGER** | Tells Suno's vocal engine to attack/bark that word. Bleeds forward into subsequent sections. **NEVER use in sections that should be clean/quiet.** Use sparingly even in aggressive sections. Avoid in metal context — bleeds forward aggressively. |
 | `?` (question mark) | Interrogative delivery | Generally respected — Suno lifts intonation at the end |
 | No punctuation | Suno decides phrasing | Can be useful for intentional ambiguity — let the model choose |
+
+**Stacking limit: at most two symbols together** (COMMUNITY). Beyond that the pacing intent stops reading and the marks start behaving unpredictably.
+
+**Counter-signal worth knowing (2026-08 primary sources):** community reporting gives this pacing model **no support**, and two reports run against it — excess symbols blamed for verses looping, and advice to *remove* ellipses and parentheses because empty space and punctuation "invite improvisation" from the model. Our own A/B data (the vocable-count test below) is direct local evidence that punctuation changes delivery, so the table stands — but treat heavy punctuation as carrying an improv-invite risk, and keep the density low.
 
 ### Capitalization Effects
 | Style | Effect | Guidance |
 |-------|--------|----------|
 | Sentence case | Normal delivery | Use throughout as baseline |
-| ALL CAPS | **Loudness ceiling** | Confirmed: ALL CAPS words are sung with more passion/volume. If you cap words in Verse 1, you've already hit the ceiling — nowhere to build. Save caps for the absolute peak moment only (one word, one line, in the climax). |
+| ALL CAPS | **Loudness ceiling** | Confirmed: ALL CAPS words are sung with more passion/volume. If you cap words in Verse 1, you've already hit the ceiling — nowhere to build. Save caps for the absolute peak moment only (one word, one line, in the climax). *One ANECDOTAL source softly disputes this, calling caps "less reliable for rhythm control" — flagged, not adopted; our own production use is consistent and the claim here is about loudness, not rhythm.* |
+
+### Repeated Vocables — Punctuate Every Member (LOCAL-CONFIRMED, A/B tested)
+
+When a repeated vocable's **count** matters — three wails, four knocks, a specific number of chants — Suno merges or drops members unless every one of them is punctuated. Confirmed in module production testing by direct A/B on the same line:
+
+| Written | Rendered |
+|---|---|
+| `waah waah, waah,` | three wahs collapsed into fewer — the unpunctuated pair merged |
+| `waah, waah, waah,` | the intended count, cleanly separated |
+
+**Rule: punctuate every member of a repeated vocable group.** Commas *within* a group, periods *between* groups when the groups should read as separate utterances. The punctuation is doing the counting — spacing alone does not survive the vocal engine, which treats an unpunctuated repeat as a single stretched utterance or a typo.
+
+This is the same mechanism behind the exclamation-separator fix for doubled-word parentheticals below (`(plunging! plunging!)`), which is the aggressive-genre variant of the same rule. Nothing external addresses either — **both remain ours.**
 
 ### Stretched Words — Phonetic Disambiguation
 
 When stretching a word with hyphenated letters for dramatic effect (e.g., `to-o-o-lling`), check whether the repeated vowel could collapse into a different word in Suno's vocal interpretation. If so, add a consonant or alt-vowel spelling to anchor the intended sound.
 
-**Example — broken and fixed (Distant Mourning LV, April 2026):**
+**Example — broken and fixed (production testing):**
 - Broken: `to-o-o-lling` → Suno reads as "tooling" (the `to-o-o` collapses to "too" and lands on the more common nearby word)
 - Fixed: `toh-o-o-lling` → Suno reads as "tolling" (the `h` forces the "OH" vowel rather than "OO")
 - Result: `12 times tooling` became `12 times tolling` — intended word preserved through the stretch
@@ -610,8 +734,8 @@ When stretching a word with hyphenated letters for dramatic effect (e.g., `to-o-
 | `(words in parentheses)` | Interpreted as **backing vocals/texture**, not lead melody. Useful for dual vocal interplay: lead line with (backing harmonies). |
 
 **Parenthetical Backing Vocals — Production-Tested Details:**
-- **Space before the opening paren is required: `word (echo)` not `word(echo)`.** Verified across the LV catalog — every song with working parenthetical backing vocals uses spaces before the paren. The no-space form caused `(blasting)` to be skipped entirely on DM-LV Bridge across multiple gens until spaces were added.
-- **Paren must be at END of line.** Mid-line parens — parens with text after the closing paren on the same line — are dropped inconsistently. If the sentence continues past the paren, break the line after the closing paren and put the continuation on a new line. Example broken-and-fixed (Distant Mourning LV, April 2026):
+- **Space before the opening paren is required: `word (echo)` not `word(echo)`.** Verified across a full catalog — every song with working parenthetical backing vocals uses spaces before the paren. The no-space form caused an echo word to be skipped entirely on one song's bridge across multiple generations until spaces were added.
+- **Paren must be at END of line.** Mid-line parens — parens with text after the closing paren on the same line — are dropped inconsistently. If the sentence continues past the paren, break the line after the closing paren and put the continuation on a new line. Example broken-and-fixed (production testing):
   ```
   Broken (mid-line, "(blasting)" dropped across gens):
     The neverending (blasting) Sound of the Bell
@@ -623,8 +747,9 @@ When stretching a word with hyphenated letters for dramatic effect (e.g., `to-o-
 - Build echo density as intensity climbs — selective use beats every-line use.
 - Works best as single-word echoes in early verses, full-phrase echoes in later verses.
 - Confirmed working: Suno rendered `(blasting)` as a distinct backing vocal layer (once spaces-before-paren + paren-at-end-of-line rules were both applied).
-- **Long-paren fold-back fails as backing vocal (April 2026 LV data point):** A 10-syllable parenthetical like `(or at least that you think you need to be)` on its own line pulled as primary vocal rather than backing vocal interjection, even with triple-reinforcement (position-1 style-prompt descriptor + global `[Vocal Arrangement]` tag + per-section `[Vocal Style]` tags + paren-split into two shorter parens). Short parens (1-4 syllables) land as backing vocal interjections reliably; long parens (10+ syllables) pull as primary vocal continuation. The boundary is approximate — probably 5-7 syllables depending on context. When the fold-back logic requires a longer response phrase, the backing-vocal call-and-response effect may not land even with triple-reinforcement.
+- **Long-paren fold-back fails as backing vocal (single data point):** A 10-syllable parenthetical like `(or at least that you think you need to be)` on its own line pulled as primary vocal rather than backing vocal interjection, even with triple-reinforcement (position-1 style-prompt descriptor + global `[Vocal Arrangement]` tag + per-section `[Vocal Style]` tags + paren-split into two shorter parens). Short parens (1-4 syllables) land as backing vocal interjections reliably; long parens (10+ syllables) pull as primary vocal continuation. The boundary is approximate — probably 5-7 syllables depending on context. When the fold-back logic requires a longer response phrase, the backing-vocal call-and-response effect may not land even with triple-reinforcement.
 - **Genre-dependent:** Parentheses produce true backing vocals in pop/R&B/soul/gospel/hip-hop contexts. In thrash/metal they come in as whispered phrases or ambience rather than a second voice. Not suitable for rapid intrusive-voice dialogue in heavy genres — see Dual Vocals section above for genre-appropriate alternatives.
+- **Risk framing from primary sources (2026-08):** experienced users describe parentheses as an **ad-lib trigger, not a control** — "Suno treats empty space or parentheses as room to improvise." That is the opposite of our catalog's experience, and the likely difference is discipline: our reliable results all use the space-before-paren and paren-at-end-of-line rules above, which the complaining reports do not mention following. **Keep the discipline; treat undisciplined parens as an invitation to improvise.** If a generation is coming back with unrequested ad-libs, parenthetical density is a reasonable first thing to cut. Suppression levers live style-side — see `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Ad-Lib Suppression."
 
 **Doubled-word parentheticals — atmospheric/ritualistic backing (April 2026 production observation):**
 
@@ -667,7 +792,7 @@ Suno hears the pattern first, commits to it as part of the song's sonic identity
 - **Strong per-verse `[Vocal Style:]` tags on V1 alone.** Suno interprets per-section vocal style tags as advisory and frequently ignores them for arrangement elements that would require the whole arrangement to shift (e.g., bringing in group backing vocals that the song "doesn't have").
 - **Global `[Vocal Arrangement:]` tag at the top of lyrics alone.** Necessary but not sufficient — contributes reinforcement only when combined with an actual pre-lyrical demonstration section.
 
-**Belt-and-suspenders combination** (confirmed-working for group-backing-in-parens on Lenny-Soft v5.5, psychedelic swamp voodoo blues, April 2026):
+**Belt-and-suspenders combination** (confirmed-working for group-backing-in-parens with a clean-voice Voice clone on v5.5, psychedelic swamp voodoo blues, April 2026):
 
 1. Wordless-chant intro section demonstrating the pattern (primary lever)
 2. Global `[Vocal Arrangement: lead vocal with group responses on parenthetical lines throughout]` at the top of the lyrics block
@@ -695,7 +820,7 @@ and I am making
                                 (sorry to hear that)
 ```
 
-In this pattern, Suno tends to render `(uh-huh)`, `(sure)`, `(really)`, etc. as brief spoken interjections — a backing-vocal layer delivered as speech rather than singing. Works reliably across most genres including rock, Americana, adult alternative, and nu-metal (the `(He's lying!)` style in Schizo is an adjacent case).
+In this pattern, Suno tends to render `(uh-huh)`, `(sure)`, `(really)`, etc. as brief spoken interjections — a backing-vocal layer delivered as speech rather than singing. Works reliably across most genres including rock, Americana, adult alternative, and nu-metal (a `(He's lying!)`-style interjection in a nu-metal track is an adjacent case).
 
 **Practical implications:**
 - **Good for conversational/reactive interjections** (filler speech, reactions, asides) that shouldn't compete with the sung lead as harmony. The spoken delivery keeps them in the background without requiring a full `[Spoken Word]` section.
@@ -715,14 +840,21 @@ Parenthetical performance cues placed at the END of a lyric line to direct vocal
 
 **Disambiguation from backing vocals:** Backing vocal parentheses contain lyric words that Suno sings as a second voice — e.g., `running through the fire(fire)`. Performance modifiers contain delivery instructions — e.g., `running through the fire (breathy)`. When in doubt, the presence of a recognizable delivery keyword (`breathy`, `belt`, `hold`, `breath`) signals a performance modifier.
 
-### Structural Timing in Lyrics (HIGH)
-Direct timing instructions can be embedded in the lyrics field to control when vocals begin or end relative to the track duration:
+### Structural Timing in Lyrics — NOT Reliably Parsed (downgraded 2026-08-13)
+
+Time-based instructions at the top of the lyrics field are widely recommended:
 
 ```
 lyrics begin at 0:15; instrumental only after 1:45
 ```
 
-Place at the very top of the lyrics field before any section tags. This tells Suno to generate instrumental content before vocals start and/or after vocals end, providing explicit control over song structure timing.
+**They are not reliably parsed.** Both community reporting and our own production use agree: `lyrics begin at 0:00` and its relatives sometimes appear to land and often do nothing, and there is no way to tell which happened except by listening. This was previously documented here as HIGH confidence; that was wrong.
+
+**How to treat them:**
+- **Harmless as an extra.** They cost a few characters and occasionally help. Including one is not a mistake.
+- **Never load-bearing.** If the song's structure depends on vocals starting at a specific moment, this line will not deliver it.
+- **A short instrumental intro is Suno-standard.** Asking for vocals at 0:00 is asking the model to skip something it does by default in most genres — expect the default to win.
+- **Post-generation crop is the only deterministic fix** for an intro that is too long, exactly as with endings.
 
 ### Line Density as Tempo Control
 This is the **PRIMARY mechanism** for controlling perceived tempo in Suno-generated vocals.
@@ -737,7 +869,7 @@ This is the **PRIMARY mechanism** for controlling perceived tempo in Suno-genera
 
 **Key insight:** Word density is the PRIMARY mechanism for controlling perceived tempo. BPM tags have zero effect (confirmed by librosa — see Experimental Section Tags above). Energy metatags alone (`[Energy: high]`) do NOT reliably drive actual BPM shifts — they signal intensity but not tempo. Suno picks a single steady BPM for the entire song regardless of tags; what changes is *perceived* tempo through delivery density and arrangement.
 
-**Foundational principle: Suno does not actually shift tempo within a song.** When a style prompt requests "tempo shifts" / "tempo changes" / "dynamic pacing," and when section metatags request `[Heavy: halftime]` / `[Double Time]`, Suno produces **arrangement-density variation** — instrumentation pullback to create a halftime *feel*, compression to create a double-time *feel* — but the underlying BPM stays absolutely constant across the song. Production-confirmed 2026-04-29 across multiple LV catalog tracks where the prompt explicitly requested tempo changes (Damned If I Don't Redux, Obviously, Schizo): librosa-measured BPM is steady end-to-end; the listener's experience of "slower in lucid sections, faster in manic" is entirely arrangement-driven. **Practical implication:** stop treating "tempo changes" as a tempo control; treat it as an **arrangement-density / delivery-density** control. Plan for one underlying tempo per song and use the techniques below to vary perceived feel within that fixed tempo grid. Felt-tempo readings (taken from the densest section where the pulse is most countable) should be the basis for sequencing decisions, not librosa raw — see `audio-analysis-reference.md` Felt BPM Corrections table for catalog examples.
+**Foundational principle: Suno does not actually shift tempo within a song.** When a style prompt requests "tempo shifts" / "tempo changes" / "dynamic pacing," and when section metatags request `[Heavy: halftime]` / `[Double Time]`, Suno produces **arrangement-density variation** — instrumentation pullback to create a halftime *feel*, compression to create a double-time *feel* — but the underlying BPM stays absolutely constant across the song. Production-confirmed across multiple catalog tracks whose prompts explicitly requested tempo changes: librosa-measured BPM is steady end-to-end; the listener's experience of "slower in lucid sections, faster in manic" is entirely arrangement-driven. **Practical implication:** stop treating "tempo changes" as a tempo control; treat it as an **arrangement-density / delivery-density** control. Plan for one underlying tempo per song and use the techniques below to vary perceived feel within that fixed tempo grid. Felt-tempo readings (taken from the densest section where the pulse is most countable) should be the basis for sequencing decisions, not librosa raw — see `audio-analysis-reference.md` Felt BPM Corrections table for catalog examples.
 
 **Why it works:** Librosa analysis confirms that BPM does not actually change between sections, even when sections *feel* dramatically different in speed. A "hustle bustle" section with packed syllables feels like acceleration, but the underlying tempo is identical. The perception of speed comes from how much vocal content Suno must deliver per beat — and from how dense the arrangement is (sparse passages feel slower than dense ones at the same BPM).
 
@@ -807,11 +939,20 @@ Suno has no dictionary — it guesses pronunciation from spelling patterns. This
 - **Keep original spelling in the songbook** and note the phonetic substitution in the Suno lyrics version.
 - **Post-generation lyric editing works** for pronunciation fixes — generate, listen, then fix spellings and re-generate if needed.
 
+**Community respelling rules (COMMUNITY, multi-source, added 2026-08-13) — these match and sharpen the practice above:**
+
+- **Hyphenated syllables plus caps for stress:** `SEER-sha`. Write the sound a singer produces, not the etymological spelling.
+- **Keep ONE spelling, consistently, across the whole lyric.** Changing the spelling of a word between verses changes the performance — the model reads it as a different word, not the same word spelled two ways.
+- **Only respell AFTER a word actually fails, and only the failing word.** Pre-emptive respelling costs character budget and risks introducing a new mispronunciation. This is the same discipline as our mid-word-anchor rule: leave the syllables Suno gets right alone.
+- **Pronunciation is permanent post-generation.** Fix it in the lyrics *before* generating. The only surgical remedy afterwards is Replace Section on the misread span — and do **not** try to fix pronunciation with Chat ("fix the singer") or with Cover; neither is a pronunciation tool.
+
+**⚠ Collision flag — hyphens do two jobs at once (open question, flagged not resolved).** An in-word hyphen is **our** syllable-STRETCH pacing device (`to-o-o-lling`, see Stretched Words above) *and* the community's phonetic syllable separator (`in-fih-nigh-tum`, `to-night`). Both uses are plausibly real, which means **a hyphen inserted for pacing may silently alter pronunciation, and a hyphen inserted for pronunciation may silently alter pacing.** We have not tested which dominates, or whether it depends on whether the hyphenation spans a repeated vowel. This is a targeted test candidate. Until it is run: when a word needs both treatments, prefer re-articulation (`tolling... tolling...`) over stacking a stretch and a respelling into one hyphenated token.
+
 #### Mid-Word Vowel Anchoring with English-Word Fragments
 
 When a word's mispronunciation is localized to one syllable (typical for Latin terms, scientific vocabulary, or unusual proper nouns), respell ONLY that syllable with an English-word fragment that unambiguously encodes the target vowel sound. The principle: hand Suno a spelling-pattern it has clearly trained on, mid-word, in place of the ambiguous original.
 
-**Example — broken and fixed (The Life of Walther Who?, April 2026):**
+**Example — broken and fixed (production testing, a track with a Latin phrase in the lyric):**
 - Broken: `ad infinitum` → Suno reads "ahd in-fih-NIH-tuhm" (short-i in the stressed syllable, wrong)
 - Fixed: `ad in-fih-nigh-tum` → Suno reads "ahd in-fih-NIGH-tuhm" (long-i correct, Anglicized pronunciation lands)
 - Result: production-confirmed clean delivery on regen 2026-04-29 with `nigh` lowercase
@@ -836,6 +977,25 @@ When a word's mispronunciation is localized to one syllable (typical for Latin t
 **Capitalization on phonetic anchors:** ALL CAPS on a phonetic-anchor syllable adds delivery loudness/intensity per the Capitalization Effects section above — NOT a different pronunciation. `nigh` and `NIGH` are pronounced the same; `NIGH` just gets sung louder. Use ALL CAPS on the phonetic anchor only when (a) the syllable is naturally stressed in correct pronunciation AND (b) the loudness boost serves the section's dynamic (not, e.g., a quiet verse where one boosted syllable would be jarring).
 
 **Distinct from Stretched Words guidance** (next section): that guidance covers DRAMATIC ELONGATION via hyphenated repeated letters (`to-o-o-lling`); this guidance covers NON-STRETCHED mid-word fixes for normal-tempo delivery. Both use the principle of substituting unambiguous English-word fragments, but apply in different contexts.
+
+### Ghost Vocals on Instrumental Tracks — Two Layered Defences (COMMUNITY)
+
+Instrumental generations frequently come back with wordless vocal texture ("ghost vocals") even when nothing asks for it. Two approaches, both reported to work; the second is the belt-and-suspenders version:
+
+1. **Use the Lyrics box as a wordless structural timeline** — section tags only, no words at all (`[Intro]`, `[Verse]`, `[Solo]`, `[Outro]`, `[End]`). Suno still gets the structure, but there is nothing to sing. This also solves the "instrumental sections are dangerous" problem below by bounding each section.
+2. **Triple-layer it** — `instrumental, no vocals` in the Style field **+** `[Instrumental]` in the Lyrics field **+** exclusions covering `voice, singing, chanting, vocal samples`. The exclusion list matters because Suno's default vocal texture is not always "singing": excluding only "vocals" can leave chanting or sampled voices in.
+
+Note that both defences are prompt-side probability work, not switches — a paid-tier user also has the Instrumental toggle, which is the reliable control.
+
+**⚠ Put the negation in the right place.** Write `instrumental, no vocals` in the **Style** field and the unwanted elements in **Exclude Styles** — do **not** write `[no vocals]` as a standalone bracket tag in the lyrics. See "Negation Inside Standalone Brackets Backfires" under Per-Section Instrument Control: a bare `[no vocals]` can *invite* the thing it names.
+
+**The mumbling mechanism (ANECDOTAL, but the most mechanistic account available — 2026-08).** The specific failure where an instrumental comes back with smeared, wordless muttering has a reported root cause: **atmospheric wording in the style prompt plus lyrics anywhere in the sheet.** Words like "atmospheric," "FX only," "pads," "textures" tell the model to build background texture; if any lyric text is present, it time-stretches and reverb-smears **the user's own lyric fragments** into that texture. Three reported fixes, which stack:
+
+1. **Keep lyrics strictly inside Verse/Chorus blocks** — stray lines floating outside a section block are the raw material the smearing feeds on.
+2. **Name the atmosphere source explicitly** — "atmosphere created by pads, noise, reverb tails — not vocals." Filling the texture role with named instruments leaves nothing for voice to fill it with.
+3. **Ban the vocal-as-instrument treatments by name in the style prompt** — "no vocal chops, no mumbled speech textures, no formant-shifted vocals used as instruments."
+
+**Dots-as-lyrics instrumental trick (COMMUNITY, partial reliability).** Keeping section headers intact but filling the lyric blocks with lines of periods (`. . . .`) is reported to render the vocal melody **on an instrument** instead of a voice — an instrumental that keeps the topline. Multiple confirmations, with caveats: one user needed Audio Influence around 50%, and one reported it working once and then not. Worth trying when a wordless structural timeline leaves the arrangement feeling melody-less; not something to promise.
 
 ### Open-Ended Instrumental Sections Are Dangerous
 Instrumental tags without clear boundaries cause Suno to generate excessive instrumental content:
@@ -946,7 +1106,13 @@ We were never meant to stay
 
 ## Community Research Sources
 
-> Last updated: April 6, 2026.
+> Last updated: August 13, 2026. The 2026-08-13 sweep found **no official change** to section tags or metatags since July 2026; everything added in that pass is community or anecdotal and is graded inline. Note the coverage gap: reddit.com was hard-blocked to the research crawler, so Reddit-attributed items reached us secondhand through an aggregation that documents its own thread-cross-referencing method — weigh them accordingly.
+>
+> **Added 2026-08-13:** ending consensus ([Outro]+[End], [End] on the absolute last line, [Fade Out] never alone, 15-25s outro from a stable section); post-generation ending-repair decision tree; the CONTESTED colon-modifier warning; `[pause]` / `[space]` / bare-empty-line and the `[hard cut]` backfire; the section-label-invites-choir sub-rule; the duet recipe; community phonetic-respelling rules and the hyphen pacing-vs-pronunciation collision flag; ghost-vocal prevention layers.
+>
+> **Added 2026-08-14 from primary sources (r/SunoAI, 38 fetches / 22 threads):** negation-inside-standalone-brackets backfire and the hyphen-prefix exclude syntax; compound pipe-delimited tags; the ghost-vocal mumbling mechanism and its three fixes; the dots-as-lyrics instrumental trick; the ending-control source split ([Fade Out] reported working by nobody); parentheses-as-ad-lib-trigger risk framing; external replication of the [Chorus]-peak problem in heavy genres. Coverage note: this was a direct primary-source pass, so these are user reports rather than vendor claims — but they are individual experiences, not controlled tests, and are graded accordingly.
+>
+> **Promoted from module production testing (2026-07/08), previously undocumented here:** the [Refrain] retag for quiet repeating sections in heavy lanes; the repeated-vocable punctuate-every-member rule; the downgrade of time-based "lyrics begin at 0:00" instructions from HIGH to not-reliably-parsed. These are our own findings — LOCAL-CONFIRMED where multiple generations back them — and nothing external replicates the fixes.
 
 - [HookGenius: All Suno Metatags Complete List (2026)](https://hookgenius.app/learn/suno-metatags-complete-list/)
 - [HookGenius: 300+ Suno Style Tags That Actually Work](https://hookgenius.app/learn/suno-style-tags-guide/)

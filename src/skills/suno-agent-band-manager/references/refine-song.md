@@ -107,7 +107,7 @@ Based on the Feedback Elicitor's recommendations, offer to re-run the appropriat
 
 **If Studio features recommended:**
 - Present the Studio workflow recommendation (e.g., "Try Replace Section on the chorus instead of regenerating the whole song")
-- Note tier requirements — Studio features require Pro/Premier
+- Note tier requirements — Replace Section and stems are Pro **and** Premier; **Suno Studio is Premier-only** and nothing in Studio 2.0 reaches Pro. Don't offer a Studio workflow to a Pro user
 
 ## Step 4: Present Updated Package
 

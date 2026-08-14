@@ -22,8 +22,8 @@ spec.loader.exec_module(mod)
 
 PUBLISHED_SONG = (
     "---\n"
-    'title: "The Slide"\n'
-    "band_profile: lennys-voice\n"
+    'title: "Harbor Lights"\n'
+    "band_profile: paper-lanterns\n"
     "status: published\n"
     "date: 2026-06-10\n"
     "---\n"
@@ -31,12 +31,12 @@ PUBLISHED_SONG = (
 )
 
 COMPLETED_WIP = (
-    "# The Slide\n"
+    "# Harbor Lights\n"
     "## WIP — 2026-05-01\n\n"
     "---\n\n"
-    '## STATUS: COMPLETED as "The Slide" — published 2026-06-10\n\n'
+    '## STATUS: COMPLETED as "Harbor Lights" — published 2026-06-10\n\n'
     "Preserved as historical record. See the songbook entry at\n"
-    "`docs/songbook/lennys-voice/the-slide.md` for the finished form.\n\n"
+    "`docs/songbook/paper-lanterns/harbor-lights.md` for the finished form.\n\n"
     "**This WIP file is NOT active work — do not list it in pending/parked work.**\n\n"
     "---\n\n"
     "old fragments...\n"
@@ -56,14 +56,14 @@ def test_no_docs_dir_returns_empty(tmp_path):
 
 def test_completed_marker_parsed(tmp_path):
     proj = _project(tmp_path)
-    (proj / "docs" / "wip-the-slide-fragments.md").write_text(COMPLETED_WIP)
+    (proj / "docs" / "wip-harbor-lights-fragments.md").write_text(COMPLETED_WIP)
     report = mod.build_report(proj)
     assert report["wip_count"] == 1
     f = report["files"][0]
     assert f["status"] == "completed"
-    assert f["completed_as"] == "The Slide"
+    assert f["completed_as"] == "Harbor Lights"
     assert f["published_date"] == "2026-06-10"
-    assert f["songbook_ref"] == "docs/songbook/lennys-voice/the-slide.md"
+    assert f["songbook_ref"] == "docs/songbook/paper-lanterns/harbor-lights.md"
     assert f["correlation_warning"] is None
 
 
@@ -80,30 +80,30 @@ def test_active_wip_no_collision_no_warning(tmp_path):
 
 def test_active_wip_collides_with_published_warns(tmp_path):
     proj = _project(tmp_path)
-    sb = proj / "docs" / "songbook" / "lennys-voice"
+    sb = proj / "docs" / "songbook" / "paper-lanterns"
     sb.mkdir(parents=True)
-    (sb / "the-slide.md").write_text(PUBLISHED_SONG)
+    (sb / "harbor-lights.md").write_text(PUBLISHED_SONG)
     # Active WIP whose working title matches the published song (v2 suffix stripped).
-    (proj / "docs" / "wip-the-slide-v2-fragments.md").write_text(
-        "# The Slide v2\n## WIP — 2026-06-15\n\nsequel lines\n"
+    (proj / "docs" / "wip-harbor-lights-v2-fragments.md").write_text(
+        "# Harbor Lights v2\n## WIP — 2026-06-15\n\nsequel lines\n"
     )
     report = mod.build_report(proj)
     f = report["files"][0]
     assert f["status"] == "active"
     assert f["correlation_warning"] is not None
-    assert "The Slide v2" in f["correlation_warning"]
-    assert f["songbook_ref"] == "docs/songbook/lennys-voice/the-slide.md"
+    assert "Harbor Lights v2" in f["correlation_warning"]
+    assert f["songbook_ref"] == "docs/songbook/paper-lanterns/harbor-lights.md"
     assert report["correlation_warnings"] == 1
 
 
 def test_mixed_set_counts(tmp_path):
     proj = _project(tmp_path)
-    sb = proj / "docs" / "songbook" / "lennys-voice"
+    sb = proj / "docs" / "songbook" / "paper-lanterns"
     sb.mkdir(parents=True)
-    (sb / "the-slide.md").write_text(PUBLISHED_SONG)
-    (proj / "docs" / "wip-the-slide-fragments.md").write_text(COMPLETED_WIP)
-    (proj / "docs" / "wip-the-slide-v2-fragments.md").write_text(
-        "# The Slide v2\n\nsequel\n"
+    (sb / "harbor-lights.md").write_text(PUBLISHED_SONG)
+    (proj / "docs" / "wip-harbor-lights-fragments.md").write_text(COMPLETED_WIP)
+    (proj / "docs" / "wip-harbor-lights-v2-fragments.md").write_text(
+        "# Harbor Lights v2\n\nsequel\n"
     )
     (proj / "docs" / "wip-unrelated.md").write_text("# Unrelated\n\nstuff\n")
     report = mod.build_report(proj)
@@ -116,18 +116,18 @@ def test_mixed_set_counts(tmp_path):
 def test_unpublished_song_does_not_trigger_warning(tmp_path):
     """A WIP matching a NON-published songbook entry must not warn (nothing to mark)."""
     proj = _project(tmp_path)
-    sb = proj / "docs" / "songbook" / "lennys-voice"
+    sb = proj / "docs" / "songbook" / "paper-lanterns"
     sb.mkdir(parents=True)
-    (sb / "the-slide.md").write_text(
+    (sb / "harbor-lights.md").write_text(
         "---\n"
-        'title: "The Slide"\n'
-        "band_profile: lennys-voice\n"
+        'title: "Harbor Lights"\n'
+        "band_profile: paper-lanterns\n"
         "status: wip\n"
         "---\n"
         "**Status: WIP.**\n"
     )
-    (proj / "docs" / "wip-the-slide-fragments.md").write_text(
-        "# The Slide\n\nfragments\n"
+    (proj / "docs" / "wip-harbor-lights-fragments.md").write_text(
+        "# Harbor Lights\n\nfragments\n"
     )
     report = mod.build_report(proj)
     f = report["files"][0]

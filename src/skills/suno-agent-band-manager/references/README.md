@@ -93,6 +93,8 @@ To reconfigure after a module update, run `/suno-setup` again. Existing settings
 | v5 Pro | Paid | 1,000 chars | Crisp 5-8 descriptors, natural vocals |
 | v5.5 Pro | Paid | 1,000 chars | Most expressive, Voices, Custom Models, My Taste |
 
+**Two caveats on this table (2026-08-13):** the character limits are **community-attested, not officially documented** — no help.suno.com article states them — and Suno has announced that **current models will be retired** when the next (industry-developed) model ships, without publishing which versions or when. See `SUNO-REFERENCE.md` → "Platform Changes — 2026-08-13."
+
 ## File Structure
 
 ```

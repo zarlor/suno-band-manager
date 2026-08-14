@@ -81,7 +81,7 @@ def test_fresh_install_writes_core_and_module():
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         a = setup(tmp, {
-            "core": {"user_name": "Lenny", "communication_language": "English",
+            "core": {"user_name": "Ada", "communication_language": "English",
                      "output_folder": "{project-root}/_bmad-output"},
             "module": {"suno_tier": "pro"},
         })
@@ -96,7 +96,7 @@ def test_fresh_install_writes_core_and_module():
         assert "communication_language" not in config
         # user keys in user config
         user = yaml.safe_load(Path(a["user_config"]).read_text())
-        assert user["user_name"] == "Lenny"
+        assert user["user_name"] == "Ada"
         assert user["communication_language"] == "English"
 
 
@@ -318,7 +318,7 @@ def test_detect_mode_changes_diff():
               "suno:\n  version: 1.8.2\n  suno_tier: free\n"
               "  band_profiles_folder: '{project-root}/docs/band-profiles'\n")
         answers = write(tmp / "answers.json", json.dumps({
-            "core": {"output_folder": "{project-root}/_bmad-output", "user_name": "Lenny"},
+            "core": {"output_folder": "{project-root}/_bmad-output", "user_name": "Ada"},
             "module": {"suno_tier": "pro", "band_profiles_folder": "docs/band-profiles"},
         }))
         code, data = run([

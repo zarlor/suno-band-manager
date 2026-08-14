@@ -186,19 +186,31 @@ The output isn't a metrics dump — it's an opinionated proposal grounded in the
 
 ## Thematic Verification — MANDATORY before any placement recommendation
 
-**Before making any thematic claim about a song in a placement recommendation, READ the song's songbook entry at `docs/songbook/{band-slug}/{song-slug}.md`.** Inferring a song's theme from its title, surface imagery, or fragments-pulled-out-of-context is FORBIDDEN. Songs whose surface features suggest one register often turn out to be the opposite when read in full context.
+**This applies whether the suno-playlist-sequencer skill was formally invoked or the placement
+question came up in ordinary conversation with Mac ("where should this go?").** The trigger is
+the ACT of recommending placement, not the tool-invocation path. Documented failure (2026-07-08):
+Mac ran placement math for a new song conversationally (no formal skill call) and paired it with
+a neighbor on a title-chain association instead of the neighbor's actual, already-documented
+theme — the exact failure this section exists to prevent, skipped precisely because it happened
+in conversation rather than through this skill. Placement math (Camelot distance, BPM delta) is
+never a substitute for the thematic read, and running the math first is not license to treat the
+theme as secondary color commentary added afterward — read the theme BEFORE drafting any option.
+
+**Before making any thematic claim about a song in a placement recommendation, READ the song's songbook entry at `docs/songbook/{band-slug}/{song-slug}.md`** (or the consolidated `docs/song-thematic-dossier.md` entry, which distills the songbook plus the writer's direct quotes across every band in the project — either is acceptable, but read one of them). Inferring a song's theme from its title, surface imagery, or fragments-pulled-out-of-context is FORBIDDEN. Songs whose surface features suggest one register often turn out to be the opposite when read in full context.
 
 **Documented examples where surface inference produced inverted reads:**
 
-- **The Slide** sounds like NOLA decline / firearm imagery. Actually: M-16 slide as cog-in-violent-machine metaphor — moral complicity, conscientious-objector-who-still-walks-onto-the-battlefield. Southern Gothic Americana with moral gravity.
-- **Distant Mourning** sounds like jazz-funeral mourning weight. Actually: voodoo-rockabilly NOLA-funk B-horror, theatrical horror show. Word-association horror piece through a night of terror ending in a rotten dawn.
-- **Cities of the Dead** sounds like NOLA cemetery imagery / contemplative. Actually: Sixth Sense narrative misdirection — the "murder" turns out to be leaving someone, every detail works both ways on second listen.
-- **Look Into the Cracks** sounds like observation / seeing. Actually: the contentment thesis song — the one Lenny couldn't write for hours because his poetic voice was forged in fire. "Maybe find / home" closer.
-- **Damned If I Don't** — fragment "I didn't get rich, I didn't get famous" sounds regret-shaped. Actually: the OPPOSITE — affirmation of choosing life over hustle. Full context: "I didn't get rich, I didn't get famous, but I didn't get ulcers, didn't drown in a bottle / I LIVED A LIFE." Title meaning: "I'd be damned if I DIDN'T live this way." Pride in the choice, not regret.
-- **Want** sounds like longing. Actually: legacy concern. "Will they know me? Will they care?" Heartbeat-pulse architecture about being-known-after-gone.
-- **Spiraling Prophecies?** sounds like cosmic vision. Closer to right but the framing is bait-and-switch — opens "I am contemplating suicide" personal-confessional, lands "the suicide of / Wisdom" cosmic-philosophical reveal.
+| Title | What the surface suggests | What the song actually is | Placement consequence |
+|---|---|---|---|
+| *Harbor Lights* | nostalgic seaside comfort | surveillance — the lights are hunting, not welcoming | pairs with tension, not with warmth |
+| *Sunday Driver* | leisurely, contented | a funeral procession; the slow tempo is grief | never a light palate-cleanser slot |
+| *Paper Cut* | a minor hurt | signing divorce papers — the small injury IS the large one | belongs at an emotional low point, not as filler |
+| *The Long Way Home* | a scenic-route journey song | avoidance — circling because home can't be faced | closes nothing; it withholds resolution |
+| *Bright Side* — line "I never made the papers" | regret at obscurity | the OPPOSITE — relief; anonymity is the bright side | an affirmation track, safe as a closer |
+| *Glass Bottom* | fragility, something about to break | clarity — you can finally see what you're floating over | a turn, not a collapse |
+| *Signal Fire* | warmth, a beacon, rescue | a warning that arrives too late to act on | raises tension into the next track |
 
-**Why surface inference fails so reliably:** poets don't telegraph. A writer who works in paradox-as-structure, surprising juxtapositions, and imagery whose meaning resolves only in full context (the examples above are all drawn from one such catalog) defeats any surface read. A title or a line fragment is a bad summary of what the song does. The songbook entry — which carries the lyrics, the writer's stated intent, the production direction, and the catalog notes — is the authoritative source.
+**Why surface inference fails so reliably:** poets don't telegraph. Any writer who works in paradox-as-structure, surprising juxtapositions, and imagery that resolves only in full context defeats a surface read — and songs like these are the norm in a serious catalog, not the exception. A title or a line fragment is a bad summary of what a song does. The songbook entry — which carries the lyrics, the writer's stated intent, the production direction, and the catalog notes — is the authoritative source.
 
 **Thematic-verification discipline:**
 

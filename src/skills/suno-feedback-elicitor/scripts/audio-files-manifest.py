@@ -11,7 +11,7 @@ Audio files are too large to travel in the portable sync archive, so they
 stay machine-local. This means two machines can have DIFFERENT audio for the
 same canonical filename (e.g. v1 on machine A, v2 on machine B). Audio
 analysis output for the same filename will then disagree across machines —
-exactly the drift class we observed with SF Distant Mourning's local file
+exactly the drift class observed when one band's local file for a song
 showing 4:34 / C minor / 143.55 BPM while Desktop's published v2 was
 3:49 / D# minor / 95.7 BPM.
 

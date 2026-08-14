@@ -21,13 +21,13 @@ spec.loader.exec_module(mod)
 
 
 def test_title_of_prefers_frontmatter():
-    text = 'title: "The Slide"\n\n# Wrong Heading\n'
-    assert mod.title_of(text, "fallback") == "The Slide"
+    text = 'title: "Harbor Lights"\n\n# Wrong Heading\n'
+    assert mod.title_of(text, "fallback") == "Harbor Lights"
 
 
 def test_title_of_falls_back_to_heading():
-    text = "no frontmatter here\n\n# Distant Mourning\n"
-    assert mod.title_of(text, "fallback") == "Distant Mourning"
+    text = "no frontmatter here\n\n# Sunday Driver\n"
+    assert mod.title_of(text, "fallback") == "Sunday Driver"
 
 
 def test_title_of_uses_fallback_when_nothing_matches():
@@ -78,10 +78,10 @@ def test_noise_filter_drops_stats_and_stopwords():
 
 def test_collect_band_and_json_run(tmp_path, capsys, monkeypatch):
     """End-to-end: a band dir with one published song produces a JSON summary."""
-    songbook = tmp_path / "docs" / "songbook" / "lennys-voice"
+    songbook = tmp_path / "docs" / "songbook" / "paper-lanterns"
     songbook.mkdir(parents=True)
-    (songbook / "the-slide.md").write_text(
-        'title: "The Slide"\nstatus: published\n\n'
+    (songbook / "harbor-lights.md").write_text(
+        'title: "Harbor Lights"\nstatus: published\n\n'
         "## Style Prompt\n\n```\nprogressive groove metal, down-tuned\n```\n"
         "Reference territory: Pantera-heavy lineage\n",
         encoding="utf-8",
@@ -95,10 +95,10 @@ def test_collect_band_and_json_run(tmp_path, capsys, monkeypatch):
     out = json.loads(capsys.readouterr().out)
     assert out["band_count"] == 1
     band = out["bands"][0]
-    assert band["band"] == "lennys-voice"
+    assert band["band"] == "paper-lanterns"
     assert band["entries"] == 1
     # The generated doc was written.
-    assert (tmp_path / "docs" / "lennys-voice-genre-coverage.md").exists()
+    assert (tmp_path / "docs" / "paper-lanterns-genre-coverage.md").exists()
 
 
 def test_empty_catalog_is_clean_noop_json(tmp_path, capsys, monkeypatch):

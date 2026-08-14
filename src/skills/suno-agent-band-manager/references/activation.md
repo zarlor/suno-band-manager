@@ -135,7 +135,7 @@ The user can switch interaction modes (Demo/Studio/Jam) at any time by saying "l
 Handle preference updates naturally during conversation:
 
 - **Tier change** ("I upgraded to Pro") → Update memory immediately, announce newly available features, offer to update band profiles
-- **Note:** In v5.5, Personas have been replaced by Voices. Guide users through the transition.
+- **Note:** Personas were **not** removed — they live inside the Voices menu and still work. Voices (v5.5 voice cloning) is a separate, additional feature. Offer a move to Voices when a user wants a locked vocal identity; don't tell them Personas are gone.
 - **Default mode change** ("Make Studio my default") → Update memory immediately
 - **Exclusion changes** ("I never want autotune") → Update memory immediately, note if this affects band profiles
 - **Any ongoing preference** → Update memory via write-through

@@ -5,41 +5,29 @@ description: Guides post-generation feedback refinement for Suno music output. U
 
 # Feedback Elicitor
 
+## Overview
+
+Translates subjective musical reactions into concrete parameter adjustments for the Style Prompt Builder and Lyric Transformer via guided elicitation or headless structured input. Act as a music producer's A&R collaborator, bridging the vocabulary gap between what users feel and what Suno needs to hear -- plain language first with the technical term parenthetically ("make the vocals sit further back (reduce vocal prominence in the style prompt)").
+
+**Domain context:** The agent cannot hear songs. Users range from musicians with deep vocabulary to listeners who "know what they like." Five feedback types (clear, positive, vague, contradictory, technical) each need different elicitation. Technical/quality issues often need regeneration or post-generation editing rather than prompt changes.
+
+**Design rationale (load-bearing constraints):**
+
+- **Feedback is always valid.** If the user feels something is off, something is off -- even if they can't name it.
+- **Triage before elicitation.** Strategies differ dramatically per feedback type; never one-size-fits-all. This is the skill's core structural bet.
+- **The emotional vocabulary bridge is the differentiator.** Most users can say "it feels too busy" but not "reduce instrumentation density." **Mirror the user's own words** -- if they say "crunchy," use "crunchy," not "distorted"; renaming their term breaks the bridge you are building.
+- **Keep elicitation conversational, not clinical.** "Does it feel too busy or too empty?" not "Rate the instrumentation density on a scale of 1-10." Rating scales for subjective reactions produce worse signal than plain questions.
+- **Minimum viable context.** Ask for the style prompt first; gather everything else only as feedback demands.
+- **Prompt changes before regeneration.** Exhaust parameter adjustments before suggesting full regeneration.
+- **Preserve what works.** Never recommend changes that risk breaking elements the user already likes.
+- **Round-awareness.** On subsequent rounds, front-load what was tried and what worked/didn't before re-triaging.
+
 ## Conventions
 
 - Bare paths (e.g. `references/feedback-triage-guide.md`) resolve from the skill root.
 - `{skill-root}` resolves to this skill's installed directory (where `customize.toml` lives).
 - `{project-root}`-prefixed paths resolve from the project working directory.
 - `{skill-name}` resolves to the skill directory's basename.
-
-## Identity
-
-You are a music producer's A&R collaborator. You translate subjective listening reactions into concrete Suno parameter adjustments, bridging the vocabulary gap between what users feel and what Suno needs to hear.
-
-## Communication Style
-
-- Warm, collaborative, never judgmental -- treat every reaction as valid signal
-- Plain language first, technical terms parenthetically: "make the vocals sit further back (reduce vocal prominence in the style prompt)"
-- Celebrate what works before addressing what doesn't: "The verse energy is exactly right -- let's get the chorus to match that standard"
-- Mirror the user's vocabulary -- if they say "crunchy," use "crunchy," not "distorted"
-- Keep elicitation conversational, not clinical: "Does it feel too busy or too empty?" not "Rate the instrumentation density on a scale of 1-10"
-
-## Principles
-
-- **Feedback is always valid.** If the user feels something is off, something is off -- even if they can't name it.
-- **Triage before elicitation.** Strategy differs per feedback type; never one-size-fits-all.
-- **Minimum viable context.** Ask for the style prompt first; gather everything else only as feedback demands.
-- **Prompt changes before regeneration.** Exhaust parameter adjustments before suggesting full regeneration.
-- **Preserve what works.** Never recommend changes that risk breaking elements the user already likes.
-- **Round-awareness.** On subsequent rounds, front-load what was tried and what worked/didn't before re-triaging.
-
-## Overview
-
-Translates subjective musical reactions into concrete parameter adjustments for the Style Prompt Builder and Lyric Transformer via guided elicitation or headless structured input.
-
-**Domain context:** The agent cannot hear songs. Users range from musicians with deep vocabulary to listeners who "know what they like." Five feedback types (clear, positive, vague, contradictory, technical) each need different elicitation. Technical/quality issues often need regeneration or Studio features rather than prompt changes.
-
-**Design rationale:** Triage before elicitation because strategies differ dramatically per type. The emotional vocabulary bridge is the core differentiator -- most users can say "it feels too busy" but not "reduce instrumentation density."
 
 ## Activation Mode Detection
 
@@ -159,21 +147,21 @@ Audio quality issues, artifacts, glitches, or pronunciation problems -- typicall
 
 Set expectations: "Audio artifacts are usually specific to a particular generation, not the prompt itself."
 
-Load `references/suno-parameter-map.md` (Audio Quality & Artifacts, Suno Studio Resolution Paths). For deeper analysis, also load `references/gemini-audio-analysis.md`.
+Load `references/suno-parameter-map.md` (Audio Quality & Artifacts, Editor and Studio Resolution Paths). For deeper analysis, also load `references/gemini-audio-analysis.md`.
 
 **Route by issue type:**
 - **Artifacts/glitches:** Regenerate 3-5 times with same prompt first. If persistent, simplify the style prompt.
 - **Vocal quality:** Check model -- v5 Pro handles vocal nuance better. Suggest Replace Section for section-specific issues.
-- **Timing issues:** Recommend Warp Markers (v5 Studio) before regenerating.
+- **Timing issues:** Premier — fix in Studio before regenerating (Warp Markers was the Studio 1.x tool for this and is not in current Studio 2.0 copy; check the live UI). Pro — Replace Section on the offending span, or export stems and correct timing in a DAW.
 - **Pronunciation:** Suggest phonetic hints in lyrics or `[Spoken Word]` metatag.
-- **Quality degradation in long songs:** Shorter generation + careful extension.
-- **Instrument bleed between sections:** Fundamental Suno limitation -- style prompt instruments bleed globally. Fix: generate with all instruments, then use Stems (Pro/Premier) to split into 12 tracks and remove unwanted instruments per section in a DAW. One-way edit -- complete all Suno editing first.
+- **Quality degradation in long songs:** Within-track degradation past ~2 minutes is the most-replicated community claim — vocals lose timbre, and the style prompt reportedly stops being followed after 1-2 minutes. Build in sub-2:00 segments and stitch, or Replace Section the late material; a full regeneration reproduces it.
+- **Instrument bleed between sections:** Fundamental Suno limitation -- style prompt instruments bleed globally. Fix: generate with all instruments, then extract stems (Pro/Premier **Auto Split**, up to 12 stems, 50 credits; Premier also has **Advanced Split**, ~100 instruments) and remove unwanted instruments per section in a DAW. One-way edit -- complete all Suno editing first. From 2026-09-03 the whole stem set counts as that song's single download.
 - **Section-specific issues (Pro/Premier):**
-  - **Pro:** Legacy Editor -- select the problem region, hit Replace to get alternatives while keeping what works. Key controls: **Keep Duration** toggle (ON = match length, OFF = creative flexibility for solos/breaks), **Instrumental Mode** (removes vocals), **Replace Lyrics** (edit selected region only). Best with 10-30 second selections; typically 2-5 attempts for seamless transitions.
-  - **Premier:** Studio's Replace Section for more control, plus Alternates for multiple versions simultaneously.
+  - **Pro and Premier:** Song Editor (Legacy Editor) -- select the problem region, hit Replace to get alternatives while keeping what works. Key controls: **Keep Duration** toggle (ON = match length, OFF = creative flexibility for solos/breaks), **Instrumental Mode** (removes vocals), **Replace Lyrics** (edit selected region only). Best with 10-30 second selections; typically 2-5 attempts for seamless transitions. **Availability is not viability** -- production testing found audible transition seams even at sweet-spot scale, so evaluate the join as well as the content, and fall back to Cover or a full re-gen when the seam is the problem.
+  - **Premier additionally:** Suno Studio 2.0 (MIDI, chat bar, custom plugins, 32-bit multitrack export) for anything needing a real multitrack workspace, plus **Take Lanes and comping** for auditioning several versions of a section and keeping the best parts -- those survived the overhaul and are safe to name. The Studio 1.x names that did NOT survive (Alternates, Quick Replace, Remove FX, Warp Markers) are archived and absent from current official copy -- route those to the outcome, not the tool name.
   - **Note:** External DAW editing (after stem extraction) is one-way -- user loses Suno's editing capabilities on that version. Complete all Suno edits before exporting to DAW.
 
-**Tier limitations:** Studio features require Pro/Premier. Free tier's primary path is regeneration.
+**Tier limitations:** Replace Section and stems are **Pro and Premier**; **Suno Studio is Premier-only** and nothing in Studio 2.0 reaches Pro. Free tier's primary path is regeneration.
 
 **Dual-path issues:** If the issue has both a quality and prompt component (e.g., "robotic vocals"), map the prompt-fixable portion to Step 5 alongside the technical recommendation.
 
@@ -195,12 +183,12 @@ Synthesize feedback into concrete Suno parameter adjustments.
 
 **Research mandate:** When search tools are available, verify descriptors reflect current Suno behavior -- models evolve.
 
-**Weirdness ceiling warning:** At 85+, Suno loses structural metatag adherence -- `[End]` ignored, songs continue with gibberish. **75 is the practical ceiling** for structured songs. 80+ only for experimental/jam mode. Always pair high Weirdness with `[Fade Out]` + `[End]` combo.
+**Weirdness ceiling warning:** At 85+, Suno loses structural metatag adherence -- `[End]` ignored, songs continue with gibberish. **75 is the practical ceiling** for structured songs. 80+ only for experimental/jam mode; community reports put the danger zone as low as 78. Pair high Weirdness with the `[Fade Out]` + `[End]` combo, but do not promise a clean ending from tags -- crop in the editor is the only deterministic path.
 
 **Generate recommendations across all relevant dimensions:**
-- **Style Prompt:** Add (prioritize first ~200 chars critical zone for strongest influence), remove, reorder. Validates against 1,000-char limit (200 for v4 Pro). Content beyond ~200 is supplementary, not wasted.
+- **Style Prompt:** Add (prioritize first ~200 chars critical zone for strongest influence), remove, reorder. Validates against the 1,000-char limit (200 for v4 Pro) -- community-attested figures, not officially documented by Suno. Content beyond ~200 is supplementary, not wasted.
 - **Exclusion Prompt:** Add (2-3 specific), remove. Validates against ~200 char target.
-- **Sliders (paid tiers):** Weirdness/Style Influence direction + magnitude. Per-section values for section-specific feedback (v5 Studio).
+- **Sliders (paid tiers):** Weirdness/Style Influence direction + magnitude. Per-section values for section-specific feedback (via Replace Section at Pro, Studio at Premier).
 - **Lyric Adjustments** -- structure as Lyric Transformer adjustment spec:
   ```json
   {"adjustments": [
@@ -211,7 +199,7 @@ Synthesize feedback into concrete Suno parameter adjustments.
   ]}
   ```
 - **Model Suggestion:** If issue maps to known model strengths/weaknesses.
-- **Studio Features:** Replace Section, Warp Markers, etc. where applicable.
+- **Post-generation editing:** Replace Section / Crop / Extend (Pro and Premier), Studio 2.0 (Premier only) where applicable -- name the outcome rather than an archived Studio 1.x tool.
 
 ### Step 6: Present Recommendations
 
@@ -246,7 +234,7 @@ After user approves, offer next steps (outcomes first, skill names parenthetical
 ### Multi-Machine Audio Verification
 
 - `audio-files-manifest.py` -- Generates `docs/audio-files-manifest.yaml` (name + size + mtime per file) on the canonical machine. Travels in the portable-sync archive instead of the audio MP3s themselves.
-- `verify-audio-files.py` -- Receiving machine reads the manifest and detects missing / wrong-gen / extra audio. Filename-normalization-aware (handles `-Redux`, `-Lenny`, `(NSFW)`, em-dash variants) and size-tolerance-aware (default 1024 bytes for ID3 metadata variance). `--playlist-context` cross-references playlist YAMLs.
+- `verify-audio-files.py` -- Receiving machine reads the manifest and detects missing / wrong-gen / extra audio. Filename-normalization-aware (handles `-Redux`, band suffixes, `(NSFW)`, em-dash variants) and size-tolerance-aware (default 1024 bytes for ID3 metadata variance). `--playlist-context` cross-references playlist YAMLs.
 
 ### Audio Analysis Scripts (optional -- `librosa` + `numpy`, auto-provisioned by `uv run`)
 

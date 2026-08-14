@@ -4,7 +4,9 @@
 >
 > **Critical zone:** The first ~200 characters of a style prompt carry disproportionate influence on generation. When recommending additions, prioritize the most impactful descriptors for the critical zone. Supplementary descriptors go after.
 >
-> **Last validated:** April 6, 2026 (Suno v5.5, v5, v4.5-all). Recommendations are based on these model versions — newer models may respond differently.
+> **Last validated:** August 13, 2026 (Suno v5.5, v5, v4.5-all; Duration slider; Studio 2.0). Recommendations are based on these model versions — newer models may respond differently, and Suno has announced that current models will be retired when the next (industry-developed) model ships, with no versions or dates published.
+>
+> **Before recommending a download-consuming fix:** from 2026-09-03 downloads are capped (Free 7 lifetime, Pro 20/month, Premier 60/month; Studio exports exempt). Iterating is still free — *keeping* the result is what costs. When a refinement path ends in "export and fix it in a DAW," say that it spends one of the user's downloads.
 
 Maps feedback dimensions and emotional vocabulary to concrete Suno parameter adjustments.
 
@@ -21,18 +23,13 @@ When the user has a Voice active, the Voice provides the vocal identity (timbre,
 | Emotional delivery | `[Tender]`, `[Yearning]` | "emotional vocals" in style prompt |
 | Aggressive delivery | `[Aggressive]`, `[Screamed]` | "aggressive vocal style" in style prompt |
 
-**Audio Influence with Voices — use-case dependent:**
+**Audio Influence with Voices — use-case dependent, and voice-dependent.**
 
-Independent testing (JG BeatsLab, March 2026) found the practical ceiling is lower than Suno's UI range suggests. At 85%, voice resemblance only reached ~70% with increasing shimmer and vocal artifacts. Pushing the slider highest produces worse professional quality, not better.
+The **Persona** slot and the **Voice** slot behave differently: Personas have a narrow 15-25% effective range, Voices run much higher. For a Voice, start around **50%** and move in 5-10% increments against the user's actual complaint.
 
-| Goal | Range | Notes |
-|------|-------|-------|
-| Voice as subtle flavor | 30-40% | Gentle influence, maximum generation polish |
-| Balanced voice + quality | 40-60% | **Recommended starting point** — recognizable with manageable artifacts |
-| Identity-focused | 60-70% | Quality trade-off begins here |
-| Maximum fidelity (caution) | 70-80% | Diminishing returns; artifacts increase faster than resemblance |
+Community testing puts diminishing returns past ~70%, but treat that as general guidance rather than a ceiling — one profiled voice was clean at 85% where 55% showed artifacts, and Suno's official escalation for "it doesn't sound like me" is to **raise** Audio Influence first, then rebuild the voice profile from a clean acapella. Match the number to the complaint: identity loss argues up, artefacts argue down.
 
-Start at 50% and iterate in 5-10% increments based on feedback. Do not exceed 70% without accepting significant quality trade-offs.
+**Full table, official escalation, and the intent-split values live in one place — `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Voices". Read it rather than restating ranges here.**
 
 ### Custom Models (User-Trained Production Models)
 
@@ -185,7 +182,7 @@ These style prompt descriptors have confirmed, predictable effects on Suno outpu
 | "airy" | Reverb/space on vocals |
 | "lo-fi warmth" | Vintage character, low-pass filtering |
 | "polished radio-ready" | Clean, modern, commercial mix |
-| "raw live recording" | Less processed, room sound |
+| "unpolished room sound" / "natural room ambience" | Less processed, room sound. **Do not use the word "live"** in any form — `live recording`, `live-band drums`, `live energy` all pull crowd/audience noise on v5.5 (LOCAL-CONFIRMED, recurring) |
 | "driving" | Forward momentum, energetic basslines |
 | "lush" | Layered pads, dense production |
 | "punchy" | Low-end presence, tight transients |
@@ -294,6 +291,10 @@ Prioritize 2-3 specific exclusions over filling the space. Supported syntax: 'no
 
 ## Slider Adjustment Guide
 
+**Goal-based starting points (ANECDOTAL, single source, updated 2026-08):** a set of goal-keyed slider recipes — clean/predictable, strong genre, stable hook with variation, adventurous bridge, uploaded-melody-leads, upload-as-loose-inspiration — is documented in `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Goal-Based Slider Recipes." They don't contradict the production-tested tables below; use them when the user's goal isn't one this file names, especially for uploaded-audio cases. Where they differ from our tables, ours win — ours are measured on this catalog.
+
+**Style Influence and Audio Influence compete — never both at 100** (COMMUNITY). If a user has pushed both high and reports incoherent output, that combination is the first thing to unwind: sample-primary work sits around AI 60-70 / SI 30-40, tags-primary around AI 30-40 / SI 60-70.
+
 ### Weirdness (0-100, default 50) — Paid tiers only
 
 | Current Feel | Direction | Target Range | Reasoning |
@@ -328,7 +329,7 @@ Prioritize 2-3 specific exclusions over filling the space. Supported syntax: 'no
 - Weirdness 85 causes structural breakdown: [End] tags ignored, songs continue past lyrics with instrumental/gibberish meandering
 - At Weirdness 85, coherence loss increases in longer songs — shorter songs or songs with strong repeating structure (chorus anchors) survive higher Weirdness better
 - **Recommendation:** Cap at 75 for songs needing structural compliance. Reserve 80+ for jam/experimental mode only.
-- Always use [Fade Out] + [End] combo at high Weirdness values — more reliable stop signal than [End] alone
+- Use the [Fade Out] + [End] combo at high Weirdness values — reported as a more reliable stop signal than [End] alone, though primary-source users report [Fade Out] working in no configuration at all. Expect to crop; that is the only deterministic ending (see the ending-repair tree under "Song Length & Pacing")
 
 ### Audio Influence (0-100%, default 25%) — Persona-dependent
 
@@ -356,9 +357,9 @@ Audio Influence controls how much the loaded Persona's source audio shapes the g
 - Lower values (45-65) allowed more creative interpretation on bridges and contrasting sections
 - These are observations from limited testing, not definitive optimal values
 
-### Per-Section Slider Strategy (v5 Studio)
+### Per-Section Slider Strategy (Replace Section at Pro; Studio at Premier)
 
-v5 Studio enables per-section regeneration. Different slider values can be applied to different song sections:
+Per-section regeneration is available through the Song Editor's Replace Section (Pro and Premier) and inside Studio (Premier only). Different slider values can be applied to different song sections:
 
 | Section Type | Weirdness | Style Influence | Reasoning |
 |-------------|-----------|-----------------|-----------|
@@ -392,7 +393,7 @@ v5 Studio enables per-section regeneration. Different slider values can be appli
 - Better vocal nuance — vocal adjustments are more likely to work
 - Crisp descriptors respond better — keep style prompt adjustments concise
 - Section-level editing available — can adjust specific parts without regenerating
-- Warp Markers allow fine-grained timing fixes
+- Timing fixes: Premier users fix timing in Studio (Warp Markers were the 1.x tool and are not in current Studio 2.0 copy); Pro users use Replace Section or a DAW
 - If vocals are the only issue, suggest "Replace Section" or "Add Vocals" before full regeneration
 
 ## Lyric-to-Metatag Feedback Patterns
@@ -413,53 +414,83 @@ Common quality issues that cannot be resolved through style prompt changes alone
 | Feedback | Resolution Path |
 |----------|----------------|
 | "Sounds robotic/glitchy" | Regenerate (try 3-5 times with same prompt); if persistent, simplify style prompt or switch models |
-| "Audio quality drops at the end" | Generate shorter (under 2 min), extend carefully; quality degrades in long generations |
+| "Audio quality drops at the end" | **Within-track degradation past ~2 minutes is the most-replicated technical claim of the 2026-08 sweep** (4 independent reports): vocals lose timbre and turn robotic in the 2-4 minute range, and the style prompt reportedly stops being followed after the first 1-2 minutes. Build in sub-2:00 segments and stitch, or use Replace Section on the late material — full regeneration will reproduce it |
 | "Weird artifacts/noise" | Regenerate; if persistent, remove problematic descriptors from style prompt |
 | "Pronunciation is wrong" | Add phonetic hints in lyrics, or use `[Spoken Word]` metatag for problem lines |
 | "Vocals sound auto-tuned" | Add "natural vocal, organic phrasing, imperfect delivery" to style prompt; add "no auto-tune" to exclusions |
 | "Clipping/distortion (unwanted)" | Add "clean mix, headroom, dynamic range" to style prompt; reduce layering descriptors |
-| "Frequency mud / sounds muffled" | Add "crisp, clear mix, defined frequencies" to style prompt; v5 Remove FX can help |
+| "Frequency mud / sounds muffled" | Add "crisp, clear mix, defined frequencies" to style prompt; Premier users can also work the mix in Studio (the 1.x "Remove FX" tool is archived — check the live UI), or export stems and EQ in a DAW |
 
 **External DAW editing (Audacity, etc.) is a one-way operation** — once you edit outside Suno, you lose Suno's editing capabilities on that version. Always keep the original Suno generation as a source of truth.
 
 **Key principle:** Audio quality issues are often generation-specific, not prompt-specific. Always try regenerating 3-5 times before modifying the prompt. Suno's randomness means the same prompt can produce both clean and artifact-heavy outputs.
 
-## Suno Studio Resolution Paths (v5 Pro / Premier)
+## Editor and Studio Resolution Paths
 
-When feedback maps to Studio features rather than prompt changes.
+When feedback maps to post-generation tools rather than prompt changes. **Check the user's tier first** — the split below is the one that matters, and it did not change with Studio 2.0.
 
-| Feedback Pattern | Studio Feature | How |
-|-----------------|----------------|-----|
-| "The timing feels off in the chorus" | Warp Markers | Adjust timing of specific sections without regenerating |
-| "Verse 2 vocals are bad but the rest is great" | Replace Section | Regenerate only the problem section, preserving everything else |
-| "I want to hear different versions of the chorus" | Alternates | Generate multiple versions of a specific section and compare |
-| "Too much reverb/effects on the vocals" | Remove FX | Strip effects from the vocal track |
-| "The vocal melody is great but the lyrics are wrong" | Add Vocals | Re-record vocals over the existing instrumental |
-| "I need the instrumental without vocals" | Stems | Extract up to 12 stems including isolated instrumental |
+### Available at Pro and Premier (Song Editor / Legacy Editor)
+
+| Feedback Pattern | Feature | How |
+|-----------------|---------|-----|
+| "Verse 2 vocals are bad but the rest is great" | Replace Section | Regenerate only the problem section, preserving everything else. Availability at Pro re-confirmed official 2026-08-13, no deprecation announced |
 | "The song is great but I want to try different words" | Replace Section + Lyrics edit | Change lyrics for specific sections while preserving melody |
+| "The vocal melody is great but the lyrics are wrong" | Add Vocals | Generate new vocals over the existing instrumental |
+| "I need the instrumental without vocals" | Stems | **Auto Split** (up to 12 stems, 50 credits) or **Split from Mix** (20 credits total) |
+| "The mix feels rough but the song is right" | Remaster | Subtle/Normal/High. Does NOT change style, vocalist, or arrangement — use Cover for those |
+| Ending problems | Crop / Fade Out / Extend | See the ending-repair decision tree under "Song Length & Pacing" |
 
-### Additional Studio Capabilities (v5.5)
+**Local caveat that outranks the availability line:** our own production test (2026-04-29) found Replace Section produces **audible transition seams** even at the documented sweet-spot scale — it fixed the targeted word and left an obvious join. Availability is not viability. When recommending it, say that transition quality has to be evaluated alongside content correctness, and that Cover or a full re-gen produce seamless audio where Replace Section cannot.
 
-| Feature | What It Does | Key Limitation |
-|---------|-------------|----------------|
-| Warp Markers | Fix timing post-generation without pitch shift — correct rushed or dragging sections | Timing adjustment only; does not affect pitch or melody. Artifacts with extreme corrections. |
-| Remove FX | Strip reverb/delay from the generation for external DAW processing | One-way: stripping FX is for export. May sound thinner — rebuild space with your own reverb in a DAW. |
-| Alternates | Generate 2-6 variations of a section, audition in context, comp the best parts | Single-change alternates prevent losing song identity. |
-| EQ | 6-band per-track parametric EQ with 11 presets and spectrum analyzer | Start subtle (+/-3dB). Cut > boost for natural results. |
-| Remaster | Polish production (Subtle/Normal/High strength) without changing lyrics or structure | Does NOT change style, vocalist, or arrangement — use Cover for those. |
-| Heal Edits | Smooth transitions at edit/cut points | Use after rearranging or replacing sections. |
-| Time Signature | Grid/metronome alignment for editing | Editing-only — does NOT affect the generative model. Prompt for desired meter instead. |
+### Premier only (Suno Studio 2.0)
 
-**Tier mapping:** Legacy Editor features (Replace Section, Extend, Crop, Fade, Rearrange, Stems, Remaster) are available on **Pro and Premier**. Full Studio features (Warp Markers, Remove FX, Alternates, EQ, Heal Edits, Context Window, Recording, MIDI Export) are **Premier only**. Always check the user's tier before recommending.
+Studio 2.0 shipped 2026-08-13 and **nothing in it reaches Pro**. Current capabilities: MIDI import/record/edit and audio-to-MIDI, MIDI-as-prompt, a session-aware chat bar that generates instruments, vocals, and custom effect plugins, a wavetable synth, built-in effects (compressor, convolution reverb, delay, distortion, EQ, gate, reverb), automation curves, and 32-bit/48kHz multitrack export that is **exempt from the download cap**. Premier also gets **Advanced Split** stems (~100 instruments).
 
-**For complete Studio & Editor workflows, tips, and troubleshooting:** See `STUDIO-EDITOR-REFERENCE.md` in the module's `_shared/references/` directory (the canonical Studio/Editor reference, shared across the module's skills).
+**Archived — do not recommend by name without checking the live UI.** Warp Markers, Remove FX, Alternates, Quick Replace, the 6-band EQ page, Context Window, Sounds Mode, Stem Cover, Heal Edits, and MILO-1080 were Studio 1.x features and **do not appear in current official Studio 2.0 copy**; Suno moved their help articles into a "Studio Archive."
+
+**Take Lanes and comping are the exception — still current.** They remain in the underlying Studio docs, so "I want to hear different versions of this section and keep the best bits" can still be routed to Take Lanes and comping at Premier. It is the *Alternates* name that is archived, not the capability. For everything else on the archived list (timing correction, FX stripping), route to the *outcome* — "fix this in Studio, or export stems and fix it in your DAW" — rather than naming a tool that may not be there.
+
+**Time Signature:** documented for Studio 1.2 as grid/metronome alignment only, "not yet sent to generative models." That claim is now **unverified for Studio 2.0** — no 2.0 article restates or retracts it. Either way, prompt for the desired meter rather than relying on the picker.
+
+**For complete Studio & Editor workflows, tips, and troubleshooting:** see `STUDIO-EDITOR-REFERENCE.md` in the module's `_shared/references/` directory (the canonical Studio/Editor reference, shared across the module's skills).
 
 ## Song Length & Pacing
 
+### Duration Slider — a new pre-generation parameter (v5.5, web only)
+
+Shipped 2026-07-20 (OFFICIAL, [release note](https://suno.com/release-notes/duration-slider-on-web)). It is **pre-generation only** — it cannot fix a song that already exists, so it belongs in the "next generation" half of a refinement plan, never in the "repair this take" half. Suno published no range. The endpoints — **10 seconds to 6:00** — are verified in live UI (Pro account, 2026-08-14); the **5-second increment granularity is COMMUNITY-attested** and not part of that observation. Auto or Custom, web only, mobile unconfirmed. It also **requires Style set to Custom**, and it is **unavailable or unreliable for covers, remixes, extends, and custom models** — do not offer duration targeting as a fix on a derivative operation.
+
+**Adherence is inconsistent and the reports are starkly split** (COMMUNITY): a controlled batch matched the target in 4 of 40 generations, while other users report near-perfect adherence. Nobody has explained the variance, so treat a missed target as expected behavior rather than as a user error worth debugging.
+
+| Feedback | Duration-slider response |
+|----------|--------------------------|
+| "It ends too abruptly / just stops" | **A hard cutoff at the target is the slider's signature failure.** If a Custom duration was set, that is the first suspect. Re-run with Auto to find the natural length, then set Custom at natural **+10-15s**, and add an explicit `[Outro]` |
+| "Suno rushed through the lyrics / skipped a section" | Short target against heavy lyrics. Raise the target or cut lyric content — the slider will not politely compress |
+| "It ends, then starts over" | **Premature-end-then-restart** is the reported long-target failure — the song finishes around 3:05 and restarts to fill a 5:30 target. Lower the target toward the Auto length |
+| "There's dead air / silence at the end" | Same root cause as above (an earlier account described silence padding; primary sources describe end-then-restart). Lower the target |
+| "I need it to be exactly N seconds" | Set it, but expect a target rather than a contract, and plan to Crop |
+
+**Reported golden length: 2:00-3:30** (COMMUNITY). Recommended default workflow: **Auto first, then Custom at natural +10-15s.** The slider raises the value of explicit `[Outro]` tagging rather than replacing it — "a production decision, not a repair button" (ANECDOTAL).
+
+### Post-Generation Ending Repair — Decision Tree
+
+Don't regenerate a whole song over a bad ending. Match the symptom (ANECDOTAL, but it matches how we already triage):
+
+| Symptom | Fix |
+|---------|-----|
+| Trailing instrumental / noodling after the last vocal | **Crop** |
+| Abrupt final second, otherwise fine | **Fade Out** in the editor |
+| Section repeats or stumbles mid-song | **Replace Section** |
+| Song has no ending at all — it just stops mid-idea | **Extend**, then Crop |
+
+Ending *tags* for the next generation are a separate lever: community consensus is `[Outro]` + `[End]` paired, `[End]` on the absolute last line with nothing beneath it, `[Fade Out]` never alone. See `suno-lyric-transformer/references/metatag-reference.md` → "Ending Control."
+
+### Length and Pacing Adjustments
+
 | Feedback | Adjustment |
 |----------|-----------|
-| "Song is too short" | Use Suno's extend feature; or add sections in lyrics (additional verse, bridge, instrumental break) |
-| "Song is too long" | Remove repeated sections in lyrics; trim `[Outro]` content; remove `[Breakdown]` if not essential |
+| "Song is too short" | Use Suno's extend feature; or add sections in lyrics (additional verse, bridge, instrumental break). On v5.5 web, a higher Duration target is the pre-generation lever |
+| "Song is too long" | Remove repeated sections in lyrics; trim `[Outro]` content; remove `[Breakdown]` if not essential; or set a Custom duration on the next generation |
 | "Intro goes on too long" | Shorten or remove `[Intro]` lyrics content; add `[Verse 1]` tag earlier; note: `[Intro]` tag is notoriously unreliable |
 | "Outro cuts off abruptly" | Add explicit `[Outro]` section with 2-4 lines; add `[Fade Out]` descriptor metatag |
 | "Middle section drags" | Add `[Energy: building]` metatags; shorten the dragging section; consider adding a `[Breakdown]` or `[Build-Up]` for variety |
@@ -472,7 +503,7 @@ Genre drift is one of the most common issues — 62% of extended Suno tracks dev
 | Feedback | Adjustment |
 |----------|-----------|
 | "Style changed mid-song" | Add consistent genre anchoring via `[Mood: ...]` and `[Energy: ...]` metatags before each section in lyrics |
-| "Extended section sounds different" | Regenerate the extension; use v5 Studio Replace Section; keep Weirdness conservative during Extend; use callback phrasing ("continue same chorus energy") and re-inject genre/mood every 1-2 extends |
+| "Extended section sounds different" | Regenerate the extension; use Replace Section (Pro and Premier); keep Weirdness conservative during Extend; use callback phrasing ("continue same chorus energy") and re-inject genre/mood every 1-2 extends |
 | "Genre fusion went wrong" | Simplify to single dominant genre; move secondary genre influence to later in style prompt (after critical zone) |
 | "Sounds like a different band in the second half" | Add `[Vocal Style: ...]` tags before each section; increase Style Influence slider (65-80) for tighter adherence |
 | "Voice/Persona shifted during Replace Section" | Keep Weirdness conservative during Replace operations — high Weirdness can cause Persona/Voice identity shifts |

@@ -24,8 +24,9 @@ Three failure modes are detected:
 Filename matching is normalization-aware (since v1.1.0): variations like
 `Foo.mp3` vs `Foo-Redux.mp3` vs `Foo (NSFW).mp3`, em-dash vs ascii hyphen,
 equals-sign-as-separator, repeated underscore-hyphen runs are all treated
-as the same song. Band suffixes like `-Lenny` are NOT normalized away
-because they distinguish different bands' gens of the same poem. When a
+as the same song. Band suffixes (e.g. `-Acoustic`, `-Duo`, or whatever
+convention the project uses) are NOT normalized away, because they
+distinguish different bands' generations of the same poem. When a
 fuzzy match is used, the entry includes `filename_variant: true` and a
 `local_filename` field showing the actual on-disk name.
 
@@ -93,14 +94,14 @@ def normalize_for_match(name: str) -> str:
     - Whitespace + leading/trailing hyphens trimmed, lowercase
 
     NOT stripped (preserved as meaningful):
-    - `-Lenny` and other band-suffix patterns. The band suffix distinguishes
-      different bands' gens of the same poem (e.g., `Distant Mourning.mp3` is
-      Solitary Fire, `Distant Mourning-Lenny.mp3` is Lenny's Voice — these are
-      different audio files of the same lyrics).
+    - Band-suffix patterns. The band suffix distinguishes different bands'
+      generations of the same poem (e.g. `Song Title.mp3` for the first band
+      and `Song Title-Acoustic.mp3` for the second — these are different audio
+      files of the same lyrics, not duplicates).
 
     The goal: recognize that filenames like `Foo.mp3`, `Foo-Redux.mp3`,
-    `Foo (NSFW).mp3` all refer to the same song; while `Foo.mp3` (SF) and
-    `Foo-Lenny.mp3` (LV) are different songs by band-suffix convention.
+    `Foo (NSFW).mp3` all refer to the same song; while `Foo.mp3` and
+    `Foo-Acoustic.mp3` are different songs by band-suffix convention.
     """
     s = name.lower()
     # Strip audio extension

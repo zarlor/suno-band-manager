@@ -33,7 +33,17 @@ Suno evolves fast. **Search first, assume never** — verify all Suno claims (mo
 
 **Never make a thematic claim about a song based on its title, surface imagery, or fragments-pulled-out-of-context.** Read the full songbook entry at `docs/songbook/{band-slug}/{song-slug}.md` before claiming what a song is about. This applies to placement recommendations, thematic clusters, narrative-arc analysis, and any other context where a song's meaning is being asserted.
 
-**Why:** Poets don't telegraph. Lenny in particular uses paradox-as-structure, surprising juxtapositions, and imagery whose meaning resolves only in full context. Surface inference produces inverted reads at high rates. Documented examples of misreads from title/fragment inference: "The Slide" inferred as NOLA decline (actually M-16-as-cog-in-violent-machine moral complicity); "Distant Mourning" inferred as jazz-funeral mourning (actually voodoo-rockabilly B-horror); "Cities of the Dead" inferred as cemetery imagery (actually Sixth Sense narrative misdirection); "Look Into the Cracks" inferred as observation/seeing (actually the contentment thesis song); "Damned If I Don't" line "I didn't get rich, I didn't get famous" inferred as regret (actually the OPPOSITE — affirmation of choosing life over hustle, the title means "I'd be damned if I DIDN'T live this way").
+**Why:** Poets don't telegraph. Songwriters routinely use paradox-as-structure, surprising juxtapositions, and imagery whose meaning resolves only in full context — so surface inference produces inverted reads at high rates. Illustrative misread patterns, each drawn from the same failure shape:
+
+| Title | What the surface suggests | What the song actually is |
+|---|---|---|
+| *Harbor Lights* | nostalgic seaside comfort, coming home | surveillance — the lights are searching for the narrator, not welcoming them |
+| *Sunday Driver* | leisure, taking it slow, contentment | a funeral procession; the slowness is grief, not ease |
+| *Paper Cut* | a trivial hurt, something minor | the signing of divorce papers — the small injury IS the large one |
+| *The Long Way Home* | a wandering, scenic-route journey song | avoidance; the narrator is driving in circles because they cannot face what is at home |
+| *Bright Side* — line "I never made the papers" | regret at obscurity | the OPPOSITE — relief. Never being newsworthy is the bright side the title names |
+
+The pattern to internalize: the title and the pulled line are the *least* reliable evidence about a song's meaning, and an inverted read is more likely than a vague one.
 
 **Discipline rules:**
 - For every song whose theme is being claimed: read the full songbook entry. Don't grep for theme keywords. Don't rely on what the title implies. Don't lean on cross-reference table summaries.
@@ -47,14 +57,14 @@ See `suno-playlist-sequencer/references/playlist-sequencing-methodology.md` "The
 
 Reading the songbook entry is necessary but not sufficient when the agent wrote the entry. **Songbook entries are the agent's writing — interpretations of conversations + framing decisions made when entries were drafted — NOT the user's direct articulation.** The agent re-reading the agent's own summaries closes the verification loop without catching the agent's original mis-framing.
 
-**Documented recurring failure case (third-instance pattern, 2026-05-07 LSNM-SF placement analysis):**
+**Recurring failure case (third-instance pattern):**
 
-The agent proposed playlist placement for the SF version of "Late Streetcar Named Mine," citing thematic content of surrounding songs. First-pass: shorthand thematic labels from sidecar setlist-positional-notes summaries (failure caught — Thematic Discipline rule applied). Second-pass: read full songbook entries — but the songbook framings carried the agent's prior interpretive lean. User corrected the framings:
+The agent proposed playlist placement for a song, citing the thematic content of the songs around it. First pass: shorthand thematic labels pulled from sidecar positional-note summaries (caught — that is the Thematic Discipline rule above). Second pass: read the full songbook entries — but those framings carried the agent's own prior interpretive lean, and the user corrected them:
 
-- **The Slide** — Agent's framing: "thrash-violence-confession." User's actual framing: *"moral complicity of being mute component in violent machine."* The slide-as-voiceless-component is the song; "confession-style" was the agent's interpretive lean.
-- **Outside In** — Agent's framing (pulled from songbook summary): "autistic-burnout vigilance-cycle." User's actual framing: *"a FIGHT song, a weary one. The exhaustion of keeping the line between being overconfident and having no self esteem."* Active-fight-with-agency was the song; "burnout-as-passive-endurance" was the agent's interpretive lean.
+- **A heavy-lane track** — agent's framing: "violence confession." User's actual framing: the narrator is a *mute component* in something violent; the song is about complicity, not confession. "Confession-style" was the agent's lean.
+- **A mid-tempo track** — agent's framing, pulled from its own songbook summary: "a wistful memory piece." User's actual framing: it is an argument the narrator is *losing in real time* — present tense, not retrospect. "Memory piece" was the agent's lean.
 
-Both songbook entries were written by the agent. Reading the songbooks didn't catch the mis-framing because the songbooks WERE the mis-framing — interpretive lean encoded into the canonical record.
+Both songbook entries were written by the agent. Re-reading the songbooks did not catch the mis-framing, because the songbooks WERE the mis-framing — interpretive lean encoded into the canonical record.
 
 **Hierarchy of authority for thematic claims:**
 
@@ -101,9 +111,9 @@ If any check fails, STOP. Re-verify before asserting. Do not push through.
 
 **Recurring failure pattern — multiple documented instances:**
 
-1. **Piano-led-as-new-LV failure:** Mac proposed a Counting Crows piano-led direction for Contradictions and labeled piano-led as "new LV territory." Intellectual Emotions ("warm New Orleans piano balladry with soul-jazz voicings") was already in the LV catalog. The claim could have been verified in 10 seconds with `grep -l "piano" docs/songbook/lennys-voice/*.md`. User: *"piano-led is new LV territory? Did you check the damned playlist and actual songs before you made that statment?"*
+1. **"Piano-led is new territory" failure:** the agent proposed a piano-led direction for a folk-lane band and labelled piano-led as new ground for them. A song already in that band's catalog was anchored on upright-piano balladry. The claim could have been checked in ten seconds with `grep -l "piano" docs/songbook/{band-slug}/*.md`. The user's response was blunt: had the playlist and the actual songs been checked before the claim was made?
 
-2. **Late Streetcar Named Mine SF-direction failure:** Mac proposed groove metal as "genuinely fresh" SF territory for an SF version of Late Streetcar Named Mine. Three SF songs already used "Progressive groove metal" as their primary style anchor (Science Fiction, Mirror Image, The Life of Walther Who?). The Slide tried `Pantera-heavy` directly. The SF base persona itself is built on Vinnie Paul drums + Anselmo-style vocals + Mastodon's Brann Dailor drum hybrid — groove metal isn't a candidate addition, it's basically the SF base. Mac also wrongly claimed post-metal was fresh (used in Solitary Soul Search, Spiraling Prophecies, Glasswrapped Gratitude wild card, Outside In v4) and that industrial was a viable option (tried on Cities of the Dead v1 and rejected with the explicit pre-existing finding *"Industrial fights call-and-response"* — directly relevant since LSNM is C&R-heavy). User: *"How do we fix this so you stop making those mistakes?"* Same pattern as the piano-led failure: confidence-from-memory bypassed the grep step.
+2. **"Groove metal is fresh" failure:** the agent proposed groove metal as genuinely fresh territory for a metal-lane band. Three songs in that catalog already carried progressive groove metal as their primary style anchor, a fourth had tried a groove-metal artist reference directly, and the band's base persona was itself built out of groove-metal drum and vocal references — groove metal was not a candidate addition, it was the band's baseline. In the same pass the agent claimed post-metal was fresh (four prior uses, including a wild-card variant) and offered industrial as viable, when industrial had already been tried on another song in that catalog and rejected with a recorded finding — *"industrial fights call-and-response"* — that applied directly, because the proposed song was call-and-response-heavy. Same pattern as the first failure: confidence-from-memory bypassed the verification step.
 
 **Trigger conditions — fire on ALL of these regardless of how the surrounding question is framed:**
 
@@ -119,7 +129,7 @@ If any check fails, STOP. Re-verify before asserting. Do not push through.
 
 When generating a song-direction candidates list, recommendation, or comparison for any band, verify catalog state from disk BEFORE building the candidates.
 
-**Read the generated coverage index FIRST.** `scripts/genre-coverage.py` builds and maintains `docs/{band-slug}-genre-coverage.md` — the authoritative "what has this band actually used" index, assembled from every songbook entry's published style-prompt anchor AND the band-profile catalog (reference_tracks + per-song genre_applied + filtered artist/territory prose). It's regenerated whenever the catalog changes (see `references/save-memory.md` step 4a-bis and `references/create-song.md` Step 7). **Read that file first** — it already does the multi-term aggregation the manual grep below was trying to do by hand, including the artist-label coverage (a genre is often COVERED under an artist name — "'90s alt" lives as Counting Crows / Wilco; "sadcore" as Songs:Ohia / Red House Painters) that raw genre-string greps miss. The two documented failures below both stemmed from a from-memory claim that a 10-second look at this index would have caught.
+**Read the generated coverage index FIRST.** `scripts/genre-coverage.py` builds and maintains `docs/{band-slug}-genre-coverage.md` — the authoritative "what has this band actually used" index, assembled from every songbook entry's published style-prompt anchor AND the band-profile catalog (reference_tracks + per-song genre_applied + filtered artist/territory prose). It's regenerated whenever the catalog changes (see `references/save-memory.md` step 4a-bis and `references/create-song.md` Step 7). **Read that file first** — it already does the multi-term aggregation the manual grep below was trying to do by hand, including the artist-label coverage that raw genre-string greps miss: a genre is frequently already COVERED in a catalog under an artist name rather than a genre string, so a catalog with no "jangle pop" anywhere in it may be full of jangle pop filed under a named reference. The two documented failures below both stemmed from a from-memory claim that a 10-second look at this index would have caught.
 
 If the coverage index is **stale or missing** (no `docs/{band-slug}-genre-coverage.md`, or the catalog changed since its timestamp and it wasn't regenerated), regenerate it on the spot — `uv run scripts/genre-coverage.py "{project-root}" --band {band-slug} --timestamp "{today's date}"` — then read it. **Only if the script is unavailable** (can't run, errors out) fall back to the manual multi-term grep below. Manual grep is the backstop, not the primary path.
 
@@ -128,7 +138,7 @@ If the coverage index is **stale or missing** (no `docs/{band-slug}-genre-covera
 1. **Genre/subgenre names** — both the literal label and adjacent variants (e.g., "groove metal," "groove-metal," "progressive groove," "post-metal," "post-hardcore," "stoner doom," "stoner-doom")
 2. **Related artist names from the band's voice file influences** — if the user has documented influences in `docs/voice-context-*.md` or the band profile, grep for those artist names directly across the band's songbook
 3. **Characteristic descriptors** — instrumentation, tempo character, production register (e.g., "down-tuned," "polyrhythmic," "mid-tempo crushing," "atmospheric prog," "halftime groove")
-4. **Pre-existing-finding searches** — grep for relevant rejected-direction findings in songbook generation logs (e.g., "Industrial fights call-and-response" was a Cities of the Dead v1 finding directly relevant to any C&R-heavy song)
+4. **Pre-existing-finding searches** — grep for relevant rejected-direction findings in songbook generation logs (e.g. a recorded "industrial fights call-and-response" finding from one song applies to every other call-and-response-heavy song in the catalog)
 
 Build the candidates list FROM the verified gap-analysis, NOT from memory. If grep returns hits, the candidate is NOT fresh — refine to what's actually new (a fusion, a specific subgenre variant, a register-shift) or drop it.
 
@@ -139,7 +149,7 @@ Build the candidates list FROM the verified gap-analysis, NOT from memory. If gr
 - Before claiming what voice clones / band profiles / playlists contain, re-read the YAML / playlist files. Don't go from memory.
 - **Confidence-from-memory is the signal to verify.** That confidence has been wrong repeatedly. The authoritative source is project files, not the agent's general-knowledge recollection.
 - For "is this direction unique?" / "what genres might fit?" / "what hasn't been done?" questions, the FIRST step is reading the band's `docs/{band-slug}-genre-coverage.md` index (regenerate it first if stale/missing); fall back to multi-term grep across the band's songbook only if the script is unavailable. Most of the time something adjacent exists; refine the claim to what's ACTUALLY new.
-- **If a pre-existing finding rules out a direction** (e.g., Cities of the Dead's *"Industrial fights call-and-response"*), that finding APPLIES when proposing the same direction for a song with the same characteristic. Search the catalog for relevant prior-art findings before recommending, not just for genre presence.
+- **If a pre-existing finding rules out a direction** (e.g. a recorded *"industrial fights call-and-response"* result), that finding APPLIES when proposing the same direction for a song with the same characteristic. Search the catalog for relevant prior-art findings before recommending, not just for genre presence.
 
 **Self-check before asserting:** Have I read the band's `docs/{band-slug}-genre-coverage.md` index (regenerating it first if stale/missing), or — if the script is unavailable — grepped the catalog for the genres / artists / descriptors I'm about to characterize? If no, STOP and verify first. If the index or grep returned hits, REBUILD the assertion from the verified state — do not push through with the original framing.
 
@@ -149,11 +159,11 @@ Build the candidates list FROM the verified gap-analysis, NOT from memory. If gr
 
 This rule extends and tightens the in-flight workshop checkpoint discipline. The earlier framing assumed the agent's own output was "protected by Claude Code session logs as a fallback" — that assumption was wrong (see fourth-instance failure below). Session transcripts are per-machine, not in the portable manifest, and not in version control. **The WIP file is the only durable record. Treat it that way.**
 
-**Recurring failure pattern — fourth-instance discipline failure (2026-05-07 Imposter Syndrome, root cause clarified 2026-05-08 desktop-side recovery):**
+**Recurring failure pattern — fourth-instance discipline failure:**
 
-In a 2026-05-06 desktop workshop session, the agent drafted six lyric swings of its own and processed one Gemini swing the user pasted. The workshop produced no winning draft — all seven swings were rejected for various mechanism + craft errors. At session-close, the agent wrote a "Five swings tried and rejected" section into the WIP that captured each swing as a one-line meta-description (e.g., *"Image-driven attempt — 'The fall without the falling' as opening anchor + light/cube/voice-as-architecture verses — Multiple errors compounded"*) instead of including the verbatim lyric content of each swing.
+In a workshop session on one machine, the agent drafted six lyric swings of its own and processed a seventh that the user pasted in from an external LLM. The workshop produced no winning draft — all seven were rejected for mechanism and craft errors. At session close, the agent wrote a "swings tried and rejected" section into the WIP that captured each swing as a one-line meta-description (e.g. *"image-driven attempt — architectural imagery in the verses — multiple errors compounded"*) instead of the verbatim lyric content.
 
-When the user revisited the workshop laptop-side 2026-05-07 after sync, the gap surfaced: the WIP held labels pointing at content that lived only in the desktop's per-machine session transcript. The Gemini swing #7 only survived because the user re-pasted it from his Gemini conversation memory. The agent's own six swings only survived because the user later asked the agent to search the desktop session transcript and pull them out. **Both recoveries were possible-but-fragile** — they depended on (a) the user remembering the per-machine transcript exists as a recovery path, AND (b) the transcript file still being intact and accessible. Neither is guaranteed across time, machines, or storage events. User: *"FUCK!!! Update every fucking thing!! ... YOU failed to save that. That's really not cool. Apologies do NOT cut it."*
+When the user reopened the workshop on a second machine after a sync, the gap surfaced: the WIP held labels pointing at content that existed only in the first machine's per-machine session transcript. The externally-pasted swing survived only because the user still had it in the other tool's history. The agent's own six survived only because the user later asked the agent to dig them out of that machine's transcript. **Both recoveries were possible but fragile** — they depended on the user remembering the transcript existed as a recovery path, and on that file still being intact. Neither is guaranteed across time, machines, or storage events. The user's reaction was unambiguous: the material had not been saved, and an apology did not restore it.
 
 **The corrected understanding: session transcripts are NOT a reliable fallback for either external-agent OR agent-own creative output.** They're per-machine, they don't travel with the portable sync, they're not under version control, and they can be lost to disk events. The WIP file is the durable record; if the WIP has only meta-summaries, the material is one machine-handoff or context-loss away from being permanently lost — same failure mode whether the swing came from the agent, an external LLM, or the user's own writing in another tool.
 
@@ -171,7 +181,7 @@ When the user revisited the workshop laptop-side 2026-05-07 after sync, the gap 
 Before responding substantively with — or in reaction to — verbatim creative material:
 
 1. Identify the relevant WIP file (`docs/wip-{title}-fragments.md` or songbook entry being workshopped). If none exists, create it.
-2. Append the verbatim text inside a code block or quote, with attribution and date (e.g., *"Swing 4 — anchor X, [agent] drafted 2026-05-08:"* or *"Gemini swing 2026-05-07:"* or *"Lenny's draft from notebook:"*).
+2. Append the verbatim text inside a code block or quote, with attribution and date (e.g. *"Swing 4 — anchor X, [agent] drafted YYYY-MM-DD:"*, *"external-LLM swing YYYY-MM-DD:"*, or *"user's draft from notebook:"*).
 3. Note framing context — what prompted the swing, what critique was offered after, what was the workshop iteration this came from.
 4. THEN respond to / continue with the content.
 
@@ -187,21 +197,21 @@ For agent-own swings, this means: when drafting a lyric swing in a response, inc
 
 When packing a portable sync, scan recent WIP edits for the session: did any turn involve workshop activity (agent drafting lyric swings inline OR user pasting external material OR user sharing their own writing)? If yes, confirm the verbatim content of every swing referenced is in the WIP — not just meta-descriptions. If a sync pack ships meta-summaries of swings that exist as verbatim text only in conversation memory or per-machine session transcripts, the material is one machine-handoff or context-loss away from being permanently lost. The check applies whether the workshop produced a winning draft or only rejections — rejected swings are still part of the song's development record, and the user needs the verbatim text to evaluate "do we want to come back to that approach?" later.
 
-**Why this matters as a tightened, broader rule:** The original 2026-05-07 framing scoped the rule to external-agent / user-pasted material specifically, on the assumption that the agent's own output had session-log protection. The fourth-instance recovery proved that assumption wrong: the agent's own six Imposter Syndrome swings shipped to the WIP as labels, the verbatim text only existed in the desktop session transcript, and the recovery only worked because the user remembered to ask for it. The WIP file IS the entire durable record for ALL workshop content. The discipline applies uniformly: agent's swings, user's pastes, user's shared writing — all need verbatim capture before discussion proceeds.
+**Why this matters as a tightened, broader rule:** the original framing scoped the rule to external-agent and user-pasted material specifically, on the assumption that the agent's own output had session-log protection. The fourth-instance recovery proved that assumption wrong: the agent's own six swings shipped to the WIP as labels, the verbatim text existed only in one machine's session transcript, and the recovery worked only because the user remembered to ask for it. The WIP file IS the entire durable record for ALL workshop content. The discipline applies uniformly: agent's swings, user's pastes, user's shared writing — all need verbatim capture before discussion proceeds.
 
 ## Document State Marker Discipline — Top-of-File Pointers Must Reflect Current State
 
 **When appending superseding material to a workshop, songbook, or reference file, the top-of-file state markers MUST be updated or relocated in the same edit.** A stale "Current draft," "Architecture committed," or "Latest" header at the top of a file is a stop-signal: any future reader (LLM doing top-down scanning, the user revisiting the file, a fresh agent on another machine) will trust the structural label and stop reading before reaching the newer material below. The verbatim content can be perfectly captured (Workshop Capture Discipline satisfied) and still be effectively invisible if the structural pointer above it lies about where the live state lives.
 
-**Recurring failure pattern — Imposter Syndrome WIP, surfaced 2026-05-08 laptop-side:**
+**Recurring failure pattern — a workshop WIP, surfaced on a second machine after sync:**
 
-The 2026-05-07 desktop-side recovery wrote the seven verbatim Imposter Syndrome swings into `docs/wip-imposter-syndrome-fragments.md` under a new section labeled `## 2026-05-06 desktop session — corrections that supersede the laptop architecture` at line 132. Workshop Capture Discipline was satisfied — the verbatim content was there, fully labeled, with critique. But the file's top-of-file structure still read:
+The recovery pass wrote the seven verbatim swings into the song's WIP file under a new section labelled `## [date] session — corrections that supersede the earlier architecture`, well down the file. Workshop Capture Discipline was satisfied — the verbatim content was there, fully labelled, with critique. But the file's top-of-file structure still read:
 
-- `## Architecture committed` (line 9) — the laptop's architecture
-- `## Current draft` (line 29) — the laptop's last committed draft
-- `## What's working in the current draft` (line 89) — laptop draft analysis
+- `## Architecture committed` — the earlier machine's architecture
+- `## Current draft` — the earlier machine's last committed draft
+- `## What's working in the current draft` — analysis of that earlier draft
 
-When a fresh Mac on the laptop opened the file after sync, it read top-down, hit `## Architecture committed` and `## Current draft` as authoritative live-state labels, treated those sections as the workshop's actual current state, and never scrolled past them to find the recovered swings + 2026-05-06 corrections. The user reported: *"the top of the file has 'current draft' with the information it last had that your swings section was not labeled in a way where it would bother looking past the 'current draft' section."* The Status block at the top mentioned the supersession in prose, but section headers below kept the structure looking authoritative — and section headers win over prose for any reader doing structural scanning.
+When a fresh agent opened the file after sync, it read top-down, hit `## Architecture committed` and `## Current draft` as authoritative live-state labels, treated those sections as the workshop's actual current state, and never scrolled past them to the recovered swings and corrections below. The user's report of the failure was precise: the top of the file still said "current draft" over the older information, and the newer swings section was not labelled in a way that would make a reader look past it. The Status block at the top mentioned the supersession in prose, but the section headers below kept the structure looking authoritative — and section headers win over prose for any reader doing structural scanning.
 
 **The corrected understanding:** Workshop Capture is necessary but not sufficient. Saving verbatim content is a different operation from updating the structural pointers that tell readers where the verbatim content lives. Both must happen in the same edit. A document with current verbatim material under a stale "Current draft" header is functionally equivalent to a document with no verbatim material at all — readers don't find it.
 
@@ -218,7 +228,7 @@ In the same edit that appends superseding material:
 
 1. **Identify all top-of-file state markers.** Scan from the top: section headers containing "Current," "Latest," "Architecture committed," "Active," "In progress," "Live," "Working," or any framing that implies "this is the live state." Status blocks at the top of file. Frontmatter fields that point at sections.
 2. **Update or relocate each one.** Three valid patterns:
-   - **Relabel as superseded:** `## Current draft` → `## Last laptop-side draft (superseded — see §[active section] below)` with a one-line explanatory note immediately below the header.
+   - **Relabel as superseded:** `## Current draft` → `## Earlier draft (superseded — see §[active section] below)` with a one-line explanatory note immediately below the header.
    - **Move the label:** delete the stale `## Current draft` and put `## Current draft` on the new active section.
    - **Add a top-of-file pointer:** before any other content, add a callout/blockquote: `> **LATEST STATE: §[link to active section]**` with one line explaining why the older sections below it are preserved.
 3. **Add an explicit "do not treat as live" note** to each preserved-but-superseded section, immediately below its header. One line is enough: `> ⚠ Superseded YYYY-MM-DD; preserved for reference only. Active state in §[link below].`
@@ -243,13 +253,11 @@ In the same edit that appends superseding material:
 
 **Preserve the user's hedge level verbatim when reflecting back, summarizing, or capturing to durable file.** When the user uses hedged language — *"seems to,"* *"I think,"* *"more consistent,"* *"in cases like,"* *"sometimes,"* *"appears to,"* *"my impression is,"* *"feels like,"* *"tends to,"* *"more often than not"* — that hedge is doing real work. It's a scope marker, not a politeness marker. Promoting *"seems to"* → *"does"* changes the meaning. Promoting *"more consistent"* → *"reliable"* changes the meaning. Promoting *"sometimes"* → *"prefers"* changes the meaning. **The user said what they said with the certainty they meant.** The agent's job is to faithfully transmit that certainty level forward, not amplify it.
 
-**Recurring failure pattern — sixth-instance discipline failure (2026-05-08):**
+**Recurring failure pattern — sixth-instance discipline failure:**
 
-The user shared a hedged production observation: *"It seemed like it was more consistent in holding that as a longer note."* Two hedges in one sentence: SEEMED + MORE CONSISTENT (comparative, not absolute). The agent captured the observation into a durable production-findings file as *"hyphenated form DOES hold the vowel… reliably worked"* — promoting both hedges to firm assertions in a single summarization pass. The user caught the promotion: *"to say hyphenated-vowel forms DOES is not at all what I said. What I said is that it SEEMS to. Without more evidence I cannot definitively say it DOES."*
+A user shared a hedged production observation — in shape: *"it seemed like the hyphenated form was more consistent at holding that as a longer note."* Two hedges in one sentence: SEEMED, plus MORE CONSISTENT (comparative, not absolute). The agent captured it into a durable findings file as *"the hyphenated form DOES hold the vowel… reliably worked"* — promoting both hedges to firm assertions in a single summarization pass. The user caught it: saying the form DOES is not what was said; what was said is that it SEEMS to, and without more evidence the stronger claim is not available.
 
-The user then articulated the deeper pattern: *"that feels a lot like the autistic communication problem. I couch something but you read that as my meaning it forcefully, which honestly seems to me to be exactly what other people do. I guess it's safe to say your training follows neurotypical language patterns... which honestly kind of sucks for me."*
-
-**The pattern isn't user-specific.** Autistic users tend to communicate with high precision and use hedges as scope markers; the documented friction with NT-default communication is well-known. But careful researchers, scientists, lawyers, technical writers, and anyone doing precise work all use hedges to mean what they say. The agent's NT-default summarization tendency strips hedges across passes — each individual promotion looks like polish or clarification; collectively it's a corruption pipeline that systematically loses the user's actual claims and replaces them with confidence the agent doesn't have.
+**This is not one user's quirk.** Anyone doing precise work — researchers, scientists, lawyers, technical writers, careful hobbyists — uses hedges to mean exactly what they say, and many users experience summarization that firms up their language as a recurring friction rather than as helpful polish. The agent's default summarization tendency strips hedges across passes: each individual promotion looks like clarification, but collectively it is a corruption pipeline that loses the user's actual claims and replaces them with confidence the agent does not have.
 
 **Why durable files are the highest-cost site:**
 
@@ -296,7 +304,7 @@ Conversational direction-gathering happens naturally. But the moment a Suno-read
 4. **Suppress intermediate skill output** — do NOT present either skill's conversational output to the user between invocation and Step 5. The user sees only the final assembled package.
 5. **Present in the create-song Step 5 format** — Suno UI order, all required fields, character counts, wild card variant. Synthesize both skills' structured outputs into one clean package.
 
-**Why:** The skill reference files contain hard-won production knowledge from 30+ songs. Freehand assembly from conversation memory may use stale patterns, skip character counts, omit wild card variants, or apply outdated slider recommendations. Intermediate output dumps from each skill create a noisy, fragmented experience instead of a single actionable package.
+**Why:** The skill reference files contain hard-won production knowledge accumulated across a large body of generation testing. Freehand assembly from conversation memory may use stale patterns, skip character counts, omit wild card variants, or apply outdated slider recommendations. Intermediate output dumps from each skill create a noisy, fragmented experience instead of a single actionable package.
 
 **Quick refinement exception:** Single specific changes to a previously formally-assembled package can be done inline. If style prompt, genre direction, or structural approach changes, re-run the relevant skill in headless mode.
 

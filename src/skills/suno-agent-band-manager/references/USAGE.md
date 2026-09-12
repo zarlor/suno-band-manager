@@ -320,7 +320,7 @@ Mac includes this guidance on your first song or in Demo mode:
 6. Paste **Lyrics** into the Lyrics field (set Lyrics Mode to Manual)
 7. Paste the **Style Prompt** into the "Style of Music" field
 8. Add **Exclude Styles** as a comma-separated list (Pro/Premier)
-9. Under **More Options**, set Vocal Gender and the sliders, plus the v6 controls: **Variety at Exact style** (any higher notch rewrites your style prompt), **Max Mode** only for the take you'll keep (2× credits), **Duration**, and **Personalize** off
+9. Under **More Options**, set Vocal Gender and the sliders, plus the v6 controls: **Variety at Exact style** (any higher notch rewrites your style prompt), **Max Mode** on for any take you might keep (2× credits; it's applied at generation and can't be added to a finished take), **Duration**, and **Personalize** off
 10. Add your **Song Title**
 11. Hit **Create** and generate **3-5 versions** -- Suno interprets the same inputs differently each time
 12. **Inspect results** -- listen through all versions before deciding. If a version is mostly right but one section is weak, try **section replacement** in the Song Editor to fix the targeted area rather than regenerating the whole song

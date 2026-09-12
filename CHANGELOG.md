@@ -4,6 +4,32 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [2.3.1] - 2026-09-12
+
+A **v6 field-notes** patch. The module's first real v6 renders, and a same-day tempo research sweep, taught several things the 2.3.0 preview couldn't know. This release moves them into the files every pipeline run reads, so packages get them right on the first try. It also fixes wrong Max Mode advice and a wrong setup command in the install guide. Documentation only: no script, schema, or dependency changes.
+
+### Upgrade at a glance (existing installs)
+
+- **Nothing to migrate.** `git pull`, then `/suno-setup` to record the new module version. Marketplace installs stay on the registry's approved version (v2.3.0 is pending review there); this patch isn't submitted to the marketplace.
+- **Max Mode advice changed.** If you've been generating with Max Mode off "until the keeper", note that Max can't be added to a finished take. Turn it on for any generation you might keep.
+- **v6 findings from the module's own testing are marked LOCAL-OBSERVED** (small samples, one Professional Voice), alongside the existing OFFICIAL / VENDOR / COMMUNITY / ANECDOTAL grades.
+
+### v6 field findings promoted into the pipeline references
+The module's first v6 renders (graded **LOCAL-OBSERVED**) and a tempo follow-up research sweep are now in the files every pipeline run reads:
+- **`model-prompt-strategies.md`:**
+  - a new "Tempo and section contrast" section: one grid per generation; contrast as feel over one pulse; BPM as soft conditioning paired with feel words; the same scene-naming words in the style map and the lyric cues; the levers for a true tempo change
+  - a new "Voices on v6" section: auto-doubling (don't request dual vocals), grit words roughening a Voice sample, blend, quieter masters
+  - the Variety row now records what the rewrite does and that the song page shows it
+- **`metatag-reference.md`:** inline BPM and meter tags don't move v6's tempo; mirror the style map word for word and name the scene in cues; with a Voice, drop harmonized/dual tags and use clean / clean, sung / soft, sung.
+- **`suno-parameter-map.md`:** new triage rows for "the tempo changes didn't happen", "too many backing vocals", and "my voice sample sounds grittier".
+- **`SUNO-REFERENCE.md`:** where v6 section editing lives (⋯ More Actions → Edit → Replace Section), with the early caveats.
+
+### Fixed
+- **Setup command in INSTALLATION.md.** The BMad-install and after-upgrade steps said `/bmad-suno-setup`; the skill is `/suno-setup`.
+- **Max Mode guidance.** 2.3.0 said "Max Mode (keepers only)" / "off while exploring". Max is applied at generation, so a finished take can't be upgraded. Guidance now says: on for any generation you might keep, off only for throwaway style sketches. Corrected in `create-song.md`, `USAGE.md`, the Style Prompt Builder `SKILL.md`, `model-prompt-strategies.md`, and `suno-parameter-map.md`.
+
+---
+
 ## [2.3.0] - 2026-09-12
 
 A **Suno v6 preview** release. Suno launched the v6 model family on 2026-09-09 and retired every earlier model the same day, so this release points the whole module at v6 — the models, the new More Options controls, and the prompt guidance — using what could be verified in v6's first week. All v6 guidance is labeled **PREVIEW** and graded by source (OFFICIAL / VENDOR / COMMUNITY / ANECDOTAL); none of it has been confirmed by this module's own production testing yet, and it will firm up in the next major release. The release also ships per-band audio folders (#32), moves the audio scripts to librosa 1.0, adds BS.1770 loudness and two optional PyTorch-based analysis tools (Beat This! beat tracking, Demucs vocal placement), and tightens the sidecar validator.

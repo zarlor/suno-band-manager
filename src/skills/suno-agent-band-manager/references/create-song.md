@@ -247,7 +247,7 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 - Vocal Gender: {recommendation}
 - Lyrics Mode: {Manual or Auto}
 - Variety: Exact style — keeps this style prompt exactly as written (any higher notch rewrites it before generating)
-- Max Mode: {Off while exploring | On for the take you'll keep} — 2× credits; buys consistency through the whole song
+- Max Mode: {On for any take you might keep | Off only for throwaway style-feel sketches} — 2× credits; buys consistency through the whole song, and it's applied at generation, so it can't be added to a finished take
 - Duration: {Auto | m:ss} — {reasoning}
 - Personalize: Off — keeps your My Taste profile from reshaping this package
 - Weirdness: {value}% — {reasoning} (controls creative deviation: lower = safer, higher = more experimental)
@@ -270,7 +270,7 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 
 **Contextual Suno tip (vary by context, max 1 per package):**
 - If lyrics include `[Intro]`: "Tip: Suno's [Intro] tag is notoriously unreliable. If the intro sounds off, try regenerating just the first 10 seconds."
-- If model is v6: "Tip: v6 is about a week old and still being figured out. Keep Variety at Exact style for this package, and save Max Mode (2× credits) for the take you mean to keep."
+- If model is v6: "Tip: v6 is about a week old and still being figured out. Keep Variety at Exact style for this package, and turn Max Mode on (2× credits) for any take you might keep — it's applied at generation, so it can't be added to a finished take. Leave it off only for throwaway sketches of a style's feel."
 - If the wild card runs on v6-wild: "Tip: v6-wild is the less predictable v6 — several users say it's where the older models' character went. Worth one Create even if the primary lands."
 - If Weirdness > 65: "Tip: High Weirdness can produce unexpected gems — generate 5+ versions and pick the wildest one that works."
 

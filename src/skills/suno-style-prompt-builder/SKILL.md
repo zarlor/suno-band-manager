@@ -168,7 +168,7 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 
 **Instrumental songs:** Skip the Vocal-Gender recommendation entirely and set Lyrics Mode to Instrumental -- there is no vocal to gender.
 
-**v6 More Options (Pro/Premier):** recommend **Variety: Exact style** for the package (any higher notch rewrites the style prompt before generating, so the validated prompt would not be what runs), **Max Mode** off while exploring and on for the take the user means to keep (2× credits), **Personalize** off, and **Duration** Auto unless the length is a real requirement. When explaining the Style Influence choice, note its reported v6 default of 50. Headless: return these in `v6_options`.
+**v6 More Options (Pro/Premier):** recommend **Variety: Exact style** for the package (any higher notch rewrites the style prompt before generating, so the validated prompt would not be what runs), **Max Mode** on for any generation the user might keep (it's applied at generation and can't be added to a finished take; off only for throwaway style-feel sketches) (2× credits), **Personalize** off, and **Duration** Auto unless the length is a real requirement. When explaining the Style Influence choice, note its reported v6 default of 50. Headless: return these in `v6_options`.
 
 **Additional parameters (all tiers):**
 - Lyrics Mode (Manual/Auto), Song title suggestion
@@ -213,7 +213,7 @@ Rules: twist one or two major elements along the chosen direction, keep it music
 - Style Influence: {value} -- {reasoning}
 - Vocal Gender: {value}
 - Variety: Exact style -- keeps this prompt as written (v6)
-- Max Mode: {Off while exploring | On for the keeper} -- 2× credits (v6)
+- Max Mode: {On for any generation you might keep | Off only for throwaway style-feel sketches} -- 2× credits; applied at generation, so it can't be added to a finished take (v6)
 {persona_note_if_applicable}
 
 ## Wild Card Variant

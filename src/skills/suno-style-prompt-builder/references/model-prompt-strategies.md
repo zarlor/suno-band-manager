@@ -20,7 +20,7 @@
 
 ## Suno v6 Family (current — PREVIEW guidance, 2026-09-12)
 
-> **Status: PREVIEW.** v6 launched 2026-09-09 and retired every earlier model. This section is compiled from Suno's v6 help articles, day-one vendor testing, and the first week of community reports. **None of it has been confirmed by this module's own production testing yet.** Grades: OFFICIAL (Suno-documented), VENDOR (guide sites reporting their own tests), COMMUNITY (several independent users), ANECDOTAL (one report). Where this section conflicts with the retired-model sections below, it wins for v6; where it is silent, the older findings are hypotheses to re-test on v6, not rules.
+> **Status: PREVIEW.** v6 launched 2026-09-09 and retired every earlier model. This section is compiled from Suno's v6 help articles, day-one vendor testing, and the first week of community reports. Items graded **LOCAL-OBSERVED** come from this module's own first v6 renders (small samples, one Professional Voice); everything else is still unconfirmed here. Grades: OFFICIAL (Suno-documented), VENDOR (guide sites reporting their own tests), COMMUNITY (several independent users), ANECDOTAL (one report), LOCAL-OBSERVED (this module's own renders, measured). Where this section conflicts with the retired-model sections below, it wins for v6; where it is silent, the older findings are hypotheses to re-test on v6, not rules.
 
 ### The three models
 
@@ -49,13 +49,33 @@ Front-loading and the critical zone still apply. The 5-8 descriptor sweet spot w
 
 | Control | What it does | Default for a pipeline-built package |
 |---|---|---|
-| **Variety** — notches *Exact style*, *Balanced variety*, *Distinct styles*, *Bold exploration*, *Unreasonably varied* | Above *Exact style* it **rewrites the style prompt before generating** — "adjusting and updating your style prompts… reduce the Variety slider to 0" to keep full control of your tags (OFFICIAL). Users who found their style box rewritten traced it here (COMMUNITY) | **Exact style.** Anything higher means the validated prompt is not what generates. Raise it deliberately to explore — one careful tester found *Bold* better than 0 on a ballad (ANECDOTAL) |
-| **Max Mode** | "Uses more compute to maximize consistency throughout the song"; **2× credits**. Suno positions it for songs over two minutes, faithful covers, and style transfer (OFFICIAL) | **Off while exploring; on for the take you mean to keep.** Community reports on whether it fixes late-song degradation are mixed |
+| **Variety** — notches *Exact style*, *Balanced variety*, *Distinct styles*, *Bold exploration*, *Unreasonably varied* | Above *Exact style* it **rewrites the style prompt before generating** — "adjusting and updating your style prompts… reduce the Variety slider to 0" to keep full control of your tags (OFFICIAL). Users who found their style box rewritten traced it here (COMMUNITY). **LOCAL-OBSERVED (2 songs):** the finished song's page shows the rewritten style, not what was typed. The rewrite turned sentences into production-term lists, stripped artist names, turned negatives into positives, dropped mood prose, invented arrangement details, and drifted (warm → raw, grit moved into the genre line, "metal" put at the head). It also appeared to pull terms from the lyric tags. The slider shows shorthand labels (reported: "High" = *Distinct styles*, "Extra" = *Bold exploration*) | **Exact style.** Anything higher means the validated prompt is not what generates. Raise it deliberately to explore — one careful tester found *Bold* better than 0 on a ballad (ANECDOTAL) |
+| **Max Mode** | "Uses more compute to maximize consistency throughout the song"; **2× credits**. Suno positions it for songs over two minutes, faithful covers, and style transfer (OFFICIAL) | **On for any generation you might keep** — it's applied at generation, so a finished take can't be upgraded to Max. Off only for throwaway style-feel sketches. Field report from this module's own v6 testing: Max was the difference between usable and unusable takes. Community reports on whether it fixes late-song degradation are mixed |
 | **Personalize** | Applies the account's My Taste profile | **Off** — keeps the package reproducible across accounts |
 | **Duration** | Auto, or a Custom target from 0:10 to 6:00 | **Auto** unless the length is a real requirement (see "Duration Slider") |
 | **Style Influence** | Loose ↔ Strong prompt adherence (OFFICIAL) | Reported to **default to 50** on v6 (VENDOR ×2) — check it before judging a prompt. Community settings for obedience converge on **Variety 0 · Weirdness ~20-50 · Style Influence 80-95** (COMMUNITY, 4+ reports) |
 | **Weirdness** | Safe ↔ Chaos, 50 = normal (OFFICIAL) | Chosen per song as always. The 60-75 counter-genre range and the ~80 cliff in the Slider Guidelines were v5.5 findings, untested on v6 |
 | **Audio Influence** | Appears only with audio attached — upload, Voice, or Persona (OFFICIAL) | Re-profile per voice on v6 rather than carrying a v5.5 number over |
+
+### Tempo and section contrast (PREVIEW)
+
+- **One generation keeps one tempo grid.** "Suno doesn't reliably support tempo changes within a single generation" (VENDOR). **LOCAL-OBSERVED:** a song whose lyric tags asked for 65 → 150 → 65 → 150 → 85 BPM came back on one flat grid, and so did a style prompt saying "tempo shifts from slow 6/8 to fast double-time and half-time grooves".
+- **Write the contrast as feel over one pulse.** Use half-time vs double-time drum feel, sparse vs dense arrangement, and each instrument's job per section ("a 140 BPM track can feel closer to 70", VENDOR). **LOCAL-OBSERVED:** reframing the same song this way was heard as "a LOT better", with some of the section changes landing.
+- **BPM is soft conditioning — pair every number with feel words,** e.g. "72 BPM feel with a slow heavy backbeat and double-time hi-hat grid" (COMMUNITY compiled v6 guide: "BPM is a hint, not a transport control"). A bare number is often ignored. Keep BPM figures in the style field.
+- **Reinforce with the same words in both fields, and name the scene.** The style prompt's section map and the lyric section cues should use identical phrases, and each phrase should say what the section *is* as well as how it moves: "closing time, the harbor wakes up: fast driving double-time build" rather than "fast section". v6 reads plain language and resolves contradictions between the fields by thinning the band (VENDOR + COMMUNITY). The payoff of naming the scene is under test here.
+- **For a true tempo change,** use one of these (VENDOR):
+  - Replace Section on that span, with a plain-language prompt (Pro/Premier; untested for tempo);
+  - Extend from the section boundary with a new style;
+  - generate the sections separately and splice them.
+
+  Studio's BPM-aware tools are Premier-only (OFFICIAL).
+
+### Voices on v6 (PREVIEW)
+
+- **v6 doubles the lead and adds backing vocals without being asked** (LOCAL-OBSERVED: one Professional Voice, 2 songs; the vocal stem measured 5-7 dB wider in stereo than the same voice on v5.5). Don't spend prompt words on "dual vocals" or harmonies. If the doubling is too much, the next test is "backing vocals" in Exclude Styles (untested).
+- **Grit words roughen a Voice sample** (LOCAL-OBSERVED). "Grit", "gravel" and "rasp" anywhere near the vocal description or the genre head make a clean-leaning Voice sing rougher. Attach grit to instruments ("guitars with a gritty saturated tone") and keep the vocal line clean.
+- **Blend:** on v6 the Voice sat at the old heavy-genre Persona's level against the band. The same voice on v5.5 sat well forward (LOCAL-OBSERVED, one song). Harsh-vocal triggers such as "metal" fired less often with the clean-leaning Voice than they did with the Persona (LOCAL-OBSERVED, owner's read).
+- **Loudness:** both v6 renders came out about 3 LU quieter than the same band's v5-era catalog (LOCAL-OBSERVED, n=2). Check playlist loudness seams when mixing eras.
 
 ### Known weak spots (COMMUNITY, launch week)
 
@@ -654,7 +674,7 @@ Two production tests on the same source song confirmed the failure:
 
 ## Slider Guidelines
 
-**On v6, start with the "More Options controls" table in the v6 section:** Variety at *Exact style* for pipeline-built prompts, Max Mode for the keeper, Personalize off, and Style Influence checked against its reported default of 50. The tables below were tuned on v5 and v5.5 — use them as a starting hypothesis for Weirdness and Style Influence, and note where v6 behaves differently.
+**On v6, start with the "More Options controls" table in the v6 section:** Variety at *Exact style* for pipeline-built prompts, Max Mode on for any generation you might keep (applied at generation, so it can't be added to a finished take), Personalize off, and Style Influence checked against its reported default of 50. The tables below were tuned on v5 and v5.5 — use them as a starting hypothesis for Weirdness and Style Influence, and note where v6 behaves differently.
 
 ### Weirdness and Style Influence by Song Type
 

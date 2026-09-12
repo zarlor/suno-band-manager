@@ -117,6 +117,7 @@ OFFICIAL unless graded otherwise. Sources: [v6 FAQ](https://help.suno.com/en/art
 - **Credits unchanged:** a Create is still 10 credits for two songs (image/video inputs can cost more). **Max Mode costs 2×.**
 - **Up to 8 minutes per generation.** Style and lyrics limits unchanged at 1,000 / 5,000 (VENDOR, day-one test).
 - **New capabilities:** plain-language section editing, single-lyric or single-word updates without regenerating, multi-source mashups, sample-isolate-build, and starting from text, audio (voice memos), images, or video. Launch-week reports say section edits are uneven — some come back as a different take — so the Song Editor's trim and replace stay the deterministic path (COMMUNITY).
+- **Where section editing lives:** on a finished song, open the ⋯ **More Actions** menu → **Edit** → **Replace Section** (Pro/Premier; from the Create or Library view — OFFICIAL). Highlight the span to redo; its lyrics fill the Lyrics box. Two takes come back, and choosing one builds a new whole song. Guides describe a plain-language prompt that steers the replaced span, e.g. "make this section sound dreamier" (VENDOR). It's reached from the song, not the Create form, so the Create form's Simple/Custom mode shouldn't matter (inference). One early v6 report: the edit follows lyric changes but still shifts voice, mood and melody, and may no longer stay inside the marked span (ANECDOTAL). Legacy-editor seams were audible in earlier local testing, so judge v6 edits by ear before relying on them.
 - **Training data:** "trained from the ground up… on a new set of data" — licensed music from Warner Music Group and BMG, participating Believe/TuneCore artists, and user data. Which catalogs, and how much, is undisclosed.
 - **How it prompts (PREVIEW):** production direction rather than a descriptor list; negatives only in Exclude Styles; **Variety at *Exact style*** unless you want the prompt rewritten; Style Influence reportedly defaults to 50. Full treatment: `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Suno v6 Family."
 - **Where it struggles (COMMUNITY):** late-song degradation in longer tracks, and the heavier genres — metal and high-gain guitar above all. Fidelity is widely described as cleaner than v5.5 while character is described as flatter; results are strongly genre-dependent.
@@ -212,7 +213,7 @@ Where each component of Mac's output package goes in Suno's Custom Mode:
 | **Style Influence** (Pro/Premier) | Prompt adherence: lower = looser, higher = tighter | Under More Options |
 | **Audio Influence** (Pro/Premier) | Persona/upload resemblance (appears with Persona or audio upload) | Under More Options |
 | **Model** | v6 (default), v6-wild (exploratory), or v6-mini (Free) | Model selector |
-| **Variety** (v6) | How far Suno may rewrite the style prompt — *Exact style* keeps it as written | Under More Options |
+| **Variety** (v6) | How far Suno may rewrite the style prompt — *Exact style* keeps it as written. The slider shows shorthand labels, and a finished song's page shows the rewritten style | Under More Options |
 | **Max Mode** (v6) | Extra compute for consistency through the song; 2× credits | Under More Options |
 | **Duration** | Auto, or a Custom target (0:10-6:00) | Under More Options |
 | **Personalize** (v6) | Applies your My Taste profile | Under More Options |

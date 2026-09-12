@@ -81,13 +81,13 @@ Then link skills and run setup:
 **macOS / Linux / WSL:**
 ```bash
 ./link-skills.sh
-/bmad-suno-setup
+/suno-setup
 ```
 
 **Windows (PowerShell):**
 ```powershell
 ./link-skills.ps1
-/bmad-suno-setup
+/suno-setup
 ```
 
 The setup skill configures Suno tier, interaction mode, folder paths, and registers capabilities with BMad's help system.
@@ -268,13 +268,13 @@ BMad upgrades may replace `.claude/skills/` contents. Re-run:
 **macOS / Linux / WSL:**
 ```bash
 ./link-skills.sh
-/bmad-suno-setup
+/suno-setup
 ```
 
 **Windows (PowerShell):**
 ```powershell
 ./link-skills.ps1
-/bmad-suno-setup
+/suno-setup
 ```
 
 Your `.agents/skills/` symlinks, config, profiles, songbook, and memory are unaffected.

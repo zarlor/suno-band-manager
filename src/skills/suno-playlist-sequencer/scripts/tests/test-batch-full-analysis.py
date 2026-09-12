@@ -12,6 +12,7 @@ non-zero exit, not a crash. Invoked via `uv run` to provision librosa; skips
 without uv.
 """
 
+import importlib.util
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,17 @@ def run_uv(args: list[str]) -> int:
 def test_missing_dir_exits_nonzero():
     assert run_uv(["--audio-dir", "/nonexistent-audio-dir-xyz"]) != 0
 
+
+def test_find_mp3s_recurses_and_labels_band_folders(tmp_path):
+    spec = importlib.util.spec_from_file_location("batch_full_analysis", SCRIPT)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    (tmp_path / "band-a").mkdir()
+    (tmp_path / ".hidden").mkdir()
+    for rel in ("band-a/Song.mp3", "Loose.mp3", ".hidden/Skip.mp3", "notes.txt"):
+        (tmp_path / rel).write_bytes(b"x")
+    found = m.find_mp3s(str(tmp_path))
+    assert [m.rel_label(p, str(tmp_path)) for p in found] == ["Loose.mp3", "band-a/Song.mp3"]
 
 if __name__ == "__main__":
     if UV is None:

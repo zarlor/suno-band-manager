@@ -40,7 +40,7 @@ VALID_PROFILE = {
     "name": "Test Band",
     "genre": "indie rock",
     "mood": "melancholic",
-    "model_preference": "v4.5-all",
+    "model_preference": "v6-mini",
     "tier": "free",
     "style_baseline": "Indie rock with warm guitars and atmospheric pads",
     "vocal": {
@@ -55,7 +55,7 @@ VALID_INSTRUMENTAL_PROFILE = {
     "name": "Ambient Waves",
     "genre": "ambient electronic",
     "mood": "contemplative, spacious",
-    "model_preference": "v4.5-all",
+    "model_preference": "v6-mini",
     "tier": "free",
     "style_baseline": "Ambient electronic with lush pads and field recordings",
     "instrumental": True,
@@ -180,7 +180,7 @@ def test_pro_tier_valid_with_sliders(tmp_path):
     data = {
         **VALID_PROFILE,
         "tier": "pro",
-        "model_preference": "v5 Pro",
+        "model_preference": "v6",
         "sliders": {"weirdness": 70, "style_influence": 40},
     }
     path = write_profile(tmp_path, data)
@@ -301,7 +301,7 @@ def test_studio_preferences_invalid_bpm(tmp_path):
 PRO_PROFILE = {
     **VALID_PROFILE,
     "tier": "pro",
-    "model_preference": "v5.5 Pro",
+    "model_preference": "v6",
 }
 
 
@@ -457,3 +457,29 @@ def test_docs_dir_default_matches_grandparent(tmp_path):
     default_result = validate_profile(profile_path)
     explicit_result = validate_profile(profile_path, docs_dir=tmp_path / "docs")
     assert _has_missing_playlist_finding(default_result) == _has_missing_playlist_finding(explicit_result)
+
+
+# --- v6 retirement tests ---
+
+def test_retired_model_is_recognized_but_flagged(tmp_path):
+    data = {**VALID_PROFILE, "tier": "pro", "model_preference": "v5.5 Pro"}
+    result = validate_profile(write_profile(tmp_path, data))
+    retired = [f for f in result["findings"] if "retired" in f.get("issue", "")]
+    assert retired and retired[0]["severity"] == "medium"
+    assert "v6" in retired[0]["fix"]
+    assert result["status"] == "warning"  # recognized, not invalid
+
+
+def test_v6_family_profiles_are_clean(tmp_path):
+    for model in ("v6", "v6-wild", "v6-mini"):
+        data = {**VALID_PROFILE, "tier": "pro", "model_preference": model}
+        result = validate_profile(write_profile(tmp_path, data))
+        assert not any(f.get("location", {}).get("field") == "model_preference"
+                       for f in result["findings"]), model
+
+
+def test_free_tier_model_is_v6_mini(tmp_path):
+    data = {**VALID_PROFILE, "tier": "free", "model_preference": "v6"}
+    result = validate_profile(write_profile(tmp_path, data))
+    assert any("v6-mini" in f.get("fix", "") for f in result["findings"])
+

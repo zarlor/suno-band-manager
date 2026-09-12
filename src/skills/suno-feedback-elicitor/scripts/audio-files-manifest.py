@@ -5,7 +5,9 @@
 # ///
 """
 Audio Files Manifest — generate a checksum-free file-size manifest for
-audio files in a project's docs/audio/ directory.
+audio files in a project's docs/audio/ directory (recursively — per-band
+sub-folders docs/audio/{band-slug}/ are included; each entry's `name` is its
+path relative to the audio dir, e.g. "band-slug/Song.mp3").
 
 Audio files are too large to travel in the portable sync archive, so they
 stay machine-local. This means two machines can have DIFFERENT audio for the
@@ -66,7 +68,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT_NAME = "audio-files-manifest"
-SCRIPT_VERSION = "1.0.0"
+SCRIPT_VERSION = "1.1.0"
 
 DEFAULT_AUDIO_DIR = "docs/audio"
 DEFAULT_MANIFEST_PATH = "docs/audio-files-manifest.yaml"
@@ -93,9 +95,19 @@ def require_yaml():
 
 
 def collect_audio_files(audio_dir: Path) -> list[dict]:
-    """Walk audio_dir and return entries sorted by filename."""
+    """Walk audio_dir recursively and return entries sorted by relative path.
+
+    `name` is the POSIX path relative to audio_dir, so the per-band layout
+    (docs/audio/{band-slug}/Song.mp3 -> "band-slug/Song.mp3") keeps same-titled
+    songs from different bands distinct. Files directly in audio_dir keep their
+    bare filename, so a flat layout produces the same manifest as before.
+    Hidden directories are skipped.
+    """
     entries = []
-    for path in sorted(audio_dir.iterdir()):
+    for path in sorted(audio_dir.rglob("*")):
+        rel = path.relative_to(audio_dir)
+        if any(part.startswith(".") for part in rel.parts):
+            continue
         if not path.is_file():
             continue
         if path.suffix.lower() not in AUDIO_EXTENSIONS:
@@ -105,11 +117,11 @@ def collect_audio_files(audio_dir: Path) -> list[dict]:
             continue
         st = path.stat()
         entries.append({
-            "name": path.name,
+            "name": rel.as_posix(),
             "size_bytes": st.st_size,
             "mtime_iso": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat(),
         })
-    return entries
+    return sorted(entries, key=lambda e: e["name"])
 
 
 def main():

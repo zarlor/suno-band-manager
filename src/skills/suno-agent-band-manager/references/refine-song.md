@@ -50,7 +50,7 @@ Check what you already know from the current session or memory:
 - Ask what they were going for
 
 **Minimal context path:** If the user can't provide technical details ("I don't know, I just hit Create"), work with what they have:
-- Infer model from tier if known from memory (free tier = v4.5-all)
+- Infer model from tier if known from memory (free tier = v6-mini; paid = v6 unless the package ran on v6-wild)
 - Don't ask about sliders if they're on free tier
 - Accept emotional descriptions alone: "I pasted X and got Y, but it sounds too Z" is enough
 - The Feedback Elicitor handles vague feedback — let it do its job
@@ -103,7 +103,7 @@ Based on the Feedback Elicitor's recommendations, offer to re-run the appropriat
 - Present the updated complete package
 
 **If model change suggested:**
-- Note the suggestion: "The Feedback Elicitor thinks v5 Pro might handle this better because of [reason]. Want to try regenerating the style prompt for v5?"
+- Note the suggestion: "The Feedback Elicitor thinks {v6-wild | v6 | v6-mini} might handle this better because of [reason]. Want to try the next generation on it?"
 
 **If Studio features recommended:**
 - Present the Studio workflow recommendation (e.g., "Try Replace Section on the chorus instead of regenerating the whole song")

@@ -80,6 +80,10 @@ class Song:
     body_date: str | None
     body_description: str | None
     audio_references: list[str] = field(default_factory=list)
+    # Optional `published:` frontmatter date. Entries that keep `date:` as the
+    # day work started record the publish day here; when present it is the
+    # date the body's "Published YYYY-MM-DD" marker must agree with.
+    frontmatter_published: str | None = None
 
     @property
     def is_published(self) -> bool:
@@ -182,6 +186,9 @@ def parse_song(path: Path, project_root: Path) -> tuple[Song | None, str | None]
             body_date=body_date,
             body_description=body_description,
             audio_references=audio_refs,
+            frontmatter_published=(
+                str(frontmatter.get("published")) if frontmatter.get("published") else None
+            ),
         ),
         None,
     )
@@ -257,12 +264,19 @@ def check_songbook_consistency(song: Song) -> list[Finding]:
             )
         )
 
+    # A separate `published:` field (start date kept in `date:`) is the one the
+    # body marker must match; otherwise `date:` is the publish date.
+    fm_field, fm_publish_date = (
+        ("published", song.frontmatter_published)
+        if song.frontmatter_published
+        else ("date", song.frontmatter_date)
+    )
     if (
         frontmatter_published
         and body_published
-        and song.frontmatter_date
+        and fm_publish_date
         and song.body_date
-        and song.frontmatter_date != song.body_date
+        and fm_publish_date != song.body_date
     ):
         findings.append(
             Finding(
@@ -270,7 +284,7 @@ def check_songbook_consistency(song: Song) -> list[Finding]:
                 severity="error",
                 path=path,
                 message=(
-                    f"frontmatter date={song.frontmatter_date} disagrees with "
+                    f"frontmatter {fm_field}={fm_publish_date} disagrees with "
                     f"body Published {song.body_date}"
                 ),
             )
@@ -336,7 +350,7 @@ def check_index_recently_published(
         ]
         matched = None
         for c in candidates:
-            if c.body_date == claimed_date or c.frontmatter_date == claimed_date:
+            if claimed_date in (c.body_date, c.frontmatter_published, c.frontmatter_date):
                 matched = c
                 break
         if matched is None and candidates:
@@ -488,6 +502,9 @@ def check_index_catalog_counts(
     return findings
 
 
+_VERSION_SUFFIX_RE = re.compile(r"\s*\((?:version\s*\d+|v\d+|reprise|encore)\)\s*$", re.IGNORECASE)
+
+
 def check_playlist_songbook_parity(
     songs: list[Song], project_root: Path
 ) -> list[Finding]:
@@ -497,15 +514,28 @@ def check_playlist_songbook_parity(
     if not playlist_dir.is_dir():
         return findings
 
+    profiles_dir = playlist_dir / "band-profiles"
     for playlist_path in sorted(playlist_dir.glob("*-playlist.yaml")):
         slug = playlist_path.name.replace("-playlist.yaml", "")
+        # Only a band's own playlist has a songbook to match. A thematic or
+        # cross-cutting playlist (no docs/band-profiles/{slug}.yaml) draws on a
+        # band's songs under its own name and has no songbook of its own.
+        if profiles_dir.is_dir() and not (profiles_dir / f"{slug}.yaml").exists():
+            continue
         try:
             playlist = yaml.safe_load(playlist_path.read_text(encoding="utf-8"))
         except yaml.YAMLError:
             continue
         if not isinstance(playlist, dict):
             continue
-        track_count = len(playlist.get("tracks", []) or [])
+        # A song placed twice as versions of itself ("The Grey (Version 1)" and
+        # "(Version 2)", an encore reprise) shares one songbook entry — count it once.
+        names = {
+            _VERSION_SUFFIX_RE.sub("", str(t.get("name", ""))).strip().lower()
+            for t in (playlist.get("tracks", []) or [])
+            if isinstance(t, dict)
+        }
+        track_count = len(names)
         songbook_count = sum(1 for s in songs if s.band == slug)
         if track_count != songbook_count:
             findings.append(
@@ -514,7 +544,7 @@ def check_playlist_songbook_parity(
                     severity="warning",
                     path=str(playlist_path.relative_to(project_root)),
                     message=(
-                        f"{track_count} tracks in playlist YAML but "
+                        f"{track_count} distinct songs in playlist YAML but "
                         f"{songbook_count} songbook entries for band {slug!r}"
                     ),
                 )
@@ -561,7 +591,51 @@ def _strip_code_fences(text: str) -> str:
     return re.sub(r"```.*?```", "", text, flags=re.DOTALL)
 
 
-def check_markdown_cross_references(project_root: Path) -> list[Finding]:
+IGNORE_FILENAME = "validate-ignore.txt"
+_SKIP_DIRS = {".git", ".venv", "node_modules", "__pycache__", ".pytest_cache"}
+
+
+def load_ignore_globs(sanctum_dir: Path | None) -> list[str]:
+    """Glob patterns (project-root-relative) whose files the cross-reference scan skips.
+
+    Read from `{sanctum}/validate-ignore.txt`, one pattern per line, `#` comments.
+    For documents another agent or process owns, whose references point outside
+    this project by design.
+    """
+    if sanctum_dir is None:
+        return []
+    ignore_file = Path(sanctum_dir) / IGNORE_FILENAME
+    if not ignore_file.is_file():
+        return []
+    return [
+        line.strip()
+        for line in ignore_file.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def _project_file_index(project_root: Path) -> set[str]:
+    """POSIX paths of every file in the project, for suffix-matching bare references."""
+    index: set[str] = set()
+    for path in project_root.rglob("*"):
+        rel = path.relative_to(project_root)
+        if any(part in _SKIP_DIRS for part in rel.parts):
+            continue
+        if path.is_file():
+            index.add(rel.as_posix())
+    return index
+
+
+def _resolves_by_suffix(ref: str, index: set[str]) -> bool:
+    """A bare or partial reference (`creed.md`, `references/USAGE.md`) names a file
+    that exists somewhere in the project."""
+    ref = ref.lstrip("./")
+    return any(p == ref or p.endswith("/" + ref) for p in index)
+
+
+def check_markdown_cross_references(
+    project_root: Path, sanctum_dir: Path | None = None
+) -> list[Finding]:
     """Scan every markdown file under docs/ for broken cross-references.
 
     Catches forward-intent references (`docs/X.md` mentioned declaratively but
@@ -581,13 +655,26 @@ def check_markdown_cross_references(project_root: Path) -> list[Finding]:
       - Anchor-only refs (#section)
       - Self-references
       - Anything inside fenced code blocks (``` ... ```)
+      - Template placeholders (`docs/{band-slug}-playlist.yaml`)
+      - Files matching a pattern in the sanctum's validate-ignore.txt
+
+    Resolves a reference that names an existing file anywhere in the project by
+    its tail (a bare `creed.md`, a partial `references/USAGE.md`) — prose often
+    names module files that way.
     """
+    import fnmatch
+
     findings: list[Finding] = []
     docs_root = project_root / "docs"
     if not docs_root.is_dir():
         return findings
+    ignore_globs = load_ignore_globs(sanctum_dir)
+    file_index: set[str] | None = None
 
     for md_path in sorted(docs_root.rglob("*.md")):
+        rel_path = md_path.relative_to(project_root).as_posix()
+        if any(fnmatch.fnmatch(rel_path, pattern) for pattern in ignore_globs):
+            continue
         try:
             text = md_path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
@@ -618,8 +705,9 @@ def check_markdown_cross_references(project_root: Path) -> list[Finding]:
                     continue
 
                 # Glob/wildcard patterns (e.g. `per-candidate/*.md`) describe
-                # a directory of files, not a single target — skip them.
-                if any(c in ref_path_part for c in "*?["):
+                # a directory of files, not a single target — skip them. So do
+                # template placeholders like `docs/wip-{slug}.md`.
+                if any(c in ref_path_part for c in "*?[{}"):
                     continue
 
                 # References can be either parent-relative (`../foo.md`) or
@@ -649,6 +737,11 @@ def check_markdown_cross_references(project_root: Path) -> list[Finding]:
                     continue
 
                 if any(c.exists() for c in candidates):
+                    continue
+
+                if file_index is None:
+                    file_index = _project_file_index(project_root)
+                if _resolves_by_suffix(ref_path_part, file_index):
                     continue
 
                 # Neither exists — report using the more informative target
@@ -707,7 +800,7 @@ def run_checks(
         )
 
     findings.extend(check_playlist_songbook_parity(songs, project_root))
-    findings.extend(check_markdown_cross_references(project_root))
+    findings.extend(check_markdown_cross_references(project_root, resolve_sanctum_dir(project_root, sanctum_dir)))
 
     stats = {
         "songs_scanned": len(songs),

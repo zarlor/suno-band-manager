@@ -6,7 +6,7 @@ An AI-powered music production assistant that helps you create professional Suno
 
 You talk to Mac like you'd talk to a producer. Tell Mac what kind of song you want — a genre, a mood, a poem, a feeling, a reference track — and Mac produces a complete package:
 
-- **Style Prompt** — Model-specific, optimized for your chosen Suno model (v4.5-all, v5 Pro, etc.)
+- **Style Prompt** — Model-specific, optimized for your chosen Suno model (v6, v6-wild, v6-mini)
 - **Structured Lyrics** — With Suno metatags (`[Verse]`, `[Chorus]`, etc.), rhythmic consistency, and cliché detection
 - **Exclusion Prompt** — What Suno should avoid
 - **Parameter Recommendations** — Slider values, vocal gender, persona references (tier-aware)
@@ -86,14 +86,12 @@ To reconfigure after a module update, run `/suno-setup` again. Existing settings
 
 | Model | Tier | Style Prompt Limit | Notes |
 |-------|------|-------------------|-------|
-| v4.5-all | Free | 1,000 chars | Conversational prompts, best free model |
-| v4 Pro | Paid | 200 chars | Simple descriptors |
-| v4.5 Pro | Paid | 1,000 chars | Intelligent prompts |
-| v4.5+ Pro | Paid | 1,000 chars | Advanced creation |
-| v5 Pro | Paid | 1,000 chars | Crisp 5-8 descriptors, natural vocals |
-| v5.5 Pro | Paid | 1,000 chars | Most expressive, Voices, Custom Models, My Taste |
+| **v6** | Pro/Premier | 1,000 chars | Current default — ordered production-direction prompts (PREVIEW guidance) |
+| **v6-wild** | Pro/Premier | 1,000 chars | Current — the less predictable, exploratory v6 |
+| **v6-mini** | All tiers | 1,000 chars | Current — the Free model |
+| v5.5 Pro, v5 Pro, v4.5+ Pro, v4.5 Pro, v4.5-all, v4 Pro | — | 1,000 (v4 Pro: 200) | **Retired 2026-09-09** — still recognized in older profiles and songbooks |
 
-**Two caveats on this table (2026-08-13):** the character limits are **community-attested, not officially documented** — no help.suno.com article states them — and Suno has announced that **current models will be retired** when the next (industry-developed) model ships, without publishing which versions or when. See `SUNO-REFERENCE.md` → "Platform Changes — 2026-08-13."
+**Two caveats on this table (2026-09-12):** the character limits are **community-attested, not officially documented** — no help.suno.com article states them — and the v6 prompt guidance is **one week old**. See `SUNO-REFERENCE.md` → "Platform Changes — 2026-09-09 (v6)."
 
 ## File Structure
 

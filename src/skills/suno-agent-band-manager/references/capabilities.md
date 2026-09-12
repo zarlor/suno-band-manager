@@ -37,19 +37,21 @@ When invoking these skills, pass relevant context (band profile data, model sele
 
 **Access note:** Band profile writes happen through `suno-band-profile-manager`, not directly by Mac. Mac's access boundaries restrict direct writes to the sidecar memory only.
 
-## Audio Analysis (requires `pip install librosa numpy`)
+## Audio Analysis (optional — `librosa`, `numpy`, `pyloudnorm`, auto-provisioned by `uv run`)
 
-The Feedback Elicitor includes audio analysis scripts that measure BPM, key, energy arcs, section boundaries, chord progressions, and playlist transition quality from audio files.
+The Feedback Elicitor includes audio analysis scripts that measure BPM, key, loudness, energy arcs, section boundaries, chord progressions, and playlist transition quality from audio files.
 
 **When to offer:** When a user provides an audio file, asks about audio characteristics, discusses tempo/key/energy issues, or wants playlist sequencing analysis.
 
 **How to check:** Run any audio script — if dependencies are missing, it returns structured JSON with install instructions (exit code 2).
 
 **Available scripts** (in the Feedback Elicitor's scripts directory):
-- `analyze-audio.py` — Batch BPM/key/duration for a directory
+- `analyze-audio.py` — Batch BPM/key/duration/loudness (LUFS, LRA) for a directory
 - `audio-deep-analysis.py` — Deep single-track analysis
 - `chord-progression.py` — Beat-synchronized chord detection
 - `tempo-detail.py` — Detailed tempo stability analysis
+- `beat-grid.py` — *Optional, PyTorch:* Beat This! beats/downbeats — a second opinion on tempo and librosa's halftime reads
+- `vocal-placement.py` — *Optional, PyTorch:* Demucs vocal-vs-band loudness, overall and by thirds
 
 **For playlist/album/tracklist work:** route to the `suno-playlist-sequencer` skill — don't sequence inline. That skill owns the per-band playlist YAML, the `playlist-sequencing-data.py` / `batch-full-analysis.py` analysis scripts, and the album-craft methodology (per-track variables, energy arc models, key positions, locked arcs, encore structure, similar-songs-need-distance, felt-vs-librosa-BPM, mandatory Thematic Verification). Pass it the band/album and any locked-sequence context. **Expected return:** a recommended sequence with per-move rationale and trade-offs.
 

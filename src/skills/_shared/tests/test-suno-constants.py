@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from suno_constants import (
     VALID_MODELS, VALID_TIERS, PAID_TIERS, FREE_TIER_MODEL,
+    CURRENT_MODELS, RETIRED_MODELS, DEFAULT_MODEL, MODEL_RETIREMENT_DATE,
     STYLE_PROMPT_LIMITS, STYLE_PROMPT_DEFAULT_MAX,
     CRITICAL_ZONE, EXCLUSION_RECOMMENDED_MAX, EXCLUSION_HARD_MAX,
     SUNO_LYRICS_HARD_LIMIT, SUNO_LYRICS_QUALITY_BUDGET,
@@ -61,9 +62,24 @@ class TestSunoConstants:
         assert SUNO_LYRICS_QUALITY_BUDGET > 0
 
     def test_v55_pro_present(self):
-        """v5.5 Pro must be in both VALID_MODELS and STYLE_PROMPT_LIMITS."""
+        """v5.5 Pro stays recognized (retired, but older profiles still name it)."""
         assert "v5.5 Pro" in VALID_MODELS
         assert "v5.5 Pro" in STYLE_PROMPT_LIMITS
+        assert "v5.5 Pro" in RETIRED_MODELS
+
+    def test_v6_family_is_current(self):
+        assert CURRENT_MODELS == frozenset({"v6", "v6-wild", "v6-mini"})
+        assert MODEL_RETIREMENT_DATE == "2026-09-09"
+
+    def test_current_and_retired_are_disjoint(self):
+        assert not (CURRENT_MODELS & RETIRED_MODELS)
+
+    def test_valid_models_is_current_plus_retired(self):
+        assert VALID_MODELS == CURRENT_MODELS | RETIRED_MODELS
+
+    def test_free_tier_and_default_models_are_current(self):
+        assert FREE_TIER_MODEL in CURRENT_MODELS
+        assert DEFAULT_MODEL in CURRENT_MODELS
 
 
 class TestStylePromptTriggers:

@@ -30,8 +30,7 @@ def test_free_tier():
     assert result["personas_available"] is False
     assert result["audio_influence_available"] is False
     assert result["studio_available"] is False
-    assert "v4.5-all" in result["models"]
-    assert len(result["models"]) == 1
+    assert result["models"] == ["v6-mini"]
 
 
 def test_pro_tier():
@@ -41,8 +40,9 @@ def test_pro_tier():
     assert result["personas_available"] is True
     assert result["audio_influence_available"] is True
     assert result["studio_available"] is False
-    assert "v5 Pro" in result["models"]
-    assert "v5.5 Pro" in result["models"]  # Pro gets the top model, not just legacy
+    assert "v6" in result["models"]
+    assert "v6-wild" in result["models"]
+    assert result["default_model"] == "v6"
     assert len(result["unavailable"]) >= 1  # Studio and related
 
 
@@ -232,7 +232,7 @@ def test_notes_carry_provenance_and_retirement():
 
 def test_last_validated_is_reported():
     for tier in ["free", "pro", "premier"]:
-        assert get_tier_features(tier)["last_validated"] == "2026-08-13"
+        assert get_tier_features(tier)["last_validated"] == "2026-09-12"
 
 
 def test_free_pricing_is_zero():
@@ -253,10 +253,30 @@ def test_premier_pricing():
     assert result["pricing"]["annual_monthly"] == 24
 
 
-def test_legacy_models_flagged():
+def test_pre_v6_models_are_retired_not_offered():
+    """Every pre-v6 model was retired 2026-09-09: none is selectable on any tier."""
+    for tier in ["free", "pro", "premier"]:
+        result = get_tier_features(tier)
+        assert result["legacy_models"] == []
+        assert "v5.5 Pro" in result["retired_models"]
+        assert "v4.5-all" in result["retired_models"]
+        assert not set(result["models"]) & set(result["retired_models"])
+
+
+def test_v6_controls_at_paid_tiers():
     for tier in ["pro", "premier"]:
         result = get_tier_features(tier)
-        assert "legacy_models" in result
-        assert "v4 Pro" in result["legacy_models"]
-        # v5.5 Pro is the current model — it must never be listed as legacy
-        assert "v5.5 Pro" not in result["legacy_models"]
+        assert result["max_mode_available"] is True
+        assert result["variety_available"] is True
+        assert result["personalize_available"] is True
+        available = " ".join(result["available"])
+        assert "Max Mode" in available and "Variety" in available
+    notes = get_tier_features("pro")["notes"]["v6_controls"]
+    assert "rewrites the style prompt" in notes["variety"]
+    assert "2x credits" in notes["max_mode"]
+
+
+def test_free_tier_v6_controls_unverified():
+    free = get_tier_features("free")
+    assert free["max_mode_available"] is None
+    assert free["variety_available"] is None

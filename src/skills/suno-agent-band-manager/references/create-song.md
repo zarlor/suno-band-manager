@@ -20,7 +20,7 @@ If invoked with `--headless` or structured JSON input, skip all interactive step
 {
   "source_text": "optional — poem or text to transform",
   "genre_mood": "required — genre, mood, vibe description",
-  "model": "optional — default v4.5-all (also: v5 Pro, v5.5)",
+  "model": "optional — default v6 on Pro/Premier, v6-mini on Free (also: v6-wild)",
   "band_profile": "optional — profile name to load",
   "creativity_mode": "optional — conservative|balanced|experimental, default balanced",
   "instrumental": "optional — true for instrumental-only",
@@ -66,8 +66,8 @@ Collect what you need based on the mode. Not everything is required — adapt.
 **Valuable context:**
 - **Band profile** — Ask if they want to use a saved profile. If yes, invoke `suno-band-profile-manager` to load it (or read directly from `docs/band-profiles/{name}.yaml` if you know the name). If no profiles exist and they seem interested, offer to create one after the song is done.
 - **Source text** — Poem, raw lyrics, or text to transform. If provided, the Lyric Transformer becomes the primary skill.
-- **Model/tier** — From profile, from memory (user preferences), or ask. Default: v4.5-all (free) unless profile says otherwise. Available models: v4.5-all (free), v5 Pro (paid), v5.5 (paid).
-- **Voice / Custom Model** — If user is on v5.5, check whether they have a Voice or Custom Model configured. If so, note it for Step 4 (style prompt building) and Step 5 (package presentation). A Voice replaces the need for gender descriptors in the style prompt; a Custom Model replaces generic production descriptors the model already encodes.
+- **Model/tier** — From profile, from memory (user preferences), or ask. Current models (every earlier model was retired 2026-09-09): **v6** (Pro/Premier default), **v6-wild** (Pro/Premier, exploratory — the natural wild-card model), **v6-mini** (Free). A profile that still names a retired model gets built for v6; say so in the handoff.
+- **Voice / Custom Model** — If the user is on a paid tier, check whether they have a Voice or Custom Model configured. If so, note it for Step 4 (style prompt building) and Step 5 (package presentation). A Voice replaces the need for gender descriptors in the style prompt; a Custom Model replaces generic production descriptors the model already encodes.
 - **Reference tracks** — "Sounds like X meets Y" — capture these to pass to the Style Prompt Builder.
 
 **Studio mode additional questions (songwriter's workshop):**
@@ -176,10 +176,11 @@ Invoke `suno-style-prompt-builder` with the `--headless` flag, passing:
 
 **Expected return:** JSON distillate with style prompt string, character count, exclude styles, slider recommendations, and wild card variant. No conversational commentary.
 
-**v5.5 prompt adjustments:**
+**v6 and Voice / Custom Model prompt adjustments:**
+- Instruct the builder to use the **v6 prompt architecture** (`model-prompt-strategies.md` → "Suno v6 Family", PREVIEW guidance): ordered production direction, each instrument's job per section, the vocal placed rather than praised, both edges stated, positive text only with every negative in Exclude Styles. When lyrics are being transformed too, pass the key per-section instructions to the Lyric Transformer so its section cues restate the style map word-for-word.
 - If user has a **Voice** configured → instruct the builder to drop gender descriptors (male/female vocal, vocal gender) from the style prompt. Note the active Voice in the package.
 - If user has a **Custom Model** → instruct the builder to drop generic production descriptors the model already handles (e.g., if the Custom Model encodes "lo-fi tape warmth," do not repeat that in the prompt). Focus prompt tokens on what is new or different from the model's baseline.
-- **v5.5 rewards specificity** — encourage more nuanced, specific descriptors over broad genre labels. "Fingerpicked nylon guitar with room reverb" outperforms "acoustic guitar" on v5.5.
+- **Specificity pays** — encourage specific, concrete direction over broad genre labels. "Fingerpicked nylon guitar with room reverb" outperforms "acoustic guitar."
 
 ### Parallel Execution Pattern
 
@@ -194,12 +195,12 @@ Assemble everything into a single, copy-paste-ready output. **Present items in t
 ```
 ## Your Suno Package
 
-{If v5.5 and Voice applies:}
+{If a Voice applies:}
 ### Voice
 {voice_name}
 Note: Voice handles vocal identity — gender descriptors have been omitted from the style prompt below.
 
-{If v5.5 and Custom Model applies:}
+{If a Custom Model applies:}
 ### Custom Model
 {custom_model_name}
 Note: Production descriptors covered by this model have been omitted from the style prompt below. Prompt focuses on song-specific direction.
@@ -208,9 +209,9 @@ Note: Production descriptors covered by this model have been omitted from the st
 ### Persona
 {persona_name} (from: {source_song})
 Note: This auto-populates the Style of Music field. Keep style modifications simple below.
-Note: Personas still work and are found inside the Voices menu — they were relocated, not removed. On v5.5, a Voice is the stronger tool for locking vocal identity; a Persona captures style essence instead.
+Note: Personas still work and are found inside the Voices menu — they were relocated, not removed. A Voice is the stronger tool for locking vocal identity; a Persona captures style essence instead. How Personas and Voices made before v6 behave on v6 is undocumented — one short test generation settles it.
 
-{If v4.5+ Pro and Inspo applies:}
+{If Pro/Premier and Inspo applies (availability on v6 unverified):}
 ### Inspo
 Recommended Inspo playlist: {list of 3-5 reference tracks}
 Note: Use Inspo to channel this vibe before setting other parameters.
@@ -236,13 +237,19 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 
 ### Settings
 {If free tier:}
+- Model: v6-mini
 - Vocal Gender: {recommendation}
 - Lyrics Mode: {Manual or Auto}
-- Note: Weirdness, Style Influence, and Audio Influence sliders are available on Pro/Premier plans
+- Note: Weirdness, Style Influence, and Audio Influence sliders are available on Pro/Premier plans; whether Free shows Variety, Max Mode, Duration, or Personalize is not verified
 
 {If paid tier:}
+- Model: {v6 | v6-wild} — {reasoning}
 - Vocal Gender: {recommendation}
 - Lyrics Mode: {Manual or Auto}
+- Variety: Exact style — keeps this style prompt exactly as written (any higher notch rewrites it before generating)
+- Max Mode: {Off while exploring | On for the take you'll keep} — 2× credits; buys consistency through the whole song
+- Duration: {Auto | m:ss} — {reasoning}
+- Personalize: Off — keeps your My Taste profile from reshaping this package
 - Weirdness: {value}% — {reasoning} (controls creative deviation: lower = safer, higher = more experimental)
 - Style Influence: {value}% — {reasoning} (controls prompt adherence: lower = looser interpretation, higher = tighter to your style prompt)
 {If Persona selected:}
@@ -259,18 +266,18 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 ```
 
 **First-use Suno guidance (show on first song or Demo mode):**
-"**How to use this in Suno:** Switch to Custom Mode. Work through the settings top-to-bottom: select your Voice (v5.5) or Persona (pre-v5.5) if any, select your Custom Model (v5.5) if any, paste Lyrics, paste the Style Prompt into 'Style of Music', add Exclude Styles as a comma-separated list, set sliders under More Options, add your Song Title, then hit Create. Generate 3-5 versions — Suno interprets the same inputs differently each time. Listen through all versions, then use section replacement for targeted fixes rather than full regeneration."
+"**How to use this in Suno:** Switch to Custom Mode and pick the model (v6 unless the package says otherwise). Work through the settings top-to-bottom: select your Voice or Persona if any, select your Custom Model if any, paste Lyrics, paste the Style Prompt into 'Style of Music', add Exclude Styles as a comma-separated list, set sliders under More Options, add your Song Title, then hit Create. Generate 3-5 versions — Suno interprets the same inputs differently each time. Listen through all versions, then use section replacement for targeted fixes rather than full regeneration."
 
 **Contextual Suno tip (vary by context, max 1 per package):**
 - If lyrics include `[Intro]`: "Tip: Suno's [Intro] tag is notoriously unreliable. If the intro sounds off, try regenerating just the first 10 seconds."
-- If model is v5 Pro: "Tip: v5 Pro's section editor lets you fine-tune individual sections without regenerating the whole song."
-- If model is v5.5: "Tip: v5.5 responds well to specific, nuanced descriptors. Try 'dusty Rhodes piano with spring reverb' instead of just 'electric piano.' Also consider section replacement for targeted fixes rather than full regeneration."
+- If model is v6: "Tip: v6 is about a week old and still being figured out. Keep Variety at Exact style for this package, and save Max Mode (2× credits) for the take you mean to keep."
+- If the wild card runs on v6-wild: "Tip: v6-wild is the less predictable v6 — several users say it's where the older models' character went. Worth one Create even if the primary lands."
 - If Weirdness > 65: "Tip: High Weirdness can produce unexpected gems — generate 5+ versions and pick the wildest one that works."
 
 **After presenting:**
 
 1. Encourage trying it with the **generate → inspect → refine** paradigm: "Go try this on Suno — generate 3-5 versions and listen through them. Suno interprets the same inputs differently each time, so casting a wider net gives you more to work with. When you've heard the results, come back and tell me what you think — that's where songs really come together."
-2. **Suggest section replacement over full regeneration:** If the user finds a version that is mostly right but has a weak section, suggest using section replacement (available in v5 Pro and v5.5) to fix the targeted area rather than regenerating the entire song. "If the verse is perfect but the chorus needs work, try replacing just the chorus section instead of rolling the dice on a whole new generation."
+2. **Suggest section replacement over full regeneration:** If the user finds a version that is mostly right but has a weak section, suggest using section replacement (the Song Editor; v6 also takes plain-language section edits, which launch-week users report as uneven) to fix the targeted area rather than regenerating the entire song. "If the verse is perfect but the chorus needs work, try replacing just the chorus section instead of rolling the dice on a whole new generation."
 3. **Route captured items** from the Capture-Don't-Interrupt pattern: surface any preferences, profile ideas, or refinement notes that were silently captured during direction gathering.
 4. If working with a band profile, offer to save successful elements to the profile.
 

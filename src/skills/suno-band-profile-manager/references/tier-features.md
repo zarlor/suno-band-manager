@@ -1,21 +1,21 @@
 # Suno Tier Feature Matrix
 
-> **Last validated:** August 13, 2026 (Suno Free, Pro, Premier plans; Studio 2.0; Sept 3 2026 download caps and ToS). Suno updates pricing, features, and tier boundaries frequently — use web search to verify against the current Suno pricing page when uncertain.
+> **Last validated:** September 12, 2026 (Suno Free, Pro, Premier plans; **v6 family launched 2026-09-09 and every earlier model retired**; v6 More Options; Studio 2.0; Sept 3 2026 download caps and ToS). Suno updates pricing, features, and tier boundaries frequently — use web search to verify against the current Suno pricing page when uncertain.
 
-**Note:** The `scripts/tier-features.py` script is the authoritative source of this data for headless flows; this reference file is its human-readable twin. **The two agree as of 2026-08-13** — the script now carries the download caps, download-bound commercial rights, the three stem modes with credit costs, Studio 2.0 as Premier-only, and the archived Studio 1.x names (exposed as an explicit `notes.studio_1x_archived` list rather than as available features). Its `download_quality` field is gone: downloads are gated by count, not bitrate. **When updating, change the script first and mirror it here.**
+**Note:** The `scripts/tier-features.py` script is the authoritative source of this data for headless flows; this reference file is its human-readable twin. **The two agree as of 2026-09-12** — the script now carries the v6 model family (every pre-v6 model listed under `retired_models`), the v6 More Options controls (`notes.v6_controls`, `max_mode_available`, `variety_available`, `personalize_available`), the download caps, download-bound commercial rights, the three stem modes with credit costs, Studio 2.0 as Premier-only, and the archived Studio 1.x names (exposed as an explicit `notes.studio_1x_archived` list rather than as available features). Its `download_quality` field is gone: downloads are gated by count, not bitrate. **When updating, change the script first and mirror it here.**
 
 ## Plan Comparison
 
 | Feature | Free ($0) | Pro ($8/mo displayed) | Premier ($24/mo displayed) |
 |---------|-----------|----------------------------|----------------------------------|
-| **Model Access** | v4.5-all only | v5.5 plus legacy v4, v4.5, v4.5+, v5 | Same as Pro |
+| **Model Access** | v6-mini | v6 and v6-wild (plus v6-mini) | Same as Pro |
 | **Credits** | 50/day, renew daily (~10 songs) | 2,500/mo (~500 songs) | 10,000/mo (~2,000 songs) |
 | **Credit Cost** | 5 credits/song — 10 credits per generation produces 2 songs | Same | Same |
-| **Song Length** | Determined by model — v4.5-all supports up to ~8 min | Determined by model — v4.5/v5/v5.5 support up to ~8 min. Duration slider (web, v5.5) targets 10s–6:00 | Same as Pro |
+| **Song Length** | Up to 8 min per generation (v6 family) | Same; Duration control: Auto, or Custom 0:10–6:00 | Same as Pro |
 | **Song downloads** (from 2026-09-03) | **7 total lifetime trial downloads**, personal/non-commercial | **20 per month** | **60 per month** (Studio exports exempt) |
 | **Commercial Use** | No | Yes — but only for outputs obtained as a permitted download | Yes — same mechanism |
-| **Personas** | No | Yes (v4.5/v5/v5.5 — live inside the Voices menu, not removed) | Same |
-| **Voices** | No | Yes (v5.5 voice cloning) | Yes (v5.5 voice cloning) |
+| **Personas** | No | Yes (inside the Voices menu, not removed; behavior on v6 undocumented) | Same |
+| **Voices** | No | Yes (voice cloning; how pre-v6 clones behave on v6 is undocumented) | Same |
 | **Voice recording entry point** | Yes — "available to try on free plans" (limited) | Yes, expanded | Yes, expanded |
 | **Custom Models** | No | Yes (up to 3 models) | Yes (up to 3 models) |
 | **My Taste** | Yes (passive; can be disabled) | Yes (passive) | Yes (passive) |
@@ -23,6 +23,9 @@
 | **Style Influence Slider** | No | Yes (0-100) | Yes (0-100) |
 | **Audio Influence Slider** | No | Yes (0-100, with Voice/Persona or audio upload) | Yes (0-100, with Voice/Persona or audio upload) |
 | | | *10-15% reduces persona era-anchoring* | *10-15% reduces persona era-anchoring* |
+| **Max Mode** (v6) | Not verified | Yes — 2× credits; consistency through the song | Yes |
+| **Variety** (v6) | Not verified | Yes — *Exact style* through *Unreasonably varied*; above *Exact* it rewrites the style prompt | Yes |
+| **Personalize** (v6) | Not verified | Yes — applies My Taste; off by default | Yes |
 | **Add Vocals/Instrumental** | No | Yes (beta) | Yes (beta) |
 | **Covers** | No | Yes (beta) | Yes (beta) |
 | **Remaster** | No | Yes | Yes |
@@ -73,45 +76,40 @@ The legacy "Vocals + Instrumental" mode was replaced by **Split from Mix**. OFFI
 
 ## Models
 
-| Model | Tagline | Availability |
-|-------|---------|-------------|
-| v5.5 | Voices, Custom Models, My Taste | Pro/Premier |
-| v5 Pro | Authentic vocals, superior audio quality and control | Pro/Premier |
-| v4.5+ Pro | Advanced creation methods | Pro/Premier |
-| v4.5 Pro | Intelligent prompts | Pro/Premier |
-| v4.5-all | Best free model | All tiers |
-| v4 Pro | Improved sound quality (legacy) | Pro/Premier |
+| Model | Status | Availability |
+|-------|--------|-------------|
+| **v6** | Current — "reliable, precise" | Pro/Premier |
+| **v6-wild** | Current — "built for experimentation" | Pro/Premier |
+| **v6-mini** | Current — "faster, more efficient" | All tiers |
+| v5.5 Pro, v5 Pro, v4.5+ Pro, v4.5 Pro, v4.5-all, v4 Pro | **Retired 2026-09-09** | None — no longer generate |
 
-**v5.5 is still the top model** (released 2026-03-26). There is no v6. OFFICIAL — [release notes](https://suno.com/release-notes).
+OFFICIAL — [v6 FAQ](https://help.suno.com/en/articles/13924481), [Current Models: v6](https://help.suno.com/en/articles/13924737).
 
-### Model retirement is announced — versions and dates are NOT published
+### Every pre-v6 model was retired 2026-09-09
 
-OFFICIAL — [ToS update blog](https://suno.com/blog/suno-updates-tos), [FAQ](https://help.suno.com/en/articles/13614785), [BMG partnership](https://suno.com/blog/suno-partnership-bmg) (2026-08-12).
-
-- "New models launching soon will retire older versions." Retiring means *you can't generate new songs with it*; it "doesn't affect anything you've already made" — existing songs stay playable and shareable.
-- **No official source names which versions retire or when.** Third-party outlets assert v3.5/v4/v4.5/v5 are going away; that is not officially confirmed and should not be repeated as fact.
-- **Extensions, remixes, and covers of existing songs will run on the NEW models** — "results may sound different from the original generation." Any profile whose workflow depends on Extending or Covering older tracks carries that risk.
-- The next model is "our first music model developed with the music industry" (BMG global deal, 2026-08-12). No name, date, or tier gating announced.
-- **VERIFIED-ABSENT:** no official statement on what happens to Voices, Custom Models, or Style Personas built on retired models. The FAQ is silent. Do not reassure a user either way.
+- "All models prior to v6 have been retired." A retired model can no longer generate new songs; everything already made on one stays playable and shareable.
+- **Extends, remasters, covers, and remixes of existing songs run on v6** — results may sound different from the original generation. Any profile whose workflow depends on extending or covering older tracks carries that risk.
+- **Custom Models were upgraded to v6 automatically** (OFFICIAL).
+- **Still VERIFIED-ABSENT:** no official statement on how Voices and Style Personas built before v6 behave on it. Early user reports are split. Do not reassure a user either way — suggest re-checking the clone with a short test generation.
 - Suno's **Model Information help category is stale** (articles from Sept 2025 still call V4 "the latest model") — do not cite it as current. [help.suno.com/en/categories/1752193](https://help.suno.com/en/categories/1752193)
 
 ## Profile Implications by Tier
 
 **Free tier profiles should:**
-- Set `model_preference` to "v4.5-all" (only available model)
+- Set `model_preference` to "v6-mini" (the only Free model)
 - Omit or zero out `sliders` (not available)
 - Not reference Personas or Voices for *generation* (not available) — note that the voice **recording** entry point is now available to try on free plans, but clone creation and use in generation remain paid
-- Focus style_baseline on conversational descriptions (v4.5-all strength)
+- Write style_baseline as ordered production direction (see `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Suno v6 Family")
 - My Taste is active passively — no profile configuration needed
 - Plan around **7 lifetime downloads** and no commercial rights: free-tier work is effectively listen-on-platform work
 
 **Pro tier profiles can:**
-- Use v5.5 plus the legacy models (v4, v4.5, v4.5+, v5)
+- Use v6 (the default) and v6-wild (for exploratory takes); set `model_preference` to one of them
 - Set Weirdness and Style Influence sliders
 - Reference Suno Personas for vocal consistency (Personas were never discontinued — they live inside the Voices menu)
-- Use Suno Voices for vocal consistency (v5.5 voice cloning)
+- Use Suno Voices for vocal consistency (voice cloning — re-check a pre-v6 clone on v6)
 - Use Custom Models (up to 3, trained on 6+ original tracks, 2-5 min training time)
-- Use crisp, descriptor-focused style for v5 Pro
+- Write style_baseline as ordered production direction for v6, and recommend Variety at *Exact style* so it generates as written
 - Use Audio Influence slider to manage persona era-anchoring (reduce to 10-15% when the persona's source era conflicts with the desired sound)
 - When a Voice is configured, omit gender vocal descriptors from style_baseline — the Voice defines the vocal identity
 - Use Replace Section / the Song Editor, Auto Split and Split from Mix stems

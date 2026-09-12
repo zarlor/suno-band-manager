@@ -7,7 +7,7 @@
 Validate Suno style prompt output for character limits and structure.
 
 Validates:
-- Style prompt character count (model-specific: v4 Pro=200, v4.5+/v5=1,000)
+- Style prompt character count (model-specific: 1,000 for the v6 family; 200 for the retired v4 Pro)
 - Critical zone check (first 200 chars should contain all essentials)
 - Exclusion prompt character count (recommended max ~200)
 - Required fields present in prompt package
@@ -20,7 +20,7 @@ Usage:
     uv run validate-prompt.py --style "indie folk-rock, warm..." --exclude "no autotune"
 
     # Validate with model-specific limits
-    uv run validate-prompt.py --style "indie folk-rock..." --model "v4 Pro"
+    uv run validate-prompt.py --style "indie folk-rock..." --model "v6"
 
     # Validate from a file (expects YAML with style_prompt and exclusion_prompt fields)
     uv run validate-prompt.py prompt-output.yaml
@@ -303,7 +303,7 @@ Examples:
     parser.add_argument("file", nargs="?", help="YAML file with style_prompt and exclusion_prompt fields")
     parser.add_argument("--style", help="Style prompt text to validate")
     parser.add_argument("--exclude", default="", help="Exclusion prompt text to validate")
-    parser.add_argument("--model", default="", help="Suno model name for model-specific limits (e.g., 'v4 Pro', 'v5 Pro')")
+    parser.add_argument("--model", default="", help="Suno model name for model-specific limits (e.g., 'v6', 'v6-wild')")
     parser.add_argument("-o", "--output", help="Output file path (defaults to stdout)")
     parser.add_argument("--verbose", action="store_true", help="Include debug information")
     parser.add_argument("--skill-path", default="", help="Skill path for report context")

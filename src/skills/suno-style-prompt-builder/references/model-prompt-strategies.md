@@ -2,20 +2,73 @@
 
 > **Related references:** Style prompts work in conjunction with lyric metatags — for the full metatag catalog (section tags, vocal delivery, effects, production tags), see `suno-lyric-transformer/references/metatag-reference.md`. For mapping user feedback to style prompt adjustments, see `suno-feedback-elicitor/references/suno-parameter-map.md`.
 >
-> **Last validated:** August 13, 2026 (Suno v5.5 Pro, v5 Pro, v4.5-all, v4.5 Pro, v4.5+ Pro, v4 Pro; Duration slider; Sept 3 2026 policy changes). Suno updates models and prompt behavior frequently — use web search to verify strategies against current documentation when uncertain.
+> **Last validated:** September 12, 2026 (Suno **v6 family** — v6, v6-wild, v6-mini — launched 2026-09-09, when Suno retired every earlier model; the v6 section below is **PREVIEW** guidance). The retired-model sections (v5.5 Pro, v5 Pro, v4.5-all, v4.5 Pro, v4.5+ Pro, v4 Pro) were last validated August 13, 2026 and are kept for older records and `:migrate`. Suno updates models and prompt behavior frequently — use web search to verify strategies against current documentation when uncertain.
 >
-> **Model-retirement caveat (OFFICIAL, 2026-08).** Suno has announced that "new models launching soon will retire older versions" — retirement means you can no longer *generate* with a model; existing songs stay playable. **No official source names which versions retire or when**, and the next model is the unnamed industry-developed model from the BMG partnership. Two consequences for everything below: (1) model-specific strategy in this file has an expiry date that is not yet published, and (2) **Extends, Covers, and remixes of existing songs will run on the NEW models** — "results may sound different from the original generation." A song whose plan depends on Extending an older track carries that risk. Sources: [ToS update](https://suno.com/blog/suno-updates-tos), [FAQ](https://help.suno.com/en/articles/13614785), [BMG partnership](https://suno.com/blog/suno-partnership-bmg).
+> **Every pre-v6 model is retired (OFFICIAL, 2026-09-09).** "All models prior to v6 have been retired" — they can no longer generate; existing songs stay playable, and any new iteration of an older song (Extend, Cover, Remaster, remix) runs on v6 and may sound different. Custom Models were upgraded to v6 automatically. Suno has published nothing on how Voices and Personas built before v6 carry over. Sources: [v6 FAQ](https://help.suno.com/en/articles/13924481), [Current Models: v6](https://help.suno.com/en/articles/13924737), [What's new in v6](https://help.suno.com/en/articles/13924801).
 
 ## Quick Reference
 
-| Model | Style | Sweet Spot | Strengths |
-|-------|-------|-----------|-----------|
-| v4.5-all (free) | Conversational sentences | Flowing descriptions, natural language | Heavier/faster genres, longer-form (~8 min) |
-| v4.5 Pro | Conversational + nuanced | Like v4.5-all with more detail responsiveness | Intelligent prompt enhancement |
-| v4.5+ Pro | Advanced conversational | More control over structure | Advanced creation methods |
-| v5 Pro | Crisp film-brief | 5-8 descriptors, emotional > technical | Natural vocals, instrument separation, polish |
-| v5.5 Pro | Crisp film-brief (same as v5) | 5-8 descriptors, can be more granular | Most expressive, Voices, Custom Models, My Taste |
-| v4 Pro | Simple descriptors | Keep it straightforward | Improved sound quality over v3 |
+| Model | Status | Style | Notes |
+|-------|--------|-------|-------|
+| **v6** | Current — Pro/Premier | Ordered production direction (PREVIEW — see "Suno v6 Family") | Suno's "reliable, precise" model; the default for a fully specified package |
+| **v6-wild** | Current — Pro/Premier | Same prompt architecture as v6 | "Less predictable"; the exploratory take and the natural wild-card model |
+| **v6-mini** | Current — all tiers (the Free model) | Same prompt architecture as v6 | Faster and cheaper to run; some experienced users rate it highly — test it rather than assuming it is simply weaker |
+| v5.5 Pro | Retired 2026-09-09 | Crisp film-brief (same as v5) | Its Voices, Custom Models, and My Taste notes still apply on v6 |
+| v5 Pro | Retired 2026-09-09 | Crisp film-brief, 5-8 descriptors | — |
+| v4.5-all / v4.5 Pro / v4.5+ Pro | Retired 2026-09-09 | Conversational sentences | — |
+| v4 Pro | Retired 2026-09-09 | Simple descriptors, 200-char limit | — |
+
+## Suno v6 Family (current — PREVIEW guidance, 2026-09-12)
+
+> **Status: PREVIEW.** v6 launched 2026-09-09 and retired every earlier model. This section is compiled from Suno's v6 help articles, day-one vendor testing, and the first week of community reports. **None of it has been confirmed by this module's own production testing yet.** Grades: OFFICIAL (Suno-documented), VENDOR (guide sites reporting their own tests), COMMUNITY (several independent users), ANECDOTAL (one report). Where this section conflicts with the retired-model sections below, it wins for v6; where it is silent, the older findings are hypotheses to re-test on v6, not rules.
+
+### The three models
+
+| Model | Tier | Suno's framing (OFFICIAL) | When to reach for it |
+|---|---|---|---|
+| `v6` | Pro/Premier | "reliable, precise"; "stronger control and precision" | The default for any fully specified package |
+| `v6-wild` | Pro/Premier | "built for experimentation… less predictable directions" | Exploratory takes and wild-card variants. Several users say it carries more of the older models' character; it is the only v6 model reported to render some grooves at all (COMMUNITY) |
+| `v6-mini` | All tiers (Free) | "faster, more efficient" | Free-tier work. Some experienced users rate it highly for following performance prompts and for extending a song's back half (ANECDOTAL) |
+
+The style field stays at 1,000 characters and lyrics at 5,000 (VENDOR, day-one test). A generation can run up to 8 minutes (OFFICIAL). A Create still costs 10 credits for two songs; Max Mode doubles it (OFFICIAL).
+
+### Prompt style: production direction, not a descriptor list
+
+v6 is reported to follow the style field more literally than v5.5 did — "it wants to be directed exactly what to do" — and to fill anything the prompt leaves unspecified with its safest default (COMMUNITY, many reports). A v5-style film-brief list ("big riffs, punchy drums") tends to deliver an intro that matches and then a band that thins out under the vocal. The prompts that work share six habits:
+
+1. **An order:** Genre → Vocals → Drums → Guitars → Bass → Other instruments → Arrangement/Energy → Production → Ending. Several users credit this order with fixing flat choruses. The mechanism is unproven, and the order costs nothing (COMMUNITY).
+2. **Each instrument gets a job per section, stated with verbs** — "the intro riff continues under the verse vocal, palm-muted and lower, never stops," not "big riffs." A section the prompt says nothing about is a section where the model drops out (COMMUNITY + VENDOR).
+3. **Place the vocal instead of praising it** — "vocal in front of the band, close-mic'd and dry, the loudest element; instruments sit behind and below the voice" beats "crisp, clear, professional mix." Thinning the arrangement under the verse vocal is the most-reported fix for a buried vocal (VENDOR + COMMUNITY).
+4. **State both edges, with lengths** — "4-bar guitar intro, instrumental only"; "ends on a hard stop after the final chorus." An unspecified intro tends to come back as humming or ad-libs; an unspecified ending vamps, or cuts off mid-lyric (VENDOR + COMMUNITY). One circulating form: "complete every written lyric before a short instrumental outro and final hard stop."
+5. **Positive text only; every negative goes in Exclude Styles.** Inline negation reads as inclusion — the model keeps the noun and drops the "no" (VENDOR ×2 + COMMUNITY). Say what you want instead ("dry, close-mic'd" rather than "no reverb").
+6. **A short production clause helps; mastering words don't.** "High-fidelity studio production, close-mic vocals, crisp transients, clear instrument separation" is the reported form (COMMUNITY). "Mastered, radio-ready, -14 LUFS" has no reported effect — master after generation.
+
+Front-loading and the critical zone still apply. The 5-8 descriptor sweet spot was a v5/v5.5 finding: the v6 prompts that work are longer, sentence-shaped, and specific.
+
+### The More Options controls
+
+| Control | What it does | Default for a pipeline-built package |
+|---|---|---|
+| **Variety** — notches *Exact style*, *Balanced variety*, *Distinct styles*, *Bold exploration*, *Unreasonably varied* | Above *Exact style* it **rewrites the style prompt before generating** — "adjusting and updating your style prompts… reduce the Variety slider to 0" to keep full control of your tags (OFFICIAL). Users who found their style box rewritten traced it here (COMMUNITY) | **Exact style.** Anything higher means the validated prompt is not what generates. Raise it deliberately to explore — one careful tester found *Bold* better than 0 on a ballad (ANECDOTAL) |
+| **Max Mode** | "Uses more compute to maximize consistency throughout the song"; **2× credits**. Suno positions it for songs over two minutes, faithful covers, and style transfer (OFFICIAL) | **Off while exploring; on for the take you mean to keep.** Community reports on whether it fixes late-song degradation are mixed |
+| **Personalize** | Applies the account's My Taste profile | **Off** — keeps the package reproducible across accounts |
+| **Duration** | Auto, or a Custom target from 0:10 to 6:00 | **Auto** unless the length is a real requirement (see "Duration Slider") |
+| **Style Influence** | Loose ↔ Strong prompt adherence (OFFICIAL) | Reported to **default to 50** on v6 (VENDOR ×2) — check it before judging a prompt. Community settings for obedience converge on **Variety 0 · Weirdness ~20-50 · Style Influence 80-95** (COMMUNITY, 4+ reports) |
+| **Weirdness** | Safe ↔ Chaos, 50 = normal (OFFICIAL) | Chosen per song as always. The 60-75 counter-genre range and the ~80 cliff in the Slider Guidelines were v5.5 findings, untested on v6 |
+| **Audio Influence** | Appears only with audio attached — upload, Voice, or Persona (OFFICIAL) | Re-profile per voice on v6 rather than carrying a v5.5 number over |
+
+### Known weak spots (COMMUNITY, launch week)
+
+- **Late-song degradation** — the mix muffles, cymbals turn tinny, drums go synthetic in the back half, worst in rock/metal and past ~2-4 minutes. Reported mitigations: Max Mode (mixed results), shorter songs, extending the back half with v6-mini (ANECDOTAL), and Song Editor section re-rolls.
+- **Narrower genre reach** — metal and high-gain guitar, DnB/EDM, reggae skank, Italo disco, and glam are the most-reported failures; pop, lighter rock, and folk the strongest. High-gain metal users report that any Persona or Voice pulls guitars and drums toward a synthetic timbre.
+- **Take-to-take variance can exceed the effect of a prompt edit** (VENDOR). Judge both takes, and change one control per generation.
+- **Voices** — reports are split between clones that stay themselves and clones that "sound like another artist." LOCAL-OBSERVED (one Professional clone, 2026-09-12): the clone blended into mixes better on v6 than it had on v5.5, including in a heavier band's lane.
+
+Lyric-side v6 findings (section cues, `[Silence]`, comma placement, edge templates) live in `suno-lyric-transformer/references/metatag-reference.md` → "Suno v6 (PREVIEW)."
+
+## Retired Models — Archived Strategies (retired 2026-09-09)
+
+Everything from here down to "Universal Rules" describes models that can no longer generate. It stays because older profiles and songbook entries name these models, because `:migrate` reads it, and because several findings in it — the Voice-Character Principle, Custom Models, My Taste, the "live"-family warning — still describe features that exist on v6. Treat model-specific claims below as history until re-confirmed on v6.
 
 ## v4.5 Family (v4.5-all, v4.5 Pro, v4.5+ Pro)
 
@@ -47,7 +100,7 @@ Write style prompts as flowing, descriptive sentences. The model responds well t
 - Good for describing energy arcs: "begins with soft ambient layers, builds to..."
 - Prompt Enhancement helper available in the UI — mention this to users
 
-## v5 Pro
+## v5 Pro (retired)
 
 ### Prompt Style: Crisp Film-Brief
 
@@ -133,7 +186,7 @@ This separates concerns and prevents overloading any single input field.
 - Suno adds unscripted guitar solos regularly — expect them even when not requested, especially in rock/metal genres
 - Structural/section directions embedded in long style prompts are largely ignored — Suno treats the style prompt as a tonal palette, not a roadmap. Use metatags and the editor for structural control, not the style prompt.
 
-## v5.5 Pro
+## v5.5 Pro (retired — its Voices, Custom Models, and My Taste notes still apply on v6)
 
 ### Prompt Style: Same as v5 Pro — Crisp Film-Brief
 
@@ -282,7 +335,7 @@ Layers from broadest to most specific:
 - When using Custom Models, reallocate the characters you save from dropping generic production descriptors toward song-specific creative direction
 - The generate -> replace sections -> refine loop is more efficient than regenerating from scratch on v5.5
 
-## v4 Pro
+## v4 Pro (retired)
 
 ### Prompt Style: Simple Descriptors
 
@@ -309,6 +362,8 @@ Straightforward genre + mood + basic production notes. Less nuanced than v4.5+ m
 
 ## Universal Rules (All Models)
 
+*Written against the retired models. Where the v6 section above disagrees — negatives, descriptor count, prompt shape — the v6 section wins for v6.*
+
 1. **Character limits** — v4 Pro: 200-char hard limit. v4.5+/v5/v5.5: 1,000-char hard limit. All silently truncated at their respective limits.
 
     **Provenance caveat (added 2026-08-13):** these figures are **community-attested, not officially documented.** A full review of help.suno.com's article index on 2026-08-13 found **no** Suno article stating the 1,000-character style or 5,000-character lyrics limits — only third-party sites and API wrappers assert them. Nothing official contradicts the numbers either; they are neither confirmed nor refuted. Community reporting is also inconsistent (~200 chars for the v4 era vs ~1,000 for v5/v5.5; ~3,000 lyric chars on v4 vs ~5,000 on v5.5) — the v4-vs-v5 split is the coherent reading of that spread and is what we encode. Separately, Reddit-derived consensus suggests **soft** ceilings well below the hard limits: style under ~100 words and lyrics 100-120 words, past which content demotes to "optional suggestions" (ANECDOTAL, conflicts with the character-count figures). Keep enforcing 1,000/200 as the working limit, keep front-loading, and treat the limit as a validated-by-use convention rather than a documented platform fact. Verify in the live UI before changing the numbers.
@@ -322,7 +377,7 @@ Straightforward genre + mood + basic production notes. Less nuanced than v4.5+ m
 7. **Never put style cues inside lyrics** — style prompt and lyrics are separate inputs
 8. **No asterisks or special formatting** in style prompts
 9. **Never put artist names in style prompts** — Suno does not reliably replicate named artists. Decompose references into concrete sonic descriptors instead. **This is now backed by official policy, not just observed behavior** (OFFICIAL, [Building the future of music responsibly](https://suno.com/blog/building-the-future-of-music-responsibly), 2026-08-06): "We have never allowed prompts for specific artists or copyrighted songs"; artist names are **removed from prompts and redirected "toward descriptive musical characteristics"**; artist names are deliberately excluded from training metadata. So an artist name in the prompt does not merely fail — it is stripped, and the budget it occupied is wasted. Suno's Community Guidelines (updated 2026-08-06) separately prohibit reproducing existing songs and using a real person's voice or likeness without permission; stage names remain allowed.
-10. **Negative/exclusion prompts go at the END of the style prompt** — positive descriptors first, cleanup last. "no [element]" is the most reliable in-prompt phrasing. Alternatively, use the separate Exclude Styles field. v5 handles in-prompt negatives better than v4.5.
+10. **On v6, every negative goes in the Exclude Styles field** — inline negation reads as inclusion (VENDOR ×2 + COMMUNITY). *Retired-model history:* negatives went at the END of the style prompt ("no [element]" was the most reliable in-prompt phrasing), and v5 handled in-prompt negatives better than v4.5.
 11. **Comma separation works across all models** — consistent delimiter
 12. **Describe, don't command** — "dreamy shoegaze with female vocals" over "Create a dreamy shoegaze song." (v4.5 examples use "Create a..." which matches Suno's own v4.5 docs, but descriptive style generally works better.)
 13. **Production tags are the most underused category** (HookGenius analysis) — adding even one production descriptor ("radio-ready mix", "punchy drums", "wide stereo") meaningfully improves output distinctiveness. Most users rely only on genre + mood.
@@ -337,7 +392,9 @@ Straightforward genre + mood + basic production notes. Less nuanced than v4.5+ m
 
    **Foundational principle (production-confirmed 2026-04-29):** Suno does NOT actually shift tempo within a song. When a style prompt requests "tempo shifts" / "tempo changes" / "dynamic pacing," what Suno produces is **arrangement-density variation** (instrumentation pullback for halftime *feel*, compression for double-time *feel*), not actual BPM changes. Underlying tempo stays absolutely constant. Confirmed across multiple production tracks where the prompt explicitly asked for tempo changes — librosa-measured BPM steady end-to-end despite clear felt-shifts in lucid vs. dense sections. **Practical implication:** "tempo changes" in a style prompt is an *arrangement* directive, not a *tempo* directive. Plan for one underlying BPM per song; use rhythm nouns (`halftime groove`, `double-time driving`) and arrangement framing to vary perceived feel within that fixed tempo. Felt-tempo readings should be taken from the densest section where the pulse is most countable. See `suno-lyric-transformer/references/metatag-reference.md` "Half-Time / Double-Time Drum Feel" for the lyric-side techniques and any project's `docs/audio-analysis-reference.md` Felt BPM Corrections table for catalog examples.
 
-## Duration Slider (v5.5, web only — new control surface, shipped 2026-07-20)
+## Duration Slider (shipped on v5.5 web 2026-07-20; carried onto v6)
+
+**v6 (observed in the Pro Create form, 2026-09-12):** Auto, or a Custom target from 0:10 to 6:00; a generation can run up to 8 minutes (OFFICIAL). The v5.5-era behavior below has not yet been re-reported on v6 — treat it as the working expectation until it is.
 
 A **Duration slider** now sits in the web Create form: "Drag the new Duration slider in the Create form to pick your song length." OFFICIAL — [release note](https://suno.com/release-notes/duration-slider-on-web). **Web only, V5.5 only.** Suno published no min/max range, and the "How long will my song be?" help article was **not** updated — it still documents only Extend and the ~8-minute one-shot cap ([help](https://help.suno.com/en/articles/2409473)). Mobile support is unconfirmed.
 
@@ -454,7 +511,7 @@ Certain words reliably pull Suno into unwanted instrumental territory — typica
 The Exclude Styles field (Pro/Premier only) is a separate input from the style prompt. Key behaviors:
 
 - **Functions as probability reduction, not a hard ban** — excluded elements are less likely but can still appear. Treat it as strong guidance, not a guarantee.
-- **In-prompt negatives also work:** "no [element]" at the end of the style prompt is an alternative or supplement. v5 handles these more reliably than v4.5.
+- **v6: negatives belong only in this field.** Inline negatives read as inclusion on v6 (VENDOR ×2 + COMMUNITY), and users report Exclude is "far more necessary than previous versions" (COMMUNITY). Keep it to categories, keep it short, and pair each exclusion with a positive in the style prompt. *(Retired-model history: "no [element]" at the end of the style prompt worked as a supplement, more reliably on v5 than v4.5.)*
 - **Limit to 2-3 most important exclusions** — too many exclusions destabilize the arrangement and produce unpredictable results. Prioritize the exclusions that matter most for the song.
 - **Combine with positive instructions** — telling Suno what you DO want is more reliable than only excluding what you don't. Use Exclude Styles as a safety net alongside positive vocal/instrument guidance in the style prompt.
 - **Past ~5 exclude terms, output reportedly goes "sparse and thin"** (ANECDOTAL) — a documented ceiling on top of our 2-3 preference. If a list has grown past five, cut it rather than adding.
@@ -596,6 +653,8 @@ Two production tests on the same source song confirmed the failure:
 **The build-peak-elevated-settle dynamic archetype** is a direct consequence of this limitation — the outro can't return to bookend-sparse when brass keeps playing. That archetype emerges from the constraint rather than from a design choice, which is worth naming so it isn't mistaken for a stylistic preference.
 
 ## Slider Guidelines
+
+**On v6, start with the "More Options controls" table in the v6 section:** Variety at *Exact style* for pipeline-built prompts, Max Mode for the keeper, Personalize off, and Style Influence checked against its reported default of 50. The tables below were tuned on v5 and v5.5 — use them as a starting hypothesis for Weirdness and Style Influence, and note where v6 behaves differently.
 
 ### Weirdness and Style Influence by Song Type
 

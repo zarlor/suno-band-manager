@@ -2,20 +2,23 @@
 
 Quick-reference for Suno models, plans, parameters, metatags, and common pitfalls. This is a companion to the [Usage Guide](./USAGE.md) (how to use Mac), the [Studio & Editor Reference](../../_shared/references/STUDIO-EDITOR-REFERENCE.md) (post-generation editing tools), and covers *how Suno works* for generation.
 
-> **Platform state as of 2026-08-13.** Four things changed since this file was last validated, and all four change advice rather than just facts: **(1) downloads are capped from 2026-09-03** and commercial rights now attach to the download rather than the subscription; **(2) all current models are slated for retirement** with no versions or dates published; **(3) Studio 2.0** shipped, Premier-only, and the Studio 1.x feature names are archived; **(4) a Duration slider** landed on web for v5.5. Details in "Platform Changes — 2026-08-13" below. Verify anything time-sensitive against [suno.com/release-notes](https://suno.com/release-notes) before telling a user.
+> **Platform state as of 2026-09-12.** **Suno launched the v6 family (v6, v6-wild, v6-mini) on 2026-09-09 and retired every earlier model.** The v6 More Options panel adds **Max Mode**, **Variety**, and **Personalize** alongside Duration, and v6 is reported to want a different prompt shape — see "Platform Changes — 2026-09-09 (v6)" below and `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Suno v6 Family" (**PREVIEW** guidance). Earlier changes still in force: **downloads capped from 2026-09-03** with commercial rights attached to the download; **Studio 2.0** Premier-only. Verify anything time-sensitive against [suno.com/release-notes](https://suno.com/release-notes) before telling a user.
 
 ---
 
 ## Model Comparison
 
-| Model | Style | Character Limit | Best For | Tier |
-|-------|-------|----------------|----------|------|
-| **v4.5-all** | Conversational descriptions | 1,000 | Free users, heavier/faster genres, longer songs (~8 min) | Free |
-| **v4 Pro** | Simple descriptors | 200 | Straightforward, shorter prompts | Paid |
-| **v4.5 Pro** | Conversational descriptions | 1,000 | Intelligent prompts, narrative style | Paid |
-| **v4.5+ Pro** | Conversational descriptions | 1,000 | Advanced creation methods | Paid |
-| **v5 Pro** | Crisp film-brief (5-8 descriptors) | 1,000 | Authentic vocals, superior audio quality, section editing | Paid |
-| **v5.5 Pro** | Crisp film-brief (5-8 descriptors) | 1,000 | Most expressive model, better subtle descriptor handling, Voices, Custom Models, My Taste | Paid |
+| Model | Status | Style | Character Limit | Tier |
+|-------|--------|-------|----------------|------|
+| **v6** | **Current** | Ordered production direction (PREVIEW) | 1,000 | Pro/Premier |
+| **v6-wild** | **Current** — the exploratory sibling | Same as v6 | 1,000 | Pro/Premier |
+| **v6-mini** | **Current** — the Free model | Same as v6 | 1,000 | All tiers |
+| v5.5 Pro | Retired 2026-09-09 | Crisp film-brief (5-8 descriptors) | 1,000 | — |
+| v5 Pro | Retired 2026-09-09 | Crisp film-brief (5-8 descriptors) | 1,000 | — |
+| v4.5-all / v4.5 Pro / v4.5+ Pro | Retired 2026-09-09 | Conversational descriptions | 1,000 | — |
+| v4 Pro | Retired 2026-09-09 | Simple descriptors | 200 | — |
+
+**Retired models still matter in two places:** older band profiles and songbook entries name them (the module still recognizes those names and flags them for update), and any Extend, Cover, or Remaster of a song made on one now runs on v6.
 
 **Character limit details** (community-attested, **not** officially documented — a full review of help.suno.com on 2026-08-13 found no Suno article stating these numbers, and nothing official contradicting them either; keep enforcing them, don't cite them as platform documentation):
 - **v4 Pro:** 200 chars (hard limit, silently truncated)
@@ -26,14 +29,14 @@ Quick-reference for Suno models, plans, parameters, metatags, and common pitfall
 - **v5 Pro** wants crisp descriptors and emotional language over technical. Example: "raw indie folk, yearning vocals, acoustic guitar, lo-fi tape warmth, intimate"
 - **v4 Pro** has a hard 200-character limit, not 1,000.
 
-**v5-specific behaviors:**
+**v5-specific behaviors (retired model — kept as history):**
 - Full negative prompting support (v4.5 had limited support)
 - Better BPM and key recognition in style prompt (e.g., `deep house, 122 BPM, A minor`)
 - Production-quality descriptors more effective (e.g., "radio-ready mix, punchy drums, wide stereo field")
 - Composition-aware architecture -- uses early style/genre info for coherent section transitions
 - Existing v4 prompts often work "even better" on v5
 
-**v5.5-specific behaviors (additive update over v5):**
+**v5.5-specific behaviors (retired 2026-09-09; the Voices, Custom Models, and My Taste notes still describe features that exist on v6):**
 - Same audio engine, metatags, and character limits as v5 -- all v5 prompts work identically, often with better results
 - 48kHz sample rate, up to 8 min generation, internal codename "chirp-fenix" (v5 was "chirp-crow")
 - Most expressive model yet -- better at interpreting subtle and nuanced descriptors
@@ -59,7 +62,7 @@ Quick-reference for Suno models, plans, parameters, metatags, and common pitfall
 
 | Feature | Free ($0) | Pro ($8/mo displayed) | Premier ($24/mo displayed) |
 |---------|-----------|---------------------|--------------------------|
-| **Model access** | v4.5-all only | v5.5 + legacy v4/v4.5/v4.5+/v5 | Same as Pro |
+| **Model access** | v6-mini | v6 and v6-wild (plus v6-mini) — every pre-v6 model retired 2026-09-09 | Same as Pro |
 | **Credits** | 50/day (~10 songs) | 2,500/mo (~500 songs) | 10,000/mo (~2,000 songs) |
 | **Credit cost** | 10 credits per Create (produces 2 songs) | Same | Same |
 | **Song downloads** (from 2026-09-03) | 7 lifetime trial downloads | 20/month | 60/month, Studio exports exempt |
@@ -87,7 +90,7 @@ Quick-reference for Suno models, plans, parameters, metatags, and common pitfall
 
 Free-tier "More Options" includes: Vocal Gender, Manual/Auto Lyrics mode, Song Title only.
 
-Pro/Premier "More Options" additionally includes: Weirdness slider, Style Influence slider, Audio Influence slider (with Persona or audio upload), Exclude Styles, Personas, Inspo, and the Legacy Editor for section-level editing.
+Pro/Premier "More Options" additionally includes: Weirdness slider, Style Influence slider, Audio Influence slider (with Persona, Voice, or audio upload), Exclude Styles, Personas, Inspo, and the Legacy Editor for section-level editing. **On v6 it also carries Duration (Auto or 0:10-6:00), Max Mode (2× credits), Variety (*Exact style* through *Unreasonably varied*; above *Exact* it rewrites the style prompt), and Personalize (applies My Taste)** — observed at Pro 2026-09-12; Free-tier availability not verified.
 
 **Vocal consistency across songs:** Suno interprets the same style prompt differently on every generation. Descriptive prompt language (e.g., "breathy female vocal with indie folk phrasing") gets you in the right neighborhood but not an exact match. The **Persona** feature (Pro/Premier) is the only reliable way to lock in a consistent vocal identity across songs -- it reuses the vocal character from a source generation. If you are working on an album or project where songs need to sound like the same singer, Personas are essential.
 
@@ -105,6 +108,21 @@ Community testing (JG BeatsLab, March 2026) puts diminishing returns past ~70%, 
 
 ---
 
+## Platform Changes — 2026-09-09 (v6)
+
+OFFICIAL unless graded otherwise. Sources: [v6 FAQ](https://help.suno.com/en/articles/13924481), [Current Models: v6](https://help.suno.com/en/articles/13924737), [What's new in v6](https://help.suno.com/en/articles/13924801), [Introducing v6](https://suno.com/release-notes/introducing-v6).
+
+- **Three models:** `v6` ("reliable, precise") and `v6-wild` ("built for experimentation", less predictable) for Pro and Premier; `v6-mini` for everyone, including Free.
+- **Every pre-v6 model is retired.** Existing songs stay playable; new iterations of them run on v6. **Custom Models were upgraded to v6 automatically.** Nothing official says how pre-v6 Voices and Personas carry over — early user reports are split, so re-check a clone on v6 before relying on it.
+- **Credits unchanged:** a Create is still 10 credits for two songs (image/video inputs can cost more). **Max Mode costs 2×.**
+- **Up to 8 minutes per generation.** Style and lyrics limits unchanged at 1,000 / 5,000 (VENDOR, day-one test).
+- **New capabilities:** plain-language section editing, single-lyric or single-word updates without regenerating, multi-source mashups, sample-isolate-build, and starting from text, audio (voice memos), images, or video. Launch-week reports say section edits are uneven — some come back as a different take — so the Song Editor's trim and replace stay the deterministic path (COMMUNITY).
+- **Training data:** "trained from the ground up… on a new set of data" — licensed music from Warner Music Group and BMG, participating Believe/TuneCore artists, and user data. Which catalogs, and how much, is undisclosed.
+- **How it prompts (PREVIEW):** production direction rather than a descriptor list; negatives only in Exclude Styles; **Variety at *Exact style*** unless you want the prompt rewritten; Style Influence reportedly defaults to 50. Full treatment: `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Suno v6 Family."
+- **Where it struggles (COMMUNITY):** late-song degradation in longer tracks, and the heavier genres — metal and high-gain guitar above all. Fidelity is widely described as cleaner than v5.5 while character is described as flatter; results are strongly genre-dependent.
+
+**What Mac should do differently:** build every package for v6 (v6-wild for the wild card), put Variety, Max Mode, Duration, and Personalize in the Settings block, and treat the rest of this file's model-specific advice as history until it is re-confirmed on v6. Tell a user plainly that v6 guidance is a week old.
+
 ## Platform Changes — 2026-08-13
 
 Everything in this section is OFFICIAL unless graded otherwise. Confidence grades follow the module convention: OFFICIAL = Suno-documented, COMMUNITY = multi-source replicated, ANECDOTAL = single source.
@@ -121,7 +139,7 @@ Sources: [Download limits FAQ](https://help.suno.com/en/articles/13614785), [ToS
 
 **What Mac should do differently:** treat downloads as a budget the user spends, not a free action at the end. Selection moves *before* download — audition takes on-platform, then download the keeper. Say so plainly when a user is on Pro and iterating hard: twenty a month goes fast when a song takes four Creates. Don't suggest downloading every take "just in case." And never suggest anything that strips or defeats watermarking or fingerprinting — that is a ToS violation as of September 3, regardless of how it is framed.
 
-### All current models are slated for retirement — versions and dates are NOT published
+### All current models are slated for retirement — versions and dates are NOT published *(superseded 2026-09-09: every pre-v6 model is now retired — see "Platform Changes — 2026-09-09 (v6)")*
 
 Sources: same as above, plus [BMG partnership](https://suno.com/blog/suno-partnership-bmg) (2026-08-12).
 
@@ -193,6 +211,11 @@ Where each component of Mac's output package goes in Suno's Custom Mode:
 | **Weirdness** (Pro/Premier) | Creative deviation: lower = safer, higher = experimental | Under More Options |
 | **Style Influence** (Pro/Premier) | Prompt adherence: lower = looser, higher = tighter | Under More Options |
 | **Audio Influence** (Pro/Premier) | Persona/upload resemblance (appears with Persona or audio upload) | Under More Options |
+| **Model** | v6 (default), v6-wild (exploratory), or v6-mini (Free) | Model selector |
+| **Variety** (v6) | How far Suno may rewrite the style prompt — *Exact style* keeps it as written | Under More Options |
+| **Max Mode** (v6) | Extra compute for consistency through the song; 2× credits | Under More Options |
+| **Duration** | Auto, or a Custom target (0:10-6:00) | Under More Options |
+| **Personalize** (v6) | Applies your My Taste profile | Under More Options |
 | **Song Title** | Title for the generation | Title field |
 | **Wild Card Variant** | An experimental alternative style prompt | Optional -- try it if you want |
 
@@ -200,6 +223,7 @@ Where each component of Mac's output package goes in Suno's Custom Mode:
 
 ## Style Prompt Best Practices
 
+- **On v6, write the style prompt as ordered production direction** — each instrument's job per section, the vocal placed rather than praised, both edges stated, negatives only in Exclude Styles. PREVIEW guidance: `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Suno v6 Family." The bullets below were written against the retired models; re-check each on v6.
 - **1,000-character limit** (200 for v4 Pro) -- content beyond this is silently truncated. The first ~200 chars are the "critical zone" where front-loaded terms have strongest influence. Content beyond ~200 is supplementary, not wasted — v5.5 may interpret more effectively. **5-8 descriptors is the sweet spot** (HookGenius 1000+ prompt analysis, April 2026 — fewer than 4 produces generic results; exceeding 10 causes conflicting signals and quality degradation).
 - **Word order is weighted** -- front-loaded terms dominate. Priority order: Genre > Mood/Energy > Instruments > Vocals > Production. Treat the first ~200 characters as the "critical zone."
 - **Hyper-specific beats generic** -- "1980s synth-pop" not "pop"; "distorted electric guitar, power chords" not "guitar"
@@ -412,6 +436,11 @@ This table covers problems with Suno's output. For issues with Mac itself (wrong
 ## Community Research Sources & Further Reading
 
 > **Last updated:** August 13, 2026. These sources informed the findings in this reference. Suno evolves fast — verify claims against current platform behavior.
+
+### Official Suno Documentation — v6 (2026-09-12)
+
+- [v6 FAQ](https://help.suno.com/en/articles/13924481) · [Current Models: v6](https://help.suno.com/en/articles/13924737) · [What's new in v6](https://help.suno.com/en/articles/13924801) · [Introducing v6](https://suno.com/release-notes/introducing-v6)
+- Day-one testing: [HookGenius v6 guide](https://hookgenius.app/learn/suno-v6-guide/) · [Jack Righteous — confirmed so far](https://jackrighteous.com/en-us/blogs/guides-using-suno-ai-music-creation/suno-next-music-industry-model-confirmed-so-far) · [Jack Righteous — problems](https://jackrighteous.com/en-us/blogs/guides-using-suno-ai-music-creation/suno-v6-reviews-problems-whats-next)
 
 ### Official Suno Documentation — 2026-08-13 sweep
 

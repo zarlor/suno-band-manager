@@ -44,6 +44,7 @@ The `--feedback` / `--style-prompt` / `--model` / `--sliders` flags are the *ski
 | `verify-audio-files.py` | Receiving machine reads the manifest and detects missing / wrong-gen / extra audio (filename-normalization + size-tolerance aware) |
 | `analyze-audio.py` / `audio-deep-analysis.py` | librosa audio analysis stack — write JSON archives to `docs/audio-analysis/songs/` and refresh companion `.md` docs by default. See `SKILL.md` for full list. |
 | `chord-progression.py` / `tempo-detail.py` | Single-track librosa specialty analyses (chord changes, beat-level tempo). |
+| `beat-grid.py` / `vocal-placement.py` | Optional PyTorch tools: Beat This! beat/downbeat tracking (a tempo second opinion) and Demucs vocal placement (vocal-vs-band loudness). Opt-in; see `SKILL.md`. |
 
 > **Album/playlist sequencing** (`playlist-sequencing-data.py`, `batch-full-analysis.py`, and the album-craft methodology) moved to the **`suno-playlist-sequencer`** skill. Route "sequence my playlist" / "order my album" there.
 
@@ -55,7 +56,7 @@ The `--feedback` / `--style-prompt` / `--model` / `--sliders` flags are the *ski
 "It just doesn't feel right — can you help me figure out what to change?"
 
 # Headless
---headless:adjustments --feedback "vocals too polished, needs rawer feel" --style-prompt "warm indie rock..." --model "v5 Pro"
+--headless:adjustments --feedback "vocals too polished, needs rawer feel" --style-prompt "warm indie rock..." --model "v6"
 --headless:analyze --feedback "it sounds off somehow"
 ```
 

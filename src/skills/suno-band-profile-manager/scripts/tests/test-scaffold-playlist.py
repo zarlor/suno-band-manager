@@ -176,3 +176,9 @@ def test_main_docs_dir_override_writes_there(tmp_path):
     # Playlist must land under the overridden docs dir, NOT {project-root}/docs.
     assert (alt_docs / "my-band-playlist.yaml").exists()
     assert not (tmp_path / "docs" / "my-band-playlist.yaml").exists()
+
+def test_render_emits_band_audio_dir():
+    out = render_playlist_yaml("My Band", [], from_songbook=False, band_slug="my-band")
+    assert 'audio_dir: "docs/audio/my-band"' in out
+    # Without a band slug the key is omitted (resolver falls back to derivation).
+    assert "audio_dir:" not in render_playlist_yaml("My Band", [], from_songbook=False)

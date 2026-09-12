@@ -4,11 +4,31 @@
 >
 > **Critical zone:** The first ~200 characters of a style prompt carry disproportionate influence on generation. When recommending additions, prioritize the most impactful descriptors for the critical zone. Supplementary descriptors go after.
 >
-> **Last validated:** August 13, 2026 (Suno v5.5, v5, v4.5-all; Duration slider; Studio 2.0). Recommendations are based on these model versions — newer models may respond differently, and Suno has announced that current models will be retired when the next (industry-developed) model ships, with no versions or dates published.
+> **Last validated:** September 12, 2026 — **Suno v6 family (launched 2026-09-09; every earlier model retired)**; the v6 section below is PREVIEW guidance. The rest of this file was validated August 13, 2026 against v5.5, v5, and v4.5-all, and describes models that can no longer generate — re-check its model-specific advice on v6 before relying on it.
 >
 > **Before recommending a download-consuming fix:** from 2026-09-03 downloads are capped (Free 7 lifetime, Pro 20/month, Premier 60/month; Studio exports exempt). Iterating is still free — *keeping* the result is what costs. When a refinement path ends in "export and fix it in a DAW," say that it spends one of the user's downloads.
 
 Maps feedback dimensions and emotional vocabulary to concrete Suno parameter adjustments.
+
+## v6 Controls and Symptoms (PREVIEW, 2026-09-12)
+
+Launch-week guidance — compiled from Suno's v6 docs, vendor day-one testing, and community reports; not yet confirmed by this module's production testing. Full context: `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Suno v6 Family."
+
+**Check the new controls before touching the prompt.** Several of the most common v6 complaints trace to a control, not to wording:
+
+| Feedback | First check | Then |
+|---|---|---|
+| "It changed my style prompt" / "it keeps adding things I removed" | **Variety** above *Exact style* rewrites the style prompt before generating (OFFICIAL) | Set Variety to *Exact style*, regenerate |
+| "The prompt is being ignored" / "it came out generic" | **Style Influence** — reportedly defaults to 50 on v6 (VENDOR ×2) | Raise to ~80-90 with Variety at *Exact*; community obedience settings: Variety 0 · Weirdness ~20-50 · SI 80-95 |
+| "It sounds like someone else's taste" | **Personalize** on | Turn it off |
+| "Great start, falls apart / gets muffled by the end" | Song length and **Max Mode** | Max Mode on for the keeper (2× credits; mixed reports); a shorter song; extend the back half with v6-mini (ANECDOTAL); Song Editor re-roll of the late section. Late-song degradation is the most-replicated v6 complaint (COMMUNITY) |
+| "The band disappears under the vocal" / "dead verse" | The style prompt describes a sound, not what each instrument does in each section | Rewrite as instrument-by-section direction ("the riff continues under the verse vocal, palm-muted, never stops"), and restate the key instruction as a short cue at the top of the section in the lyrics |
+| "The vocal is buried / muffled" | Arrangement density under the vocal; vocal never placed | Thin the verse arrangement; place the vocal ("in front of the band, close-mic'd, dry, loudest element"). If the dullness is there from the first bar, it is the render — regenerate or try v6-wild; adjectives will not add top end |
+| "It reads instead of sings" / "rushed, no held notes" | Lyric density and missing delivery direction | Fewer syllables per line; write the holds on the page (`sta-a-ay`); describe the performance in the style field; `[Silence]` at the end of each line has one careful tester's backing (see the metatag reference, v6 section) |
+| "Humming / ad-libs at the start" | Unspecified intro | State the intro in positive terms with a bar count ("4-bar guitar intro, instrumental only"), and put `humming, vocal intro` in Exclude Styles — never "no humming" in the style field |
+| "It vamps forever" / "it cut off mid-line" | Unspecified ending | State the ending and its length; land the lyric on `[Instrumental Outro]` `[Hard Stop]` `[End]` |
+| "Heavy guitars sound synthetic" (metal, high gain) | Genre — the most-reported v6 weakness (COMMUNITY) | Try v6-wild; name the kit and room ("acoustic drum kit in a room"); expect more generations than for lighter genres. Users report Personas and Voices intensify the synthetic timbre in high-gain lanes |
+| "The two takes are nothing alike" | Normal on v6 — take-to-take variance can exceed a prompt edit (VENDOR) | Judge both takes before changing anything; change one control per generation |
 
 ## Voices & Custom Models
 
@@ -53,11 +73,11 @@ When both a Voice and a Custom Model are active, change **ONE variable at a time
 3. Then adjust style prompt if the production/arrangement needs changing
 4. Regenerate and evaluate after each single change
 
-## v5.5 Workflow Paradigm
+## Generate → Inspect → Refine Workflow (v5.5 onward, including v6)
 
-v5.5 favors an iterative **generate -> inspect -> section replace -> refine** workflow over full regeneration. This preserves good material and spends fewer credits.
+Since v5.5, Suno has favored an iterative **generate -> inspect -> section replace -> refine** workflow over full regeneration. This preserves good material and spends fewer credits.
 
-### Recommended v5.5 Workflow
+### Recommended Workflow
 
 1. **Generate** the initial output from the song package
 2. **Inspect** the full result — evaluate structure, melody, emotional angle, and production
@@ -371,6 +391,12 @@ Per-section regeneration is available through the Song Editor's Replace Section 
 
 ## Model-Specific Feedback Patterns
 
+### v6 family (current — PREVIEW)
+- **v6** — the control model. Feedback about ignored instructions is usually a control (Variety, Style Influence) or an unspecified section; see "v6 Controls and Symptoms" above.
+- **v6-wild** — suggest it when the complaint is flatness, sameness, or a genre v6 renders poorly ("where the old personality went," per several users).
+- **v6-mini** — worth trying for performance-heavy lyrics and for extending a degrading back half (ANECDOTAL).
+- Model-specific notes below describe retired models; keep them for reading older songbook entries.
+
 ### v4 Pro
 - Hard 200-character style prompt limit (silently truncated) — all adjustment text must be extremely concise
 - Simpler model — broad genre/mood descriptors work better than nuanced ones
@@ -456,7 +482,7 @@ Studio 2.0 shipped 2026-08-13 and **nothing in it reaches Pro**. Current capabil
 
 ## Song Length & Pacing
 
-### Duration Slider — a new pre-generation parameter (v5.5, web only)
+### Duration Slider — a pre-generation parameter (v5.5 web; carried onto v6, Auto or 0:10–6:00)
 
 Shipped 2026-07-20 (OFFICIAL, [release note](https://suno.com/release-notes/duration-slider-on-web)). It is **pre-generation only** — it cannot fix a song that already exists, so it belongs in the "next generation" half of a refinement plan, never in the "repair this take" half. Suno published no range. The endpoints — **10 seconds to 6:00** — are verified in live UI (Pro account, 2026-08-14); the **5-second increment granularity is COMMUNITY-attested** and not part of that observation. Auto or Custom, web only, mobile unconfirmed. It also **requires Style set to Custom**, and it is **unavailable or unreliable for covers, remixes, extends, and custom models** — do not offer duration targeting as a fix on a derivative operation.
 

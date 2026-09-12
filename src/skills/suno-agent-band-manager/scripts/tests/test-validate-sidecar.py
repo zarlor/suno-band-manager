@@ -166,3 +166,82 @@ def test_format_text_pass():
         "findings_total": 0, "findings_error": 0, "findings_warning": 0,
     })
     assert "PASS" in text
+
+
+def test_published_field_is_the_date_the_body_marker_must_match(tmp_path):
+    """`date:` can hold the start date when a separate `published:` holds the publish day."""
+    text = (
+        "---\n"
+        'title: "Harbor Lights"\n'
+        "band_profile: paper-lanterns\n"
+        "status: published\n"
+        "date: 2026-01-02\n"
+        "published: 2026-01-15\n"
+        "---\n\n"
+        "**Status: LOCKED — Published 2026-01-15. A confession.**\n"
+    )
+    p = _write_song(tmp_path, "harbor-lights.md", text)
+    song, err = mod.parse_song(p, tmp_path)
+    assert err is None and song.frontmatter_published == "2026-01-15"
+    assert not [f for f in mod.check_songbook_consistency(song) if "disagrees" in f.message]
+
+
+def test_published_field_mismatch_is_still_an_error(tmp_path):
+    text = (
+        "---\n"
+        'title: "Harbor Lights"\n'
+        "band_profile: paper-lanterns\n"
+        "status: published\n"
+        "date: 2026-01-02\n"
+        "published: 2026-01-20\n"
+        "---\n\n"
+        "**Status: LOCKED — Published 2026-01-15. A confession.**\n"
+    )
+    p = _write_song(tmp_path, "harbor-lights.md", text)
+    song, _ = mod.parse_song(p, tmp_path)
+    errs = [f for f in mod.check_songbook_consistency(song) if f.severity == "error"]
+    assert errs and "frontmatter published=2026-01-20" in errs[0].message
+
+
+def _docs(tmp_path, rel, text):
+    p = tmp_path / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text, encoding="utf-8")
+    return p
+
+
+def test_cross_ref_resolves_bare_module_filename_by_suffix(tmp_path):
+    _docs(tmp_path, "src/skills/x/references/creed.md", "creed\n")
+    _docs(tmp_path, "docs/notes.md", "see `creed.md` and `references/creed.md`\n")
+    assert mod.check_markdown_cross_references(tmp_path) == []
+
+
+def test_cross_ref_skips_template_placeholders(tmp_path):
+    _docs(tmp_path, "docs/notes.md", "each band has `docs/{band-slug}-genre-coverage.md`\n")
+    assert mod.check_markdown_cross_references(tmp_path) == []
+
+
+def test_cross_ref_still_flags_a_missing_file(tmp_path):
+    _docs(tmp_path, "docs/notes.md", "see `docs/does-not-exist.md`\n")
+    found = mod.check_markdown_cross_references(tmp_path)
+    assert len(found) == 1 and "does-not-exist.md" in found[0].message
+
+
+def test_cross_ref_honors_sanctum_ignore_list(tmp_path):
+    _docs(tmp_path, "docs/other-agent/notes.md", "see `their-memory/secret.md`\n")
+    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+    _docs(tmp_path, "_bmad/_memory/band-manager-sidecar/validate-ignore.txt", "# other agent's docs\ndocs/other-agent/*\n")
+    assert mod.check_markdown_cross_references(tmp_path, sanctum) == []
+    assert len(mod.check_markdown_cross_references(tmp_path)) == 1
+
+
+def test_parity_skips_thematic_playlists_and_counts_versions_once(tmp_path):
+    _docs(tmp_path, "docs/band-profiles/paper-lanterns.yaml", "name: Paper Lanterns\n")
+    _docs(tmp_path, "docs/paper-lanterns-playlist.yaml",
+          'album: "PL"\ntracks:\n  - name: "Harbor Lights (Version 1)"\n    file: a.mp3\n'
+          '  - name: "Harbor Lights (Version 2)"\n    file: b.mp3\n')
+    _docs(tmp_path, "docs/late-night-playlist.yaml", 'album: "LN"\ntracks:\n  - name: "X"\n    file: x.mp3\n')
+    p = _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
+    song, _ = mod.parse_song(p, tmp_path)
+    assert mod.check_playlist_songbook_parity([song], tmp_path) == []
+

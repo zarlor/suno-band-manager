@@ -466,7 +466,7 @@ Example:
     )
     parser.add_argument(
         "--model",
-        help="Suno model (v4 Pro, v4.5 Pro, v5 Pro, …) — sets the style-prompt char "
+        help="Suno model (v6, v6-wild, v6-mini; retired names still recognized) — sets the style-prompt char "
         "limit for overflow validation (overrides 'model' in the input JSON)",
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output to stderr")

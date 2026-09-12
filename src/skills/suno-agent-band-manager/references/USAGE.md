@@ -34,7 +34,7 @@ Mac asks these conversationally -- not as a form:
 
 | # | Question | Why It Matters |
 |---|----------|----------------|
-| 1 | **What's your Suno setup?** (Free, Pro, Premier) | Determines which models, sliders, and features Mac can recommend. Free users get v4.5-all only; Pro/Premier unlock v5 Pro, v5.5, Weirdness/Style Influence sliders, Voices, Custom Models, and more. Suno Studio is Premier-only. It also sets your **download budget** -- from 2026-09-03 Suno caps downloads (Free 7 lifetime, Pro 20/month, Premier 60/month, with Studio exports exempt), and commercial rights attach to a permitted download rather than to the plan itself, so Mac will steer you toward picking a keeper before you download rather than downloading every take. If you upgrade later, just tell Mac. |
+| 1 | **What's your Suno setup?** (Free, Pro, Premier) | Determines which models, sliders, and features Mac can recommend. Free users get v6-mini; Pro/Premier unlock v6 and v6-wild, the Weirdness/Style Influence sliders, the v6 Variety and Max Mode controls, Voices, Custom Models, and more. Suno Studio is Premier-only. It also sets your **download budget** -- from 2026-09-03 Suno caps downloads (Free 7 lifetime, Pro 20/month, Premier 60/month, with Studio exports exempt), and commercial rights attach to a permitted download rather than to the plan itself, so Mac will steer you toward picking a keeper before you download rather than downloading every take. If you upgrade later, just tell Mac. |
 | 2 | **How do you like to work?** (Demo, Studio, Jam) | Sets your default interaction mode. You can switch modes anytime -- even mid-song. Try Demo first and explore from there. You can change your default anytime by telling Mac. |
 | 3 | **Do you have a band or project?** | If yes, Mac offers to create a band profile right away. If not, you can work one-off. |
 | 4 | **Anything you always want or never want?** | Captures your baseline exclusions ("no autotune, ever"), preferred genres, and vocal preferences. These are just starting points -- you can change any of this anytime. |
@@ -129,7 +129,7 @@ Mac: Alright, here's what I'm feeling today -- a little swamp blues meets synthw
 If your opening message includes 3 or more specific parameters (model, sliders, vocal direction, genre, metatags), Mac skips mode selection and goes straight to Studio mode:
 
 ```
-You: I need a v5.5 style prompt for a dreamy indie folk song with breathy vocals,
+You: I need a v6 style prompt for a dreamy indie folk song with breathy vocals,
      acoustic guitar, and lo-fi tape saturation. Weirdness around 45.
 Mac: Got it all -- let me build your package.
 ```
@@ -148,7 +148,7 @@ You can update any preference by telling Mac during conversation. Changes take e
 
 | Change | What to Say | What Mac Does |
 |--------|------------|---------------|
-| **Upgrade tier** | "I upgraded to Pro" | Updates memory, announces newly available features (including v5.5 Voices, Custom Models, My Taste), offers to update band profiles |
+| **Upgrade tier** | "I upgraded to Pro" | Updates memory, announces newly available features (including Voices, Custom Models, My Taste), offers to update band profiles |
 | **Change default mode** | "Make Studio my default" | Updates memory immediately |
 | **Add exclusions** | "I never want autotune" | Updates memory, notes if band profiles are affected |
 | **Remove exclusions** | "Stop excluding piano" | Updates memory |
@@ -280,7 +280,7 @@ I left a song hanging in the air
 [Hummed]
 [Fade Out]
 
-### Style Prompt (v4.5-all)
+### Style Prompt (v6-mini)
 187/1,000 characters
 
 Warm indie folk, bittersweet Americana, intimate lo-fi production, acoustic guitar
@@ -313,16 +313,17 @@ For a field-by-field mapping of where each component goes in Suno's UI, see [Sun
 Mac includes this guidance on your first song or in Demo mode:
 
 1. Switch to **Custom Mode** in Suno
-2. Select your **Voice** (v5.5, Pro/Premier) or **Persona** (pre-v5.5, Pro/Premier) if recommended
-3. Select your **Custom Model** (v5.5, Pro/Premier) if recommended
-4. Set **Inspo** playlist (if recommended, v4.5+ Pro only)
-5. Paste **Lyrics** into the Lyrics field (set Lyrics Mode to Manual)
-6. Paste the **Style Prompt** into the "Style of Music" field
-7. Add **Exclude Styles** as a comma-separated list (Pro/Premier)
-8. Under **More Options**, set Vocal Gender and sliders (if on Pro/Premier)
-9. Add your **Song Title**
-10. Hit **Create** and generate **3-5 versions** -- Suno interprets the same inputs differently each time
-11. **Inspect results** -- listen through all versions before deciding. If a version is mostly right but one section is weak, try **section replacement** (v5 Pro / v5.5) to fix the targeted area rather than regenerating the whole song
+2. Pick the **model** — v6 (or v6-wild for the wild card; v6-mini on Free)
+3. Select your **Voice** or **Persona** (Pro/Premier) if recommended
+4. Select your **Custom Model** (Pro/Premier) if recommended
+5. Set **Inspo** playlist if recommended (Pro/Premier; availability on v6 unverified)
+6. Paste **Lyrics** into the Lyrics field (set Lyrics Mode to Manual)
+7. Paste the **Style Prompt** into the "Style of Music" field
+8. Add **Exclude Styles** as a comma-separated list (Pro/Premier)
+9. Under **More Options**, set Vocal Gender and the sliders, plus the v6 controls: **Variety at Exact style** (any higher notch rewrites your style prompt), **Max Mode** only for the take you'll keep (2× credits), **Duration**, and **Personalize** off
+10. Add your **Song Title**
+11. Hit **Create** and generate **3-5 versions** -- Suno interprets the same inputs differently each time
+12. **Inspect results** -- listen through all versions before deciding. If a version is mostly right but one section is weak, try **section replacement** in the Song Editor to fix the targeted area rather than regenerating the whole song
 
 **A note on tempo control:** BPM tags in lyrics (e.g., `[Verse: 65 BPM]`) have no detectable effect on Suno's output -- confirmed by librosa analysis across multiple songs. Perceived tempo is actually controlled through how lyrics are written: short fragmented lines feel slow, packed lines feel fast, and line breaks control where the singer breathes. For drum feel changes, use metatags like `[Heavy: halftime]` rather than BPM values. Mac handles this automatically when building your lyrics package.
 
@@ -344,7 +345,7 @@ A band profile is the sonic equivalent of a brand book. It captures the DNA of a
 
 **A note on vocal consistency:** Band profiles maintain consistency in your *prompts* -- genre, style, exclusions, and vocal direction. However, Suno interprets the same style prompt differently on every generation. The only way to get a truly consistent vocal identity across songs is with the **Voice** feature (Pro/Premier plans on v5.5), which locks in a specific vocal character. Without a Voice, you are relying on descriptive prompt language, which gets you in the right neighborhood but not an exact match. If consistent vocal identity across an album or project matters to you, a Pro plan with Voices is strongly recommended.
 
-**Personas and Voices (v5.5):** Personas were **not** discontinued -- they were moved inside the Voices menu, which is why they can look gone. They still work. Voices is a separate, additional feature that serves the same goal by a different mechanism: a Persona captures the *style essence* of a source generation, while a Voice is actual voice cloning from an audio sample you provide. For a locked vocal identity on v5.5, a Voice is the stronger tool; a Persona is still useful when the thing you want to carry forward is a whole sonic character rather than a specific singer. Mac will suggest the move when it fits, and will not tell you Personas are gone.
+**Personas and Voices:** Personas were **not** discontinued -- they were moved inside the Voices menu, which is why they can look gone. They still work. Voices is a separate, additional feature that serves the same goal by a different mechanism: a Persona captures the *style essence* of a source generation, while a Voice is actual voice cloning from an audio sample you provide. For a locked vocal identity on v5.5, a Voice is the stronger tool; a Persona is still useful when the thing you want to carry forward is a whole sonic character rather than a specific singer. Mac will suggest the move when it fits, and will not tell you Personas are gone.
 
 ### Creating Your First Profile
 
@@ -362,7 +363,7 @@ Mac (via the Band Profile Manager skill) walks you through a conversational disc
 8. **Style prompt baseline** -- Built from your answers. Mac shows a draft and iterates with you.
 9. **Exclusion defaults** -- What should never appear? Max 5 recommended.
 10. **Creative settings** -- Conservative/balanced/experimental. Slider preferences if on a paid tier.
-11. **Voice / Persona reference** -- Do you have an existing Suno Voice (v5.5) or Persona (pre-v5.5) to link? Do you have a Custom Model (v5.5)?
+11. **Voice / Persona reference** -- Do you have an existing Suno Voice or Persona to link? Do you have a Custom Model?
 12. **Writer voice** -- Optional. Analyze your writing style now or skip for later.
 
 Between sections, Mac asks "Anything else to add, or move on?" -- he does not auto-advance.
@@ -404,7 +405,7 @@ If Mac has a profile loaded from a previous session, he will offer continuity: "
 
 ```
 You: Edit my Midnight Porch profile -- make it more aggressive
-You: Update Neon Drift to use v5 Pro
+You: Update Neon Drift to use v6-wild
 You: Add "no synth pads" to my exclusions
 ```
 
@@ -612,7 +613,7 @@ Note: FR and WF are mutually exclusive.
 ### Audio Analysis with External Tools
 
 For detailed audio analysis of Suno output, three complementary tools are available:
-- **librosa scripts** (included in the Feedback Elicitor) — programmatic BPM, key detection, tempo stability, and energy arc analysis. Run `analyze-audio.py` on a directory of MP3s for batch analysis, or `audio-deep-analysis.py` on individual tracks for deep dives. Requires Python 3 with librosa and numpy.
+- **librosa scripts** (included in the Feedback Elicitor) — programmatic BPM, key detection, loudness (LUFS / loudness range), tempo stability, and energy arc analysis. Two optional PyTorch tools add a second opinion on tempo (`beat-grid.py`, Beat This!) and vocal placement against the band (`vocal-placement.py`, Demucs). Run `analyze-audio.py` on a directory of MP3s for batch analysis, or `audio-deep-analysis.py` on individual tracks for deep dives. Requires Python 3 with librosa and numpy.
 - **Gemini 3.1 Pro** — upload MP3 to Google AI Studio for AI-powered instrument identification, genre classification, and style prompt accuracy feedback. A two-pass workflow is mandatory for fusion genres.
 - **ChatGPT** — upload MP3 for "blind" analysis (without the style prompt) to get unbiased genre and instrument identification. Useful for catching cases where the style prompt intent diverges from what Suno actually produced.
 
@@ -634,7 +635,7 @@ This replaces gut-feel prompt tweaking with systematic iteration. Mac can sugges
 
 Mac routes playlist/album ordering to the dedicated `suno-playlist-sequencer` skill, which combines data and creative judgment:
 
-- **librosa scripts** — `playlist-sequencing-data.py` generates BPM, key (with Camelot wheel codes), energy levels, and transition quality ratings between adjacent tracks; `batch-full-analysis.py` adds catalog-wide energy/section/spectral analysis. (`chord-progression.py`, for key centers over time within individual tracks, stays in the Feedback Elicitor.)
+- **librosa scripts** — `playlist-sequencing-data.py` generates BPM, key (with Camelot wheel codes), energy levels, loudness, and transition quality ratings between adjacent tracks (key, BPM, and the loudness step across the seam); `batch-full-analysis.py` adds catalog-wide energy/section/spectral analysis. (`chord-progression.py`, for key centers over time within individual tracks, stays in the Feedback Elicitor.)
 - **Camelot wheel harmonic mixing** — key compatibility scoring based on DJ harmonic mixing principles (+/-1 number = safe, relative major/minor = mood shift, beyond +2 = intentional contrast)
 - **Narrative sequencing** — the skill considers thematic arcs, emotional progression, and lyrical connections between songs alongside the sonic data
 
@@ -708,7 +709,7 @@ All skills support headless (non-interactive) operation for scripting, batch pro
 {
   "source_text": "optional -- poem or text to transform",
   "genre_mood": "required -- genre, mood, vibe description",
-  "model": "optional -- default v4.5-all (also: v5 Pro, v5.5)",
+  "model": "optional -- default v6 on Pro/Premier, v6-mini on Free (also: v6-wild)",
   "band_profile": "optional -- profile name to load",
   "creativity_mode": "optional -- conservative|balanced|experimental, default balanced",
   "instrumental": "optional -- true for instrumental-only",
@@ -773,13 +774,13 @@ Headless modes enable batch workflows. Example: generate style prompts for multi
 | Issue | Likely Cause | Solution |
 |-------|-------------|----------|
 | Mac does not recognize my band profile | Profile name mismatch or missing file | Say "list profiles" to see available names. Profiles live in `docs/band-profiles/` as YAML files. |
-| Style prompt is too long | Exceeded 1,000 characters for v4.5+/v5/v5.5 (or 200 for v4 Pro) | Mac warns about this. Ask him to trim it. Front-load essentials in the first ~200 characters (critical zone — strongest influence). Content beyond 200 is supplementary, not wasted. |
+| Style prompt is too long | Exceeded 1,000 characters (the v6 family's limit) | Mac warns about this. Ask him to trim it. Front-load essentials in the first ~200 characters (critical zone — strongest influence). Content beyond 200 is supplementary, not wasted. |
 | Lyrics exceed Suno's limit | Over 5,000 characters (hard limit) or over 3,000 (quality degrades) | Ask Mac to condense. The Lyric Transformer tracks character budgets — warns at 3,000 (quality), errors at 5,000 (hard limit). |
 | Mac asks too many questions | You are in Studio mode | Say "let's switch to Demo mode" for a faster experience. |
 | Mac does not ask enough questions | You are in Demo mode | Say "let's go Studio mode" for the full songwriter's workshop. |
 | Mac forgot my preferences | Session was not saved | Select SM (Save Memory) before ending your session. |
 | Profile says wrong tier | Your Suno plan changed | Tell Mac "I upgraded to Pro" -- he updates memory and offers to update your profiles. Mac also detects tier drift when loading profiles. |
-| Profile references Personas but I'm on v5.5 | Personas moved inside the Voices menu -- they were relocated, not removed, and still work | Nothing is broken. Tell Mac your model version if you want him to suggest a Voice instead; a Voice locks vocal identity more tightly than a Persona does. |
+| Profile references Personas but I'm on v6 | Personas moved inside the Voices menu -- they were relocated, not removed, and still work | Nothing is broken. Tell Mac your model version if you want him to suggest a Voice instead; a Voice locks vocal identity more tightly than a Persona does. |
 | Mutually exclusive transformation error | Selected FR + WF or other conflicts | Full Rewrite and Word Fidelity cannot be used together. Chorus Extraction is skipped if Full Rewrite is selected. |
 
 ### What to Do When Skills Are Unavailable

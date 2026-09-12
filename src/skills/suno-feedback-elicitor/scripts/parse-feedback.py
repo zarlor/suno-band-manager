@@ -158,7 +158,7 @@ Input JSON schema:
     original_style_prompt (string) - Style prompt used for generation
     original_lyrics (string) - Lyrics used for generation
     band_profile (string) - Band profile name used
-    model (string) - Suno model used (v4.5-all, v4 Pro, v4.5 Pro, v4.5+ Pro, v5 Pro)
+    model (string) - Suno model used (v6, v6-wild, v6-mini; retired names still recognized)
     slider_settings (object) - {weirdness: 0-100, style_influence: 0-100}
     intent (string) - What the user was going for
 

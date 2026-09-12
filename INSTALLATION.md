@@ -259,6 +259,8 @@ git pull
 
 Symlinks point into `src/skills/`, so changes are picked up immediately. If the update includes new config options, Mac will detect them on next activation.
 
+Keep `uv` current as well (`uv self update`). The first audio-script run after an update fetches any new dependency versions automatically. Check the release's **Upgrade at a glance** block in `CHANGELOG.md` for anything else to do.
+
 ### After a BMad Method upgrade
 
 BMad upgrades may replace `.claude/skills/` contents. Re-run:
@@ -317,11 +319,13 @@ bash scripts/unpack-portable.sh
 
 ## Optional: Audio Analysis
 
-For objective audio measurements (BPM, key, energy, chord progressions, playlist sequencing), the audio scripts depend on `librosa` + `numpy`. Running them via `uv run` provisions both automatically from each script's PEP 723 metadata — no manual install needed. Only if you're running without `uv` do you install them by hand:
+For objective audio measurements (BPM, key, energy, chord progressions, playlist sequencing), the audio scripts depend on `librosa`, `numpy`, and `pyloudnorm`. Running them via `uv run` provisions them automatically from each script's PEP 723 metadata — no manual install needed. They require Python 3.12+ (librosa 1.0's floor); `uv run` downloads a compatible Python on its own when the system one is older. Only if you're running without `uv` do you install them by hand:
 
 ```bash
-pip install librosa numpy
+pip install librosa numpy pyloudnorm
 ```
+
+Two opt-in scripts in the Feedback Elicitor need PyTorch: `beat-grid.py` (Beat This! beat tracking) and `vocal-placement.py` (Demucs vocal placement). Through `uv run`, the first run provisions PyTorch (1–3 GB) and downloads the model weights; nothing else in the module pulls them in. **GPU:** on Linux and WSL, PyPI's current PyTorch build targets CUDA 13, which needs NVIDIA driver 580 or newer; with an older driver (or no NVIDIA GPU) the tools fall back to CPU automatically. Native Windows gets PyPI's CPU-only PyTorch build (use WSL for the GPU), and Apple Silicon Macs run on CPU. **Intel Macs are not supported** for these two tools: PyTorch's last Intel-Mac build predates numpy 2, which librosa 1.0 requires. On CPU, Beat This! takes a few seconds per track; Demucs takes minutes. Demucs's first run may print an "unauthenticated requests to the HF Hub" warning — harmless.
 
 Without `uv` and without these deps, the audio scripts return JSON with install instructions (exit code 2). The full song creation and refinement workflow works without audio analysis.
 

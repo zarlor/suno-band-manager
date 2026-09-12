@@ -1,12 +1,28 @@
 # Suno Metatag Reference
 
-Metatags are keywords in square brackets `[ ]` placed in the lyrics field to guide Suno's generation. This reference covers all known working tags as of **August 2026** (metatag re-check 2026-08-13 found **no official change** to section tags or metatags since July 2026). Suno evolves frequently — when uncertain about a tag's effectiveness, use web search to verify against current documentation.
+Metatags are keywords in square brackets `[ ]` placed in the lyrics field to guide Suno's generation. This reference covers all known working tags as of **August 2026** (metatag re-check 2026-08-13 found **no official change** to section tags or metatags since July 2026). **Suno v6 (launched 2026-09-09) changes how some of this lands — read "Suno v6 (PREVIEW)" below first.** Suno still publishes no tag specification for v6. Suno evolves frequently — when uncertain about a tag's effectiveness, use web search to verify against current documentation.
 
 **Field separation discipline (COMMUNITY, re-confirmed 2026-08):** every bracketed instruction, section label, and performance note belongs in the **Lyrics** field. The Style field describes only sound. Bracketed content in the Style field is not parsed the way it is here — this is also why bracketed BPM in Style fails.
 
 > **Related references:** For how metatags interact with style prompts, see `suno-style-prompt-builder/references/model-prompt-strategies.md`. For mapping user feedback to metatag adjustments, see `suno-feedback-elicitor/references/suno-parameter-map.md`. For section emotional roles and poem-to-song mapping, see `section-jobs.md` (same directory).
 
 **Confidence Levels:** Tags are marked HIGH (multiple sources confirm), MEDIUM/Experimental (1-2 sources, may not work consistently), or unmarked (established/proven). HIGH-confidence new additions from March 2026 research are integrated into existing sections. MEDIUM-confidence tags are marked with "(Experimental)" throughout.
+
+## Suno v6 (PREVIEW, 2026-09-12)
+
+Launch-week findings, not yet confirmed by this module's production testing. Grades as elsewhere in this file; "ANECDOTAL-controlled" marks a single tester who changed one variable at a time and published the negatives.
+
+- **Section cues are read at render time.** A short cue in the section tag — `[Verse 1 - riff continues under vocal, drums drive]`, or the pipe form `[Verse | whispered]` — is reported honored; one day-one test saw the cue reflected in Suno's own caption of the song (VENDOR). Keep cues short, and **make them agree word-for-word with the style field**: a contradiction ("quiet verse" in one, "riff continues" in the other) resolves as the band thinning out (VENDOR).
+- **Lyric-field cues may override the style field.** One user found bracketed musical cues in the lyrics rewriting what the style box said, across all three v6 models (ANECDOTAL). Consistent with the long-standing community observation that lyrics dominate the output.
+- **`[Silence]` at the end of every lyric line** was one tester's "biggest single lever" against rushed, flat, melody-less vocals — inline at the line's end, on every line (ANECDOTAL-controlled). Pause length is not controllable; it is on/off. **Stop markers don't stack** — punctuation before `[Silence]` sped the line up — so skip `[Silence][Break]` combinations.
+- **Mid-line commas make the singer stop; an end-of-line comma backfires** — the line break already ends the phrase, and the comma doubles the stop into a stutter (ANECDOTAL-controlled). Our vocable rule (a comma after every *member* of a repeated vocable, mid-line) is consistent with this; what's new is *not* ending a line on a comma.
+- **Invented tags are dropped, not interpreted** — `[2 Bar Rest]` had no effect; `[Silence]` works because it is a token the model already knows (ANECDOTAL-controlled). Consistent with this file's rule to use recognized tags only.
+- **CAPS still mean harder delivery** (ANECDOTAL-controlled) — consistent with the loudness-ceiling guidance under "Capitalization Effects."
+- **Write the held notes on the page** — a stretched vowel (`sta-a-ay`) was the only change that produced a sustained note for one tester after explicit delivery instructions alone did nothing (VENDOR, citing a user). Our own stretched-word observation was that the hyphenated form *seems to* hold the vowel longer; v6 reports lean the same way. Budget roughly 6-8 syllables for a ballad verse line and end chorus lines on open vowels.
+- **State the edges.** An unspecified intro comes back as humming or a spoken line; an unspecified ending vamps or cuts off mid-lyric (VENDOR + COMMUNITY). Templates that users report working: `[Intro - guitar riff, 4 bars, instrumental only]`; and to land the song, `[Final Chorus]` … `[Instrumental Outro]` `[Hard Stop]` `[End]` with the style field saying "complete every written lyric before a short instrumental outro and final hard stop." The instrumental outro is a buffer, so a song that decides to end early spends it instead of cutting the singer off.
+- **The words themselves steer delivery.** One user's pre-chorus opening on "tick tick" kept coming back whispered until the words changed (ANECDOTAL).
+- **Duets improved:** male/female line assignment is followed far better than before (COMMUNITY). Name the singers (Singer A / Singer B) in the style field and tag every section with the name; keep traded lines short.
+- **Untested on v6:** the `[Refrain]`-for-quiet-repeats fix in heavy lanes, and this file's ending toolkit. Re-check before relying on either.
 
 ## Section Structure Tags
 
@@ -615,7 +631,7 @@ Section tags support inline arrangement instructions via colon (`:`) or pipe (`|
 
 **Compound pipe tags (COMMUNITY, 2026-08).** Users chain several instructions through one section tag, e.g. `[Break | Instrumental Only | No Vocals | Do Not Use Lyrics as FX]`, and the same syntax turns up independently in unrelated users' lyric sheets — which is what raises it above one person's habit. Note the tension with the "no X" finding below: negation inside a *standalone* bracket backfires, but the author of the ghost-vocal work reports explicit negatives working **inside compound pipe tags.** That reconciliation — pipe-tag context versus standalone bracket — is plausible but unresolved. Use compound pipe tags for positive direction with confidence; treat the embedded negatives as unproven.
 
-Both syntaxes are confirmed working on v5. The colon syntax is more flexible (accepts comma-separated arrangement descriptions), while the pipe syntax is cleaner for single modifiers. These can be combined with separate descriptor tags on subsequent lines for maximum control, but the inline approach is often sufficient and saves character budget.
+Both syntaxes are confirmed working on v5. On v6, a dash form — `[Verse 1 - riff continues under vocal, drums drive]` — and pipe cues like `[Verse | whispered]` are reported read at render time (VENDOR); see "Suno v6 (PREVIEW)". The colon syntax is more flexible (accepts comma-separated arrangement descriptions), while the pipe syntax is cleaner for single modifiers. These can be combined with separate descriptor tags on subsequent lines for maximum control, but the inline approach is often sufficient and saves character budget.
 
 **Relationship to BPM tags:** Note that `[Verse 1: 65 BPM]` style BPM parameterization remains ineffective (see Experimental Section Tags below). The parameterized syntax works for arrangement/feel instructions, not for tempo numbers.
 

@@ -143,6 +143,9 @@ def parse_song(path: Path) -> dict | None:
         "frontmatter_date": str(frontmatter.get("date"))
         if frontmatter.get("date")
         else None,
+        "frontmatter_published": str(frontmatter.get("published"))
+        if frontmatter.get("published")
+        else None,
         "body_status": body_status,
         "body_date": body_date,
         "body_desc": body_desc,
@@ -210,8 +213,9 @@ def is_published(song: dict) -> bool:
 
 
 def publish_date(song: dict) -> str:
-    """Authoritative publish date: body marker wins, frontmatter is fallback."""
-    return song["body_date"] or song["frontmatter_date"] or ""
+    """Authoritative publish date: body marker wins; frontmatter `published:`
+    (when the entry keeps its start date in `date:`), then `date:`, are fallbacks."""
+    return song["body_date"] or song.get("frontmatter_published") or song["frontmatter_date"] or ""
 
 
 def generate_recently_published(songs: list[dict], project_root: Path) -> str:

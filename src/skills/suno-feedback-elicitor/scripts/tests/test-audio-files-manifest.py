@@ -69,6 +69,18 @@ def test_manifest_skips_non_audio_files():
     assert out["file_count"] == 1
 
 
+def test_manifest_records_band_subfolder_paths():
+    """Per-band layout: names are paths relative to docs/audio; flat files stay bare; hidden dirs skipped."""
+    root = Path(tempfile.mkdtemp())
+    audio = root / "docs" / "audio"
+    for rel, size in {"band-a/Song.mp3": 10, "band-b/Song.mp3": 20, "Loose.mp3": 5, ".cache/Skip.mp3": 1}.items():
+        (audio / rel).parent.mkdir(parents=True, exist_ok=True)
+        (audio / rel).write_bytes(b"x" * size)
+    code, _ = run([str(root)])
+    assert code == 0
+    manifest = yaml.safe_load((root / "docs" / "audio-files-manifest.yaml").read_text())
+    assert [f["name"] for f in manifest["files"]] == ["Loose.mp3", "band-a/Song.mp3", "band-b/Song.mp3"]
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     passed = failed = 0

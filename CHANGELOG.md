@@ -4,6 +4,75 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [2.3.0] - 2026-09-12
+
+A **Suno v6 preview** release. Suno launched the v6 model family on 2026-09-09 and retired every earlier model the same day, so this release points the whole module at v6 — the models, the new More Options controls, and the prompt guidance — using what could be verified in v6's first week. All v6 guidance is labeled **PREVIEW** and graded by source (OFFICIAL / VENDOR / COMMUNITY / ANECDOTAL); none of it has been confirmed by this module's own production testing yet, and it will firm up in the next major release. The release also ships per-band audio folders (#32), moves the audio scripts to librosa 1.0, adds BS.1770 loudness and two optional PyTorch-based analysis tools (Beat This! beat tracking, Demucs vocal placement), and tightens the sidecar validator.
+
+### Upgrade at a glance (existing installs)
+
+- **How to update.** For a git install: `git pull`, then `/suno-setup` to record the new module version (your saved settings carry over). A marketplace install gets 2.3.0 once the registry update is approved. Keep `uv` current with `uv self update` (tested on 0.12).
+- **First audio run after updating downloads the new stack automatically.** That's librosa 1.0, numpy 2.x, pyloudnorm, and Python 3.12 if your system Python is older; `uv run` handles all of it, once.
+- **Refresh your analysis docs to get the loudness columns.** Re-run `analyze-audio.py` and `playlist-sequencing-data.py` (once per playlist); the companion docs regenerate, and hand-curated sections outside the AUTOGEN markers are kept.
+- **The two PyTorch tools install nothing until you run them.** `beat-grid.py` and `vocal-placement.py` are opt-in. First run provisions PyTorch (about 3 GB with the CUDA build) and downloads the model weights (the Beat This! checkpoint; about 80 MB for Demucs htdemucs). **GPU:** on Linux and WSL, PyPI's current PyTorch build targets CUDA 13, which needs NVIDIA driver 580 or newer; with an older driver (or no NVIDIA GPU) the tools fall back to CPU automatically. Native Windows gets PyPI's CPU-only PyTorch build (use WSL for the GPU), and Apple Silicon Macs run on CPU. **Intel Macs are not supported** for these two tools: PyTorch's last Intel-Mac build predates numpy 2, which librosa 1.0 requires. On CPU, Beat This! takes a few seconds per track; Demucs takes minutes. Demucs's first run may print an "unauthenticated requests to the HF Hub" warning — harmless.
+- **Nothing breaks.** Band profiles, songbooks, and packages that name a retired model (v4.5-all through v5.5 Pro) still validate. `validate-profile.py` now adds a **medium warning** suggesting v6; update `model_preference` to `v6`, `v6-wild`, or `v6-mini` (Free) when convenient.
+- **Audio scripts need Python 3.12+** (librosa 1.0's floor). `uv run` downloads a compatible Python automatically; nothing to do if you run scripts through `uv`.
+- **Per-band audio folders are optional.** A flat `docs/audio/` keeps working everywhere.
+- **If you consume `tier-features.py` JSON programmatically:** it is now **version 3.1.0** — `models` lists the v6 family, `legacy_models` is empty, and new fields `retired_models`, `default_model`, `max_mode_available`, `variety_available`, `personalize_available`, and `notes.v6_controls` are added.
+- **If you consume audio-analysis JSON:** `analyze-audio.py` drops `bpm_aubio` (it was never populated) and adds a per-track `loudness` object. `playlist-sequencing-data.py` adds per-track `loudness`, plus `loudness_step_lu` and `loudness_quality` on each transition. Both scripts now also need `pyloudnorm`, which `uv run` provisions.
+- **If you consume the Style Prompt Builder's headless output:** the success JSON gains a `v6_options` object (`variety`, `max_mode`, `duration`, `personalize`).
+
+### Suno v6 preview
+
+- **Models.** `_shared/suno_constants.py` now separates `CURRENT_MODELS` (v6, v6-wild, v6-mini) from `RETIRED_MODELS` (v4.5-all, v4 Pro, v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro), adds `MODEL_RETIREMENT_DATE` and `DEFAULT_MODEL`, and makes v6-mini the Free-tier model. Retired names stay valid so older records keep validating.
+- **Prompt guidance.** `model-prompt-strategies.md` gains a "Suno v6 Family" section: the three models; a prompt architecture built on ordered production direction (each instrument's job per section, the vocal placed rather than praised, both edges stated, positive text only with every negative in Exclude Styles); a More Options table; and v6's known weak spots. The v4.5–v5.5 sections are kept under a "Retired Models — Archived Strategies" heading.
+- **Lyrics guidance.** `metatag-reference.md` gains "Suno v6 (PREVIEW)": section cues that restate the style map, `[Silence]` line-ends against rushed delivery, no end-of-line commas, stated intros and endings, and duet naming.
+- **Feedback.** `suno-parameter-map.md` gains a "v6 Controls and Symptoms" triage table. It checks the new controls first, since a rewritten prompt or an ignored one usually traces to Variety or Style Influence, not to wording.
+- **Platform reference and tier matrix.** `SUNO-REFERENCE.md` has a "Platform Changes — 2026-09-09 (v6)" section, the v6 model table, and new package fields (Model, Variety, Max Mode, Duration, Personalize). `tier-features.md` and `tier-features.py` carry the v6 family and controls.
+- **Workflows.** Create Song's Settings block now carries Model, **Variety (default *Exact style*, so the validated prompt is what generates)**, Max Mode (keepers only), Duration, and Personalize (off). The Style Prompt Builder builds for v6 by default and returns `v6_options`. The Lyric Transformer points at the v6 lyrics guidance. The Feedback Elicitor triages v6 symptoms. Also updated: the profile schema's model enum and rules 11 and 18, the setup tier labels, USAGE, and the READMEs.
+
+### Per-band audio folders (fixes #32)
+
+Audio files can now live in one folder per band — `docs/audio/{band-slug}/` — so two bands can publish the same song title without filename collisions or suffix conventions (one lyricist writing for several bands, or a band re-recording its catalog).
+
+- **`playlist-sequencing-data.py`** resolves each playlist `file:` against, in order: `--audio-dir`, the playlist YAML's new optional `audio_dir:` key, `docs/audio/{band-slug}/` when that folder exists, then the legacy flat `docs/audio/`. `--audio-dir` no longer defaults to `docs/audio`. Auto-discovery (no `--playlist`) now recurses.
+- **`analyze-audio.py`** and **`batch-full-analysis.py`** scan the audio dir recursively and label files by band-folder path (`{band-slug}/Song.mp3`), so reports and companion docs tell same-titled songs apart.
+- **`audio-files-manifest.py`** (v1.1.0) records files recursively with band-folder-relative names. **`verify-audio-files.py`** (v1.3.0) treats the band folder as part of a file's identity (no cross-band matches) and still verifies a legacy flat manifest against a per-band layout.
+- **`audio-deep-analysis.py`** (v1.1.0) archives a band-folder file to `docs/audio-analysis/songs/{band-slug}/{song-slug}.json`; `json_archiver.archive_path` accepts `band/song` identifiers.
+- **`scaffold-playlist.py`** writes `audio_dir: "docs/audio/{band-slug}"` into new playlist YAMLs.
+- **`verify-audio-files.py` fixes:** it no longer crashes when `--manifest` points outside the project root, and a leftover root-level variant (`Song (1).mp3`) no longer hides the band-folder file it should match.
+- Docs: new "Audio folder layout" section in the profile schema; the sequencing methodology, sequencer SKILL, and feedback-elicitor SKILL reflect it.
+- **Upgrade:** nothing breaks — a flat `docs/audio/` keeps working everywhere. To adopt, move each band's files into `docs/audio/{band-slug}/`, add `audio_dir:` to any playlist whose filename isn't a band slug, and regenerate the audio manifest.
+
+### Sidecar validator
+
+- **Songbook `published:` date.** An entry that keeps the day work started in `date:` can record the publish day in `published:`. `validate-sidecar.py` checks the body's "Published" marker against `published:` when it's present, and `regenerate-index-sections.py` uses it as the publish-date fallback.
+- **Playlist parity** checks only a band's own playlist (a thematic playlist without a matching band profile is skipped) and counts a versioned reprise ("The Grey (Version 1)" / "(Version 2)") once.
+- **Cross-reference scan** resolves bare and partial references to files that exist elsewhere in the project (`creed.md`, `references/USAGE.md`). It also skips `{placeholder}` templates and honors an optional `validate-ignore.txt` in the sanctum for documents another agent owns.
+
+### Requirements
+
+- The README's Prerequisites section now has a **Requirements at a glance** table covering `uv`, the Python floors (3.10+ core, 3.12+ audio), and the audio libraries. It also fixes a stale link to the Studio & Editor Reference.
+
+### Audio analysis on librosa 1.0
+
+- The six librosa scripts now declare `librosa>=1.0` and `numpy>=2.1`, and therefore Python 3.12+ (librosa 1.0's floor); `uv run` fetches a compatible Python automatically. Previously the scripts' `>=3.10` Python floor silently held uv's resolution at librosa 0.11. A side-by-side run of every librosa call the scripts make (load, duration, beat tracking, frames-to-time, chroma, RMS, STFT, FFT frequencies, MFCC, agglomerative segmentation) produced identical output on 0.11.0 and 1.0.0.
+
+### New analysis tools
+
+Five candidate tools were run against an 83-track reference catalog and scored against human-verified felt BPM, songbook meter notes, and section tags. Three made the cut.
+
+- **Loudness (pyloudnorm, ITU-R BS.1770).** `analyze-audio.py` (v1.1.0) reports each track's integrated loudness (LUFS) and loudness range (LRA). `playlist-sequencing-data.py` reports loudness by thirds and adds a **loudness step** to every transition: the next track's opening third against this track's closing third, labeled smooth, noticeable, or big jump. Camelot and BPM can't see a seam that jumps 9 LU. The shared helpers live in `_shared/loudness.py`.
+- **`beat-grid.py` (new, optional — Beat This!).** Neural beat and downbeat tracking as a second opinion on tempo. It reports BPM, beats per bar, and how librosa's reading relates to it: agree, double, half, or a triplet grid. On the reference catalog it matched felt BPM more often than librosa and fixed most halftime double-reads. It doesn't settle felt tempo alone — slow doom and ballad feels still read double.
+- **`vocal-placement.py` (new, optional — Demucs).** Separates the stems and measures how loud the vocal sits against the band, overall and by thirds. Thirds with no real vocal, such as an instrumental ending, are flagged.
+- **aubio removed.** `analyze-audio.py`'s aubio column was never populated, because aubio was never among the script's declared dependencies. `beat-grid.py` is now the tempo second opinion.
+- **Opt-in.** Both new scripts need PyTorch and download model weights on first use; nothing else in the module pulls them in.
+- **Shared helpers:**
+  - `audio_deps.require_modules` gives both new scripts the same exit-2 install message the librosa scripts use.
+  - `json_archiver.input_archive_identifier` archives a directory run to `catalog/` and a single-song run to `songs/[{band-slug}/]`.
+- **Evaluated, not adopted:** SongFormer (section labeling). It's solid on verses and choruses but weak on bridges and pre-choruses, and its pinned Python 3.10 / torch 2.4 stack doesn't fit a `uv run` script.
+
+---
+
 ## [2.2.0] - 2026-08-14
 
 A platform-currency release. Suno changed materially over the summer — download caps and download-bound commercial rights arrive 2026-09-03, Studio 2.0 shipped, model retirement is announced, and new control surfaces (Duration slider, Lyricist, the My Taste wand) landed — so the module's entire Suno knowledge layer was re-researched from primary sources and refreshed, then validated end-to-end. The release also **de-identifies the public repo**: teaching examples now use an invented multi-style cast rather than one creator's catalog. No workflow, schema, or memory-store changes.

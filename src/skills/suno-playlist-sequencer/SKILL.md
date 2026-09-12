@@ -14,7 +14,7 @@ This skill orders a body of tracks into a coherent album-craft listening experie
 **Design rationale (load-bearing):**
 
 - **Listening experience is the arbiter, not the Camelot score.** A Camelot-perfect transition with a 70+ felt-BPM gap is "tempo-jarring," not "the strongest option." Parallel-key transitions score JARRING on the wheel but are a deliberate emotional pivot the ear hears as continuity. Name what the ear hears; don't let the wheel override it.
-- **Felt BPM governs, not librosa raw.** librosa misreads halftime/double-time routinely (speed metal reads half, doom reads double). Verify felt BPM by ear before claiming tempo continuity across tracks.
+- **Felt BPM governs, not librosa raw.** librosa misreads halftime/double-time routinely (speed metal reads half, doom reads double). Verify felt BPM by ear before claiming tempo continuity across tracks. The Feedback Elicitor's optional `beat-grid.py` (Beat This!) is a second opinion that catches most slow-song double-reads, but the ear still decides.
 - **Thematic verification is mandatory before any placement claim.** Read the full songbook entry — never infer a song's theme from its title or a line fragment. Poets don't telegraph; surface inference inverts reads reliably. The methodology's "Thematic Verification" section is non-negotiable.
 - **Never break a documented locked arc on the agent's own authority.** Surface locked arcs first; if a reorder would break one, stop and ask the user.
 
@@ -81,7 +81,7 @@ Run the deterministic analysis over the playlist YAML:
 uv run scripts/playlist-sequencing-data.py --playlist docs/{band-slug}-playlist.yaml
 ```
 
-This produces per-track BPM, overall/entry/exit keys + Camelot codes, energy level, intro/outro energy %, and per-transition quality (exit-Camelot of N → entry-Camelot of N+1). Output auto-archives to `docs/audio-analysis/playlists/{band-slug}.json` and refreshes the companion `docs/{band-slug}-playlist-sequencing.md` (AUTOGEN markers preserve hand-curated content). If librosa deps are missing the script returns JSON with install instructions (exit code 2) — surface that and continue with any data already on disk.
+This produces per-track BPM, overall/entry/exit keys + Camelot codes, energy level, intro/outro energy %, loudness (integrated LUFS, LRA, by thirds), and per-transition quality (exit-Camelot of N → entry-Camelot of N+1, BPM change, and the loudness step from N's last third to N+1's first). Output auto-archives to `docs/audio-analysis/playlists/{band-slug}.json` and refreshes the companion `docs/{band-slug}-playlist-sequencing.md` (AUTOGEN markers preserve hand-curated content). If librosa deps are missing the script returns JSON with install instructions (exit code 2) — surface that and continue with any data already on disk.
 
 **Reconcile the track count before sequencing.** Compare the number of tracks the script actually analyzed against the playlist YAML entry count. A missing or mistyped audio filename makes the script skip that track silently, and an unnoticed drop produces a confident sequence over the wrong list. If any track is MISSING or errored, name those tracks explicitly and confirm with the user (fix the filename, or proceed knowingly without them) before sequencing. In headless, never silently drop — record each dropped track in `dropped_tracks[]`.
 
@@ -89,7 +89,7 @@ This produces per-track BPM, overall/entry/exit keys + Camelot codes, energy lev
 
 **Fully degraded (deps gone AND no prior archive):** if librosa is unavailable and there's no archived JSON to fall back on, there is no audio data at all. Don't fabricate Camelot/BPM/energy numbers. Either help the user install the deps, or proceed on narrative/thematic grounds only (locked arcs, theme spacing, act logic) and state plainly that the sonic-transition layer is unverified.
 
-**Optional catalog-wide deeper pass:** for energy shifts, section boundaries, spectral balance, and dynamic character across the whole catalog, run `uv run scripts/batch-full-analysis.py --audio-dir docs/audio` (writes `docs/catalog-analysis-report.md`). Use it when dynamic-character or section-shape data informs the arc; skip it for a quick reorder.
+**Optional catalog-wide deeper pass:** for energy shifts, section boundaries, spectral balance, and dynamic character across the whole catalog, run `uv run scripts/batch-full-analysis.py --audio-dir docs/audio` (writes `docs/catalog-analysis-report.md`; the scan is recursive, so it covers every band folder — pass `docs/audio/{band-slug}` for one band). Use it when dynamic-character or section-shape data informs the arc; skip it for a quick reorder.
 
 The data layer is the *input* to the methodology — it does not decide the sequence.
 
@@ -111,7 +111,7 @@ The recommended sequence is a revisable artifact: write the proposal and a `.dec
 
 ## Scripts
 
-**Invoke every script via `uv run scripts/<name>.py`** — uv reads each script's PEP 723 inline metadata and auto-provisions its dependencies (`librosa`, `numpy`, `pyyaml`), so no manual `pip install` is needed. If `uv` is unavailable, install it (`pip install uv`); these scripts require third-party deps, so `python3` alone won't run them without a manual install.
+**Invoke every script via `uv run scripts/<name>.py`** — uv reads each script's PEP 723 inline metadata and auto-provisions its dependencies (`librosa`, `numpy`, `pyloudnorm`, `pyyaml`), so no manual `pip install` is needed. If `uv` is unavailable, install it (`pip install uv`); these scripts require third-party deps, so `python3` alone won't run them without a manual install.
 
-- `playlist-sequencing-data.py` — Generates per-track sequencing data (BPM, overall/entry/exit keys, Camelot codes, energy level, intro/outro energy %, per-transition quality) for a per-band playlist YAML. Auto-archives JSON to `docs/audio-analysis/playlists/{band-slug}.json` and refreshes the per-band companion `docs/{band-slug}-playlist-sequencing.md` by default; `--no-archive` / `--no-companion` to skip. Run `uv run scripts/playlist-sequencing-data.py --help`.
+- `playlist-sequencing-data.py` — Generates per-track sequencing data (BPM, overall/entry/exit keys, Camelot codes, energy level, intro/outro energy %, loudness, per-transition key/BPM/loudness-step quality) for a per-band playlist YAML. Auto-archives JSON to `docs/audio-analysis/playlists/{band-slug}.json` and refreshes the per-band companion `docs/{band-slug}-playlist-sequencing.md` by default; `--no-archive` / `--no-companion` to skip. Run `uv run scripts/playlist-sequencing-data.py --help`.
 - `batch-full-analysis.py` — Catalog-wide deeper analysis (tempo stability, energy arc/shifts, section boundaries, spectral balance, dynamic character). Archives to `docs/audio-analysis/catalog/<date>-deep.json` and refreshes `docs/catalog-analysis-report.md`. Run `uv run scripts/batch-full-analysis.py --help`.

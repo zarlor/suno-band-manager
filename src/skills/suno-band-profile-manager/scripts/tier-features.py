@@ -12,8 +12,9 @@ helping the agent and user understand what profile options are valid.
 Authoritative for headless/script consumers. The human-readable twin is
 `references/tier-features.md` — the two must agree; update both together.
 
-Last validated against Suno: 2026-08-13 (Studio 2.0; download caps and ToS
-effective 2026-09-03; three-mode stem separation).
+Last validated against Suno: 2026-09-12 (v6 family launched 2026-09-09 and
+retired every earlier model; v6 More Options controls; Studio 2.0; download caps
+and ToS effective 2026-09-03; three-mode stem separation).
 """
 
 import argparse
@@ -32,7 +33,11 @@ except ImportError:
     VALID_TIERS = {"free", "pro", "premier"}
 
 
-LAST_VALIDATED = "2026-08-13"
+LAST_VALIDATED = "2026-09-12"
+
+SCRIPT_VERSION = "3.1.0"
+
+RETIRED_MODELS_LIST = ["v4.5-all", "v4 Pro", "v4.5 Pro", "v4.5+ Pro", "v5 Pro", "v5.5 Pro"]
 
 DOWNLOAD_LIMITS_EFFECTIVE = "2026-09-03"
 
@@ -52,13 +57,23 @@ PRICING_DISPLAY_NOTE = (
 )
 
 MODEL_RETIREMENT_NOTICE = (
-    "Suno has announced that new models will retire older versions — retiring "
-    "means you can no longer generate with a model; existing songs stay "
-    "playable. No official source names WHICH versions or WHEN, and there is "
-    "no official statement on what happens to Voices, Custom Models, or "
-    "Personas built on retired models. Extends, covers, and remixes of "
-    "existing songs will run on the new models and may sound different."
+    "Suno retired every pre-v6 model on 2026-09-09 (v4, v4.5-all, v4.5, v4.5+, "
+    "v5, v5.5) when the v6 family launched. A retired model can no longer "
+    "generate; existing songs stay playable. Extends, covers, remasters, and "
+    "remixes of older songs now run on v6 and may sound different. Custom "
+    "Models were upgraded to v6 automatically (official). Suno has published "
+    "nothing on how Voices and Personas built before v6 carry over, and early "
+    "user reports are split — re-check a clone on v6 before relying on it."
 )
+
+V6_CONTROLS = {
+    "source": "Observed in the Pro Create form 2026-09-12; Max Mode and Variety descriptions per Suno's v6 FAQ",
+    "duration": "Auto, or a Custom target from 0:10 to 6:00 (a generation can run up to 8 min)",
+    "max_mode": "Off by default. Uses more compute to keep vocals and style consistent through the song; costs 2x credits. Suno positions it for songs over 2 minutes, faithful covers, and style transfer.",
+    "variety": "Notches Exact style, Balanced variety, Distinct styles, Bold exploration, Unreasonably varied. Above Exact it rewrites the style prompt before generating; Suno: reduce to 0 to retain full control of your style tags.",
+    "personalize": "Off by default. Applies the account's My Taste profile to the generation.",
+    "free_tier": "Not verified on the Free tier.",
+}
 
 CHARACTER_LIMIT_PROVENANCE = (
     "Style (1,000 chars; 200 on v4 Pro) and lyric (5,000 chars) limits are "
@@ -112,20 +127,20 @@ ADVANCED_SPLIT = {
 TIER_FEATURES = {
     "free": {
         "available": [
-            "v4.5-all model",
+            "v6-mini model (the free version of v6)",
             "50 credits/day, renews daily (~10 songs)",
             "Vocal Gender selection",
             "Manual/Auto Lyrics mode",
             "Song Title",
             "8 min audio upload",
-            "Song length determined by model — v4.5-all supports up to ~8 min",
+            "Up to 8 min per generation (v6 family)",
             "My Taste (passive personalization, can be disabled)",
             "Voice recording entry point (available to try on free plans since 2026-08-07; "
             "clone creation and use in generation remain paid)",
             f"7 total lifetime trial downloads, personal and non-commercial (from {DOWNLOAD_LIMITS_EFFECTIVE})",
         ],
         "unavailable": [
-            "All paid models (v4 Pro, v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro)",
+            "v6 and v6-wild (Pro/Premier)",
             "Commercial use",
             "Personas (consistent style reuse)",
             "Voices (clone creation and use in generation)",
@@ -140,13 +155,14 @@ TIER_FEATURES = {
             "Remaster",
             "Covers",
             "Suno Studio 2.0",
-            "Duration slider (v5.5 web only)",
             "Priority queue",
             "Add-on credits",
             "Monthly download allowance (free tier gets 7 lifetime trial downloads only)",
         ],
-        "models": ["v4.5-all"],
+        "models": ["v6-mini"],
+        "default_model": "v6-mini",
         "legacy_models": [],
+        "retired_models": RETIRED_MODELS_LIST,
         "sliders_available": False,
         "personas_available": False,
         "voices_available": False,
@@ -160,8 +176,11 @@ TIER_FEATURES = {
         "studio_version": None,
         "stem_modes": [],
         "advanced_split_available": False,
-        "duration_slider_available": False,
-        "song_length_max": "Determined by model — v4.5-all supports up to ~8 min",
+        "duration_slider_available": None,
+        "max_mode_available": None,
+        "variety_available": None,
+        "personalize_available": None,
+        "song_length_max": "Up to 8 min per generation (v6 family)",
         "audio_upload_max": "8 min",
         "credits_included": "50/day, renews daily (~10 songs)",
         "downloads": _downloads(lifetime=7, personal_only=True),
@@ -174,11 +193,11 @@ TIER_FEATURES = {
     },
     "pro": {
         "available": [
-            "v5.5 Pro plus legacy models (v4 Pro, v4.5 Pro, v4.5+ Pro, v5 Pro) and v4.5-all",
+            "v6 and v6-wild, plus v6-mini (every pre-v6 model retired 2026-09-09)",
             "2,500 credits/month (~500 songs)",
             "Commercial use — for outputs obtained as a permitted download",
             "Personas (still supported; they live inside the Voices menu)",
-            "Voices (v5.5 voice cloning)",
+            "Voices (voice cloning; carried onto v6 — pre-v6 clone behavior on v6 undocumented)",
             "Custom Models (up to 3)",
             "Weirdness slider (0-100)",
             "Style Influence slider (0-100)",
@@ -191,10 +210,13 @@ TIER_FEATURES = {
             "Split from Mix stems (20 credits total)",
             "30 min audio upload",
             "Song Editor / Legacy Editor (Replace Section, Extend, Crop, Fade, Rearrange)",
-            "Duration slider (v5.5, web, requires Style set to Custom)",
+            "Duration slider (Auto, or Custom 0:10-6:00)",
+            "Max Mode (2x credits; consistency through the whole song)",
+            "Variety slider (Exact style through Unreasonably varied; rewrites the style prompt above Exact)",
+            "Personalize toggle (applies My Taste; off by default)",
             "Priority queue",
             "Add-on credits",
-            "Song length determined by model — v4.5/v5/v5.5 support up to ~8 min",
+            "Up to 8 min per generation (v6 family)",
             f"20 downloads per month (from {DOWNLOAD_LIMITS_EFFECTIVE})",
         ],
         "unavailable": [
@@ -206,8 +228,10 @@ TIER_FEATURES = {
             "Advanced Split stems (~100 instruments)",
             "Unlimited Studio downloads (Studio exports are exempt from the monthly cap)",
         ],
-        "models": ["v4.5-all", "v4 Pro", "v4.5 Pro", "v4.5+ Pro", "v5 Pro", "v5.5 Pro"],
-        "legacy_models": ["v4 Pro", "v4.5 Pro", "v4.5+ Pro", "v5 Pro"],
+        "models": ["v6", "v6-wild", "v6-mini"],
+        "default_model": "v6",
+        "legacy_models": [],
+        "retired_models": RETIRED_MODELS_LIST,
         "sliders_available": True,
         "personas_available": True,
         "voices_available": True,
@@ -222,7 +246,10 @@ TIER_FEATURES = {
         "stem_modes": [AUTO_SPLIT, SPLIT_FROM_MIX],
         "advanced_split_available": False,
         "duration_slider_available": True,
-        "song_length_max": "Determined by model — v4.5/v5/v5.5 support up to ~8 min",
+        "max_mode_available": True,
+        "variety_available": True,
+        "personalize_available": True,
+        "song_length_max": "Up to 8 min per generation (v6 family)",
         "audio_upload_max": "30 min",
         "credits_included": "2,500/month (~500 songs)",
         "downloads": _downloads(monthly=20),
@@ -241,11 +268,11 @@ TIER_FEATURES = {
     },
     "premier": {
         "available": [
-            "v5.5 Pro plus legacy models (v4 Pro, v4.5 Pro, v4.5+ Pro, v5 Pro) and v4.5-all",
+            "v6 and v6-wild, plus v6-mini (every pre-v6 model retired 2026-09-09)",
             "10,000 credits/month (~2,000 songs)",
             "Commercial use — for outputs obtained as a permitted download",
             "Personas (still supported; they live inside the Voices menu)",
-            "Voices (v5.5 voice cloning)",
+            "Voices (voice cloning; carried onto v6 — pre-v6 clone behavior on v6 undocumented)",
             "Custom Models (up to 3)",
             "Weirdness slider (0-100)",
             "Style Influence slider (0-100)",
@@ -259,7 +286,10 @@ TIER_FEATURES = {
             "Advanced Split stems (~100 instruments; 10 credits per extraction, 20 total per stem because each extraction returns the stem plus its complement)",
             "30 min audio upload",
             "Song Editor / Legacy Editor (Replace Section, Extend, Crop, Fade, Rearrange)",
-            "Duration slider (v5.5, web, requires Style set to Custom)",
+            "Duration slider (Auto, or Custom 0:10-6:00)",
+            "Max Mode (2x credits; consistency through the whole song)",
+            "Variety slider (Exact style through Unreasonably varied; rewrites the style prompt above Exact)",
+            "Personalize toggle (applies My Taste; off by default)",
             "Suno Studio 2.0 (browser-based generative DAW)",
             "Studio MIDI import/record/edit, piano roll, audio-to-MIDI, MIDI-as-prompt",
             "Studio chat bar (generates instruments, vocals, custom plugins and synth presets)",
@@ -268,12 +298,14 @@ TIER_FEATURES = {
             "Unlimited Studio downloads (exempt from the monthly cap)",
             "Priority queue, 10 concurrent",
             "Add-on credits",
-            "Song length determined by model — v4.5/v5/v5.5 support up to ~8 min",
+            "Up to 8 min per generation (v6 family)",
             f"60 downloads per month (from {DOWNLOAD_LIMITS_EFFECTIVE}), plus unlimited Studio exports",
         ],
         "unavailable": [],
-        "models": ["v4.5-all", "v4 Pro", "v4.5 Pro", "v4.5+ Pro", "v5 Pro", "v5.5 Pro"],
-        "legacy_models": ["v4 Pro", "v4.5 Pro", "v4.5+ Pro", "v5 Pro"],
+        "models": ["v6", "v6-wild", "v6-mini"],
+        "default_model": "v6",
+        "legacy_models": [],
+        "retired_models": RETIRED_MODELS_LIST,
         "sliders_available": True,
         "personas_available": True,
         "voices_available": True,
@@ -288,7 +320,10 @@ TIER_FEATURES = {
         "stem_modes": [AUTO_SPLIT, SPLIT_FROM_MIX, ADVANCED_SPLIT],
         "advanced_split_available": True,
         "duration_slider_available": True,
-        "song_length_max": "Determined by model — v4.5/v5/v5.5 support up to ~8 min",
+        "max_mode_available": True,
+        "variety_available": True,
+        "personalize_available": True,
+        "song_length_max": "Up to 8 min per generation (v6 family)",
         "audio_upload_max": "30 min",
         "credits_included": "10,000/month (~2,000 songs)",
         "downloads": _downloads(monthly=60, studio_exempt=True),
@@ -343,7 +378,7 @@ def get_tier_features(tier: str) -> dict:
     if tier_lower not in VALID_TIERS:
         return {
             "script": script_name,
-            "version": "3.0.0",
+            "version": SCRIPT_VERSION,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "status": "fail",
             "error": f"Unknown tier '{tier}'. Must be one of: {', '.join(sorted(VALID_TIERS))}",
@@ -352,7 +387,7 @@ def get_tier_features(tier: str) -> dict:
     features = TIER_FEATURES[tier_lower]
     return {
         "script": script_name,
-        "version": "3.0.0",
+        "version": SCRIPT_VERSION,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "status": "pass",
         "tier": tier_lower,
@@ -360,6 +395,7 @@ def get_tier_features(tier: str) -> dict:
         "notes": {
             "pricing_display": PRICING_DISPLAY_NOTE,
             "model_retirement": MODEL_RETIREMENT_NOTICE,
+            "v6_controls": V6_CONTROLS,
             "character_limits": CHARACTER_LIMIT_PROVENANCE,
             "studio_1x_archived": STUDIO_1X_ARCHIVED_FEATURES,
         },

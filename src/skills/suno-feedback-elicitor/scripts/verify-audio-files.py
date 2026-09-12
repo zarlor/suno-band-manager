@@ -41,6 +41,13 @@ typically tens of KB or larger. Override with `--tolerance-bytes`.
 Output is JSON, structured so Mac can present a download list to the user
 or auto-fix orphans on confirmation.
 
+The audio dir is scanned recursively (since v1.3.0) to match the per-band
+layout docs/audio/{band-slug}/Song.mp3. A band sub-folder is part of a
+file's identity — "solitary-fire/For Now.mp3" never matches
+"lennys-voice/For Now.mp3" — and only the filename part is normalized. A
+legacy flat manifest (bare filenames) still verifies against a per-band
+local layout by falling back to filename-only matching.
+
 Optional --playlist-context flag enriches mismatch entries with playlist
 position info so the report can be presented in playlist order rather
 than alphabetical filename order.
@@ -72,7 +79,7 @@ import sys
 from pathlib import Path
 
 SCRIPT_NAME = "verify-audio-files"
-SCRIPT_VERSION = "1.2.0"
+SCRIPT_VERSION = "1.3.0"
 
 DEFAULT_AUDIO_DIR = "docs/audio"
 DEFAULT_MANIFEST_PATH = "docs/audio-files-manifest.yaml"
@@ -121,6 +128,27 @@ def normalize_for_match(name: str) -> str:
     # Strip leading/trailing hyphens
     s = s.strip("-")
     return s
+
+
+def display_path(path: Path, root: Path) -> str:
+    """Path relative to the project root when inside it, else the absolute path
+    (a --manifest outside the project must not crash the report)."""
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path)
+
+
+def match_key(name: str) -> str:
+    """Song-identity key for a name that may carry a band sub-folder.
+
+    The folder ("solitary-fire/For Now.mp3") is part of the identity, so two
+    bands' renderings of the same title never cross-match; only the filename
+    part goes through normalize_for_match().
+    """
+    folder, _, base = name.rpartition("/")
+    key = normalize_for_match(base)
+    return f"{folder.lower()}/{key}" if folder else key
 
 
 def require_yaml():
@@ -241,16 +269,20 @@ def main():
     manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     expected = {entry["name"]: entry for entry in (manifest.get("files") or [])}
 
-    # Walk local audio dir
+    # Walk local audio dir recursively (per-band sub-folders included). Keys are
+    # POSIX paths relative to the audio dir, matching the manifest's names.
     local = {}
-    for path in sorted(audio_dir.iterdir()):
+    for path in sorted(audio_dir.rglob("*")):
+        rel = path.relative_to(audio_dir)
+        if any(part.startswith(".") for part in rel.parts):
+            continue
         if not path.is_file():
             continue
         if path.suffix.lower() not in AUDIO_EXTENSIONS:
             continue
         if ":" in path.name:
             continue
-        local[path.name] = path.stat().st_size
+        local[rel.as_posix()] = path.stat().st_size
 
     playlist_ctx = load_playlist_context(project_root, yaml) if args.playlist_context else {}
 
@@ -266,40 +298,59 @@ def main():
     # both `Foo.mp3` and `Foo-Redux.mp3` — both legitimate gens, distinguished
     # by size.
     local_by_norm: dict[str, list[tuple[str, int]]] = {}
+    # Filename-only index, used when a legacy flat manifest (bare filenames) is
+    # verified against a per-band local layout.
+    local_by_base: dict[str, list[tuple[str, int]]] = {}
     for name, size in local.items():
-        local_by_norm.setdefault(normalize_for_match(name), []).append((name, size))
+        local_by_norm.setdefault(match_key(name), []).append((name, size))
+        local_by_base.setdefault(normalize_for_match(name.rpartition("/")[2]), []).append((name, size))
 
     missing = []
     size_mismatch = []
     extra = []
     matched = []
 
-    # Track which (norm_key, local_name) pairs have been claimed by a manifest
-    # entry so we don't double-match and can detect orphans afterward.
-    claimed_local: set[tuple[str, str]] = set()
+    # Track which local files have been claimed by a manifest entry so we don't
+    # double-match and can detect orphans afterward.
+    claimed_local: set[str] = set()
 
     def lookup_playlist_ctx(canonical_name: str, local_name: str | None) -> dict | None:
-        """Find playlist context for an entry by exact name first, then normalized."""
-        if canonical_name in playlist_ctx:
-            return playlist_ctx[canonical_name]
-        if local_name and local_name in playlist_ctx:
-            return playlist_ctx[local_name]
-        norm = normalize_for_match(canonical_name)
+        """Find playlist context by exact name, then bare filename, then normalized.
+
+        Playlist YAML `file:` entries are bare filenames relative to the band's
+        audio_dir, so a band-folder path is also tried by its filename part.
+        """
+        for candidate in (canonical_name, local_name):
+            if not candidate:
+                continue
+            if candidate in playlist_ctx:
+                return playlist_ctx[candidate]
+            base = candidate.rpartition("/")[2]
+            if base in playlist_ctx:
+                return playlist_ctx[base]
+        norm = normalize_for_match(canonical_name.rpartition("/")[2])
         return playlist_ctx_by_norm.get(norm)
 
     for name, entry in expected.items():
         expected_size = entry.get("size_bytes")
-        norm = normalize_for_match(name)
+        norm = match_key(name)
+        legacy_flat = "/" not in name
 
         # Find a local match. Prefer exact filename match, then best size match
-        # among normalized-key candidates that haven't already been claimed.
-        candidates = local_by_norm.get(norm, [])
+        # among normalized-key candidates that haven't already been claimed. A
+        # bare manifest name also considers the filename-only index (legacy
+        # flat manifest vs per-band local layout).
+        candidates = list(local_by_norm.get(norm, []))
+        if legacy_flat:
+            # Same-folder candidates first, then the same filename in any band
+            # folder — a root-level variant must not block the band-folder file.
+            candidates += [c for c in local_by_base.get(norm, []) if c not in candidates]
         best: tuple[str, int] | None = None
         best_score: float = float("inf")
         for local_name, local_size in candidates:
-            if (norm, local_name) in claimed_local:
+            if local_name in claimed_local:
                 continue
-            if local_name == name:
+            if local_name == name or (legacy_flat and local_name.rpartition("/")[2] == name):
                 # Exact name match always wins
                 best = (local_name, local_size)
                 best_score = -1
@@ -320,7 +371,7 @@ def main():
             continue
 
         local_name, local_size = best
-        claimed_local.add((norm, local_name))
+        claimed_local.add(local_name)
         is_variant = local_name != name
 
         delta = local_size - (expected_size or 0)
@@ -356,8 +407,7 @@ def main():
 
     # Anything not claimed is an orphan
     for name, size in local.items():
-        norm = normalize_for_match(name)
-        if (norm, name) not in claimed_local:
+        if name not in claimed_local:
             item = {"name": name, "local_size_bytes": size}
             ctx = lookup_playlist_ctx(name, name)
             if ctx:
@@ -370,7 +420,7 @@ def main():
         "script": SCRIPT_NAME,
         "version": SCRIPT_VERSION,
         "status": "mismatch" if has_mismatches else "ok",
-        "manifest_path": str(manifest_path.relative_to(project_root)),
+        "manifest_path": display_path(manifest_path, project_root),
         "audio_dir": args.audio_dir,
         "manifest_generated_at": manifest.get("generated_at"),
         "summary": {

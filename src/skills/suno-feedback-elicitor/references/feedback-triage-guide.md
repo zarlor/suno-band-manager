@@ -64,7 +64,7 @@
 
 **Action:** Route to post-generation tools — Replace Section at Pro or Premier, Studio 2.0 at Premier — or to regeneration. (Name outcomes rather than Studio 1.x tools: Warp Markers and Remove FX are archived and no longer appear in official Studio 2.0 copy.) These issues are typically generation-specific, not prompt-specific — try regenerating 3-5 times before modifying the prompt. See suno-parameter-map.md "Audio Quality & Artifacts" and "Editor and Studio Resolution Paths" sections.
 
-**v5.5 recommended approach:** Use the **generate -> inspect -> refine** workflow rather than regenerating from scratch. If the structure and melody are good, use section replacement for the problem area instead of full regeneration. Only regenerate fully when the structure or emotional direction is fundamentally wrong. See suno-parameter-map.md "v5.5 Workflow Paradigm" for the full decision framework.
+**Recommended approach (v5.5 onward, including v6):** Use the **generate -> inspect -> refine** workflow rather than regenerating from scratch. If the structure and melody are good, use section replacement for the problem area instead of full regeneration. Only regenerate fully when the structure or emotional direction is fundamentally wrong. See suno-parameter-map.md "Generate → Inspect → Refine Workflow" for the full decision framework.
 
 #### Voice & Custom Model Feedback Patterns
 

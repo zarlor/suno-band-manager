@@ -32,11 +32,11 @@ When using multiple analysis sources, you'll often get different answers for the
 
 ### librosa Analysis Scripts
 
-Requirements: Python 3, librosa, numpy (`pip install librosa numpy`)
+Requirements: Python 3.12+, librosa, numpy, pyloudnorm — provisioned automatically by `uv run` (manual fallback: `pip install librosa numpy pyloudnorm`). The two optional PyTorch tools below (`beat-grid.py`, `vocal-placement.py`) provision their own heavier dependencies on first `uv run`.
 
 **Persistent JSON archive + companion-doc auto-refresh:** `analyze-audio.py` and `audio-deep-analysis.py` write JSON archives to `docs/audio-analysis/songs/` and refresh markdown companion docs at `docs/{...}.md` by default. Companion docs use AUTOGEN markers to preserve hand-curated sections across regeneration. Pass `--no-archive` / `--no-companion` to skip. (The album-level `batch-full-analysis.py` and `playlist-sequencing-data.py`, with their `playlists/` and `catalog/` archives, now live in the `suno-playlist-sequencer` skill.)
 
-**analyze-audio.py** — Batch BPM and key detection for all MP3s in a directory. Uses Krumhansl-Kessler chroma correlation for key estimation. Outputs a summary table with BPM, key, key confidence, and duration.
+**analyze-audio.py** — Batch BPM, key, and loudness for all MP3s in a directory. Uses Krumhansl-Kessler chroma correlation for key estimation and ITU-R BS.1770 (pyloudnorm) for loudness. Outputs a summary table with BPM, key, key confidence, duration, integrated loudness (LUFS), and loudness range (LRA).
 ```bash
 uv run scripts/analyze-audio.py /path/to/mp3s/
 ```
@@ -49,6 +49,16 @@ uv run scripts/audio-deep-analysis.py track.mp3
 **tempo-detail.py** — Detailed tempo analysis showing BPM over time in windows. Detects tempo changes, off-beats, and stability.
 ```bash
 uv run scripts/tempo-detail.py track.mp3
+```
+
+**beat-grid.py** (optional, PyTorch) — Beat This! neural beat and downbeat tracking. Gives BPM, beats per bar, and librosa's relation to it (agree / double / half / triplet grid) — the second opinion for the halftime question below.
+```bash
+uv run scripts/beat-grid.py track.mp3 --format text
+```
+
+**vocal-placement.py** (optional, PyTorch) — Demucs stem separation, then how loud the vocal sits against the band (LU), overall and by thirds.
+```bash
+uv run scripts/vocal-placement.py track.mp3 --format text
 ```
 
 **batch-full-analysis.py** (album/catalog scope — now in the `suno-playlist-sequencer` skill) — Batch full analysis across a catalog: tempo stability, energy arc, section boundaries, spectral balance. Outputs a comprehensive summary report. Run it from that skill: `uv run scripts/batch-full-analysis.py --audio-dir docs/audio`.
@@ -67,6 +77,7 @@ uv run scripts/tempo-detail.py track.mp3
 - Enharmonic equivalents: D# = Eb, C# = Db, A# = Bb, F# = Gb
 - librosa is deterministic — same file always produces the same results. Use as ground truth for BPM/key baseline, but always apply genre-aware correction before acting on the number.
 - **Slow contemplative songs (felt tempo 70-80 BPM) trigger halftime detection consistently.** librosa raw values around 150-160 BPM with felt tempo around 75-80 BPM is a well-documented pattern. When librosa reports 152 BPM on a song that "feels" much slower than that, the felt tempo is likely half (76). Cross-verify with hi-hat counting before trusting either value.
+- **Second opinion: `beat-grid.py` (Beat This!).** On an 83-track reference catalog, Beat This! matched the human-verified felt BPM on 9 of 15 tracks, against librosa's 7, and fixed most slow-song halftime double-reads. It still reads slow doom and ballad feels double, so when it and librosa disagree by a clean ratio, the ear (or the hi-hat count below) decides. Its beats-per-bar reads how the pulse groups, not the meter: songs with a 6/8 feel read 4.
 - **Manual hi-hat counting is the cheap reliable BPM verification** when AI tools disagree. Count hi-hat hits in a 10-second window of a steady-groove section. Most rock/pop songs play hi-hats as straight eighth notes. Calculation: `(hat hits in 10 sec ÷ 2) × 6 = quarter-note BPM`. Example: 25 hi-hat hits in 10 sec → (25 ÷ 2) × 6 = 75 BPM. When sources contest the BPM, this 30-second manual check is the tiebreaker.
 
 ### ChatGPT Audio Analysis

@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
-# dependencies = ["librosa>=0.10", "numpy>=1.24"]
+# requires-python = ">=3.12"
+# dependencies = ["librosa>=1.0", "numpy>=2.1"]
 # ///
 """
 Batch full analysis -- tempo stability, energy arc, section boundaries,
@@ -244,13 +244,36 @@ def format_text(all_results):
     return "\n".join(lines) + "\n"
 
 
+def find_mp3s(audio_dir):
+    """All .mp3 files under audio_dir, recursively, sorted.
+
+    Recursive so the per-band layout (docs/audio/{band-slug}/Song.mp3) is
+    covered by the default docs/audio scan; a flat docs/audio/ still works.
+    Hidden directories are skipped.
+    """
+    found = []
+    for root, dirs, files in os.walk(audio_dir):
+        dirs[:] = sorted(d for d in dirs if not d.startswith('.'))
+        found.extend(os.path.join(root, f) for f in files if f.endswith('.mp3'))
+    return sorted(found)
+
+
+def rel_label(filepath, audio_dir):
+    """Display label for a file: its path relative to audio_dir, POSIX-style.
+
+    A file in a band sub-folder is labelled "band-slug/Song.mp3", so two bands'
+    renderings of the same title stay distinguishable in reports.
+    """
+    return os.path.relpath(filepath, audio_dir).replace(os.sep, '/')
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Batch audio analysis: tempo, energy, sections, spectral balance."
     )
     parser.add_argument(
         "--audio-dir", default="docs/audio",
-        help="Directory containing .mp3 files (default: docs/audio)",
+        help="Directory containing .mp3 files, searched recursively so per-band sub-folders are included (default: docs/audio)",
     )
     parser.add_argument(
         "--format", choices=["json", "text"], default="json",
@@ -299,11 +322,7 @@ def main():
         }), file=sys.stderr)
         sys.exit(1)
 
-    mp3s = sorted([
-        os.path.join(audio_dir, f)
-        for f in os.listdir(audio_dir)
-        if f.endswith('.mp3')
-    ])
+    mp3s = find_mp3s(audio_dir)
 
     if not mp3s:
         print(json.dumps({
@@ -317,8 +336,9 @@ def main():
 
     all_results = []
     for filepath in mp3s:
-        print(f"  Processing: {os.path.basename(filepath)}...", end="", flush=True, file=sys.stderr)
+        print(f"  Processing: {rel_label(filepath, audio_dir)}...", end="", flush=True, file=sys.stderr)
         result = analyze_track(filepath)
+        result['file'] = rel_label(filepath, audio_dir)
         all_results.append(result)
         if 'error' in result:
             print(f" ERROR: {result['error']}", file=sys.stderr)

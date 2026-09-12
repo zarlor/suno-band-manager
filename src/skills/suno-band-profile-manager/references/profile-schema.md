@@ -20,10 +20,10 @@ reference_tracks:
   - "Fleet Foxes with Massive Attack production"
 
 # Model & Tier
-model_preference: "v4.5-all"  # v4.5-all | v4 Pro (legacy) | v4.5 Pro | v4.5+ Pro | v5 Pro | v5.5 Pro
+model_preference: "v6"        # v6 | v6-wild | v6-mini (Free). Retired 2026-09-09, still recognized (flagged): v4.5-all | v4 Pro | v4.5 Pro | v4.5+ Pro | v5 Pro | v5.5 Pro
 tier: "free"                   # free | pro | premier
 
-# Style Prompt — 1,000 char limit (v4.5+/v5/v5.5; 200 for v4 Pro) — community-attested, not
+# Style Prompt — 1,000 char limit (v6 family; 200 for the retired v4 Pro) — community-attested, not
 # officially documented. Front-load essentials in first ~200 chars (critical zone).
 style_baseline: >
   Indie folk-rock with electronic textures, atmospheric and layered.
@@ -47,11 +47,11 @@ vocal:
   # Audio Influence at 10-15% reduces this era-anchoring but doesn't fully
   # overcome it. For era-specific pieces, consider generating without a persona,
   # or creating era-specific personas from era-appropriate source songs.
-  voice_id: ""             # Suno Voice identifier (v5.5, Pro/Premier only). Distinct from persona_reference — a Voice is cloning, a Persona is style-essence capture. Both can exist; set the one this band actually uses.
+  voice_id: ""             # Suno Voice identifier (Pro/Premier only). Distinct from persona_reference — a Voice is cloning, a Persona is style-essence capture. Both can exist; set the one this band actually uses.
   # NOTE: When voice_id is set, omit gender vocal descriptors from style_baseline —
   # the Voice defines the vocal identity (gender, tone, character from the audio sample).
 
-# Multi-Voice mapping (optional — v5.5, Pro/Premier, only when a band uses
+# Multi-Voice mapping (optional — Pro/Premier, only when a band uses
 # more than one cloned Voice for different track types). When present, this is
 # the source of truth for per-track Voice selection; vocal.voice_id remains the
 # single-Voice default / primary. Each Voice must be internally consistent
@@ -83,7 +83,7 @@ studio_preferences:
   key: ""                  # Default key/scale (e.g., "C minor", "A major")
   time_signature: ""       # Default time signature (e.g., "4/4", "3/4")
 
-# Custom Model (v5.5, Pro/Premier only)
+# Custom Model (Pro/Premier only; upgraded to v6 automatically)
 custom_model_id: ""        # Suno Custom Model identifier, if user has one
 custom_model_notes: ""     # What the custom model was trained on and what production style it provides
 
@@ -148,9 +148,9 @@ generation_history: []
 | `mood` | Yes | string | Non-empty |
 | `language` | No | string | Defaults to "English". Passed to Lyric Transformer and Style Prompt Builder |
 | `reference_tracks` | No | list of strings | Free-form "sounds like" descriptions |
-| `model_preference` | Yes | string | One of: v4.5-all, v4 Pro (legacy), v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro |
+| `model_preference` | Yes | string | A current model: v6, v6-wild, v6-mini. Retired names (v4.5-all, v4 Pro, v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro) are still recognized and draw a medium warning |
 | `tier` | Yes | string | One of: free, pro, premier |
-| `style_baseline` | Yes | string | Max 1000 chars (v4.5+/v5/v5.5). Max 200 chars for v4 Pro. These limits are community-attested, not officially documented by Suno — enforce them, don't cite them as platform docs. Front-load essentials in first ~200 chars (critical zone — strongest influence). Content beyond 200 is supplementary, not wasted. |
+| `style_baseline` | Yes | string | Max 1000 chars (v6 family). Max 200 chars for the retired v4 Pro. These limits are community-attested, not officially documented by Suno — enforce them, don't cite them as platform docs. Front-load essentials in first ~200 chars (critical zone — strongest influence). Content beyond 200 is supplementary, not wasted. |
 | `exclusion_defaults` | No | list of strings | Keep each entry concise and specific. Max 5 entries recommended |
 | `vocal.gender` | Yes* | string | One of: male, female, nonbinary, any. *Optional if `instrumental: true` |
 | `vocal.tone` | Yes* | string | Non-empty. *Optional if `instrumental: true` |
@@ -159,8 +159,8 @@ generation_history: []
 | `vocal.diction` | No | string | Optional refinement |
 | `vocal.persona_reference` | No | string | Suno Persona name if exists (Pro/Premier only). Personas were relocated into the Voices menu, **not** removed, and still work — this field is not deprecated |
 | `vocal.persona_source_song` | No | string | Song the Persona was derived from (for recreation if lost) |
-| `vocal.voice_id` | No | string | Suno Voice identifier (Pro/Premier only, v5.5). A separate mechanism from `persona_reference`, not a replacement for it. When set, omit gender **and timbre** vocal descriptors from `style_baseline` — the Voice defines both. Single-Voice default; use `voices` for a multi-Voice band |
-| `voices` | No | list of objects | Multi-Voice mapping (Pro/Premier, v5.5). Each entry: `voice_id` (required), `label` (short name), `use_case` (which track types it serves). Source of truth for per-track Voice selection when a band has more than one cloned Voice; `vocal.voice_id` stays the primary/default |
+| `vocal.voice_id` | No | string | Suno Voice identifier (Pro/Premier only). A separate mechanism from `persona_reference`, not a replacement for it. When set, omit gender **and timbre** vocal descriptors from `style_baseline` — the Voice defines both. Single-Voice default; use `voices` for a multi-Voice band |
+| `voices` | No | list of objects | Multi-Voice mapping (Pro/Premier). Each entry: `voice_id` (required), `label` (short name), `use_case` (which track types it serves). Source of truth for per-track Voice selection when a band has more than one cloned Voice; `vocal.voice_id` stays the primary/default |
 | `creativity_default` | No | string | One of: conservative, balanced, experimental. Defaults to balanced |
 | `sliders.weirdness` | No | integer | 0-100, only valid for pro/premier tiers |
 | `sliders.style_influence` | No | integer | 0-100, only valid for pro/premier tiers |
@@ -168,7 +168,7 @@ generation_history: []
 | `studio_preferences.bpm` | No | number | Default tempo. Only valid for premier tier |
 | `studio_preferences.key` | No | string | Default key/scale. Only valid for premier tier |
 | `studio_preferences.time_signature` | No | string | Default time signature. Only valid for premier tier |
-| `custom_model_id` | No | string | Suno Custom Model identifier (Pro/Premier only, v5.5). Up to 3 models per account, trained on 6+ original tracks |
+| `custom_model_id` | No | string | Suno Custom Model identifier (Pro/Premier only; upgraded to v6 automatically). Up to 3 models per account, trained on 6+ original tracks |
 | `custom_model_notes` | No | string | Description of what the custom model was trained on and what production style it provides |
 | `writer_voice.*` | No | string/list | All writer_voice fields are optional |
 | `known_working_patterns` | No | list of strings | Prompt formulations proven to reliably produce good results for this band's sound. Record specific wording that nails the identity. |
@@ -188,14 +188,14 @@ generation_history: []
 8. If `instrumental` is not true: `vocal.tone`, `vocal.delivery`, `vocal.energy` must be non-empty
 9. If `instrumental` is true: vocal section is optional; if present, fields are not required
 10. If `tier` is "free", `sliders` should not be present or should warn that values won't be usable
-11. If `tier` is "free" and `model_preference` is not "v4.5-all", warn about mismatch
+11. If `tier` is "free" and `model_preference` is not "v6-mini", warn about mismatch
 12. If `tier` is not "premier" and `studio_preferences` has values, warn they won't be usable
 13. If `creativity_default` is present, must be one of: conservative, balanced, experimental
 14. If `language` is present, must be a non-empty string
 15. `generation_history` must not exceed 10 entries
 16. Profile filename must be kebab-case matching the band name (spaces to hyphens, lowercase)
 17. If `vocal.voice_id` is set, warn if `vocal.gender` is also set — the Voice defines vocal identity, gender descriptors should be omitted from `style_baseline`
-18. If `vocal.voice_id` is set but `model_preference` is not "v5.5", warn that Voices require v5.5
+18. If `model_preference` names a retired model (retired 2026-09-09), warn (medium) and suggest v6 — this supersedes the old "Voices require v5.5" rule, since Voices now run on the v6 family
 19. If `custom_model_id` is set but `tier` is "free", warn that Custom Models require Pro or Premier tier
 20. If `voices` is present, each entry must have a non-empty `voice_id`; `label` and `use_case` are recommended (a Voice with no use-case is just a `vocal.voice_id`)
 21. If `voices` is populated, `vocal.voice_id` should be one of the listed `voice_id`s (the primary/default) — warn if it names a Voice absent from the list
@@ -236,15 +236,26 @@ The slug matches the band profile filename — `docs/band-profiles/iron-meridian
 
 ```yaml
 album: "<Band display name>"
+audio_dir: "docs/audio/<band-slug>"   # optional — the band's audio folder (see "Audio folder layout" below)
 tracks:
   - name: "<Song title (must match the songbook entry's frontmatter title)>"
-    file: "<exact filename in docs/audio/, e.g. My Song.mp3>"
+    file: "<exact filename in the band's audio folder, e.g. My Song.mp3>"
   - name: "<next song>"
     file: "<next file>"
   # ...
 ```
 
-The two required fields per track are `name` (the human-readable song title — must match the songbook entry's frontmatter `title`) and `file` (the audio filename in `docs/audio/`, used as the input to the `suno-playlist-sequencer` skill's `playlist-sequencing-data.py`).
+The two required fields per track are `name` (the human-readable song title — must match the songbook entry's frontmatter `title`) and `file` (the audio filename, relative to the band's audio folder, used as the input to the `suno-playlist-sequencer` skill's `playlist-sequencing-data.py`). The optional top-level `audio_dir` names that folder.
+
+### Audio folder layout (per band)
+
+Each band's audio lives in its own folder, `docs/audio/{band-slug}/` — the same slug as the band profile and the playlist YAML. Two bands can then publish the same title (one lyricist writing for several bands, or a band re-recording its catalog) with no filename collisions and no suffix conventions.
+
+- `playlist-sequencing-data.py --playlist docs/{band-slug}-playlist.yaml` resolves each `file:` against, in order: the `--audio-dir` flag, the YAML's `audio_dir:`, `docs/audio/{band-slug}/` when that folder exists, then the legacy flat `docs/audio/`.
+- A playlist whose filename is not a band slug (a cross-cutting thematic playlist drawn from one band) sets `audio_dir:` explicitly. A playlist that mixes bands sets `audio_dir: "docs/audio"` and writes each `file:` with its band folder (`band-slug/Song.mp3`).
+- `analyze-audio.py`, `batch-full-analysis.py`, `audio-files-manifest.py`, and `verify-audio-files.py` scan `docs/audio/` recursively and label files by band-folder path (`{band-slug}/Song.mp3`). The verifier treats the folder as part of a file's identity, so one band's file never satisfies another band's manifest entry.
+- `audio-deep-analysis.py` archives a band-folder file to `docs/audio-analysis/songs/{band-slug}/{song-slug}.json`.
+- A flat `docs/audio/` keeps working everywhere; per-band folders are recommended once a project has a second band.
 
 ### Bootstrapping
 
@@ -254,7 +265,7 @@ If a band already has songbook entries but no playlist YAML, scaffold one:
 uv run src/skills/suno-band-profile-manager/scripts/scaffold-playlist.py {band-slug} --from-songbook
 ```
 
-This writes `docs/{band-slug}-playlist.yaml` with discovered song titles populated and `file:` fields left as empty strings (TODO: fill in from `docs/audio/`). The user reviews, fills in audio filenames, sets the order, and saves.
+This writes `docs/{band-slug}-playlist.yaml` with discovered song titles populated and `file:` fields left as empty strings (TODO: fill in from the band's audio folder, `docs/audio/{band-slug}/`) and the `audio_dir:` key already set. The user reviews, fills in audio filenames, sets the order, and saves.
 
 For a brand new band with no songbook entries yet, run without `--from-songbook` to write an empty template.
 

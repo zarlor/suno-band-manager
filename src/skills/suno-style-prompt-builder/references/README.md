@@ -36,12 +36,12 @@ Use this skill directly when you already have a band profile or clear musical di
 ```
 # Interactive
 "Build a style prompt for my midnight-echoes profile"
-"Create a Suno prompt for a dreamy indie folk song on v5 Pro"
+"Create a Suno prompt for a dreamy indie folk song on v6"
 
 # Headless
 --headless:from-profile --profile midnight-echoes
---headless:custom --model v5-pro --genre "indie folk" --mood "dreamy, introspective"
---headless:migrate --prompt "warm indie rock..." --from v4.5-pro --to v5-pro
+--headless:custom --model v6 --genre "indie folk" --mood "dreamy, introspective"
+--headless:migrate --prompt "warm indie rock..." --from v5.5-pro --to v6
 ```
 
 ## Creativity Modes
@@ -56,10 +56,10 @@ Use this skill directly when you already have a band profile or clear musical di
 
 | Model | Prompt Style | Character Limit |
 |-------|-------------|-----------------|
-| v4.5-all / v4.5 Pro / v4.5+ Pro | Conversational, flowing sentences | 1,000 |
-| v5 Pro | Crisp, 5-8 film-brief descriptors | 1,000 |
-| v5.5 Pro | Same as v5 Pro, more expressive + Voices/Custom Models | 1,000 |
-| v4 Pro | Simple, straightforward descriptors | 200 |
+| **v6 / v6-wild / v6-mini** (current) | Ordered production direction — each instrument's job per section, positive text only (PREVIEW) | 1,000 |
+| v4.5-all / v4.5 Pro / v4.5+ Pro (retired) | Conversational, flowing sentences | 1,000 |
+| v5 Pro / v5.5 Pro (retired) | Crisp, 5-8 film-brief descriptors | 1,000 |
+| v4 Pro (retired) | Simple, straightforward descriptors | 200 |
 
 **Character-limit provenance (2026-08-13):** these limits are community-attested and validated by our own use — **no official Suno documentation states them.** Keep enforcing them; don't present them as documented platform facts. Suno has also announced that current models will be retired when the next model ships, with no versions or dates published.
 

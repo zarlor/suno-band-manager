@@ -21,7 +21,7 @@ runs in two modes:
       Scan `docs/songbook/{band-slug}/` for published songbook entries and
       pre-populate the tracks list with their titles. Audio file fields
       are left as TODO comments — the user must fill in actual filenames
-      from `docs/audio/` because songbook frontmatter does not reliably
+      from the band's audio folder (`docs/audio/{band-slug}/`) because songbook frontmatter does not reliably
       track the audio filename.
 
 Usage:
@@ -112,8 +112,14 @@ def discover_songbook_tracks(
     return tracks
 
 
-def render_playlist_yaml(album_name: str, tracks: list[dict], from_songbook: bool) -> str:
-    """Render the playlist YAML content as a string."""
+def render_playlist_yaml(
+    album_name: str, tracks: list[dict], from_songbook: bool, band_slug: str | None = None
+) -> str:
+    """Render the playlist YAML content as a string.
+
+    With band_slug, the YAML carries `audio_dir: "docs/audio/{band_slug}"` —
+    the band's audio folder that every track's `file:` is relative to.
+    """
     lines = []
     lines.append(f"# Playlist order for {album_name} — authoritative source.")
     lines.append("# This file is the SINGLE source of truth for the band's track sequence.")
@@ -124,11 +130,13 @@ def render_playlist_yaml(album_name: str, tracks: list[dict], from_songbook: boo
     lines.append("# the songbook entry. When the order changes, update this file first; the")
     lines.append("# sequencing script's per-album companion .md is auto-refreshed from this.")
     lines.append(f'album: "{album_name}"')
+    if band_slug:
+        lines.append(f'audio_dir: "docs/audio/{band_slug}"  # this band\'s audio folder; each file: is relative to it')
     lines.append("tracks:")
     if not tracks:
         lines.append("  # Add tracks below as they are published. Each track needs:")
         lines.append('  #   - name: "<song title as it appears in the songbook>"')
-        lines.append('  #     file: "<exact filename in docs/audio/, e.g. My Song.mp3>"')
+        lines.append('  #     file: "<exact filename in the band\'s audio folder, e.g. My Song.mp3>"')
         lines.append("  # Order in this list = playlist order.")
     else:
         for t in tracks:
@@ -136,7 +144,7 @@ def render_playlist_yaml(album_name: str, tracks: list[dict], from_songbook: boo
             if from_songbook:
                 # We discovered the song from songbook but don't know the audio filename.
                 # User must fill this in.
-                lines.append("    file: \"\"  # TODO: set to the actual filename in docs/audio/")
+                lines.append("    file: \"\"  # TODO: set to the actual filename in the band's audio folder")
                 if t.get("songbook_path"):
                     lines.append(f"    # songbook: {t['songbook_path']}")
             else:
@@ -222,7 +230,7 @@ def main():
     if args.from_songbook:
         tracks = discover_songbook_tracks(project_root, slug, docs_dir=docs_dir)
 
-    body = render_playlist_yaml(album_name, tracks, from_songbook=args.from_songbook)
+    body = render_playlist_yaml(album_name, tracks, from_songbook=args.from_songbook, band_slug=slug)
     target.parent.mkdir(parents=True, exist_ok=True)
     with open(target, "w") as f:
         f.write(body)
@@ -234,7 +242,7 @@ def main():
         "tracks_seeded": len(tracks),
         "from_songbook": args.from_songbook,
         "note": (
-            "Audio filenames left as empty strings — fill in from docs/audio/ before "
+            "Audio filenames left as empty strings — fill in from the band's audio folder (docs/audio/<band-slug>/) before "
             "running the sequencing script."
         ) if tracks else (
             "Empty template written. Add tracks as you publish them."

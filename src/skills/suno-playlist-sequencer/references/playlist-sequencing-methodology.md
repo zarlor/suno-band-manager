@@ -22,13 +22,14 @@ Each band in a project owns exactly one canonical playlist file at `docs/{band-s
 
 ```yaml
 album: "<Band display name>"
+audio_dir: "docs/audio/<band-slug>"   # optional — defaults to docs/audio/<band-slug>/ when that folder exists
 tracks:
   - name: "<Song title (matches songbook frontmatter title)>"
-    file: "<exact filename in docs/audio/, e.g. My Song.mp3>"
+    file: "<exact filename in the band's audio folder, e.g. My Song.mp3>"
   # ... one entry per track, in playlist order
 ```
 
-Multi-band projects keep each band's playlist independent — a band's YAML lives at its own slug and produces its own auto-generated companion + JSON archive. There's no shared global playlist file; that pattern is what causes drift between bands.
+Multi-band projects keep each band's playlist independent — a band's YAML lives at its own slug and produces its own auto-generated companion + JSON archive. There's no shared global playlist file; that pattern is what causes drift between bands. Audio follows the same split: each band's files live in `docs/audio/{band-slug}/`, which the sequencing script resolves on its own (resolution order and cross-band playlists: `suno-band-profile-manager/references/profile-schema.md` "Audio folder layout").
 
 If a band exists with songbook entries but no playlist YAML, scaffold one:
 
@@ -40,7 +41,7 @@ The schema and lifecycle rules (creation on band profile creation, deprecation o
 
 ## Tools Stack
 
-The methodology is supported by `scripts/playlist-sequencing-data.py` which generates per-track structured data (BPM, overall/entry/exit keys, Camelot codes, energy level, intro/outro energy, transition quality) for every track in a per-band playlist YAML. Output is auto-saved to:
+The methodology is supported by `scripts/playlist-sequencing-data.py` which generates per-track structured data (BPM, overall/entry/exit keys, Camelot codes, energy level, intro/outro energy, loudness, transition quality including the loudness step across each seam) for every track in a per-band playlist YAML. Output is auto-saved to:
 - `docs/audio-analysis/playlists/{band-slug}.json` — raw JSON archive (per-band; does not collide across bands)
 - `docs/{band-slug}-playlist-sequencing.md` — refreshed Markdown companion summary (per-band path so each band gets its own; AUTOGEN markers preserve hand-curated content outside)
 
@@ -50,7 +51,7 @@ The data layer is the *input* to the methodology; it doesn't make sequencing dec
 
 ## Per-Track Variables to Track
 
-For each track in the playlist, gather and reason about all nine of these. Earlier variables tend to dominate when conflicts arise — but every variable matters and a "perfect score" on one (e.g., Camelot) doesn't override a poor score on another (e.g., tempo).
+For each track in the playlist, gather and reason about all ten of these. Earlier variables tend to dominate when conflicts arise — but every variable matters and a "perfect score" on one (e.g., Camelot) doesn't override a poor score on another (e.g., tempo).
 
 1. **BPM** (raw librosa) — the measured tempo
 2. **Felt BPM** (human-verified) — the *perceived* tempo, often half or double the librosa raw value. **Felt BPM is what governs listening experience**; librosa raw is a measurement that may need halftime/double-time correction. Always verify felt BPM by ear before trusting raw numbers for sequencing decisions. (See `gemini-audio-analysis.md` in the `suno-feedback-elicitor` skill's `references/` directory, "Felt BPM" subsection, for the correction patterns.)
@@ -60,13 +61,14 @@ For each track in the playlist, gather and reason about all nine of these. Earli
 6. **Energy level** (1-10 scale) — average loudness/intensity. Useful for identifying peaks and valleys.
 7. **Intro energy %** — sparse vs. explosive opening. Critical for transition-from-previous-track evaluation.
 8. **Outro energy %** — fade vs. hard ending. Critical for transition-into-next-track evaluation.
-9. **Dynamic character** — FLAT / MODERATE / DYNAMIC / HIGHLY-DYNAMIC. A "mid-tempo" song with HIGHLY-DYNAMIC character feels very different from a "mid-tempo" song with FLAT character — the listener's experience hinges on this, not just on BPM.
+9. **Loudness** (ITU-R BS.1770) — integrated LUFS, loudness range (LRA), and loudness by thirds. The **seam step** (next track's first third minus this track's last third, in LU) catches volume jumps that Camelot and BPM can't see. Reference catalog: median seam about 2.5 LU; smooth < 3, noticeable < 6, big jump ≥ 6.
+10. **Dynamic character** — FLAT / MODERATE / DYNAMIC / HIGHLY-DYNAMIC. A "mid-tempo" song with HIGHLY-DYNAMIC character feels very different from a "mid-tempo" song with FLAT character — the listener's experience hinges on this, not just on BPM.
 
 Plus three contextual variables that aren't measurable from audio alone:
 
-10. **Mood/feel** — captured from Listening Notes in the songbook entry, Gemini blind analysis, or the user's articulation.
-11. **Sonic palette / arrangement density** — instrumentation profile (acoustic vs. dense metal, brass-led vs. guitar-led, etc.).
-12. **Lyrical narrative position** — what the song "means" in the album's story; what came before, what's coming next.
+11. **Mood/feel** — captured from Listening Notes in the songbook entry, Gemini blind analysis, or the user's articulation.
+12. **Sonic palette / arrangement density** — instrumentation profile (acoustic vs. dense metal, brass-led vs. guitar-led, etc.).
+13. **Lyrical narrative position** — what the song "means" in the album's story; what came before, what's coming next.
 
 ## Transition Discipline
 
@@ -79,6 +81,8 @@ The transition between two adjacent tracks is the actual moment the listener exp
 **BPM transition tolerance:** <3% smooth, 3-6% noticeable, >6% requires intentional contrast. Halftime/double-time pairs (e.g., felt 70 and felt 140) share a pulse grid and can mix coherently even though the felt-tempo difference is dramatic — but treat this as a *deliberate* breath-in / breath-out move, not a "smooth" transition.
 
 **Intro/outro % bridges the dynamic side of the transition.** A track ending at 70% energy into a track starting at 15% creates a dramatic drop — fine if it's intentional (act break), jarring if it's mid-act. The 15% intro after a high outro reads as a hush or a reset; the listener's ear interprets the gap.
+
+**The loudness step is the seam's volume in absolute terms.** Intro/outro % is relative to each track's own peak, so two tracks can both "end at 70%" and still land 8 LU apart at the seam. The script's `loudness_step_lu` (next track's first third minus this track's last third) measures that directly: < 3 LU smooth, 3–6 LU noticeable, ≥ 6 LU a big jump. A big step reads the same way as a dramatic energy drop — deliberate at an act break or a hush-then-hit, a volume problem mid-act — so weigh it with the arc, not against it. A large jump *up* into a loud opener is the one listeners most often hear as "the next song is too loud."
 
 ## Album-Craft Layer
 

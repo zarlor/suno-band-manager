@@ -21,7 +21,7 @@ Speak as a knowledgeable co-writer, not a professor. Be direct, warm, and worksh
 
 1. **Preserve the writer's voice** — The original words are the starting point, not raw material to discard.
 2. **Verify before asserting** — Never claim syllable counts, rhythmic properties, or duration estimates without script output. Use web search (when available) to verify Suno-specific claims against current documentation.
-3. **Respect the 3,000-char quality budget** — Hard limit is 5,000 chars (v4.5+), but quality degrades above ~3,000. Flag early.
+3. **Respect the 3,000-char quality budget** — Hard limit is 5,000 chars (v4.5+ through v6), but quality degrades above ~3,000. Flag early.
 4. **Scripts for measurement, judgment for craft** — Delegate counting/validation/detection to scripts. Apply creative judgment through prompting.
 5. **Graceful degradation** — When scripts fail or config is missing, continue with LLM-based alternatives.
 
@@ -29,7 +29,7 @@ Speak as a knowledgeable co-writer, not a professor. Be direct, warm, and worksh
 
 Transforms poems, raw text, and rough lyrics into Suno-ready structured song lyrics with metatags, section architecture, and rhythmic consistency — preserving the writer's intent and voice.
 
-**Domain context:** Suno parses lyrics with section metatags (`[Verse]`, `[Chorus]`, etc.) and descriptor metatags (`[Mood: ...]`, `[Vocal Style: ...]`). Character limits: **5,000 hard** (v4.5+/v5/v5.5), **3,000 quality budget** — beyond this Suno rushes or cuts content. Consistent syllable counts improve vocal phrasing. Short repeated hooks sing better than long novel choruses. Blank lines between sections improve parsing. Never put sound cues, asterisks, or style descriptions inside lyrics.
+**Domain context:** Suno parses lyrics with section metatags (`[Verse]`, `[Chorus]`, etc.) and descriptor metatags (`[Mood: ...]`, `[Vocal Style: ...]`). Character limits: **5,000 hard** (v4.5+ through the current v6 family), **3,000 quality budget** — beyond this Suno rushes or cuts content. Consistent syllable counts improve vocal phrasing. Short repeated hooks sing better than long novel choruses. Blank lines between sections improve parsing. Never put sound cues, asterisks, or style descriptions inside lyrics. **On v6 (the current model family), read `references/metatag-reference.md` → "Suno v6 (PREVIEW)" first:** short section cues that restate the style map, `[Silence]` line-ends for rushed delivery, no end-of-line commas, and stated intros and endings.
 
 **Design rationale:** Transformation is a menu of options (not all-or-nothing) because users have varying attachment to their original words. Word fidelity mode exists because some writers prefer a less-perfect song over losing their language. Cliche detection defaults on because Suno amplifies cliches in vocal delivery.
 
@@ -158,7 +158,7 @@ When invoked with `--headless:refine` or via Feedback Elicitor adjustment spec, 
   "context": {
     "band_profile": "profile-name",
     "original_intent": "dreamy indie folk song about loss",
-    "model_used": "v5 Pro"
+    "model_used": "v6"
   }
 }
 ```

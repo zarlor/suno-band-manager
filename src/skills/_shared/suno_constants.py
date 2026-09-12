@@ -8,18 +8,31 @@
 When Suno adds a new model or changes limits, update HERE ONLY.
 """
 
-# Valid Suno models (all versions, current and legacy)
-VALID_MODELS = frozenset({
+# Suno models. The v6 family launched 2026-09-09 and Suno retired every earlier
+# model the same day: a retired model can no longer generate, but songs made on
+# it stay playable, and older profiles, songbook entries, and feedback records
+# still name it — so retired names stay VALID (recognized), just not CURRENT.
+CURRENT_MODELS = frozenset({"v6", "v6-wild", "v6-mini"})
+RETIRED_MODELS = frozenset({
     "v4.5-all", "v4 Pro", "v4.5 Pro", "v4.5+ Pro", "v5 Pro", "v5.5 Pro"
 })
+MODEL_RETIREMENT_DATE = "2026-09-09"
+VALID_MODELS = CURRENT_MODELS | RETIRED_MODELS
+DEFAULT_MODEL = "v6"  # Pro/Premier default; v6-wild is the exploratory sibling
 
 # Tier definitions
 VALID_TIERS = frozenset({"free", "pro", "premier"})
 PAID_TIERS = frozenset({"pro", "premier"})
-FREE_TIER_MODEL = "v4.5-all"
+FREE_TIER_MODEL = "v6-mini"
 
-# Style prompt character limits per model
+# Style prompt character limits per model. The v6 family keeps the 1,000-char
+# style field (day-one vendor testing, 2026-09-09) — like every figure here,
+# community-attested rather than documented by Suno.
 STYLE_PROMPT_LIMITS = {
+    "v6": 1000,
+    "v6-wild": 1000,
+    "v6-mini": 1000,
+    # retired models (still recognized for older records)
     "v4 Pro": 200,
     "v4.5-all": 1000,
     "v4.5 Pro": 1000,
@@ -36,7 +49,7 @@ CRITICAL_ZONE = 200
 EXCLUSION_RECOMMENDED_MAX = 200
 EXCLUSION_HARD_MAX = 300
 
-# Lyrics character limits (v4.5+/v5/v5.5)
+# Lyrics character limits (v4.5+ through v6 — v6 unchanged per day-one testing)
 # Hard limit: 5,000 chars — content beyond this is silently truncated
 # Quality budget: ~3,000 chars — beyond this, Suno rushes through sections
 SUNO_LYRICS_HARD_LIMIT = 5000

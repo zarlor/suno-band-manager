@@ -151,7 +151,7 @@ Load `references/suno-parameter-map.md` (Audio Quality & Artifacts, Editor and S
 
 **Route by issue type:**
 - **Artifacts/glitches:** Regenerate 3-5 times with same prompt first. If persistent, simplify the style prompt.
-- **Vocal quality:** Check model -- v5 Pro handles vocal nuance better. Suggest Replace Section for section-specific issues.
+- **Vocal quality:** On v6, flat, rushed, or buried vocals usually trace to lyric density, missing delivery direction, or an unplaced vocal -- see the parameter map's "v6 Controls and Symptoms"; Max Mode for vocals that drift through the song. Suggest Replace Section for section-specific issues.
 - **Timing issues:** Premier — fix in Studio before regenerating (Warp Markers was the Studio 1.x tool for this and is not in current Studio 2.0 copy; check the live UI). Pro — Replace Section on the offending span, or export stems and correct timing in a DAW.
 - **Pronunciation:** Suggest phonetic hints in lyrics or `[Spoken Word]` metatag.
 - **Quality degradation in long songs:** Within-track degradation past ~2 minutes is the most-replicated community claim — vocals lose timbre, and the style prompt reportedly stops being followed after 1-2 minutes. Build in sub-2:00 segments and stitch, or Replace Section the late material; a full regeneration reproduces it.
@@ -233,20 +233,25 @@ After user approves, offer next steps (outcomes first, skill names parenthetical
 
 ### Multi-Machine Audio Verification
 
-- `audio-files-manifest.py` -- Generates `docs/audio-files-manifest.yaml` (name + size + mtime per file) on the canonical machine. Travels in the portable-sync archive instead of the audio MP3s themselves.
+- `audio-files-manifest.py` -- Generates `docs/audio-files-manifest.yaml` (name + size + mtime per file, recursive — band-folder files are recorded as `band-slug/Song.mp3`) on the canonical machine. Travels in the portable-sync archive instead of the audio MP3s themselves.
 - `verify-audio-files.py` -- Receiving machine reads the manifest and detects missing / wrong-gen / extra audio. Filename-normalization-aware (handles `-Redux`, band suffixes, `(NSFW)`, em-dash variants) and size-tolerance-aware (default 1024 bytes for ID3 metadata variance). `--playlist-context` cross-references playlist YAMLs.
 
-### Audio Analysis Scripts (optional -- `librosa` + `numpy`, auto-provisioned by `uv run`)
+### Audio Analysis Scripts (optional -- `librosa` + `numpy` + `pyloudnorm`, auto-provisioned by `uv run`)
 
-Objective audio measurements to complement subjective feedback. Running them via `uv run` provisions `librosa` + `numpy` automatically from each script's PEP 723 metadata; if `uv` is unavailable and the deps are missing, the script returns JSON with install instructions (exit code 2). Core workflow works fully without them.
+Objective audio measurements to complement subjective feedback. Running them via `uv run` provisions `librosa`, `numpy`, and `pyloudnorm` automatically from each script's PEP 723 metadata; if `uv` is unavailable and the deps are missing, the script returns JSON with install instructions (exit code 2). Core workflow works fully without them.
 
-- `analyze-audio.py` -- Batch analysis (BPM, key, duration) for all tracks in a directory.
+- `analyze-audio.py` -- Batch analysis (BPM, key, duration, and BS.1770 loudness: integrated LUFS and loudness range) for all tracks in a directory.
 - `audio-deep-analysis.py` -- Deep single-track analysis (energy arc, chords, section boundaries, spectral balance).
 - `chord-progression.py` -- Beat-synchronized chord detection with Camelot wheel mapping.
 - `tempo-detail.py` -- Detailed tempo analysis with stability metrics and beat regularity.
+
+**Optional heavy tools (PyTorch — opt-in; the first `uv run` provisions 1–3 GB plus model weights, and a CUDA GPU is used when present):**
+
+- `beat-grid.py` -- Beat This! neural beat and downbeat tracking: a second opinion on tempo. It reports BPM, beats per bar, and how librosa's BPM relates to it (agree / double / half / triplet grid). When the two differ by a clean ratio, the ear decides which pulse is felt — neither number settles it alone. Beats per bar reads how the pulse groups, not the notated meter: a 6/8 *feel* typically reads 4. `--include-beats` adds the beat and downbeat timestamps.
+- `vocal-placement.py` -- Demucs stem separation, then vocal-stem loudness minus the rest of the mix (LU), overall and by thirds, with thirds lacking a real vocal flagged. It describes placement rather than grading it; most useful for comparing renderings of the same song, or one voice across models. Fast on a GPU; minutes per track on CPU.
 
 **Album/playlist scope:** Album, playlist, and tracklist sequencing — ordering a body of tracks into a coherent listening experience (energy arcs, Camelot transitions, locked arcs, encore design) — is **not** this single-song feedback skill's job. Route requests to "sequence my playlist", "order my album", or "plan my tracklist" to the **`suno-playlist-sequencer`** skill, which owns the per-band playlist YAML, the `playlist-sequencing-data.py` / `batch-full-analysis.py` scripts, and the album-craft methodology.
 
 **Persistent JSON archive + companion-doc auto-refresh:** `analyze-audio.py` and `audio-deep-analysis.py` write JSON archives to `docs/audio-analysis/songs/` and refresh markdown companion docs at `docs/{...}.md` (with AUTOGEN markers preserving hand-curated sections) by default. Pass `--no-archive` / `--no-companion` to skip.
 
-All audio scripts support `--format json|text` (default: json) and `-o` for file output.
+All audio scripts support `--format json|text` (default: json) and `-o` for file output. `beat-grid.py` and `vocal-placement.py` archive to `docs/audio-analysis/catalog/<date>-{script}.json` (directory run) or `docs/audio-analysis/songs/[{band-slug}/]{song}-{script}.json` (single file); `--no-archive` to skip.

@@ -85,27 +85,42 @@ For multi-machine projects, `audio-files-manifest.py` generates a small `docs/au
 
 - **An LLM CLI with skill support** — Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, or OpenCode
 - **[`uv`](https://docs.astral.sh/uv/)** — the module's Python scripts run via `uv run`, which reads each script's [PEP 723](https://peps.python.org/pep-0723/) inline metadata and auto-provisions dependencies (no virtualenv or manual `pip install`). Install with `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`. Dependency-free scripts can fall back to plain `python3` (3.10+) if needed.
-- **Suno account** (free tier works; Pro/Premier unlocks additional features)
+- **Suno account** (free tier works; Pro/Premier unlocks additional features). The module targets Suno's **v6 family** (v6, v6-wild, v6-mini).
+
+### Requirements at a glance
+
+| Component | Requirement | Notes |
+|---|---|---|
+| `uv` | Any recent release (tested on 0.12) | Provisions every script's dependencies from its PEP 723 header. Keeping it current helps: `uv self update` |
+| Python — core scripts | 3.10+ | Most scripts are dependency-free or need only `pyyaml` ≥ 6.0 |
+| Python — audio analysis | **3.12+** | Required by librosa 1.0; `uv run` downloads a suitable Python on its own if your system one is older |
+| Audio libraries | `librosa` ≥ 1.0, `numpy` ≥ 2.1, `pyloudnorm` ≥ 0.2 | Optional — only for the audio-analysis and playlist-sequencing scripts; auto-provisioned by `uv run` |
+| Optional heavy tools | PyTorch ≥ 2.1 with `beat-this` ≥ 1.1 (`beat-grid.py`) or `demucs` ≥ 4.0.1 (`vocal-placement.py`) | Opt-in only — nothing else pulls them in. First run provisions 1–3 GB plus the model weights; a CUDA GPU helps (Demucs on CPU takes minutes per track) |
 - **BMad Method** (optional) — Mac was built with BMad and can be installed as a BMad module, but runs independently without it
 
 ### Optional: Audio Analysis
 
-For objective audio measurements, the audio scripts use `librosa` + `numpy`. Running them via `uv run` provisions both automatically — no manual step. Only when running without `uv` do you install them by hand:
+For objective audio measurements, the audio scripts use `librosa`, `numpy`, and `pyloudnorm`. Running them via `uv run` provisions them automatically — no manual step (they need Python 3.12+, which `uv` fetches if your system Python is older). Only when running without `uv` do you install them by hand:
 
 ```bash
-pip install librosa numpy
+pip install librosa numpy pyloudnorm
 ```
 
 This unlocks:
 
 - **Per-song deep analysis** — BPM, key (Krumhansl-Kessler), energy arc, chord progression, section boundaries, spectral balance
-- **Playlist sequencing** — Camelot wheel transitions, entry/exit keys, intro/outro energy, BPM transition quality across the full per-band playlist
+- **Loudness (ITU-R BS.1770)** — integrated LUFS and loudness range per track, plus loudness by thirds
+- **Playlist sequencing** — Camelot wheel transitions, entry/exit keys, intro/outro energy, BPM transition quality, and the loudness step across every seam, for the full per-band playlist
 - **Catalog-wide batch analysis** — tempo stability, dynamic character (FLAT / MODERATE / DYNAMIC / HIGHLY-DYNAMIC), energy shifts >20%, section boundary detection across every track at once
 - **JSON archive layer** — every analysis is persisted to `docs/audio-analysis/{songs,playlists,catalog}/` so future sessions read the archive instead of re-running the script
 - **Auto-refreshed Markdown summaries** — each script writes a human-readable companion doc (per-band for playlist sequencing, catalog-wide for the others) that auto-refreshes between AUTOGEN markers; hand-curated content outside the markers is preserved
 - **Multi-machine audio file verification** — `audio-files-manifest.py` + `verify-audio-files.py` close the audio-drift gap when MP3s are too large to ship in the portable sync archive
 
-These are all optional — the full song creation and refinement workflow works without librosa/numpy. Mac will offer to help install if you try to use audio analysis features without them.
+Two further tools are opt-in because they need PyTorch: **`beat-grid.py`** (Beat This! neural beat and downbeat tracking — a second opinion on tempo and bar grouping) and **`vocal-placement.py`** (Demucs stem separation — how loud the voice sits against the band). Run them through `uv run` like the others; the first run provisions PyTorch and downloads the model weights.
+
+First run provisions PyTorch (about 3 GB with the CUDA build) and downloads the model weights (the Beat This! checkpoint; about 80 MB for Demucs htdemucs). **GPU:** on Linux and WSL, PyPI's current PyTorch build targets CUDA 13, which needs NVIDIA driver 580 or newer; with an older driver (or no NVIDIA GPU) the tools fall back to CPU automatically. Native Windows gets PyPI's CPU-only PyTorch build (use WSL for the GPU), and Apple Silicon Macs run on CPU. **Intel Macs are not supported** for these two tools: PyTorch's last Intel-Mac build predates numpy 2, which librosa 1.0 requires. On CPU, Beat This! takes a few seconds per track; Demucs takes minutes. Demucs's first run may print an "unauthenticated requests to the HF Hub" warning — harmless.
+
+These are all optional — the full song creation and refinement workflow works without any of them. Mac will offer to help install if you try to use audio analysis features without them.
 
 ## Installation
 
@@ -167,6 +182,8 @@ That's it. Your symlinks point into `src/skills/`, so changes are picked up imme
 
 The setup skill detects your existing config and uses your saved values as defaults. Your preferences, band profiles, songbook, and memory are all preserved.
 
+Keep `uv` current too (`uv self update`). After an update that raises an audio dependency, the first audio-script run downloads the new versions into uv's cache on its own. Each release's **Upgrade at a glance** block in [CHANGELOG.md](CHANGELOG.md) lists anything else to do.
+
 ### After a BMad Method upgrade (BMad users only)
 
 Running `npx bmad-method install` replaces the contents of `.claude/skills/` with BMad's own skills. This removes the Suno symlinks but does **not** affect your module source, config, or data. Your `.agents/skills/` symlinks are unaffected.
@@ -196,7 +213,7 @@ Mac was developed and tested primarily on Claude Code. Other LLM CLIs should wor
 
 ## Suno Model Compatibility
 
-Mac supports Suno models from v4 through v5.5 Pro, with model-specific prompt optimization and character limit enforcement. See the [Suno Reference](src/skills/suno-agent-band-manager/references/SUNO-REFERENCE.md) for models, plans, and prompting, and the [Studio & Editor Reference](src/skills/suno-agent-band-manager/references/STUDIO-EDITOR-REFERENCE.md) for post-generation editing (Legacy Editor, Studio, Stems, Warp Markers, and more).
+Mac builds packages for Suno's **v6 family** — v6, v6-wild, and v6-mini — which replaced every earlier model on 2026-09-09. The v6 guidance in this release is a **preview**, compiled in v6's first week; expect it to firm up in the next major release. Retired model names (v4 through v5.5 Pro) are still recognized in older band profiles and songbook entries and flagged for update. See the [Suno Reference](src/skills/suno-agent-band-manager/references/SUNO-REFERENCE.md) for models, plans, and prompting, and the [Studio & Editor Reference](src/skills/_shared/references/STUDIO-EDITOR-REFERENCE.md) for post-generation editing (Song Editor, Studio 2.0, stems, and more).
 
 ## File Structure
 

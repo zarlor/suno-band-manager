@@ -2,7 +2,7 @@
 
 Comprehensive reference for Suno's post-generation editing tools. This covers **Suno Studio 2.0** (Premier-only generative DAW), the **Song Editor / Legacy Editor** (Pro/Premier section-level editor), and all related features. Companion to the [Suno Reference](../../suno-agent-band-manager/references/SUNO-REFERENCE.md) (which covers prompting, models, and generation) and the [Usage Guide](../../suno-agent-band-manager/references/USAGE.md) (which covers Mac's workflows).
 
-> **Last validated:** August 14, 2026 (Suno Studio **2.0**, Song Editor / Legacy Editor, v5.5 Pro; day-one primary-source field reports folded in). Suno updates Studio features frequently — use web search to verify capabilities against current documentation when uncertain.
+> **Last validated:** August 14, 2026 (Suno Studio **2.0**, Song Editor / Legacy Editor, v5.5 Pro; day-one primary-source field reports folded in). **Since 2026-09-09 every generation — including edits and extends of older songs — runs on the v6 family**; see "Editing Workflow Paradigm" for what v6 adds. Suno updates Studio features frequently — use web search to verify capabilities against current documentation when uncertain.
 
 > **READ THIS FIRST — Studio 2.0 shipped 2026-08-13 and this file is split accordingly.** Suno "totally overhauled" Studio on 2026-08-13 ([release note](https://suno.com/release-notes/studio-2), [blog](https://suno.com/blog/studio-2) — OFFICIAL). Suno's own help centre now splits into a **"Studio 2.0"** category (11 articles) and a **"Studio Archive"** (14 articles) — [help.suno.com/en/categories/1708865](https://help.suno.com/en/categories/1708865). This file mirrors that split: the **Studio 2.0** section below is current; the **Studio 1.x Archive** section that follows it documents features (Warp Markers, Remove FX, Alternates, Quick Replace, EQ, Context Window, Sounds Mode, Stem Cover, Heal Edits, MILO-1080, 12-track stem export) that **no longer appear in current official Suno copy**. **Take Lanes and comping are the exception — they survived into the current docs and are safe to recommend**; only the *Alternates* / *Quick Replace* names went away. Do not present archived features as available without re-verifying in the live UI. **Field evidence is day-one only** — a primary-source pass on 2026-08-14 captured first user reports (see "Day-one field reports" below), but the software was hours old. Re-verify in a few weeks; this remains the highest-value open question in the module's Suno knowledge.
 
@@ -642,9 +642,11 @@ Audio Influence is only active when an upload or recording is used as a source.
 
 ---
 
-## v5.5 Editing Workflow Paradigm
+## Editing Workflow Paradigm (v5.5 onward, including v6)
 
-v5.5 favors an iterative **generate → inspect → section replace → refine** workflow over full regeneration. This preserves good material and spends fewer credits.
+**v6 addition (OFFICIAL, 2026-09-09):** plain-language section editing and single-lyric or single-word updates without regenerating the song. Launch-week users report the edits as uneven — some come back as a different take with the same voice, or spill past the selected section (COMMUNITY). The Song Editor's trim and Replace Section stay the deterministic path.
+
+Since v5.5, Suno has favored an iterative **generate → inspect → section replace → refine** workflow over full regeneration. This preserves good material and spends fewer credits.
 
 ### Recommended Workflow
 

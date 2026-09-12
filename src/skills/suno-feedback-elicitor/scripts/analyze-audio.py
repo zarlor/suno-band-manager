@@ -1,12 +1,13 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
-# dependencies = ["librosa>=0.10", "numpy>=1.24"]
+# requires-python = ">=3.12"
+# dependencies = ["librosa>=1.0", "numpy>=2.1", "pyloudnorm>=0.2"]
 # ///
 """Batch audio analysis for a song catalog.
 
-Extracts BPM (librosa + aubio), estimated key, and duration for all MP3s
-in a directory.
+Extracts BPM (librosa), estimated key, duration, and BS.1770 loudness
+(integrated LUFS and loudness range) for all MP3s in a directory. For a second
+opinion on tempo and bar grouping, run beat-grid.py (Beat This!, optional).
 
 Usage:
     uv run analyze-audio.py [audio-directory] [options]
@@ -37,9 +38,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"
 from audio_deps import require_audio_deps
 from companion_writer import update_companion, resolve_companion_path
 from json_archiver import resolve_archive_arg, write_archive
+from loudness import load_native, summarize as loudness_summary
 
 SCRIPT_NAME = "analyze-audio"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 
 def get_key(y, sr):
@@ -73,38 +75,6 @@ def get_key(y, sr):
     return best_key, best_corr
 
 
-def get_aubio_bpm(filepath):
-    """Get BPM using aubio."""
-    import numpy as np
-
-    try:
-        from aubio import source, tempo
-        samplerate = 0
-        src = source(filepath, samplerate, 512)
-        samplerate = src.samplerate
-        t = tempo("default", 1024, 512, samplerate)
-
-        beats = []
-        total_frames = 0
-        while True:
-            samples, read = src()
-            is_beat = t(samples)
-            if is_beat:
-                beats.append(t.get_last_s())
-            total_frames += read
-            if read < 512:
-                break
-
-        if len(beats) > 1:
-            intervals = np.diff(beats)
-            avg_interval = np.median(intervals)
-            bpm = 60.0 / avg_interval
-            return round(bpm, 1)
-        return None
-    except Exception as e:
-        return f"error: {e}"
-
-
 def analyze_file(filepath):
     """Analyze a single audio file."""
     import numpy as np
@@ -119,8 +89,9 @@ def analyze_file(filepath):
         tempo_librosa, _ = librosa.beat.beat_track(y=y, sr=sr)
         bpm_librosa = round(float(tempo_librosa[0]) if hasattr(tempo_librosa, '__len__') else float(tempo_librosa), 1)
 
-        # BPM via aubio
-        bpm_aubio = get_aubio_bpm(filepath)
+        # Loudness (BS.1770) at the file's native rate and channels
+        samples, native_sr = load_native(filepath)
+        loudness = loudness_summary(samples, native_sr)
 
         # Key estimation
         key, confidence = get_key(y, sr)
@@ -132,7 +103,7 @@ def analyze_file(filepath):
             'file': filename,
             'duration': f"{mins}:{secs:02d}",
             'bpm_librosa': bpm_librosa,
-            'bpm_aubio': bpm_aubio,
+            'loudness': loudness,
             'key': key,
             'key_confidence': round(confidence, 3),
         }
@@ -143,18 +114,32 @@ def analyze_file(filepath):
         }
 
 
+def _fmt(value):
+    return "-" if value is None else value
+
+
+def _lufs_values(results):
+    return [r['loudness']['integrated_lufs'] for r in results
+            if (r.get('loudness') or {}).get('integrated_lufs') is not None]
+
+
 def format_text_output(results, mp3_count):
     """Format results as human-readable text (original output format)."""
     lines = []
     lines.append(f"Analyzing {mp3_count} tracks...\n")
-    lines.append(f"{'Track':<50} {'Duration':>8} {'BPM(lib)':>9} {'BPM(aub)':>9} {'Key':<15} {'Conf':>5}")
-    lines.append("-" * 100)
+    lines.append(f"{'Track':<50} {'Duration':>8} {'BPM(lib)':>9} {'LUFS':>7} {'LRA':>5} {'Key':<15} {'Conf':>5}")
+    lines.append("-" * 106)
 
     for result in results:
         if 'error' in result:
             lines.append(f"{result['file']:<50} ERROR: {result['error']}")
         else:
-            lines.append(f"{result['file']:<50} {result['duration']:>8} {result['bpm_librosa']:>9} {result['bpm_aubio']:>9} {result['key']:<15} {result['key_confidence']:>5}")
+            loud = result.get('loudness') or {}
+            lines.append(
+                f"{result['file']:<50} {result['duration']:>8} {result['bpm_librosa']:>9} "
+                f"{_fmt(loud.get('integrated_lufs')):>7} {_fmt(loud.get('lra_lu')):>5} "
+                f"{result['key']:<15} {result['key_confidence']:>5}"
+            )
 
     # Summary stats
     valid = [r for r in results if 'error' not in r]
@@ -162,6 +147,9 @@ def format_text_output(results, mp3_count):
         bpms = [r['bpm_librosa'] for r in valid]
         lines.append(f"\n{'='*100}")
         lines.append(f"BPM range (librosa): {min(bpms):.0f} - {max(bpms):.0f}")
+        lufs = _lufs_values(valid)
+        if lufs:
+            lines.append(f"Loudness range (integrated): {min(lufs):.1f} to {max(lufs):.1f} LUFS")
         lines.append(f"Tracks analyzed: {len(valid)}/{mp3_count}")
 
     return "\n".join(lines)
@@ -182,6 +170,7 @@ def format_json_output(results, mp3_count):
             })
 
     bpms = [r['bpm_librosa'] for r in valid] if valid else []
+    lufs = _lufs_values(valid)
 
     return {
         "script": SCRIPT_NAME,
@@ -196,6 +185,10 @@ def format_json_output(results, mp3_count):
                 "min": min(bpms) if bpms else None,
                 "max": max(bpms) if bpms else None,
             },
+            "integrated_lufs_range": {
+                "min": min(lufs) if lufs else None,
+                "max": max(lufs) if lufs else None,
+            },
             "tracks": results,
         },
         "findings": findings,
@@ -203,8 +196,31 @@ def format_json_output(results, mp3_count):
     }
 
 
+def find_mp3s(audio_dir):
+    """All .mp3 files under audio_dir, recursively, sorted.
+
+    Recursive so the per-band layout (docs/audio/{band-slug}/Song.mp3) is
+    covered by the default docs/audio scan; a flat docs/audio/ still works.
+    Hidden directories are skipped.
+    """
+    found = []
+    for root, dirs, files in os.walk(audio_dir):
+        dirs[:] = sorted(d for d in dirs if not d.startswith('.'))
+        found.extend(os.path.join(root, f) for f in files if f.endswith('.mp3'))
+    return sorted(found)
+
+
+def rel_label(filepath, audio_dir):
+    """Display label for a file: its path relative to audio_dir, POSIX-style.
+
+    A file in a band sub-folder is labelled "band-slug/Song.mp3", so two bands'
+    renderings of the same title stay distinguishable in reports.
+    """
+    return os.path.relpath(filepath, audio_dir).replace(os.sep, '/')
+
+
 def main():
-    require_audio_deps()
+    require_audio_deps(extra=("pyloudnorm",))
 
     import librosa  # noqa: E402
     import numpy as np  # noqa: E402, F401
@@ -213,13 +229,13 @@ def main():
     globals()["librosa"] = librosa
 
     parser = argparse.ArgumentParser(
-        description="Batch audio analysis — BPM, key, duration for all MP3s in a directory.",
+        description="Batch audio analysis — BPM, key, duration, and loudness for all MP3s in a directory.",
     )
     parser.add_argument(
         "audio_dir",
         nargs="?",
         default="docs/audio",
-        help="Directory containing MP3 files (default: docs/audio)",
+        help="Directory containing MP3 files, searched recursively so per-band sub-folders are included (default: docs/audio)",
     )
     parser.add_argument(
         "--format",
@@ -266,11 +282,7 @@ def main():
         print(f"Audio directory not found: {audio_dir}", file=sys.stderr)
         sys.exit(1)
 
-    mp3s = sorted([
-        os.path.join(audio_dir, f)
-        for f in os.listdir(audio_dir)
-        if f.endswith('.mp3')
-    ])
+    mp3s = find_mp3s(audio_dir)
 
     if not mp3s:
         print(f"No .mp3 files found in {audio_dir}", file=sys.stderr)
@@ -279,6 +291,7 @@ def main():
     results = []
     for filepath in mp3s:
         result = analyze_file(filepath)
+        result['file'] = rel_label(filepath, audio_dir)
         results.append(result)
 
     json_data = format_json_output(results, len(mp3s))
@@ -311,7 +324,8 @@ def main():
         title_block = (
             "# Audio Analysis Reference — Catalog Summary\n"
             f"_Generated by `{SCRIPT_NAME}` on {timestamp}_\n"
-            "_BPM detection: librosa beat_track | Key detection: Krumhansl-Kessler chroma correlation_\n\n"
+            "_BPM detection: librosa beat_track (second opinion: beat-grid.py) | Key detection: Krumhansl-Kessler "
+            "chroma correlation | Loudness: ITU-R BS.1770 via pyloudnorm (LUFS integrated; LRA in LU)_\n\n"
         )
         body_lines = format_text_output(results, len(mp3s)).split("\n")
         cut = 0

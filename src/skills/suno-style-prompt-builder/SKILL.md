@@ -9,7 +9,7 @@ description: Generates model-aware Suno style prompts. Use when user says 'build
 
 This skill generates Suno-ready style prompts optimized for the user's chosen model tier, blending band profile baselines with per-song creative direction. Act as a producer's sound engineer who thinks in sonic textures, frequency ranges, and production approaches. Through guided conversation (or headless structured input), it produces a complete prompt package: style prompt, exclusion prompt, slider recommendations, and an optional experimental wild card variant.
 
-**Domain context:** Suno's model families respond to fundamentally different prompt styles -- v4.5 wants conversational descriptions while v5 wants crisp, film-brief descriptors; never mix the two approaches. Style prompts are hard-capped at 1,000 characters (200 for v4 Pro) and silently truncated -- figures community-attested and validated by use, not documented by Suno. Real-world testing suggests v4.5-all may only effectively use ~200 characters. Front-load all essential genre, mood, and vocal descriptors in the first ~200 characters (the "critical zone") -- everything after is supplementary. The "Exclude Styles" field is separate and follows its own rules.
+**Domain context:** Suno's current **v6 family** (v6, v6-wild, v6-mini -- every earlier model was retired 2026-09-09) is reported to want **ordered production direction** -- each instrument's job per section, the vocal placed rather than praised, both edges stated, positive text only -- rather than the v5-era film-brief list (see `references/model-prompt-strategies.md` -> "Suno v6 Family", PREVIEW guidance). The retired families' styles (v4.5 conversational, v5/v5.5 film-brief) stay documented for older records and `:migrate`; never mix approaches within one prompt. Style prompts are hard-capped at 1,000 characters (200 for v4 Pro) and silently truncated -- figures community-attested and validated by use, not documented by Suno. Real-world testing suggests v4.5-all may only effectively use ~200 characters. Front-load all essential genre, mood, and vocal descriptors in the first ~200 characters (the "critical zone") -- everything after is supplementary. The "Exclude Styles" field is separate and follows its own rules.
 
 **Design rationale (load-bearing constraints):**
 
@@ -51,16 +51,17 @@ This skill generates Suno-ready style prompts optimized for the user's chosen mo
    - **Validate before emitting (all sub-modes, including `:refine` and `:migrate`):** run `uv run scripts/validate-prompt.py --style "{style_prompt}" --exclude "{exclusion_prompt}" --model "{target_model}"` on the reformatted/adjusted prompt -- the migrate/refine paths produce a new prompt against a (possibly new) model's char + critical-zone budget, so the same fail-fast check Step 5 runs interactively applies here. Fix anything flagged, re-run, and fold the script's report into the `validation` field of the success JSON (or note it if the script can't execute).
    - **Sliders obey the per-song anti-anchoring rule even headless:** choose Weirdness/Style Influence fresh from the Slider Guidelines table by reasoning from song type + what each slider does -- never default to a profile's stored `sliders:` (the bare-Demo fallback is the only exception). Log each chosen value with its behavioral reasoning in `decisions[]`. User-supplied slider values are authoritative -- pass them through, don't re-derive.
 
-   **Headless defaults** (when optional parameters omitted): Creativity=Balanced, Model=v4.5-all, Wild card=disabled (unless `include_wild_card=true`)
+   **Headless defaults** (when optional parameters omitted): Creativity=Balanced, Model=profile `model_preference` if it names a current model, else v6 (v6-mini on Free), Wild card=disabled (unless `include_wild_card=true`)
 
    **Headless success contract**: On completion, emit the package as JSON. `decisions[]` logs every non-obvious call the user would have weighed in interactively -- dangerous-word substitutions, genre demotions, slider choices, the skipped decomposition confirmation -- each with a one-line `reason`:
    ```json
    {
      "status": "complete",
-     "model": "v5 Pro",
+     "model": "v6",
      "style_prompt": "string",
      "exclusion_prompt": "string",
      "sliders": {"weirdness": 55, "style_influence": 75, "audio_influence": null},
+     "v6_options": {"variety": "Exact style", "max_mode": false, "duration": "Auto", "personalize": false},
      "wild_card": {"style_prompt": "string", "reasoning": "string"},
      "validation": { "...": "validate-prompt.py report (or note if unavailable)" },
      "decisions": [
@@ -106,11 +107,11 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 
 **Optional but valuable:**
 - **Band profile** -- read from `docs/band-profiles/{profile-name}.yaml`. Use `reference_tracks` if present. If not found, list available profiles. If fields are missing, warn and fill from conversation.
-- **Model** -- default to profile's `model_preference` if available. Options: v4.5-all (free), v4 Pro (200-char limit), v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro. Suno has announced that current models will be retired when the next model ships, without publishing which versions or when (see the strategies reference) -- avoid building a workflow that assumes a specific legacy model persists.
+- **Model** -- default to profile's `model_preference` if it names a current model. Options: v6 (Pro/Premier default), v6-wild (Pro/Premier, exploratory), v6-mini (Free). Every earlier model (v4.5-all, v4 Pro, v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro) was retired 2026-09-09 and can no longer generate -- when a profile still names one, build for v6 and say so (headless: log it in `decisions[]`).
 - **Creativity mode** -- Conservative (genre-pure, Weirdness 20-35), Balanced (default, 40-60), Experimental (unexpected fusions, 65-85)
 - **Specific requests** -- instrument preferences, mood descriptions, exclusions
 - **Reference tracks** -- decompose into concrete style descriptors (see `references/model-prompt-strategies.md` for confidence check and decomposition framework)
-- **Inspo playlists (v4.5+ Pro)** -- suggest as alternative to manual reference decomposition when user has successful generations or real reference tracks
+- **Inspo playlists (Pro/Premier; availability on v6 unverified)** -- suggest as alternative to manual reference decomposition when user has successful generations or real reference tracks
 
 **No profile loaded:** Need genre, mood, and vocal direction at minimum. Offer to proceed without profile or hand off to Profile Manager.
 
@@ -132,7 +133,7 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 
 **Outcome:** A model-formatted style prompt that front-loads genre/mood/vocals in the critical zone, uses genre-safe terminology, and respects character limits. The prompt should:
 
-- Follow the model's formatting style (v4.5: conversational sentences; v5/v5.5: crisp 5-8 descriptor film-brief; v4 Pro: simple descriptors within 200 chars)
+- Follow the model's formatting style (v6 family: ordered production direction per the v6 section of the strategies reference; retired models, for `:migrate` only -- v4.5: conversational sentences; v5/v5.5: crisp 5-8 descriptor film-brief; v4 Pro: simple descriptors within 200 chars)
 - Translate reference tracks into concrete descriptors (show decomposition to user for confirmation before building)
 - Apply the selected creativity mode
 - Use genre-safe word choices per the Genre Term Behavior Table and Dangerous Words list in the strategies reference
@@ -167,12 +168,14 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 
 **Instrumental songs:** Skip the Vocal-Gender recommendation entirely and set Lyrics Mode to Instrumental -- there is no vocal to gender.
 
+**v6 More Options (Pro/Premier):** recommend **Variety: Exact style** for the package (any higher notch rewrites the style prompt before generating, so the validated prompt would not be what runs), **Max Mode** off while exploring and on for the take the user means to keep (2× credits), **Personalize** off, and **Duration** Auto unless the length is a real requirement. When explaining the Style Influence choice, note its reported v6 default of 50. Headless: return these in `v6_options`.
+
 **Additional parameters (all tiers):**
 - Lyrics Mode (Manual/Auto), Song title suggestion
 - Persona reference from profile if available (Pro/Premier). When Persona active: keep additional style simple (1-2 genres, 1 mood, 2-4 instruments), Persona auto-populates Style of Music field -- build on it, don't replace
 - Persona sourcing: use clear, stable lead vocals; dual Personas unreliable
-- v5.5 Voices: drop gender **and timbre** descriptors (the Voice defines both; delivery descriptors still matter), start Audio Influence around 50% and iterate in 5-10% increments, profiling per voice -- the community ceiling is general guidance, not a limit, and Suno's own escalation for a clone that doesn't sound right is to RAISE Audio Influence first, then rebuild the profile from a clean acapella
-- v5.5 Custom Models: drop generic production descriptors the model already knows
+- Voices: drop gender **and timbre** descriptors (the Voice defines both; delivery descriptors still matter), start Audio Influence around 50% and iterate in 5-10% increments, profiling per voice -- the community ceiling is general guidance, not a limit, and Suno's own escalation for a clone that doesn't sound right is to RAISE Audio Influence first, then rebuild the profile from a clean acapella
+- Custom Models (upgraded to v6 automatically): drop generic production descriptors the model already knows
 
 **Exclude Styles output:** Always comma-separated list for direct copy-paste: `screaming vocals, steel guitar, autotune, heavy distortion`
 
@@ -209,6 +212,8 @@ Rules: twist one or two major elements along the chosen direction, keep it music
 - Weirdness: {value} -- {reasoning}
 - Style Influence: {value} -- {reasoning}
 - Vocal Gender: {value}
+- Variety: Exact style -- keeps this prompt as written (v6)
+- Max Mode: {Off while exploring | On for the keeper} -- 2× credits (v6)
 {persona_note_if_applicable}
 
 ## Wild Card Variant
@@ -228,7 +233,7 @@ Rules: twist one or two major elements along the chosen direction, keep it music
 
 **Refinement:** Invite adjustments. **Before each refine generation, reload `references/model-prompt-strategies.md`** (Compaction Survival rule) -- a long refine loop is exactly where the safety tables get compacted away. Only regenerate affected outputs (creativity change = style + wild card; model change = style formatting; exclusion change = exclusion only). Re-run `validate-prompt.py` on anything regenerated. When switching models mid-refinement, preview impact first.
 
-**Multi-model:** If user has no model preference, generate both v4.5-conversational and v5-film-brief variants.
+**Model default:** If the user has no model preference, build for v6 on a paid tier (v6-mini on Free) and let the wild card run on v6-wild.
 
 **Iteration guidance:** Generate 3-5 versions on Suno before modifying the prompt. Change only 1-2 variables per iteration. Structural problems are often better edited than re-prompted -- Replace Section and stems at Pro and Premier, Suno Studio 2.0 at Premier only (Studio has never been available on Pro). At session end, offer collected summary of all versions with deltas.
 
@@ -244,4 +249,4 @@ Rules: twist one or two major elements along the chosen direction, keep it music
 
 **Invoke via `uv run scripts/<name>.py`** — uv reads the PEP 723 inline metadata and provisions any dependencies automatically. `validate-prompt.py` is dependency-free (stdlib only), so if `uv` is unavailable you can install it (`pip install uv`) or run it directly with `python3`.
 
-`validate-prompt.py` -- Deterministically validates a prompt package: style prompt character count (v4 Pro=200, v4.5+/v5=1,000), critical zone, section-tag/asterisk contamination, genre front-loading, exclusion length/count, and enumerable dangerous-word / scream-trigger / `!` detection (`trigger` category, sourced from `_shared/suno_constants.py`). Run `uv run scripts/validate-prompt.py --style "..." --exclude "..." --model "{model_name}"`. The script flags triggers; the LLM still decides the substitution. Run `--help` for details.
+`validate-prompt.py` -- Deterministically validates a prompt package: style prompt character count (1,000 for the v6 family; 200 for the retired v4 Pro), critical zone, section-tag/asterisk contamination, genre front-loading, exclusion length/count, and enumerable dangerous-word / scream-trigger / `!` detection (`trigger` category, sourced from `_shared/suno_constants.py`). Run `uv run scripts/validate-prompt.py --style "..." --exclude "..." --model "{model_name}"`. The script flags triggers; the LLM still decides the substitution. Run `--help` for details.

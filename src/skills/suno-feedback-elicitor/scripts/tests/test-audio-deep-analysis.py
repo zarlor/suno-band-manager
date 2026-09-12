@@ -12,6 +12,7 @@ than a traceback. Invoked via `uv run` so librosa is provisioned (the file guard
 fires after the dep check). Skips when uv is unavailable.
 """
 
+import importlib.util
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,15 @@ def run_uv(args: list[str]) -> int:
 def test_missing_file_exits_1():
     assert run_uv(["/nonexistent-track-xyz.mp3"]) == 1
 
+
+def test_band_folder_for_detects_per_band_layout(tmp_path):
+    spec = importlib.util.spec_from_file_location("audio_deep_analysis", SCRIPT)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    audio = tmp_path / "docs" / "audio"
+    assert m.band_folder_for(audio / "solitary-fire" / "For Now.mp3") == "solitary-fire"
+    assert m.band_folder_for(audio / "For Now.mp3") is None          # legacy flat layout
+    assert m.band_folder_for(tmp_path / "Downloads" / "x.mp3") is None  # not an audio folder
 
 if __name__ == "__main__":
     if UV is None:

@@ -17,7 +17,8 @@ directly instead of re-running the script.
 Archive layout:
 
     docs/audio-analysis/
-      songs/<song-slug>.json           (per-song scripts: audio-deep-analysis, analyze-audio per file)
+      songs/[<band-slug>/]<song-slug>.json  (per-song scripts: audio-deep-analysis; band
+                                       sub-folder when the audio lives in docs/audio/<band-slug>/)
       playlists/<album-slug>.json      (playlist-sequencing-data per album)
       catalog/<YYYY-MM-DD>.json        (batch-full-analysis snapshots, dated)
 
@@ -53,6 +54,8 @@ def archive_path(category: str, identifier: str, project_root: str = ".") -> str
     Args:
         category: One of "songs", "playlists", "catalog".
         identifier: Song name, album name, or date string (e.g., "2026-04-29").
+            May carry a band sub-folder as "band-slug/song-name"; each segment
+            is slugified independently and the folder becomes a sub-directory.
         project_root: Repo root (default cwd).
 
     Returns:
@@ -62,8 +65,25 @@ def archive_path(category: str, identifier: str, project_root: str = ".") -> str
         # Default to today's date for catalog snapshots
         identifier = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    slug = _slugify(identifier)
-    return os.path.join(project_root, ARCHIVE_ROOT, category, f"{slug}.json")
+    parts = [_slugify(p) for p in identifier.split("/") if p.strip()] or [_slugify(identifier)]
+    *dirs, slug = parts
+    return os.path.join(project_root, ARCHIVE_ROOT, category, *dirs, f"{slug}.json")
+
+
+def input_archive_identifier(input_path: str, suffix: str) -> tuple:
+    """(category, identifier) for archiving a script run over a file or a directory.
+
+    A directory run archives to catalog/<YYYY-MM-DD>-<suffix>. A single-file run
+    archives to songs/, keeping the band folder when the file sits in the
+    per-band layout (docs/audio/{band-slug}/Song.mp3 -> songs/{band-slug}/song-<suffix>).
+    """
+    p = Path(input_path)
+    if p.is_dir():
+        return "catalog", datetime.now(timezone.utc).strftime("%Y-%m-%d") + f"-{suffix}"
+    stem = f"{p.stem}-{suffix}"
+    if p.parent.parent.name == "audio":
+        return "songs", f"{p.parent.name}/{stem}"
+    return "songs", stem
 
 
 def write_archive(target_path: str, data: dict, indent: int = 2) -> dict:

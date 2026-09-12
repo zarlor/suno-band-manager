@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
-# dependencies = ["librosa>=0.10", "numpy>=1.24"]
+# requires-python = ">=3.12"
+# dependencies = ["librosa>=1.0", "numpy>=2.1"]
 # ///
 """Chord/key progression analysis -- shows estimated chords over time
 using chroma features with beat-synchronized analysis for cleaner results.

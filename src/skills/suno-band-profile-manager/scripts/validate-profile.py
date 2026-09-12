@@ -41,7 +41,10 @@ except ImportError:
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
 try:
-    from suno_constants import VALID_MODELS, VALID_TIERS, STYLE_PROMPT_LIMITS, STYLE_PROMPT_DEFAULT_MAX, FREE_TIER_MODEL
+    from suno_constants import (
+        VALID_MODELS, VALID_TIERS, STYLE_PROMPT_LIMITS, STYLE_PROMPT_DEFAULT_MAX, FREE_TIER_MODEL,
+        RETIRED_MODELS, MODEL_RETIREMENT_DATE, DEFAULT_MODEL,
+    )
 except ImportError:
     print(json.dumps({
         "script": "validate-profile",
@@ -162,6 +165,20 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None) -> dict:
             "location": {"file": str(profile_path), "field": "model_preference"},
             "issue": f"Invalid model_preference '{model}'",
             "fix": f"Must be one of: {', '.join(sorted(VALID_MODELS))}"
+        })
+    elif model in RETIRED_MODELS:
+        findings.append({
+            "severity": "medium",
+            "category": "consistency",
+            "location": {"file": str(profile_path), "field": "model_preference"},
+            "issue": (
+                f"model_preference '{model}' was retired by Suno on {MODEL_RETIREMENT_DATE} "
+                "and can no longer generate — new generations run on the v6 family"
+            ),
+            "fix": (
+                f"Set model_preference to '{DEFAULT_MODEL}' ('v6-wild' for exploratory work, "
+                f"'{FREE_TIER_MODEL}' on the Free tier)"
+            )
         })
 
     # tier validation

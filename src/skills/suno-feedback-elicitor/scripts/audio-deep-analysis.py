@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
-# dependencies = ["librosa>=0.10", "numpy>=1.24"]
+# requires-python = ">=3.12"
+# dependencies = ["librosa>=1.0", "numpy>=2.1"]
 # ///
 """Deep audio analysis -- chord progression, energy over time, spectral features,
 section boundaries, and harmonic/percussive separation analysis.
@@ -33,7 +33,20 @@ from audio_deps import require_audio_deps
 from json_archiver import resolve_archive_arg, write_archive
 
 SCRIPT_NAME = "audio-deep-analysis"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
+
+
+def band_folder_for(filepath):
+    """Band sub-folder name when the file lives in an audio/{band-slug}/ folder.
+
+    Per-band layout: docs/audio/{band-slug}/Song.mp3 -> "band-slug". A file
+    directly in an audio/ folder (legacy flat layout), or anywhere else,
+    returns None and archives without a band sub-folder.
+    """
+    parent = Path(filepath).resolve().parent
+    if parent.parent.name == "audio":
+        return parent.name
+    return None
 
 
 def format_time(seconds):
@@ -313,7 +326,8 @@ def main():
         "--archive", nargs="?", const="", default="",
         help=(
             "Persist full JSON output to a per-song archive. "
-            "With no path: writes to docs/audio-analysis/songs/<song-slug>.json. "
+            "With no path: writes to docs/audio-analysis/songs/[<band-slug>/]<song-slug>.json "
+            "(band sub-folder when the file lives in docs/audio/<band-slug>/). "
             "Pass an explicit path to override. Default: ON."
         ),
     )
@@ -353,7 +367,9 @@ def main():
 
         # Per-song JSON archive (default ON unless --no-archive)
         song_slug = os.path.splitext(os.path.basename(filepath))[0]
-        archive_target = resolve_archive_arg("songs", song_slug, args.archive)
+        band = band_folder_for(filepath)
+        archive_id = f"{band}/{song_slug}" if band else song_slug
+        archive_target = resolve_archive_arg("songs", archive_id, args.archive)
         if archive_target is not None:
             res = write_archive(archive_target, result)
             print(f"  ARCHIVED: {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)

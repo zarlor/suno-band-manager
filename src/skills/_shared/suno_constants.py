@@ -134,4 +134,6 @@ GENRE_SIGNALS = frozenset({
     "psych", "garage", "emo", "darkwave", "dirge", "breakbeat", "second-line",
     "brass band", "new orleans", "nola", "gospel", "bluegrass", "ballad",
     "power ballad", "dark alternative",
+    # added 2026-09-12: lanes whose genre word was missing
+    "thrash", "krautrock", "rockabilly",
 })

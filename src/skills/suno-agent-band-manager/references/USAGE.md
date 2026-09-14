@@ -226,7 +226,7 @@ Mac: That's a lot of material -- a typical song has 200-400 words.
 
 ### The Output Package
 
-Every song creation produces a complete, copy-paste-ready package. The wild card variant is included by default -- it takes your core song intent but twists one or two major elements (genre fusion, era shift, mood inversion, unusual instrumentation). You can use it, ignore it, or cherry-pick elements from it. The wild card is skipped if you explicitly request conservative mode.
+Every song creation produces a complete, copy-paste-ready package. The wild card variant is included by default -- it takes your core song intent but twists one or two elements (a lean into an adjacent lane, era shift, mood inversion, a different instrument's job) while staying inside your band's core sound. It uses the same model and sliders as the primary; running the primary prompt unchanged on v6-wild is another quick way to get a wild card. You can use it, ignore it, or cherry-pick elements from it. The wild card is skipped if you explicitly request conservative mode.
 
 Here is a full example:
 
@@ -299,11 +299,11 @@ electric guitar, autotune, heavy drums, synths
 Jasmine House
 
 ### Wild Card Variant -- The Unexpected Take
-Dusty lo-fi hip-hop beat, jazz piano chords with vinyl crackle, spoken-word female vocal
-over muted trumpet, late-night FM radio atmosphere, downtempo soul groove
+Warm 1960s coffeehouse folk ballad, one fingerpicked acoustic guitar and upright bass,
+close-mic'd intimate vocal, tape warmth, brushed snare only on the last chorus
 
-"What if we took this folk ballad and ran it through a lo-fi hip-hop filter?
-The nostalgia stays, but the delivery shifts from porch to late-night headphones."
+"What if we took this folk ballad back to a 1960s coffeehouse? Same song, same lane --
+fewer instruments, a closer vocal, and tape warmth instead of a full band."
 ```
 
 For a field-by-field mapping of where each component goes in Suno's UI, see [Suno Reference — Package Field Mapping](SUNO-REFERENCE.md#package-field-mapping).
@@ -313,7 +313,7 @@ For a field-by-field mapping of where each component goes in Suno's UI, see [Sun
 Mac includes this guidance on your first song or in Demo mode:
 
 1. Switch to **Custom Mode** in Suno
-2. Pick the **model** — v6 (or v6-wild for the wild card; v6-mini on Free)
+2. Pick the **model** — v6 (v6-mini on Free). For a quick wild card, run the same prompt on v6-wild; the package's own wild-card prompt runs on v6 with the same sliders.
 3. Select your **Voice** or **Persona** (Pro/Premier) if recommended
 4. Select your **Custom Model** (Pro/Premier) if recommended
 5. Set **Inspo** playlist if recommended (Pro/Premier; availability on v6 unverified)

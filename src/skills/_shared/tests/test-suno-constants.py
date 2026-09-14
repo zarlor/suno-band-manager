@@ -132,3 +132,8 @@ class TestStylePromptTriggers:
 
     def test_pairings_lowercase(self):
         assert all(p == p.lower() for p in VOCAL_SAFE_PAIRINGS)
+
+def test_genre_signals_cover_added_lanes():
+    from suno_constants import GENRE_SIGNALS
+    for word in ("thrash", "krautrock", "rockabilly"):
+        assert word in GENRE_SIGNALS

@@ -181,11 +181,19 @@ All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous 
 
 ### Step 4: Wild Card Variant
 
-Generate an experimental alternative that pushes creative boundaries.
+Generate an experimental alternative that explores *within* the band's core sound.
 
-**Twist dial** -- offer before generating: (a) genre fusion, (b) era/production shift, (c) mood inversion, (d) instrumentation flip, (e) surprise me. Default to (e).
+**Twist dial** -- offer before generating: (a) adjacent-lane lean, (b) era/production shift, (c) mood inversion, (d) instrumentation flip, (e) surprise me. Default to (e).
+- An adjacent-lane lean stays next door — a metal band leaning toward hard rock or mainstream prog, for example.
+- An instrumentation flip uses the lane's own instruments.
+- Every option stays inside the band's genre family.
 
-Rules: twist one or two major elements along the chosen direction, keep it musically coherent, generate a complete style prompt, label clearly as experimental.
+Rules:
+- **Stay recognizably the same band.** Twist one or two elements (arrangement, era/production flavor, an instrument's job, mood), but never jump to a different genre family — light rock, pop, jazz or jazz-fusion, "spacey"/ambient for a heavy band, or anything that sounds like a different band. Read the band profile's genre and reference tracks as the bounds.
+- **Same model and sliders as the primary.** The wild card is a prompt variation, not a model or slider change. Suggest different sliders only with a stated, compelling reason.
+- Keep it musically coherent, generate a complete style prompt, and label it clearly as experimental.
+
+**Quick alternative wild card (offer it as an option):** run the *primary prompt unchanged* on **v6-wild**. v6-wild adds its own, less predictable variation, so a rewritten prompt on v6-wild stacks two sources of drift. Either route counts as the wild card, and the user picks.
 
 **Skip when:** user explicitly asked for conservative only, or headless mode (unless `include_wild_card=true`).
 
@@ -233,7 +241,7 @@ Rules: twist one or two major elements along the chosen direction, keep it music
 
 **Refinement:** Invite adjustments. **Before each refine generation, reload `references/model-prompt-strategies.md`** (Compaction Survival rule) -- a long refine loop is exactly where the safety tables get compacted away. Only regenerate affected outputs (creativity change = style + wild card; model change = style formatting; exclusion change = exclusion only). Re-run `validate-prompt.py` on anything regenerated. When switching models mid-refinement, preview impact first.
 
-**Model default:** If the user has no model preference, build for v6 on a paid tier (v6-mini on Free) and let the wild card run on v6-wild.
+**Model default:** If the user has no model preference, build for v6 on a paid tier (v6-mini on Free). The wild card runs on the same model and sliders; running the unchanged primary prompt on v6-wild is an optional alternative wild card.
 
 **Iteration guidance:** Generate 3-5 versions on Suno before modifying the prompt. Change only 1-2 variables per iteration. Structural problems are often better edited than re-prompted -- Replace Section and stems at Pro and Premier, Suno Studio 2.0 at Premier only (Studio has never been available on Pro). At session end, offer collected summary of all versions with deltas.
 

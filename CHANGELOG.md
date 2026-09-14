@@ -4,6 +4,27 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [2.3.2] - 2026-09-13
+
+A **v6 field-notes** patch, continuing 2.3.1. More of this module's own v6 renders came in, and they corrected several 2.3.1 claims that turned out to be overstated. Wild cards also change: they now stay inside the band's sound, on the same model and sliders as the primary. Documentation plus one small validator fix; no schema or dependency changes.
+
+### Upgrade at a glance (existing installs)
+
+- **Nothing to migrate.** `git pull`, then `/suno-setup` to record the new module version. Marketplace installs stay on the registry's approved version; this patch isn't submitted to the marketplace.
+- **Wild-card behaviour changed.** Packages no longer put the wild card on v6-wild or suggest a genre-fusion twist. The wild card now uses the primary's model and sliders and varies arrangement, era, mood or an instrument's job within the band's core sound. For a quick alternative wild card, run the unchanged primary prompt on v6-wild.
+- **Duration stays on Auto by default.** Custom Duration is documented as a fallback lever for a take that runs long, not a new standard.
+
+### v6 field findings (continued from 2.3.1)
+- **Pre-v6 evidence re-graded.** `model-prompt-strategies.md` now says anything dated before v6's 2026-09-09 launch is a mild suggestion at best, never a veto on a v6 test. Tempo and section-editing claims that quoted pre-v6 guides are labelled "pre-v6".
+- **Tempo claims softened.** 2.3.1 said inline BPM tags "don't move the tempo" and that one generation keeps one grid. Both overstated a single confounded render. The guidance now reads: feel switches are possible but unreliable; BPM figures mirrored word for word between the style field and the lyric cue are worth testing; use one figure per line.
+- **Section editing, corrected.** Replace Section is reached from a song's ⋯ More Actions → Edit. It opens the Create form with the song attached. The span can run up to the whole song, the full Lyrics and Styles boxes stay editable, and there is no separate plain-language box. The Variety slider's leftmost notch reads "Off".
+- **Duration.** On short lyric sheets, Auto can pad the ending with a long instrumental tail, even with `[Hard Stop][End]`. Auto stays the default; Custom Duration is the lever to use when a take runs long (about the sung length plus 15–20 s).
+- **Fade In / Fade Out.** `SUNO-REFERENCE.md` notes the song Edit menu's Fade In and Fade Out options (observed on Pro) as a post-generation fix for endings.
+- **Wild cards stay in the band's lane, on the same model and sliders.** The default was "v6-wild for the wild card", with a genre-fusion twist option. The wild card now runs on v6 with the primary's sliders and explores *within* the band's core sound: adjacent-lane lean, era/production, mood, or an instrument's job — never a different genre family. Running the unchanged primary prompt on v6-wild is offered as an alternative quick wild card. Updated: the Style Prompt Builder `SKILL.md` (Step 4 and the model default), `model-prompt-strategies.md`, `SUNO-REFERENCE.md`, `create-song.md`, and `USAGE.md`.
+- **Validator.** `GENRE_SIGNALS` now includes `thrash`, `krautrock`, and `rockabilly`, so prompts led by those lanes no longer get a false "no genre keyword" finding. A test covers the addition.
+
+---
+
 ## [2.3.1] - 2026-09-12
 
 A **v6 field-notes** patch. The module's first real v6 renders, and a same-day tempo research sweep, taught several things the 2.3.0 preview couldn't know. This release moves them into the files every pipeline run reads, so packages get them right on the first try. It also fixes wrong Max Mode advice and a wrong setup command in the install guide. Documentation only: no script, schema, or dependency changes.

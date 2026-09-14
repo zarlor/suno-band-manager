@@ -66,7 +66,7 @@ Collect what you need based on the mode. Not everything is required — adapt.
 **Valuable context:**
 - **Band profile** — Ask if they want to use a saved profile. If yes, invoke `suno-band-profile-manager` to load it (or read directly from `docs/band-profiles/{name}.yaml` if you know the name). If no profiles exist and they seem interested, offer to create one after the song is done.
 - **Source text** — Poem, raw lyrics, or text to transform. If provided, the Lyric Transformer becomes the primary skill.
-- **Model/tier** — From profile, from memory (user preferences), or ask. Current models (every earlier model was retired 2026-09-09): **v6** (Pro/Premier default), **v6-wild** (Pro/Premier, exploratory — the natural wild-card model), **v6-mini** (Free). A profile that still names a retired model gets built for v6; say so in the handoff.
+- **Model/tier** — From profile, from memory (user preferences), or ask. Current models (every earlier model was retired 2026-09-09): **v6** (Pro/Premier default), **v6-wild** (Pro/Premier, exploratory — optional; running the unchanged primary prompt on it is an alternative wild card), **v6-mini** (Free). A profile that still names a retired model gets built for v6; say so in the handoff.
 - **Voice / Custom Model** — If the user is on a paid tier, check whether they have a Voice or Custom Model configured. If so, note it for Step 4 (style prompt building) and Step 5 (package presentation). A Voice replaces the need for gender descriptors in the style prompt; a Custom Model replaces generic production descriptors the model already encodes.
 - **Reference tracks** — "Sounds like X meets Y" — capture these to pass to the Style Prompt Builder.
 
@@ -262,7 +262,7 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 
 ### Wild Card Variant — The Unexpected Take
 {wild_card_style_prompt}
-{One-line pitch for why this twist could work: "What if we took this country ballad and ran it through a lo-fi hip-hop filter? The storytelling stays, but the delivery shifts completely."}
+{One-line pitch for why this twist could work, staying inside the band's core sound: "What if we took this country ballad into a stripped 1970s outlaw arrangement? Same song, same lane — rawer production, and the fiddle carries the hook instead of the band."}
 ```
 
 **First-use Suno guidance (show on first song or Demo mode):**
@@ -271,7 +271,7 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 **Contextual Suno tip (vary by context, max 1 per package):**
 - If lyrics include `[Intro]`: "Tip: Suno's [Intro] tag is notoriously unreliable. If the intro sounds off, try regenerating just the first 10 seconds."
 - If model is v6: "Tip: v6 is about a week old and still being figured out. Keep Variety at Exact style for this package, and turn Max Mode on (2× credits) for any take you might keep — it's applied at generation, so it can't be added to a finished take. Leave it off only for throwaway sketches of a style's feel."
-- If the wild card runs on v6-wild: "Tip: v6-wild is the less predictable v6 — several users say it's where the older models' character went. Worth one Create even if the primary lands."
+- Always, with the wild card: "Tip: the wild card uses the same model and sliders as the primary — it's the prompt that varies. For a quick alternative wild card, run the primary prompt unchanged on v6-wild, which adds its own less-predictable variation. Worth one Create even if the primary lands."
 - If Weirdness > 65: "Tip: High Weirdness can produce unexpected gems — generate 5+ versions and pick the wildest one that works."
 
 **After presenting:**

@@ -6,7 +6,7 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ## [2.4.1] - 2026-09-14
 
-A **section-map** patch. The section map now catches words Suno adds to a set line, not just lyric words that go missing. It found the added words that got a Solitary Fire - Redux keeper pulled.
+A **section-map** patch. The section map now catches words Suno adds to a set line, not just lyric words that go missing. It confirmed, 3 passes out of 3, the added words the owner heard in a Solitary Fire - Redux keeper, which got that take pulled.
 
 ### Upgrade at a glance (existing installs)
 

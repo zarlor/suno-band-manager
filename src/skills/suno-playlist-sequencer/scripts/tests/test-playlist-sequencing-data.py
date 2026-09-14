@@ -127,6 +127,21 @@ def test_transition_uses_exit_entry_tempo_and_loudness():
     assert "BPM in→out" in text and "118.0→150.0" in text and "LUFS in→out" in text
 
 
+def test_tempo_source_reported_in_json_and_text():
+    import json
+    m = _load_module()
+    a = _track("A", 76.9, "8A", "8A", [-14, -14, -14])
+    b = _track("B", 96.8, "8A", "8A", [-14, -14, -14])
+    a["tempo_source"] = b["tempo_source"] = "beat-this"
+    data = json.loads(m.format_json("Album", [a, b]))
+    assert data["tempo_source"] == "beat-this" and data["tracks"][0]["tempo_source"] == "beat-this"
+    assert "Tempo: Beat This!" in m.format_text("Album", [a, b])
+    b["tempo_source"] = "librosa"
+    assert json.loads(m.format_json("Album", [a, b]))["tempo_source"] == "mixed"
+    a.pop("tempo_source"); b.pop("tempo_source")
+    assert "Tempo: librosa." in m.format_text("Album", [a, b])
+
+
 if __name__ == "__main__":
     if UV is None:
         print("SKIP: uv not available")

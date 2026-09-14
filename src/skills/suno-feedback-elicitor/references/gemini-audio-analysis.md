@@ -28,7 +28,7 @@ When using multiple analysis sources, you'll often get different answers for the
 - **Human ear is primary.** AI tools can describe what they hear, but their mood/vibe interpretations are heavily influenced by prompt framing and shouldn't be trusted as the final word.
 - **Avoid leading language in your AI prompts** that biases the tool toward specific moods or genre fusions. Let it describe what it actually perceives without suggestive framing.
 
-**Don't burn cycles asking which tool to trust on settled fields.** For BPM/key/section boundaries, default to librosa. For instrument ID beyond the basic rhythm section, verify before filing. For mood, trust the human ear. This calibration is consistent across catalogs and shouldn't be relitigated for every track.
+**Don't burn cycles asking which tool to trust on settled fields.** For BPM, default to the scripts' tempo (Beat This! when the PyTorch audio tools are on, librosa otherwise); for key and section boundaries, librosa. For instrument ID beyond the basic rhythm section, verify before filing. For mood, trust the human ear. This calibration is consistent across catalogs and shouldn't be relitigated for every track.
 
 ### librosa Analysis Scripts
 
@@ -61,6 +61,11 @@ uv run scripts/beat-grid.py track.mp3 --format text
 uv run scripts/vocal-placement.py track.mp3 --format text
 ```
 
+**section-map.py** (optional, PyTorch) — Lines a render up with its lyrics: Demucs isolates the vocal, Whisper transcribes it with word timestamps, and the words are aligned to the lyric lines. Each tagged section gets a start and end, loudness and the step from the section before, vocal-minus-band, tempo and feel, and key. Also lists lyric lines not heard and vocals outside the lyric sections. The lyrics are not given to Whisper as a hint, so it reports what was sung.
+```bash
+uv run scripts/section-map.py track.mp3 --lyrics docs/songbook/my-band/song.md --format text
+```
+
 **batch-full-analysis.py** (album/catalog scope — now in the `suno-playlist-sequencer` skill) — Batch full analysis across a catalog: tempo stability, energy arc, section boundaries, spectral balance. Outputs a comprehensive summary report. Run it from that skill: `uv run scripts/batch-full-analysis.py --audio-dir docs/audio`.
 
 #### librosa Notes
@@ -77,6 +82,7 @@ uv run scripts/vocal-placement.py track.mp3 --format text
 - Enharmonic equivalents: D# = Eb, C# = Db, A# = Bb, F# = Gb
 - librosa is deterministic — same file always produces the same results. Use as ground truth for BPM/key baseline, but always apply genre-aware correction before acting on the number.
 - **Slow contemplative songs (felt tempo 70-80 BPM) trigger halftime detection consistently.** librosa raw values around 150-160 BPM with felt tempo around 75-80 BPM is a well-documented pattern. When librosa reports 152 BPM on a song that "feels" much slower than that, the felt tempo is likely half (76). Cross-verify with hi-hat counting before trusting either value.
+- **Which tempo the scripts report.** With the PyTorch audio tools turned on in `/suno-setup` (`pytorch_audio_tools`), every script that reads tempo takes it from Beat This! and says so (`tempo_source`); off, librosa. `--tempo-source` overrides it for one run.
 - **Second opinion: `beat-grid.py` (Beat This!).** On an 83-track reference catalog, Beat This! matched the human-verified felt BPM on 9 of 15 tracks, against librosa's 7, and fixed most slow-song halftime double-reads. It still reads slow doom and ballad feels double, so when it and librosa disagree by a clean ratio, the ear (or the hi-hat count below) decides. Its beats-per-bar reads how the pulse groups, not the meter: songs with a 6/8 feel read 4.
 - **Manual hi-hat counting is the cheap reliable BPM verification** when AI tools disagree. Count hi-hat hits in a 10-second window of a steady-groove section. Most rock/pop songs play hi-hats as straight eighth notes. Calculation: `(hat hits in 10 sec ÷ 2) × 6 = quarter-note BPM`. Example: 25 hi-hat hits in 10 sec → (25 ÷ 2) × 6 = 75 BPM. When sources contest the BPM, this 30-second manual check is the tiebreaker.
 
@@ -90,7 +96,7 @@ ChatGPT can analyze uploaded MP3 files. Key workflow difference from Gemini:
 
 **Calibrated follow-up:** After the blind pass, share the style prompt and ask ChatGPT to compare intent vs. reality. This two-step approach (blind → calibrated) produces the most honest assessment.
 
-**BPM comparison:** ChatGPT's BPM estimates are rough (120-125 range estimates vs. librosa's precise 123.0). Use librosa for BPM, LLMs for subjective qualities.
+**BPM comparison:** ChatGPT's BPM estimates are rough (120-125 range estimates vs. librosa's precise 123.0). Use the scripts for BPM, LLMs for subjective qualities.
 
 #### ChatGPT Reliability Warning
 

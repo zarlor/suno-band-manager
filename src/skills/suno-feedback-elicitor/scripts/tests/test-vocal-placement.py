@@ -44,6 +44,7 @@ def test_silent_stem_gives_none():
 def test_format_text_marks_absent_thirds():
     r = {"file": "x.mp3", **vp.placement(-18.0, -13.0, [-15.0, -15.0, -40.0], [-14.0, -13.0, -12.0])}
     text = vp.format_text([r, {"file": "y.mp3", "error": "boom"}])
+    assert vp.format_json([r], "cuda", 5)["metrics"]["shifts"] == 5
     assert "-28.0*" in text and "ERROR: boom" in text
 
 

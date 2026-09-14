@@ -50,8 +50,9 @@ The Feedback Elicitor includes audio analysis scripts that measure BPM, key, lou
 - `audio-deep-analysis.py` — Deep single-track analysis
 - `chord-progression.py` — Beat-synchronized chord detection
 - `tempo-detail.py` — Detailed tempo stability analysis
-- `beat-grid.py` — *Optional, PyTorch:* Beat This! beats/downbeats — a second opinion on tempo and librosa's halftime reads
+- `beat-grid.py` — *Optional, PyTorch:* Beat This! beats/downbeats. With the PyTorch audio tools turned on in `/suno-setup`, every script above takes its tempo from it; otherwise it's a second opinion on librosa's halftime reads
 - `vocal-placement.py` — *Optional, PyTorch:* Demucs vocal-vs-band loudness, overall and by thirds
+- `section-map.py` — *Optional, PyTorch:* a render lined up with its lyrics (Demucs vocal stem + Whisper word timestamps): when each tagged section lands, with per-section loudness step, vocal-minus-band, tempo/feel and key, plus lyric lines not heard. With the PyTorch audio tools on, run it whenever a render and its package lyrics are both at hand, before judging structure or dynamics
 
 **For playlist/album/tracklist work:** route to the `suno-playlist-sequencer` skill — don't sequence inline. That skill owns the per-band playlist YAML, the `playlist-sequencing-data.py` / `batch-full-analysis.py` analysis scripts, and the album-craft methodology (per-track variables, energy arc models, key positions, locked arcs, encore structure, similar-songs-need-distance, felt-vs-librosa-BPM, mandatory Thematic Verification). Pass it the band/album and any locked-sequence context. **Expected return:** a recommended sequence with per-move rationale and trade-offs.
 

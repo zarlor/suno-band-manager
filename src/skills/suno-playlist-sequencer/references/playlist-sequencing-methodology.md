@@ -53,8 +53,8 @@ The data layer is the *input* to the methodology; it doesn't make sequencing dec
 
 For each track in the playlist, gather and reason about all ten of these. Earlier variables tend to dominate when conflicts arise — but every variable matters and a "perfect score" on one (e.g., Camelot) doesn't override a poor score on another (e.g., tempo).
 
-1. **BPM** (raw librosa) — the measured tempo
-2. **Felt BPM** (human-verified) — the *perceived* tempo, often half or double the librosa raw value. **Felt BPM is what governs listening experience**; librosa raw is a measurement that may need halftime/double-time correction. Always verify felt BPM by ear before trusting raw numbers for sequencing decisions. (See `gemini-audio-analysis.md` in the `suno-feedback-elicitor` skill's `references/` directory, "Felt BPM" subsection, for the correction patterns.)
+1. **BPM** (measured) — the script's tempo: Beat This! when the PyTorch audio tools are on, librosa otherwise (the report says which)
+2. **Felt BPM** (human-verified) — the *perceived* tempo, often half or double the measured value (more often with librosa than Beat This!). **Felt BPM is what governs listening experience**; the measured BPM may need halftime/double-time correction. Always verify felt BPM by ear before trusting raw numbers for sequencing decisions. (See `gemini-audio-analysis.md` in the `suno-feedback-elicitor` skill's `references/` directory, "Felt BPM" subsection, for the correction patterns.)
 3. **Overall key + Camelot code** — the dominant key center
 4. **Entry key + Camelot code** (first 30 sec) — the key the track *opens* in. May differ from overall.
 5. **Exit key + Camelot code** (last 30 sec) — the key the track *ends* in. May differ from overall and from entry.

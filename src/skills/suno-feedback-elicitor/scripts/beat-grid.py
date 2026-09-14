@@ -12,9 +12,14 @@ librosa (9 of 15 vs 7) and fixed most of librosa's halftime double-reads.
 It does not settle felt tempo on its own: slow doom and ballad feels still read
 double. Report both numbers; felt BPM stays a human call.
 
-Per track: Beat This! BPM (median inter-beat interval), beats per bar (mode and
-histogram), bars per minute, librosa's BPM, and how the two relate (agree,
-librosa double, librosa half, 1.5x / 2/3x triplet-grid readings, or disagree).
+Per track: Beat This! BPM (median inter-beat interval), entry and exit BPM
+(first and last 30 s), beats per bar (mode and histogram), bars per minute,
+librosa's BPM, and how the two relate (agree, librosa double, librosa half,
+1.5x / 2/3x triplet-grid readings, or disagree).
+
+When the owner turns the PyTorch audio tools on (`pytorch_audio_tools` in the
+module config), the librosa scripts call this one for their tempo and beats
+(see _shared/tempo_source.py).
 
 Beats per bar reads how the pulse groups, not the notated meter. On the
 reference catalog every song with a 6/8 *feel* read 4 — Suno renders
@@ -25,7 +30,7 @@ checkpoint, downloaded on first use. Uses a CUDA GPU when present; CPU works
 at a few seconds per track.
 
 Usage:
-    uv run beat-grid.py [audio-file-or-directory] [options]
+    uv run beat-grid.py [audio-file-or-directory ...] [options]
 
     # Every track under docs/audio (recursive)
     uv run beat-grid.py
@@ -35,6 +40,9 @@ Usage:
 
     # One song, with beat and downbeat timestamps
     uv run beat-grid.py "docs/audio/my-band/Song.mp3" --include-beats
+
+    # Several files, in the order given
+    uv run beat-grid.py one.mp3 two.mp3 --format text
 
 Exit codes:
   0 = success
@@ -54,21 +62,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
 from audio_deps import require_modules
 from json_archiver import input_archive_identifier, resolve_archive_arg, write_archive
+from tempo_source import tempo_relation
 
 SCRIPT_NAME = "beat-grid"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 AUDIO_EXTS = (".mp3", ".wav", ".flac", ".ogg", ".m4a")
 INSTALL_CMD = "pip install beat-this torch librosa numpy"
 CHECKPOINT = "final0"
 ANALYSIS_SR = 22050
+EDGE_WINDOW_S = 30.0
 
-TEMPO_RELATIONS = (
-    (1.0, "agree"),
-    (2.0, "librosa_double"),
-    (0.5, "librosa_half"),
-    (1.5, "librosa_1.5x"),
-    (2 / 3, "librosa_2/3x"),
-)
 RELATION_TEXT = {
     "agree": "agree",
     "librosa_double": "librosa ~2x (double-time read)",
@@ -124,15 +127,19 @@ def beat_stats(beats, downbeats):
     return out
 
 
-def tempo_relation(beat_bpm, librosa_bpm, tolerance=0.05):
-    """How librosa's BPM relates to Beat This!'s: agree, double, half, 1.5x, 2/3x, or disagree."""
-    if not beat_bpm or not librosa_bpm:
-        return None
-    ratio = librosa_bpm / beat_bpm
-    for target, label in TEMPO_RELATIONS:
-        if abs(ratio / target - 1) <= tolerance:
-            return label
-    return "disagree"
+def edge_bpms(beats, duration_s, window_s=EDGE_WINDOW_S):
+    """Entry and exit BPM: median-interval tempo over the first and last `window_s` seconds.
+
+    A track shorter than two windows, or an edge with too few beats, gets the
+    overall BPM for that edge (None when there's no overall BPM either).
+    """
+    beats = sorted(float(b) for b in beats)
+    overall = beat_stats(beats, [])["bpm"]
+    if duration_s <= 2 * window_s:
+        return overall, overall
+    entry = beat_stats([b for b in beats if b < window_s], [])["bpm"]
+    exit_ = beat_stats([b for b in beats if b >= duration_s - window_s], [])["bpm"]
+    return entry or overall, exit_ or overall
 
 
 def resolve_device(requested):
@@ -150,6 +157,7 @@ def analyze_file(path, a2b, with_librosa=True, include_beats=False):
     y, sr = librosa.load(path, sr=ANALYSIS_SR, mono=True)
     beats, downbeats = a2b(y, sr)
     result = {"duration_s": round(len(y) / sr, 1), **beat_stats(beats, downbeats)}
+    result["entry_bpm"], result["exit_bpm"] = edge_bpms(beats, len(y) / sr)
     if with_librosa:
         tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
         lib_bpm = round(float(np.atleast_1d(tempo)[0]), 1)
@@ -167,16 +175,17 @@ def _fmt(v, width):
 
 def format_text(results):
     lines = [
-        f"{'Track':<50} {'Dur(s)':>7} {'BPM(BT)':>8} {'Beats/bar':>9} {'BPM(lib)':>9}  Relation",
-        "-" * 110,
+        f"{'Track':<50} {'Dur(s)':>7} {'BPM(BT)':>8} {'In→out':>13} {'Beats/bar':>9} {'BPM(lib)':>9}  Relation",
+        "-" * 124,
     ]
     for r in results:
         if "error" in r:
             lines.append(f"{r['file']:<50} ERROR: {r['error']}")
             continue
         rel = RELATION_TEXT.get(r.get("tempo_relation"), "-")
+        edges = f"{'-' if r.get('entry_bpm') is None else r['entry_bpm']}→{'-' if r.get('exit_bpm') is None else r['exit_bpm']}"
         lines.append(
-            f"{r['file']:<50} {_fmt(r['duration_s'], 7)} {_fmt(r['bpm'], 8)} "
+            f"{r['file']:<50} {_fmt(r['duration_s'], 7)} {_fmt(r['bpm'], 8)} {edges:>13} "
             f"{_fmt(r['beats_per_bar'], 9)} {_fmt(r.get('librosa_bpm'), 9)}  {rel}"
         )
     rels = Counter(r.get("tempo_relation") for r in results if "error" not in r and r.get("tempo_relation"))
@@ -212,8 +221,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Beat This! neural beat/downbeat tracking — a second opinion on tempo and bar grouping.",
     )
-    parser.add_argument("input", nargs="?", default="docs/audio",
-                        help="Audio file, or a directory searched recursively (default: docs/audio)")
+    parser.add_argument("input", nargs="*", default=["docs/audio"],
+                        help=("Audio files and/or directories (searched recursively), analyzed in the order "
+                              "given (default: docs/audio)"))
     parser.add_argument("--device", default="auto",
                         help="Torch device: auto (CUDA when available, else CPU), cpu, cuda, cuda:1, mps ...")
     parser.add_argument("--no-librosa", action="store_true",
@@ -225,18 +235,20 @@ def main():
     parser.add_argument("-o", "--output", default=None, help="Output file path (default: stdout)")
     parser.add_argument("--archive", nargs="?", const="", default="",
                         help=("Persist the JSON to the analysis archive. With no path: a directory run writes "
-                              "docs/audio-analysis/catalog/<YYYY-MM-DD>-beat-grid.json, a single file "
+                              "docs/audio-analysis/catalog/<YYYY-MM-DD>-beat-grid.json (so does a run over "
+                              "several inputs), a single file "
                               "docs/audio-analysis/songs/[{band-slug}/]{song}-beat-grid.json. Default: ON."))
     parser.add_argument("--no-archive", dest="archive", action="store_const", const=None,
                         help="Skip writing the JSON archive.")
     args = parser.parse_args()
 
-    if not os.path.exists(args.input):
-        print(json.dumps({"script": SCRIPT_NAME, "status": "fail", "error": f"Not found: {args.input}"}), file=sys.stderr)
+    missing = [p for p in args.input if not os.path.exists(p)]
+    if missing:
+        print(json.dumps({"script": SCRIPT_NAME, "status": "fail", "error": f"Not found: {', '.join(missing)}"}), file=sys.stderr)
         sys.exit(1)
-    files = collect_inputs(args.input)
-    if not files:
-        print(json.dumps({"script": SCRIPT_NAME, "status": "fail", "error": f"No audio files in {args.input}"}), file=sys.stderr)
+    labeled = [(f, rel_label(f, inp)) for inp in args.input for f in collect_inputs(inp)]
+    if not labeled:
+        print(json.dumps({"script": SCRIPT_NAME, "status": "fail", "error": f"No audio files in {', '.join(args.input)}"}), file=sys.stderr)
         sys.exit(1)
 
     require_modules(["torch", "beat_this", "librosa", "numpy"], INSTALL_CMD, "Beat This! beat tracking")
@@ -251,9 +263,8 @@ def main():
         sys.exit(1)
 
     results = []
-    for i, path in enumerate(files, 1):
-        label = rel_label(path, args.input)
-        print(f"  [{i}/{len(files)}] {label}", file=sys.stderr, flush=True)
+    for i, (path, label) in enumerate(labeled, 1):
+        print(f"  [{i}/{len(labeled)}] {label}", file=sys.stderr, flush=True)
         try:
             r = {"file": label, **analyze_file(path, a2b, not args.no_librosa, args.include_beats)}
         except Exception as exc:
@@ -267,7 +278,8 @@ def main():
     else:
         print(output)
 
-    category, identifier = input_archive_identifier(args.input, SCRIPT_NAME)
+    # One input archives by what it is (file or directory); several archive like a directory run.
+    category, identifier = input_archive_identifier(args.input[0] if len(args.input) == 1 else ".", SCRIPT_NAME)
     target = resolve_archive_arg(category, identifier, args.archive)
     if target is not None:
         res = write_archive(target, json_data)

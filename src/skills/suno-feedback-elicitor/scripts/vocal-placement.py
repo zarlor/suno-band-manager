@@ -23,6 +23,9 @@ against the original, one model against another) and for tracking how a model
 places a given voice. A third with no real vocal (an instrumental ending) is
 flagged in `vocal_present_thirds`.
 
+Separation averages several seeded Demucs time-shifts (5 on a GPU, 1 on CPU;
+--shifts / --seed), which gives cleaner stems and the same numbers every run.
+
 Optional and heavy: PyTorch plus the htdemucs weights (~80 MB), downloaded on
 first use. A CUDA GPU takes about 5 seconds per track; CPU works but takes
 minutes per track.
@@ -53,10 +56,11 @@ from json_archiver import input_archive_identifier, resolve_archive_arg, write_a
 from loudness import integrated, thirds
 
 SCRIPT_NAME = "vocal-placement"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 AUDIO_EXTS = (".mp3", ".wav", ".flac", ".ogg", ".m4a")
 INSTALL_CMD = "pip install demucs torch librosa numpy pyloudnorm"
 MODEL_NAME = "htdemucs"
+GPU_SHIFTS = 5  # averaged Demucs time-shifts on a GPU; CPU default is 1 (each shift is a full separation)
 # A third whose vocal stem sits this far below the band is residual bleed, not singing.
 VOCAL_ABSENT_LU = -15.0
 
@@ -103,22 +107,29 @@ def resolve_device(requested):
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def separate(model, wav, device):
-    """Run Demucs on a (channels, samples) float array -> {stem name: (channels, samples) array}."""
+def separate(model, wav, device, shifts=1, seed=0):
+    """Run Demucs on a (channels, samples) float array -> {stem name: (channels, samples) array}.
+
+    Averaged over `shifts` seeded time-shifts, so a given seed gives the same stems every run.
+    """
+    import random
+
     import torch
     from demucs.apply import apply_model
 
+    random.seed(seed)
+    torch.manual_seed(seed)
     mix = torch.tensor(wav, dtype=torch.float32)
     ref = mix.mean(0)
     mean, std = ref.mean(), ref.std() + 1e-8
     with torch.no_grad():
-        stems = apply_model(model, ((mix - mean) / std)[None], split=True, overlap=0.25,
+        stems = apply_model(model, ((mix - mean) / std)[None], shifts=shifts, split=True, overlap=0.25,
                             progress=False, device=device)[0]
     stems = (stems * std + mean).cpu().numpy()
     return dict(zip(model.sources, stems))
 
 
-def analyze_file(path, model, meter, device):
+def analyze_file(path, model, meter, device, shifts=1, seed=0):
     import librosa
     import numpy as np
 
@@ -126,7 +137,7 @@ def analyze_file(path, model, meter, device):
     if y.ndim == 1:
         y = np.stack([y, y])
     y = y[: model.audio_channels]
-    stems = separate(model, y, device)
+    stems = separate(model, y, device, shifts, seed)
     vocals = stems["vocals"]
     band = sum(v for k, v in stems.items() if k != "vocals")
     vocal_lufs, band_lufs = integrated(meter, vocals.T), integrated(meter, band.T)
@@ -164,7 +175,7 @@ def format_text(results):
     return "\n".join(lines)
 
 
-def format_json(results, device):
+def format_json(results, device, shifts=1):
     valid = [r for r in results if "error" not in r]
     errors = [r for r in results if "error" in r]
     vals = [r["vocal_minus_band_lu"] for r in valid if r["vocal_minus_band_lu"] is not None]
@@ -179,6 +190,7 @@ def format_json(results, device):
             "tracks_errored": len(errors),
             "model": MODEL_NAME,
             "device": device,
+            "shifts": shifts,
             "median_vocal_minus_band_lu": round(statistics.median(vals), 2) if vals else None,
             "tracks": results,
         },
@@ -195,6 +207,9 @@ def main():
                         help="Audio file, or a directory searched recursively (default: docs/audio)")
     parser.add_argument("--device", default="auto",
                         help="Torch device: auto (CUDA when available, else CPU), cpu, cuda, cuda:1 ...")
+    parser.add_argument("--shifts", type=int, default=None,
+                        help=f"Demucs time-shifts to average (default: {GPU_SHIFTS} on a GPU, 1 on CPU)")
+    parser.add_argument("--seed", type=int, default=0, help="Seed for the Demucs shifts (same seed, same numbers)")
     parser.add_argument("--format", choices=["json", "text"], default="json", dest="output_format",
                         help="Output format (default: json)")
     parser.add_argument("-o", "--output", default=None, help="Output file path (default: stdout)")
@@ -227,18 +242,19 @@ def main():
                           "error": f"Could not load Demucs {MODEL_NAME} on {device}: {exc}"}), file=sys.stderr)
         sys.exit(1)
     meter = pyln.Meter(model.samplerate)
+    shifts = args.shifts if args.shifts is not None else (GPU_SHIFTS if str(device).startswith("cuda") else 1)
 
     results = []
     for i, path in enumerate(files, 1):
         label = rel_label(path, args.input)
         print(f"  [{i}/{len(files)}] {label}", file=sys.stderr, flush=True)
         try:
-            r = {"file": label, **analyze_file(path, model, meter, device)}
+            r = {"file": label, **analyze_file(path, model, meter, device, shifts, args.seed)}
         except Exception as exc:
             r = {"file": label, "error": f"{type(exc).__name__}: {exc}"}
         results.append(r)
 
-    json_data = format_json(results, device)
+    json_data = format_json(results, device, shifts)
     output = format_text(results) if args.output_format == "text" else json.dumps(json_data, indent=2)
     if args.output:
         Path(args.output).write_text(output + "\n")

@@ -8,6 +8,10 @@ Generate playlist sequencing data: Camelot codes, entry/exit keys,
 energy levels, BS.1770 loudness, and transition compatibility (key, BPM, and
 the loudness step across each seam) for an audio catalog.
 
+Tempo (overall, entry, exit) comes from Beat This! (beat-grid.py) when the
+PyTorch audio tools are turned on in the module config (`pytorch_audio_tools`),
+otherwise from librosa; `--tempo-source` overrides the choice for one run.
+
 When given a --playlist YAML config, uses the specified track order and
 album name. Without a config, auto-discovers all .mp3 files in the
 audio directory (sorted alphabetically).
@@ -29,6 +33,8 @@ from audio_deps import require_audio_deps
 from companion_writer import update_companion, resolve_companion_path
 from json_archiver import resolve_archive_arg, write_archive
 from loudness import load_native, seam_quality, seam_step, summarize as loudness_summary
+from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, resolve_tempo_source,
+                          source_summary, usable)
 
 SCRIPT_NAME = "playlist-sequencing-data"
 
@@ -108,8 +114,8 @@ def format_time(seconds):
     return f"{int(seconds//60)}:{int(seconds%60):02d}"
 
 
-def analyze_track(filepath):
-    """Extract sequencing data for a single track."""
+def analyze_track(filepath, beat_reading=None):
+    """Extract sequencing data for a single track. `beat_reading` is its Beat This! reading, when that's the tempo source."""
     import librosa
     import numpy as np
 
@@ -128,15 +134,23 @@ def analyze_track(filepath):
     exit_start = max(0, chroma.shape[1] - entry_frames)
     exit_key, exit_conf = detect_key(chroma[:, exit_start:])
 
-    # BPM — overall, plus entry/exit (first and last 30 s) for the seams
+    # BPM — overall, plus entry/exit (first and last 30 s) for the seams. Beat This!
+    # when it's the tempo source and read the track; otherwise librosa.
     def _bpm(segment):
         t, _ = librosa.beat.beat_track(y=segment, sr=sr)
         return float(np.atleast_1d(t)[0])
 
-    bpm = _bpm(y)
-    edge = int(30 * sr)
-    entry_bpm = _bpm(y[:edge]) if len(y) > 2 * edge else bpm
-    exit_bpm = _bpm(y[-edge:]) if len(y) > 2 * edge else bpm
+    if usable(beat_reading):
+        bpm = beat_reading['bpm']
+        entry_bpm = beat_reading.get('entry_bpm') or bpm
+        exit_bpm = beat_reading.get('exit_bpm') or bpm
+        tempo_source = 'beat-this'
+    else:
+        bpm = _bpm(y)
+        edge = int(30 * sr)
+        entry_bpm = _bpm(y[:edge]) if len(y) > 2 * edge else bpm
+        exit_bpm = _bpm(y[-edge:]) if len(y) > 2 * edge else bpm
+        tempo_source = 'librosa'
 
     # Energy level (normalize to 1-10 scale)
     rms = librosa.feature.rms(y=y)[0]
@@ -163,6 +177,7 @@ def analyze_track(filepath):
         'bpm': round(bpm, 1),
         'entry_bpm': round(entry_bpm, 1),
         'exit_bpm': round(exit_bpm, 1),
+        'tempo_source': tempo_source,
         'overall_key': overall_key,
         'overall_conf': round(overall_conf, 3),
         'overall_camelot': get_camelot(overall_key),
@@ -297,6 +312,7 @@ def format_json(album_name, results):
             'bpm': r['bpm'],
             'entry_bpm': r.get('entry_bpm'),
             'exit_bpm': r.get('exit_bpm'),
+            'tempo_source': r.get('tempo_source'),
             'key': {
                 'overall': r['overall_key'],
                 'overall_confidence': r['overall_conf'],
@@ -325,6 +341,7 @@ def format_json(album_name, results):
         'status': 'ok',
         'album': album_name,
         'track_count': len(results),
+        'tempo_source': source_summary(results),
         'tracks': tracks,
     }, indent=2)
 
@@ -333,7 +350,8 @@ def format_text(album_name, results):
     """Format results as a Markdown report."""
     lines = []
     lines.append(f"# {album_name} -- Playlist Sequencing Data")
-    lines.append("# Generated via librosa analysis + Camelot wheel mapping + BS.1770 loudness\n")
+    tempo_label = SOURCE_LABELS[source_summary(results)]
+    lines.append(f"# Generated via librosa analysis + Camelot wheel mapping + BS.1770 loudness | Tempo: {tempo_label}\n")
 
     lines.append("## Track Data (Playlist Order)\n")
     lines.append("| # | Track | BPM | BPM in→out | Key | Camelot | Entry Key | Exit Key | Energy | Intro% | Outro% | LUFS | LUFS in→out | LRA |")
@@ -369,7 +387,8 @@ def format_text(album_name, results):
             f"| {t['bpm_change']:.0f} ({t['bpm_quality']}) | {t['key_quality']} | {loud} |"
         )
     lines.append(
-        "\n_BPM change = this track's exit tempo (last 30 s) against the next track's entry tempo (first 30 s). "
+        f"\n_Tempo: {tempo_label}. BPM change = this track's exit tempo (last 30 s) against the next track's "
+        "entry tempo (first 30 s). "
         "Loudness step = next track's entry loudness (first 15 s) minus this track's exit loudness (last 15 s), "
         "silence trimmed, in LU: "
         "smooth < 3, noticeable < 6, big jump >= 6. Descriptive, not a verdict: "
@@ -428,6 +447,7 @@ def main():
         "--no-companion", dest="companion", action="store_const", const=None,
         help="Skip refreshing the Markdown companion file.",
     )
+    add_tempo_source_arg(parser)
     args = parser.parse_args()
 
     require_audio_deps(extra=("pyloudnorm",))
@@ -469,6 +489,16 @@ def main():
 
     print(f"Analyzing playlist sequencing data for: {album_name} (audio: {audio_dir})\n", file=sys.stderr)
 
+    readings = {}
+    if resolve_tempo_source(args.tempo_source) == "beat-this":
+        present = list(dict.fromkeys(
+            os.path.join(audio_dir, f) for _, f in track_list if os.path.exists(os.path.join(audio_dir, f))
+        ))
+        print(f"  Tempo: Beat This! ({len(present)} tracks)", file=sys.stderr)
+        got = beat_this_readings(present)
+        if got:
+            readings = dict(zip(present, got))
+
     results = []
     for track_name, filename in track_list:
         filepath = os.path.join(audio_dir, filename)
@@ -477,7 +507,7 @@ def main():
             results.append({'name': track_name, 'error': 'file not found'})
             continue
         print(f"  {track_name}...", end="", flush=True, file=sys.stderr)
-        data = analyze_track(filepath)
+        data = analyze_track(filepath, readings.get(filepath))
         data['name'] = track_name
         results.append(data)
         print(

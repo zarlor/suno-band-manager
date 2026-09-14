@@ -4,6 +4,44 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [2.4.0] - 2026-09-14
+
+A **tempo-source and section-map** release. If you've opted in to the PyTorch audio tools, every script that measured tempo with librosa now uses Beat This! instead, and a new `section-map.py` lines a render up with its lyrics section by section. If you haven't, nothing changes.
+
+### Upgrade at a glance (existing installs)
+
+- **New `/suno-setup` question: PyTorch audio tools (off by default).** Re-run `/suno-setup` and answer On to have the audio scripts take tempo and beats from Beat This!. Off keeps librosa, exactly as before. The config key is `pytorch_audio_tools`. This release is submitted to the BMad marketplace; marketplace installs move to it (from 2.1.0, taking in the 2.3.x patches too) once the registry update is approved.
+- **With it on, the first audio run provisions PyTorch** (1–3 GB), the same as running `beat-grid.py` does. If Beat This! can't run, the scripts fall back to librosa and print a note.
+- **`section-map.py` downloads a Whisper model on first run** (medium, about 1.5 GB) on top of PyTorch. Whisper runs on CPU: its GPU build needs CUDA 12 libraries that PyTorch's CUDA 13 build doesn't ship. Expect about a minute per song.
+- **If you consume the JSON:** there are new `tempo_source` fields (`beat-this`, `librosa`, or `mixed`). `analyze-audio.py` also adds `bpm` (the preferred reading), `bpm_beat_this`, `tempo_relation` and `bpm_range`, and keeps `bpm_librosa` and `bpm_range_librosa`.
+
+### Changes
+
+- **Beat This! is the preferred tempo source when opted in.** When the switch is on, five scripts get their beats from `beat-grid.py`:
+  - `playlist-sequencing-data.py` takes overall, entry and exit BPM from it.
+  - `tempo-detail.py` and `batch-full-analysis.py` measure stability from its beats. Beat This! reports every beat it detects, including the odd stray one, so on this path they judge stability by 15-second window medians instead of beat-to-beat spread. `batch-full-analysis.py` also lists **feel sections**: stretches that run half-time, double-time, on a triplet grid, or otherwise 10%+ off the track's tempo (new `feel_sections` field). `tempo-detail.py` reports window medians and flags a tempo event when one window's median moves 10% or more from the last. With librosa, both scripts measure exactly as before.
+  - `chord-progression.py` reads chords per real bar (Beat This! downbeats) instead of in four-beat groups.
+  - `analyze-audio.py` reports Beat This!'s BPM and keeps librosa's alongside.
+
+  Every report says which source it used, and `--tempo-source auto|beat-this|librosa` overrides the switch for one run. The shared logic lives in `_shared/tempo_source.py`.
+- **`section-map.py` (new, optional — Demucs + faster-whisper).** Lines a render up with the lyrics it was generated from:
+  - Demucs isolates the vocal stem, and faster-whisper transcribes it with word timestamps. The lyrics aren't given to Whisper as a hint, so it reports what was sung.
+  - The words are aligned to the lyric lines, so every tagged section gets a real start and end, even where Suno runs sections together. Sections without lyrics are placed between their sung neighbours, and untagged lead-ins and tails get their own rows.
+  - Per section: mix loudness and the step from the section before, vocal-minus-band, tempo and feel, and key. It also lists lyric lines not heard and vocals outside the lyric sections, including wordless fills like an "ooh-whoa" or scat.
+  - Delivery tags inside a lyric line, like the end-of-line `[Silence]` breathing device, aren't counted as sung words. A standalone `[Silence]` doesn't split a section.
+  - Consistency comes from averaging, not from turning features off:
+    - Demucs averages several seeded time-shifts (5 on a GPU, 1 on CPU), which gives cleaner stems and the same stems every run.
+    - Whisper keeps its fallback retries, seeded, over up to 3 passes, and stops early when two passes agree.
+    - Section times are the median across passes, and a line counts as not heard only when most passes miss it. Lines only some passes miss are listed as uncertain, with the count.
+    - The same render, lyrics and seed always give the same map.
+- **`vocal-placement.py` 1.1.0.** It uses the same seeded, averaged Demucs shifts (`--shifts`, `--seed`), so its numbers repeat run to run.
+
+  The Feedback Elicitor now runs it, when the switch is on, whenever a render and its package lyrics are both at hand, so render analysis compares against the tags and cues instead of assuming the render followed them. Archives to `docs/audio-analysis/songs/[{band-slug}/]{song}-section-map.json`.
+- **`beat-grid.py` 1.1.0.** It takes several files or folders in one run, and it reports entry and exit BPM (first and last 30 s).
+- **Why only tempo.** Of the tools evaluated for 2.3.0, Beat This! is the only one that measures something librosa also measures, and it measured it better: it matched felt BPM on 9 of 15 reference tracks against librosa's 7, and fixed most halftime double-reads. pyloudnorm is already standard for everyone, and Demucs measures something librosa never did. Slow doom and ballad feels still read double on both trackers, so felt BPM stays the ear's call.
+
+---
+
 ## [2.3.4] - 2026-09-14
 
 A **playlist-sequencing** patch. The sequencer now measures how each track actually begins and ends — its entry and exit loudness and tempo — so transitions compare the real seam instead of whole-track or one-third averages.

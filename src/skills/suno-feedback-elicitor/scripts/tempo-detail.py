@@ -6,6 +6,10 @@
 """Detailed tempo analysis -- shows BPM over time to detect tempo changes
 and off-beats.
 
+Beats come from Beat This! (beat-grid.py) when the PyTorch audio tools are
+turned on in the module config (`pytorch_audio_tools`), otherwise from librosa;
+`--tempo-source` overrides the choice for one run.
+
 Usage:
     uv run tempo-detail.py <audio-file> [options]
 
@@ -29,12 +33,92 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
 from audio_deps import require_audio_deps
+from tempo_source import SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, resolve_tempo_source, usable
 
 SCRIPT_NAME = "tempo-detail"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 
-def analyze_tempo_text(filepath):
+def get_beats(y, sr, filepath, tempo_source="librosa"):
+    """(overall BPM, beat times in seconds, source used).
+
+    Beat This! beats when it's the tempo source and read the track; otherwise librosa's.
+    """
+    import numpy as np
+
+    if tempo_source == "beat-this":
+        readings = beat_this_readings([filepath], include_beats=True)
+        reading = readings[0] if readings else None
+        if usable(reading) and reading.get("beats_s"):
+            return float(reading["bpm"]), np.array(reading["beats_s"]), "beat-this"
+    tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+    return float(np.atleast_1d(tempo)[0]), librosa.frames_to_time(beats, sr=sr), "librosa"
+
+
+STABILITY_TEXT = {"steady": "steady", "slight_variation": "slight variation", "tempo_change": "TEMPO CHANGE"}
+
+
+def window_stats(beat_times, local_bpms, duration, robust, window_size=15):
+    """Per-window tempo rows.
+
+    robust (Beat This!): the centre is the median and stability is the share of
+    beats within 10% of it, so one stray beat doesn't flag a tempo change.
+    Otherwise (librosa): the mean, with stability from the standard deviation.
+    """
+    import numpy as np
+
+    rows = []
+    for i in range(int(np.ceil(duration / window_size))):
+        start = i * window_size
+        end = min((i + 1) * window_size, duration)
+        mask = (beat_times[:-1] >= start) & (beat_times[:-1] < end)
+        w = local_bpms[mask]
+        if len(w) == 0:
+            continue
+        std = float(np.std(w))
+        if robust:
+            center = float(np.median(w))
+            share = float(np.mean(np.abs(w / center - 1) <= 0.10))
+            stability = "steady" if share >= 0.9 else "slight_variation" if share >= 0.75 else "tempo_change"
+        else:
+            center = float(np.mean(w))
+            stability = "steady" if std < 5 else "slight_variation" if std < 15 else "tempo_change"
+        rows.append({
+            "time_start": start,
+            "time_end": round(end, 2),
+            ("median_bpm" if robust else "avg_bpm"): round(center, 1),
+            "min_bpm": round(float(np.min(w)), 1),
+            "max_bpm": round(float(np.max(w)), 1),
+            "std_bpm": round(std, 2),
+            "stability": stability,
+        })
+    return rows
+
+
+def find_tempo_events(beat_times, local_bpms, windows, robust):
+    """Tempo events. robust (Beat This!): a window median moving 10%+ from the last window's.
+    Otherwise (librosa): a beat-to-beat jump of more than 20 BPM."""
+    if robust:
+        return [
+            {"time": b["time_start"], "from_bpm": a["median_bpm"], "to_bpm": b["median_bpm"],
+             "delta": round(abs(b["median_bpm"] - a["median_bpm"]), 1)}
+            for a, b in zip(windows, windows[1:])
+            if abs(b["median_bpm"] / a["median_bpm"] - 1) >= 0.10
+        ]
+    events = []
+    for i in range(len(local_bpms) - 1):
+        diff = abs(local_bpms[i + 1] - local_bpms[i])
+        if diff > 20:
+            events.append({
+                "time": round(float(beat_times[i + 1]), 2),
+                "from_bpm": round(float(local_bpms[i]), 1),
+                "to_bpm": round(float(local_bpms[i + 1]), 1),
+                "delta": round(float(diff), 1),
+            })
+    return events
+
+
+def analyze_tempo_text(filepath, tempo_source="librosa"):
     """Run tempo analysis with text output (original format)."""
     import numpy as np
 
@@ -43,13 +127,9 @@ def analyze_tempo_text(filepath):
     duration = librosa.get_duration(y=y, sr=sr)
     print(f"Duration: {int(duration//60)}:{int(duration%60):02d}")
 
-    # Overall tempo
-    tempo_overall, beats = librosa.beat.beat_track(y=y, sr=sr)
-    tempo_val = float(tempo_overall[0]) if hasattr(tempo_overall, '__len__') else float(tempo_overall)
-    print(f"\nOverall BPM: {tempo_val:.1f}")
-
-    # Beat times
-    beat_times = librosa.frames_to_time(beats, sr=sr)
+    # Overall tempo and beat times
+    tempo_val, beat_times, source_used = get_beats(y, sr, filepath, tempo_source)
+    print(f"\nOverall BPM: {tempo_val:.1f} ({SOURCE_LABELS[source_used]})")
 
     if len(beat_times) < 4:
         print("Too few beats detected for detailed analysis.")
@@ -59,42 +139,29 @@ def analyze_tempo_text(filepath):
     ibis = np.diff(beat_times)
     local_bpms = 60.0 / ibis
 
-    # Show tempo in ~15-second windows
-    print(f"\n{'Time Window':<20} {'Avg BPM':>8} {'Min BPM':>8} {'Max BPM':>8} {'Stability':>10}")
+    # Tempo in ~15-second windows
+    robust = source_used == "beat-this"
+    rows = window_stats(beat_times, local_bpms, duration, robust)
+    center_label = "Med BPM" if robust else "Avg BPM"
+    print(f"\n{'Time Window':<20} {center_label:>8} {'Min BPM':>8} {'Max BPM':>8} {'Stability':>10}")
     print("-" * 60)
+    for row in rows:
+        start, end = row["time_start"], row["time_end"]
+        time_label = f"{int(start//60)}:{int(start%60):02d}-{int(end//60)}:{int(end%60):02d}"
+        center = row.get("median_bpm", row.get("avg_bpm"))
+        print(f"{time_label:<20} {center:>8.1f} {row['min_bpm']:>8.1f} {row['max_bpm']:>8.1f} "
+              f"{STABILITY_TEXT[row['stability']]:>10}")
 
-    window_size = 15  # seconds
-    num_windows = int(np.ceil(duration / window_size))
-
-    for i in range(num_windows):
-        start = i * window_size
-        end = min((i + 1) * window_size, duration)
-
-        mask = (beat_times[:-1] >= start) & (beat_times[:-1] < end)
-        window_bpms = local_bpms[mask]
-
-        if len(window_bpms) > 0:
-            avg = np.mean(window_bpms)
-            mn = np.min(window_bpms)
-            mx = np.max(window_bpms)
-            std = np.std(window_bpms)
-            stability = "steady" if std < 5 else "slight variation" if std < 15 else "TEMPO CHANGE"
-
-            time_label = f"{int(start//60)}:{int(start%60):02d}-{int(end//60)}:{int(end%60):02d}"
-            print(f"{time_label:<20} {avg:>8.1f} {mn:>8.1f} {mx:>8.1f} {stability:>10}")
-
-    # Detect significant tempo shifts between consecutive beats
+    # Tempo events
     print("\n--- Potential Tempo Events ---")
-    found = False
-    for i in range(len(local_bpms) - 1):
-        diff = abs(local_bpms[i+1] - local_bpms[i])
-        if diff > 20:
-            t = beat_times[i+1]
-            print(f"  {int(t//60)}:{int(t%60):02d}.{int((t%1)*10)} \u2014 BPM jumps from {local_bpms[i]:.0f} to {local_bpms[i+1]:.0f} (\u0394{diff:.0f})")
-            found = True
-
-    if not found:
-        print("  No significant tempo shifts detected (all beat-to-beat changes < 20 BPM)")
+    events = find_tempo_events(beat_times, local_bpms, rows, robust)
+    for e in events:
+        t = e["time"]
+        print(f"  {int(t//60)}:{int(t%60):02d}.{int((t%1)*10)} \u2014 BPM jumps from {e['from_bpm']:.0f} "
+              f"to {e['to_bpm']:.0f} (\u0394{e['delta']:.0f})")
+    if not events:
+        print("  No significant tempo shifts detected ("
+              + ("15 s window medians within 10%" if robust else "all beat-to-beat changes < 20 BPM") + ")")
 
     # Odd time / irregular beat detection
     print("\n--- Beat Regularity ---")
@@ -116,17 +183,14 @@ def analyze_tempo_text(filepath):
         print("  All beats within normal variance \u2014 consistent 4/4 feel")
 
 
-def analyze_tempo_json(filepath):
+def analyze_tempo_json(filepath, tempo_source="librosa"):
     """Run tempo analysis and return structured data for JSON output."""
     import numpy as np
 
     y, sr = librosa.load(filepath, sr=22050)
     duration = librosa.get_duration(y=y, sr=sr)
 
-    tempo_overall, beats = librosa.beat.beat_track(y=y, sr=sr)
-    tempo_val = float(tempo_overall[0]) if hasattr(tempo_overall, '__len__') else float(tempo_overall)
-
-    beat_times = librosa.frames_to_time(beats, sr=sr)
+    tempo_val, beat_times, source_used = get_beats(y, sr, filepath, tempo_source)
 
     if len(beat_times) < 4:
         return {
@@ -138,6 +202,7 @@ def analyze_tempo_json(filepath):
                 "file": str(Path(filepath).name),
                 "duration_seconds": round(duration, 2),
                 "bpm_overall": round(tempo_val, 1),
+                "tempo_source": source_used,
                 "beats_detected": len(beat_times),
                 "note": "Too few beats for detailed analysis",
             },
@@ -148,47 +213,10 @@ def analyze_tempo_json(filepath):
     ibis = np.diff(beat_times)
     local_bpms = 60.0 / ibis
 
-    # Tempo windows
-    window_size = 15
-    num_windows = int(np.ceil(duration / window_size))
-    windows = []
-
-    for i in range(num_windows):
-        start = i * window_size
-        end = min((i + 1) * window_size, duration)
-
-        mask = (beat_times[:-1] >= start) & (beat_times[:-1] < end)
-        window_bpms = local_bpms[mask]
-
-        if len(window_bpms) > 0:
-            avg = float(np.mean(window_bpms))
-            mn = float(np.min(window_bpms))
-            mx = float(np.max(window_bpms))
-            std = float(np.std(window_bpms))
-            stability = "steady" if std < 5 else "slight_variation" if std < 15 else "tempo_change"
-
-            windows.append({
-                "time_start": start,
-                "time_end": round(end, 2),
-                "avg_bpm": round(avg, 1),
-                "min_bpm": round(mn, 1),
-                "max_bpm": round(mx, 1),
-                "std_bpm": round(std, 2),
-                "stability": stability,
-            })
-
-    # Tempo events (>20 BPM jump)
-    tempo_events = []
-    for i in range(len(local_bpms) - 1):
-        diff = abs(local_bpms[i+1] - local_bpms[i])
-        if diff > 20:
-            t = float(beat_times[i+1])
-            tempo_events.append({
-                "time": round(t, 2),
-                "from_bpm": round(float(local_bpms[i]), 1),
-                "to_bpm": round(float(local_bpms[i+1]), 1),
-                "delta": round(float(diff), 1),
-            })
+    # Tempo windows and events
+    robust = source_used == "beat-this"
+    windows = window_stats(beat_times, local_bpms, duration, robust)
+    tempo_events = find_tempo_events(beat_times, local_bpms, windows, robust)
 
     # Beat regularity
     median_ibi = float(np.median(ibis))
@@ -214,6 +242,7 @@ def analyze_tempo_json(filepath):
             "file": str(Path(filepath).name),
             "duration_seconds": round(duration, 2),
             "bpm_overall": round(tempo_val, 1),
+            "tempo_source": source_used,
             "beats_detected": len(beat_times),
             "median_inter_beat_interval": round(median_ibi, 4),
             "tempo_windows": windows,
@@ -254,16 +283,18 @@ def main():
         default=None,
         help="Output file path (default: stdout)",
     )
+    add_tempo_source_arg(parser)
     args = parser.parse_args()
 
     if not Path(args.audio_file).is_file():
         print(f"Audio file not found: {args.audio_file}", file=sys.stderr)
         sys.exit(1)
 
+    source = resolve_tempo_source(args.tempo_source)
     if args.output_format == "text":
-        analyze_tempo_text(args.audio_file)
+        analyze_tempo_text(args.audio_file, source)
     else:
-        result = analyze_tempo_json(args.audio_file)
+        result = analyze_tempo_json(args.audio_file, source)
         output = json.dumps(result, indent=2)
 
         if args.output:

@@ -5,9 +5,13 @@
 # ///
 """Batch audio analysis for a song catalog.
 
-Extracts BPM (librosa), estimated key, duration, and BS.1770 loudness
-(integrated LUFS and loudness range) for all MP3s in a directory. For a second
-opinion on tempo and bar grouping, run beat-grid.py (Beat This!, optional).
+Extracts BPM, estimated key, duration, and BS.1770 loudness (integrated LUFS
+and loudness range) for all MP3s in a directory.
+
+Tempo comes from Beat This! (beat-grid.py) when the PyTorch audio tools are
+turned on in the module config (`pytorch_audio_tools`), otherwise from librosa.
+librosa's reading is always kept as `bpm_librosa`; `--tempo-source` overrides
+the choice for one run.
 
 Usage:
     uv run analyze-audio.py [audio-directory] [options]
@@ -39,9 +43,11 @@ from audio_deps import require_audio_deps
 from companion_writer import update_companion, resolve_companion_path
 from json_archiver import resolve_archive_arg, write_archive
 from loudness import load_native, summarize as loudness_summary
+from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, resolve_tempo_source,
+                          source_summary, tempo_relation, usable)
 
 SCRIPT_NAME = "analyze-audio"
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 
 def get_key(y, sr):
@@ -75,8 +81,8 @@ def get_key(y, sr):
     return best_key, best_corr
 
 
-def analyze_file(filepath):
-    """Analyze a single audio file."""
+def analyze_file(filepath, beat_reading=None):
+    """Analyze a single audio file. `beat_reading` is its Beat This! reading, when that's the tempo source."""
     import numpy as np
 
     filename = os.path.basename(filepath)
@@ -88,6 +94,14 @@ def analyze_file(filepath):
         # BPM via librosa
         tempo_librosa, _ = librosa.beat.beat_track(y=y, sr=sr)
         bpm_librosa = round(float(tempo_librosa[0]) if hasattr(tempo_librosa, '__len__') else float(tempo_librosa), 1)
+        tempo = {'bpm': bpm_librosa, 'tempo_source': 'librosa'}
+        if usable(beat_reading):
+            tempo = {
+                'bpm': beat_reading['bpm'],
+                'bpm_beat_this': beat_reading['bpm'],
+                'tempo_relation': tempo_relation(beat_reading['bpm'], bpm_librosa),
+                'tempo_source': 'beat-this',
+            }
 
         # Loudness (BS.1770) at the file's native rate and channels
         samples, native_sr = load_native(filepath)
@@ -102,6 +116,7 @@ def analyze_file(filepath):
         return {
             'file': filename,
             'duration': f"{mins}:{secs:02d}",
+            **tempo,
             'bpm_librosa': bpm_librosa,
             'loudness': loudness,
             'key': key,
@@ -118,6 +133,11 @@ def _fmt(value):
     return "-" if value is None else value
 
 
+def _bpm(result):
+    """The preferred BPM (Beat This! or librosa); older results carry only bpm_librosa."""
+    return result.get('bpm', result.get('bpm_librosa'))
+
+
 def _lufs_values(results):
     return [r['loudness']['integrated_lufs'] for r in results
             if (r.get('loudness') or {}).get('integrated_lufs') is not None]
@@ -127,7 +147,7 @@ def format_text_output(results, mp3_count):
     """Format results as human-readable text (original output format)."""
     lines = []
     lines.append(f"Analyzing {mp3_count} tracks...\n")
-    lines.append(f"{'Track':<50} {'Duration':>8} {'BPM(lib)':>9} {'LUFS':>7} {'LRA':>5} {'Key':<15} {'Conf':>5}")
+    lines.append(f"{'Track':<50} {'Duration':>8} {'BPM':>9} {'LUFS':>7} {'LRA':>5} {'Key':<15} {'Conf':>5}")
     lines.append("-" * 106)
 
     for result in results:
@@ -136,7 +156,7 @@ def format_text_output(results, mp3_count):
         else:
             loud = result.get('loudness') or {}
             lines.append(
-                f"{result['file']:<50} {result['duration']:>8} {result['bpm_librosa']:>9} "
+                f"{result['file']:<50} {result['duration']:>8} {_bpm(result):>9} "
                 f"{_fmt(loud.get('integrated_lufs')):>7} {_fmt(loud.get('lra_lu')):>5} "
                 f"{result['key']:<15} {result['key_confidence']:>5}"
             )
@@ -144,9 +164,14 @@ def format_text_output(results, mp3_count):
     # Summary stats
     valid = [r for r in results if 'error' not in r]
     if valid:
-        bpms = [r['bpm_librosa'] for r in valid]
+        bpms = [_bpm(r) for r in valid]
+        source = source_summary(valid)
         lines.append(f"\n{'='*100}")
-        lines.append(f"BPM range (librosa): {min(bpms):.0f} - {max(bpms):.0f}")
+        lines.append(f"BPM range ({SOURCE_LABELS[source]}): {min(bpms):.0f} - {max(bpms):.0f}")
+        differ = [r for r in valid if r.get('tempo_relation') not in (None, 'agree')]
+        if differ:
+            lines.append(f"librosa reads a different pulse on {len(differ)} track(s) "
+                         "(bpm_librosa / tempo_relation in the JSON); felt BPM is the ear's call")
         lufs = _lufs_values(valid)
         if lufs:
             lines.append(f"Loudness range (integrated): {min(lufs):.1f} to {max(lufs):.1f} LUFS")
@@ -169,7 +194,8 @@ def format_json_output(results, mp3_count):
                 "message": r["error"],
             })
 
-    bpms = [r['bpm_librosa'] for r in valid] if valid else []
+    bpms = [_bpm(r) for r in valid]
+    lib_bpms = [r['bpm_librosa'] for r in valid if r.get('bpm_librosa') is not None]
     lufs = _lufs_values(valid)
 
     return {
@@ -181,9 +207,14 @@ def format_json_output(results, mp3_count):
             "tracks_found": mp3_count,
             "tracks_analyzed": len(valid),
             "tracks_errored": len(errors),
-            "bpm_range_librosa": {
+            "tempo_source": source_summary(valid),
+            "bpm_range": {
                 "min": min(bpms) if bpms else None,
                 "max": max(bpms) if bpms else None,
+            },
+            "bpm_range_librosa": {
+                "min": min(lib_bpms) if lib_bpms else None,
+                "max": max(lib_bpms) if lib_bpms else None,
             },
             "integrated_lufs_range": {
                 "min": min(lufs) if lufs else None,
@@ -274,6 +305,7 @@ def main():
         "--no-companion", dest="companion", action="store_const", const=None,
         help="Skip refreshing the Markdown companion file.",
     )
+    add_tempo_source_arg(parser)
     args = parser.parse_args()
 
     audio_dir = args.audio_dir
@@ -288,9 +320,12 @@ def main():
         print(f"No .mp3 files found in {audio_dir}", file=sys.stderr)
         sys.exit(1)
 
+    source = resolve_tempo_source(args.tempo_source)
+    readings = beat_this_readings(mp3s) if source == "beat-this" else None
+
     results = []
-    for filepath in mp3s:
-        result = analyze_file(filepath)
+    for i, filepath in enumerate(mp3s):
+        result = analyze_file(filepath, readings[i] if readings else None)
         result['file'] = rel_label(filepath, audio_dir)
         results.append(result)
 
@@ -324,7 +359,8 @@ def main():
         title_block = (
             "# Audio Analysis Reference — Catalog Summary\n"
             f"_Generated by `{SCRIPT_NAME}` on {timestamp}_\n"
-            "_BPM detection: librosa beat_track (second opinion: beat-grid.py) | Key detection: Krumhansl-Kessler "
+            f"_Tempo: {SOURCE_LABELS[source_summary(results)]} (librosa's reading kept as bpm_librosa) "
+            "| Key detection: Krumhansl-Kessler "
             "chroma correlation | Loudness: ITU-R BS.1770 via pyloudnorm (LUFS integrated; LRA in LU)_\n\n"
         )
         body_lines = format_text_output(results, len(mp3s)).split("\n")

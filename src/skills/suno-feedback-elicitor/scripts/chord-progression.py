@@ -6,6 +6,11 @@
 """Chord/key progression analysis -- shows estimated chords over time
 using chroma features with beat-synchronized analysis for cleaner results.
 
+Measures come from Beat This! downbeats (real bar lines, via beat-grid.py) when
+the PyTorch audio tools are turned on in the module config
+(`pytorch_audio_tools`), otherwise from librosa beats grouped in fours;
+`--tempo-source` overrides the choice for one run.
+
 Usage:
     uv run chord-progression.py <audio-file> [options]
 
@@ -30,9 +35,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
 from audio_deps import require_audio_deps
+from tempo_source import SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, resolve_tempo_source, usable
 
 SCRIPT_NAME = "chord-progression"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 PITCH_CLASSES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
@@ -88,13 +94,36 @@ def match_chord(chroma_vector, chord_templates):
     return best_chord, best_score
 
 
+def measure_spans(y, sr, filepath, tempo_source="librosa"):
+    """(bpm, [(start_frame, end_frame, start_time)], source used, basis) for the measures chords are read over.
+
+    Beat This!, when it's the tempo source and read the track, gives real bar
+    lines from its downbeats; librosa's beats are grouped in fours.
+    """
+    import numpy as np
+
+    if tempo_source == "beat-this":
+        readings = beat_this_readings([filepath], include_beats=True)
+        reading = readings[0] if readings else None
+        if usable(reading) and len(reading.get("downbeats_s") or []) > 1:
+            bars = np.array(reading["downbeats_s"])
+            frames = librosa.time_to_frames(bars, sr=sr)
+            spans = [(int(a), int(b), float(t)) for a, b, t in zip(frames, frames[1:], bars)]
+            return float(reading["bpm"]), spans, "beat-this", "downbeats"
+    tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+    beat_times = librosa.frames_to_time(beats, sr=sr)
+    spans = [(int(beats[i]), int(beats[min(i + 4, len(beats) - 1)]), float(beat_times[i]))
+             for i in range(0, len(beats) - 4, 4)]
+    return float(np.atleast_1d(tempo)[0]), spans, "librosa", "4-beat groups"
+
+
 def format_time(seconds):
     m = int(seconds // 60)
     s = int(seconds % 60)
     return f"{m}:{s:02d}"
 
 
-def analyze_chords_text(filepath, chord_templates):
+def analyze_chords_text(filepath, chord_templates, tempo_source="librosa"):
     """Run chord analysis with text output (original format)."""
     import numpy as np
 
@@ -103,9 +132,9 @@ def analyze_chords_text(filepath, chord_templates):
     duration = librosa.get_duration(y=y, sr=sr)
     print(f"Duration: {format_time(duration)}\n")
 
-    # Beat-synchronous chroma for cleaner chord detection
-    tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
-    beat_times = librosa.frames_to_time(beats, sr=sr)
+    # Measure-synchronous chroma for cleaner chord detection
+    tempo, spans, source_used, basis = measure_spans(y, sr, filepath, tempo_source)
+    print(f"Measures: {basis} ({SOURCE_LABELS[source_used]})\n")
 
     # Use CQT chroma (better for music)
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
@@ -114,20 +143,16 @@ def analyze_chords_text(filepath, chord_templates):
     print(f"{'Time':<10} {'Chord':<8} {'Conf':>5}  {'Chroma Profile'}")
     print("-" * 70)
 
-    measure_size = 4  # beats per measure
     prev_chord = None
     chord_sequence = []
 
-    for i in range(0, len(beats) - measure_size, measure_size):
-        start_frame = beats[i]
-        end_frame = beats[min(i + measure_size, len(beats) - 1)]
+    for start_frame, end_frame, start_time in spans:
 
         if start_frame >= chroma.shape[1] or end_frame >= chroma.shape[1]:
             break
 
         measure_chroma = np.mean(chroma[:, start_frame:end_frame], axis=1)
         chord, conf = match_chord(measure_chroma, chord_templates)
-        start_time = beat_times[i]
 
         # Show top 3 pitch classes
         top_3_idx = np.argsort(measure_chroma)[-3:][::-1]
@@ -196,32 +221,27 @@ def analyze_chords_text(filepath, chord_templates):
         print(f"  {format_time(start_sec)}-{format_time(end_sec)}: {best_key} (conf: {best_corr:.3f})")
 
 
-def analyze_chords_json(filepath, chord_templates):
+def analyze_chords_json(filepath, chord_templates, tempo_source="librosa"):
     """Run chord analysis and return structured data for JSON output."""
     import numpy as np
 
     y, sr = librosa.load(filepath, sr=22050)
     duration = librosa.get_duration(y=y, sr=sr)
 
-    tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
-    beat_times = librosa.frames_to_time(beats, sr=sr)
+    tempo, spans, source_used, basis = measure_spans(y, sr, filepath, tempo_source)
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
 
-    measure_size = 4
     prev_chord = None
     chord_sequence = []
     measures = []
 
-    for i in range(0, len(beats) - measure_size, measure_size):
-        start_frame = beats[i]
-        end_frame = beats[min(i + measure_size, len(beats) - 1)]
+    for start_frame, end_frame, start_time in spans:
 
         if start_frame >= chroma.shape[1] or end_frame >= chroma.shape[1]:
             break
 
         measure_chroma = np.mean(chroma[:, start_frame:end_frame], axis=1)
         chord, conf = match_chord(measure_chroma, chord_templates)
-        start_time = float(beat_times[i])
 
         top_3_idx = np.argsort(measure_chroma)[-3:][::-1]
         top_3 = [PITCH_CLASSES[p] for p in top_3_idx]
@@ -292,6 +312,8 @@ def analyze_chords_json(filepath, chord_templates):
             "file": os.path.basename(filepath),
             "duration_seconds": round(duration, 2),
             "bpm": round(tempo_val, 1),
+            "tempo_source": source_used,
+            "measure_basis": basis,
             "total_measures_analyzed": len(measures),
             "chord_changes": len(transitions),
             "measures": measures,
@@ -333,16 +355,18 @@ def main():
         default=None,
         help="Output file path (default: stdout)",
     )
+    add_tempo_source_arg(parser)
     args = parser.parse_args()
 
     if not os.path.isfile(args.audio_file):
         print(f"Audio file not found: {args.audio_file}", file=sys.stderr)
         sys.exit(1)
 
+    source = resolve_tempo_source(args.tempo_source)
     if args.output_format == "text":
-        analyze_chords_text(args.audio_file, chord_templates)
+        analyze_chords_text(args.audio_file, chord_templates, source)
     else:
-        result = analyze_chords_json(args.audio_file, chord_templates)
+        result = analyze_chords_json(args.audio_file, chord_templates, source)
         output = json.dumps(result, indent=2)
 
         if args.output:

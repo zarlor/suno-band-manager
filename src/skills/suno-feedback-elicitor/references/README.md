@@ -44,7 +44,8 @@ The `--feedback` / `--style-prompt` / `--model` / `--sliders` flags are the *ski
 | `verify-audio-files.py` | Receiving machine reads the manifest and detects missing / wrong-gen / extra audio (filename-normalization + size-tolerance aware) |
 | `analyze-audio.py` / `audio-deep-analysis.py` | librosa audio analysis stack — write JSON archives to `docs/audio-analysis/songs/` and refresh companion `.md` docs by default. See `SKILL.md` for full list. |
 | `chord-progression.py` / `tempo-detail.py` | Single-track librosa specialty analyses (chord changes, beat-level tempo). |
-| `beat-grid.py` / `vocal-placement.py` | Optional PyTorch tools: Beat This! beat/downbeat tracking (a tempo second opinion) and Demucs vocal placement (vocal-vs-band loudness). Opt-in; see `SKILL.md`. |
+| `section-map.py` | Optional PyTorch tool: Demucs vocal stem + Whisper word timestamps aligned to the song's lyrics — when each tagged section lands and how it sounds (loudness step, vocal-minus-band, tempo/feel, key), plus unheard lines. See `SKILL.md`. |
+| `beat-grid.py` / `vocal-placement.py` | Optional PyTorch tools: Beat This! beat/downbeat tracking (the preferred tempo source once the PyTorch audio tools are turned on; a second opinion otherwise) and Demucs vocal placement (vocal-vs-band loudness). Opt-in; see `SKILL.md`. |
 
 > **Album/playlist sequencing** (`playlist-sequencing-data.py`, `batch-full-analysis.py`, and the album-craft methodology) moved to the **`suno-playlist-sequencer`** skill. Route "sequence my playlist" / "order my album" there.
 

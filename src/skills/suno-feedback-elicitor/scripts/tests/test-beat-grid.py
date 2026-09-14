@@ -89,3 +89,26 @@ def test_format_text_handles_errors_and_missing_values():
         {"file": "c.mp3", "error": "RuntimeError: bad file"},
     ])
     assert "double-time read" in text and "ERROR: RuntimeError" in text
+
+
+def test_edge_bpms_reads_first_and_last_windows():
+    # 60 s at 120 BPM, then 60 s at 90 BPM.
+    beats = [i * 0.5 for i in range(120)] + [60 + i * (60 / 90) for i in range(90)]
+    assert bg.edge_bpms(beats, 120.0) == (120.0, 90.0)
+
+
+def test_edge_bpms_short_track_uses_overall():
+    beats, _ = grid(100, 4, 12)
+    assert bg.edge_bpms(beats, 30.0) == (100.0, 100.0)
+
+
+def test_edge_bpms_sparse_edges_fall_back_to_overall():
+    beats = [30 + i * 0.5 for i in range(100)]  # nothing in the first or last 30 s of 120
+    assert bg.edge_bpms(beats, 120.0) == (120.0, 120.0)
+
+
+def test_several_inputs_with_one_missing_exits_1(tmp_path):
+    (tmp_path / "a.mp3").write_bytes(b"")
+    proc = subprocess.run([sys.executable, str(SCRIPT), str(tmp_path / "a.mp3"), "/nonexistent-audio-xyz",
+                           "--no-archive"], capture_output=True, text=True, timeout=60)
+    assert proc.returncode == 1 and "nonexistent" in proc.stderr

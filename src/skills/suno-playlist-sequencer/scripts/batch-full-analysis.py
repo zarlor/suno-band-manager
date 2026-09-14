@@ -9,6 +9,10 @@ and spectral balance for every track in a catalog directory.
 
 Outputs a summary report in JSON or Markdown text format.
 
+Tempo and beat stability come from Beat This! (beat-grid.py) when the PyTorch
+audio tools are turned on in the module config (`pytorch_audio_tools`),
+otherwise from librosa; `--tempo-source` overrides the choice for one run.
+
 Exit codes:
   0 = analysis completed successfully
   1 = invalid arguments or no audio files found
@@ -25,6 +29,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"
 from audio_deps import require_audio_deps
 from companion_writer import update_companion, resolve_companion_path
 from json_archiver import resolve_archive_arg, write_archive
+from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, resolve_tempo_source,
+                          feel_sections, source_summary, usable, window_tempos, windowed_stability)
 
 SCRIPT_NAME = "batch-full-analysis"
 
@@ -35,8 +41,11 @@ def format_time(seconds):
     return f"{m}:{s:02d}"
 
 
-def analyze_track(filepath):
-    """Full analysis of a single track. Returns a dict of results."""
+def analyze_track(filepath, beat_reading=None):
+    """Full analysis of a single track. Returns a dict of results.
+
+    `beat_reading` is the track's Beat This! reading (with beat times), when that's the tempo source.
+    """
     import librosa
     import numpy as np
 
@@ -49,12 +58,24 @@ def analyze_track(filepath):
         results['duration'] = duration
 
         # === BPM & TEMPO STABILITY ===
-        tempo_overall, beats = librosa.beat.beat_track(y=y, sr=sr)
-        bpm = float(tempo_overall[0]) if hasattr(tempo_overall, '__len__') else float(tempo_overall)
+        # Beat This! beats when it's the tempo source and read the track; otherwise librosa's.
+        if usable(beat_reading) and beat_reading.get('beats_s'):
+            bpm = float(beat_reading['bpm'])
+            beat_times = np.array(beat_reading['beats_s'])
+            results['tempo_source'] = 'beat-this'
+        else:
+            tempo_overall, beats = librosa.beat.beat_track(y=y, sr=sr)
+            bpm = float(np.atleast_1d(tempo_overall)[0])
+            beat_times = librosa.frames_to_time(beats, sr=sr)
+            results['tempo_source'] = 'librosa'
         results['bpm'] = round(bpm, 1)
-
-        beat_times = librosa.frames_to_time(beats, sr=sr)
-        if len(beat_times) > 3:
+        if results['tempo_source'] == 'beat-this':
+            # Beat This!'s raw beats include the odd stray detection, so judge stability by
+            # 15 s window medians rather than beat-to-beat spread, and name the feel changes.
+            windows = window_tempos(beat_times)
+            results['bpm_stability'], results['bpm_range'] = windowed_stability(windows)
+            results['feel_sections'] = feel_sections(windows, bpm)
+        elif len(beat_times) > 3:
             ibis = np.diff(beat_times)
             local_bpms = 60.0 / ibis
             bpm_std = np.std(local_bpms)
@@ -169,6 +190,8 @@ def format_json(all_results):
             'bpm': r['bpm'],
             'bpm_stability': r['bpm_stability'],
             'bpm_range': list(r['bpm_range']),
+            'tempo_source': r.get('tempo_source', 'librosa'),
+            **({'feel_sections': r['feel_sections']} if 'feel_sections' in r else {}),
             'key': r['key'],
             'key_confidence': r['key_conf'],
             'dynamic_character': r['dynamic_character'],
@@ -191,6 +214,7 @@ def format_json(all_results):
         'script': 'batch-full-analysis',
         'status': 'ok',
         'track_count': len(all_results),
+        'tempo_source': source_summary(all_results),
         'tracks': tracks,
     }, indent=2)
 
@@ -211,6 +235,17 @@ def format_text(all_results):
             f"| {r['bpm_stability']} | {r['key']} | {r['energy_range']}% "
             f"| {r['dynamic_character']} |"
         )
+
+    lines.append(f"\n_Tempo and stability: {SOURCE_LABELS[source_summary(all_results)]}._")
+
+    shifted = [r for r in all_results if 'error' not in r and r.get('feel_sections')]
+    if shifted:
+        lines.append("\n## Feel Sections (Beat This!, 15 s windows)\n")
+        lines.append("_Stretches whose tempo departs from the track's by 10% or more. Descriptive: the ear decides the felt pulse._\n")
+        for r in shifted:
+            parts = [f"{format_time(f['start'])}–{format_time(f['end'])} {f['feel']} (~{f['bpm']:.0f})"
+                     for f in r['feel_sections']]
+            lines.append(f"- **{r['file'].replace('.mp3','')}** ({r['bpm']}): " + "; ".join(parts))
 
     lines.append("\n## Energy Shifts (>20% jumps)\n")
     for r in all_results:
@@ -307,6 +342,7 @@ def main():
         "--no-companion", dest="companion", action="store_const", const=None,
         help="Skip refreshing the Markdown companion file.",
     )
+    add_tempo_source_arg(parser)
     args = parser.parse_args()
 
     require_audio_deps()
@@ -334,10 +370,13 @@ def main():
 
     print(f"Analyzing {len(mp3s)} tracks...\n", file=sys.stderr)
 
+    source = resolve_tempo_source(args.tempo_source)
+    readings = beat_this_readings(mp3s, include_beats=True) if source == "beat-this" else None
+
     all_results = []
-    for filepath in mp3s:
+    for i, filepath in enumerate(mp3s):
         print(f"  Processing: {rel_label(filepath, audio_dir)}...", end="", flush=True, file=sys.stderr)
-        result = analyze_track(filepath)
+        result = analyze_track(filepath, readings[i] if readings else None)
         result['file'] = rel_label(filepath, audio_dir)
         all_results.append(result)
         if 'error' in result:

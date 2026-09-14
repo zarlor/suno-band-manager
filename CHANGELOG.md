@@ -4,6 +4,30 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [2.3.3] - 2026-09-14
+
+A **v6 field-notes** patch covering the first weekend of wider v6 use: other creators' findings, graded and filtered, plus one more lesson from this module's own renders. Documentation only; no script, schema or dependency changes.
+
+### Upgrade at a glance (existing installs)
+
+- **Nothing to migrate.** `git pull`, then `/suno-setup` to record the new module version. Marketplace installs stay on the registry's approved version; this patch isn't submitted to the marketplace.
+- **New optional tool for heavy mixes:** if distorted guitars bury the vocal, see "Mix balance for heavy material" in `model-prompt-strategies.md`.
+
+### Changes
+
+- **Weekend v6 findings.** In `model-prompt-strategies.md`:
+  - a "Mix balance for heavy material" section, with the community-tested mix-relationship block for when guitars mask the vocal, also referenced from the buried-vocal triage row in `suno-parameter-map.md`;
+  - a voice-drift note;
+  - "v6 takes mood from the prompt, not the lyrics";
+  - a caution that exact Duration targets can sound forced on sung tracks.
+
+  In `SUNO-REFERENCE.md`:
+  - plain-language editing is a Simple-mode feature;
+  - notes on Cover vs. Inspiration for re-cutting your own songs.
+- **Section cues stay musical.** `metatag-reference.md` now warns against paraphrasing a section's own lyric in its cue. In one song, a hook-echoing cue appeared to leak into the sung line (hypothesis, n=2 takes).
+
+---
+
 ## [2.3.2] - 2026-09-13
 
 A **v6 field-notes** patch, continuing 2.3.1. More of this module's own v6 renders came in, and they corrected several 2.3.1 claims that turned out to be overstated. Wild cards also change: they now stay inside the band's sound, on the same model and sliders as the primary. Documentation plus one small validator fix; no schema or dependency changes.

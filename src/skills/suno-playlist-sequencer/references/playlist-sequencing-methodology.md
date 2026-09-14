@@ -61,7 +61,7 @@ For each track in the playlist, gather and reason about all ten of these. Earlie
 6. **Energy level** (1-10 scale) — average loudness/intensity. Useful for identifying peaks and valleys.
 7. **Intro energy %** — sparse vs. explosive opening. Critical for transition-from-previous-track evaluation.
 8. **Outro energy %** — fade vs. hard ending. Critical for transition-into-next-track evaluation.
-9. **Loudness** (ITU-R BS.1770) — integrated LUFS, loudness range (LRA), and loudness by thirds. The **seam step** (next track's first third minus this track's last third, in LU) catches volume jumps that Camelot and BPM can't see. Reference catalog: median seam about 2.5 LU; smooth < 3, noticeable < 6, big jump ≥ 6.
+9. **Loudness** (ITU-R BS.1770) — integrated LUFS, loudness range (LRA), and loudness by thirds. The **seam step** (next track's entry loudness minus this track's exit loudness: the first and last 15 s, silence trimmed, in LU) catches volume jumps that Camelot and BPM can't see. Entry/exit loudness and **entry/exit tempo** (first and last 30 s) show how a track actually begins and ends, which an average or a last-third reading can hide — e.g. a quiet vocal ending followed by a band swell. Reference catalog: median seam about 2.5 LU; smooth < 3, noticeable < 6, big jump ≥ 6.
 10. **Dynamic character** — FLAT / MODERATE / DYNAMIC / HIGHLY-DYNAMIC. A "mid-tempo" song with HIGHLY-DYNAMIC character feels very different from a "mid-tempo" song with FLAT character — the listener's experience hinges on this, not just on BPM.
 
 Plus three contextual variables that aren't measurable from audio alone:
@@ -82,7 +82,7 @@ The transition between two adjacent tracks is the actual moment the listener exp
 
 **Intro/outro % bridges the dynamic side of the transition.** A track ending at 70% energy into a track starting at 15% creates a dramatic drop — fine if it's intentional (act break), jarring if it's mid-act. The 15% intro after a high outro reads as a hush or a reset; the listener's ear interprets the gap.
 
-**The loudness step is the seam's volume in absolute terms.** Intro/outro % is relative to each track's own peak, so two tracks can both "end at 70%" and still land 8 LU apart at the seam. The script's `loudness_step_lu` (next track's first third minus this track's last third) measures that directly: < 3 LU smooth, 3–6 LU noticeable, ≥ 6 LU a big jump. A big step reads the same way as a dramatic energy drop — deliberate at an act break or a hush-then-hit, a volume problem mid-act — so weigh it with the arc, not against it. A large jump *up* into a loud opener is the one listeners most often hear as "the next song is too loud."
+**The loudness step is the seam's volume in absolute terms.** Intro/outro % is relative to each track's own peak, so two tracks can both "end at 70%" and still land 8 LU apart at the seam. The script's `loudness_step_lu` (next track's entry loudness minus this track's exit loudness, over the first and last 15 s) measures that directly: < 3 LU smooth, 3–6 LU noticeable, ≥ 6 LU a big jump. A big step reads the same way as a dramatic energy drop — deliberate at an act break or a hush-then-hit, a volume problem mid-act — so weigh it with the arc, not against it. A large jump *up* into a loud opener is the one listeners most often hear as "the next song is too loud."
 
 ## Album-Craft Layer
 

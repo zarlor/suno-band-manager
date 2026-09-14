@@ -83,3 +83,33 @@ print("ok")
                            "python", "-c", code], capture_output=True, text=True, timeout=600)
     assert proc.returncode == 0, proc.stderr
     assert proc.stdout.strip() == "ok"
+
+
+def test_seam_step_prefers_entry_exit_over_thirds():
+    prev = {"thirds_lufs": [-16.0, -13.0, -10.0], "exit_lufs": -22.0}
+    nxt = {"thirds_lufs": [-19.0, -14.0, -12.0], "entry_lufs": -12.5}
+    assert loudness.seam_step(prev, nxt) == 9.5           # exit/entry used
+    del nxt["entry_lufs"]
+    assert loudness.seam_step(prev, nxt) == -9.0          # falls back to thirds
+
+
+@pytest.mark.skipif(UV is None, reason="uv not available to provision numpy/pyloudnorm")
+def test_entry_exit_trim_silence_and_measure_edges():
+    code = f"""
+import sys, numpy as np
+sys.path.insert(0, {str(SHARED)!r})
+import loudness
+sr = 48000
+t = np.arange(sr * 40) / sr
+sig = 0.1 * np.sin(2 * np.pi * 997 * t)
+sig[: sr * 20] *= 0.25                      # quiet first half (-12 dB), loud second half
+song = np.concatenate([np.zeros(sr * 3), sig, np.zeros(sr * 5)])   # silence both ends
+s = loudness.summarize(song, sr)
+assert abs(s["entry_lufs"] - (-35.0)) < 0.4, s   # silence trimmed; quiet opening measured
+assert abs(s["exit_lufs"] - (-23.0)) < 0.4, s    # loud ending measured
+print("ok")
+"""
+    proc = subprocess.run([UV, "run", "--quiet", "--no-project", "--with", "numpy", "--with", "pyloudnorm",
+                           "python", "-c", code], capture_output=True, text=True, timeout=600)
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip() == "ok"

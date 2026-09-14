@@ -99,7 +99,7 @@ def test_transitions_carry_loudness_seam():
     assert t["key_quality"] == "PERFECT" and t["bpm_quality"] == "smooth"
     assert "transition" not in results[1]  # successor errored
     text = m.format_text("Album", results)
-    assert "| LUFS | LRA |" in text and "-9.0 LU (big jump (quieter))" in text
+    assert "| LUFS | LUFS in→out | LRA |" in text and "-9.0 LU (big jump (quieter))" in text
     data = __import__("json").loads(m.format_json("Album", results))
     assert data["tracks"][0]["loudness"]["thirds_lufs"] == [-15.0, -13.0, -10.0]
     assert data["tracks"][0]["transition_to_next"]["loudness_step_lu"] == -9.0
@@ -111,6 +111,20 @@ def test_transition_without_loudness_data_is_tolerated():
     a.pop("loudness")
     t = m.transition_between(a, b)
     assert t["loudness_step_lu"] is None and t["loudness_quality"] is None
+
+
+def test_transition_uses_exit_entry_tempo_and_loudness():
+    m = _load_module()
+    a = _track("Fast Out", 120.0, "8A", "8A", [-15.0, -13.0, -10.0])
+    b = _track("Slow In", 118.0, "8A", "8A", [-19.0, -14.0, -12.0])
+    a.update(entry_bpm=118.0, exit_bpm=150.0); b.update(entry_bpm=75.0, exit_bpm=118.0)
+    a["loudness"]["exit_lufs"] = -9.0; b["loudness"]["entry_lufs"] = -24.0
+    t = m.transition_between(a, b)
+    assert t["bpm_basis"] == "exit/entry" and t["bpm_from"] == 150.0 and t["bpm_to"] == 75.0
+    assert t["bpm_change"] == 75.0 and t["bpm_quality"].startswith("jump")
+    assert t["loudness_step_lu"] == -15.0
+    text = m.format_text("Album", [a, b])
+    assert "BPM in→out" in text and "118.0→150.0" in text and "LUFS in→out" in text
 
 
 if __name__ == "__main__":

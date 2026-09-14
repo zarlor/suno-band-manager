@@ -128,9 +128,15 @@ def analyze_track(filepath):
     exit_start = max(0, chroma.shape[1] - entry_frames)
     exit_key, exit_conf = detect_key(chroma[:, exit_start:])
 
-    # BPM
-    tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
-    bpm = float(tempo[0]) if hasattr(tempo, '__len__') else float(tempo)
+    # BPM — overall, plus entry/exit (first and last 30 s) for the seams
+    def _bpm(segment):
+        t, _ = librosa.beat.beat_track(y=segment, sr=sr)
+        return float(np.atleast_1d(t)[0])
+
+    bpm = _bpm(y)
+    edge = int(30 * sr)
+    entry_bpm = _bpm(y[:edge]) if len(y) > 2 * edge else bpm
+    exit_bpm = _bpm(y[-edge:]) if len(y) > 2 * edge else bpm
 
     # Energy level (normalize to 1-10 scale)
     rms = librosa.feature.rms(y=y)[0]
@@ -155,6 +161,8 @@ def analyze_track(filepath):
     return {
         'duration': duration,
         'bpm': round(bpm, 1),
+        'entry_bpm': round(entry_bpm, 1),
+        'exit_bpm': round(exit_bpm, 1),
         'overall_key': overall_key,
         'overall_conf': round(overall_conf, 3),
         'overall_camelot': get_camelot(overall_key),
@@ -240,13 +248,21 @@ def _fmt(value):
 def transition_between(r, n):
     """Transition data from track r into track n: key, BPM, and loudness across the seam."""
     cam_dist = camelot_distance(r['exit_camelot'], n['entry_camelot'])
-    bpm_pct = abs(r['bpm'] - n['bpm']) / r['bpm'] * 100 if r['bpm'] > 0 else 0
+    # Seam tempo: this track's exit BPM against the next track's entry BPM when both
+    # exist (first/last 30 s); older archives fall back to the overall BPMs.
+    edges = r.get('exit_bpm') is not None and n.get('entry_bpm') is not None
+    from_bpm = r['exit_bpm'] if edges else r['bpm']
+    to_bpm = n['entry_bpm'] if edges else n['bpm']
+    bpm_pct = abs(from_bpm - to_bpm) / from_bpm * 100 if from_bpm > 0 else 0
     step = seam_step(r.get('loudness'), n.get('loudness'))
     return {
         'to': n['name'],
         'camelot_distance': cam_dist,
         'key_quality': "PERFECT" if cam_dist <= 0.5 else "GOOD" if cam_dist <= 1 else "OK" if cam_dist <= 2 else "JARRING",
-        'bpm_change': round(abs(r['bpm'] - n['bpm']), 1),
+        'bpm_from': from_bpm,
+        'bpm_to': to_bpm,
+        'bpm_basis': 'exit/entry' if edges else 'overall',
+        'bpm_change': round(abs(from_bpm - to_bpm), 1),
         'bpm_quality': "smooth" if bpm_pct < 3 else "ok" if bpm_pct < 6 else f"jump ({bpm_pct:.0f}%)",
         'loudness_step_lu': step,
         'loudness_quality': seam_quality(step),
@@ -279,6 +295,8 @@ def format_json(album_name, results):
             'duration': round(r['duration'], 1),
             'duration_display': format_time(r['duration']),
             'bpm': r['bpm'],
+            'entry_bpm': r.get('entry_bpm'),
+            'exit_bpm': r.get('exit_bpm'),
             'key': {
                 'overall': r['overall_key'],
                 'overall_confidence': r['overall_conf'],
@@ -318,18 +336,20 @@ def format_text(album_name, results):
     lines.append("# Generated via librosa analysis + Camelot wheel mapping + BS.1770 loudness\n")
 
     lines.append("## Track Data (Playlist Order)\n")
-    lines.append("| # | Track | BPM | Key | Camelot | Entry Key | Exit Key | Energy | Intro% | Outro% | LUFS | LRA |")
-    lines.append("|---|-------|-----|-----|---------|-----------|----------|--------|--------|--------|------|-----|")
+    lines.append("| # | Track | BPM | BPM in→out | Key | Camelot | Entry Key | Exit Key | Energy | Intro% | Outro% | LUFS | LUFS in→out | LRA |")
+    lines.append("|---|-------|-----|------------|-----|---------|-----------|----------|--------|--------|--------|------|-------------|-----|")
     for i, r in enumerate(results):
         if 'error' in r:
             continue
+        loud = r.get('loudness') or {}
         lines.append(
-            f"| {i+1} | {r['name']} | {r['bpm']} | {r['overall_key']} "
+            f"| {i+1} | {r['name']} | {r['bpm']} | {_fmt(r.get('entry_bpm'))}→{_fmt(r.get('exit_bpm'))} | {r['overall_key']} "
             f"| {r['overall_camelot']} | {r['entry_key']} ({r['entry_camelot']}) "
             f"| {r['exit_key']} ({r['exit_camelot']}) | {r['energy_level']} "
             f"| {r['intro_energy_pct']}% | {r['outro_energy_pct']}% "
-            f"| {_fmt((r.get('loudness') or {}).get('integrated_lufs'))} "
-            f"| {_fmt((r.get('loudness') or {}).get('lra_lu'))} |"
+            f"| {_fmt(loud.get('integrated_lufs'))} "
+            f"| {_fmt(loud.get('entry_lufs'))}→{_fmt(loud.get('exit_lufs'))} "
+            f"| {_fmt(loud.get('lra_lu'))} |"
         )
 
     lines.append("\n## Transition Analysis\n")
@@ -349,7 +369,9 @@ def format_text(album_name, results):
             f"| {t['bpm_change']:.0f} ({t['bpm_quality']}) | {t['key_quality']} | {loud} |"
         )
     lines.append(
-        "\n_Loudness step = next track's first third minus this track's last third (LU): "
+        "\n_BPM change = this track's exit tempo (last 30 s) against the next track's entry tempo (first 30 s). "
+        "Loudness step = next track's entry loudness (first 15 s) minus this track's exit loudness (last 15 s), "
+        "silence trimmed, in LU: "
         "smooth < 3, noticeable < 6, big jump >= 6. Descriptive, not a verdict: "
         "a quiet open after a loud close is often the point._"
     )

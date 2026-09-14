@@ -4,6 +4,26 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [2.3.4] - 2026-09-14
+
+A **playlist-sequencing** patch. The sequencer now measures how each track actually begins and ends — its entry and exit loudness and tempo — so transitions compare the real seam instead of whole-track or one-third averages.
+
+### Upgrade at a glance (existing installs)
+
+- **Nothing to migrate.** `git pull`, then `/suno-setup` to record the new module version. Marketplace installs stay on the registry's approved version; this patch isn't submitted to the marketplace.
+- **Re-run `playlist-sequencing-data.py`** to get the new values. Archives written by earlier versions still load, and their transitions fall back to the old last-third / overall-BPM comparison.
+- **If you consume the sequencer's JSON:** the new fields are additive, and `bpm_change` is now measured exit→entry when both values exist (`bpm_basis` says which).
+
+### Changes
+
+- **Entry/exit values for sequencing.** `_shared/loudness.py` now measures entry and exit loudness over the first and last 15 s, with leading and trailing silence trimmed. `playlist-sequencing-data.py` adds entry and exit tempo over the first and last 30 s. Transitions now compare this track's exit against the next track's entry for both loudness and BPM change, where before they compared last third against first third and overall BPM against overall BPM. Older archives without entry/exit values fall back to the old comparison. New JSON fields:
+  - per track: `entry_bpm`, `exit_bpm`, `loudness.entry_lufs`, `loudness.exit_lufs`
+  - per transition: `bpm_from`, `bpm_to`, `bpm_basis`
+
+  The text report adds "BPM in→out" and "LUFS in→out" columns.
+
+---
+
 ## [2.3.3] - 2026-09-14
 
 A **v6 field-notes** patch covering the first weekend of wider v6 use: other creators' findings, graded and filtered, plus one more lesson from this module's own renders. Documentation only; no script, schema or dependency changes.

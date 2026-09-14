@@ -14,9 +14,10 @@ Compares a render with the lyrics it was generated from, section by section:
    Consistency comes from averaging, not from switching features off: Demucs
    averages several seeded time-shifts (cleaner stems, same stems every run),
    and Whisper keeps its fallback retries, seeded, over several passes. Section
-   times are the median across passes, and a line counts as not heard only
-   when most passes miss it; lines only some passes miss are listed as
-   uncertain.
+   times are the median across passes. Whisper drops words far more often
+   than it invents an exact lyric line, so a line counts as not heard only
+   when every pass misses it. Added words need most passes to agree, since
+   Whisper can invent words; the rest are listed as possible.
 3. The transcript is aligned to the lyric lines (fuzzy word matching), which
    gives every tagged section a start and end time. It works even where Suno
    runs sections together, because the words mark the boundaries, not gaps.
@@ -27,7 +28,13 @@ Compares a render with the lyrics it was generated from, section by section:
    vocal-minus-band loudness (LU), tempo and feel (Beat This! when the PyTorch
    audio tools are on, else librosa), and key.
 
-Also reports lyric lines that weren't heard (dropped or changed words) and
+Also reports words added to the lyrics: a run of words inside a section that
+isn't in the lyric, e.g. "one more spin, one more spin, get more spin, gettin'
+lost". Whole-line repeats are listed separately (often fine, judged by ear);
+fragments of a line are marked as partial repeats. Fillers (oh, yeah, whoa)
+are ignored.
+
+It also reports lyric lines that weren't heard (dropped or changed words) and
 vocals outside any lyric section: ad-libs, repeats, invented lines, and
 wordless vocalizing (an "ooh-whoa" fill, scat, a held vowel), which Whisper
 leaves untranscribed. v5.5-era renders scatted a lot; v6 seems to do it less.
@@ -74,7 +81,7 @@ from tempo_source import (SOURCE_LABELS, SHIFT_THRESHOLD, add_tempo_source_arg, 
                           resolve_tempo_source, usable)
 
 SCRIPT_NAME = "section-map"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 INSTALL_CMD = "pip install demucs torch faster-whisper librosa numpy pyloudnorm"
 DEMUCS_MODEL = "htdemucs"
 WHISPER_MODEL = "medium"
@@ -88,6 +95,17 @@ MIN_MATCHED_WORDS = 3
 SUNG_COVERAGE = 0.5
 PARTLY_COVERAGE = 0.25
 LINE_HEARD_SHARE = 0.34
+# Added words: a run of unmatched heard words must add at least this many words and letters beyond
+# the lyric words it sits in place of. Below that it's a mishearing ("runnin'" heard as "run at"),
+# not an addition.
+MIN_ADDED_TOKENS = 2
+MIN_ADDED_LETTERS = 6
+# A run that sounds like the lyric words it replaces (letter similarity) is a mishearing.
+MISHEARD_SIMILARITY = 0.6
+# Share of an added run's tokens found, in order, in a lyric line for it to count as a repeat of it.
+REPEAT_MATCH = 0.8
+FILLERS = frozenset({"oh", "ohh", "ooh", "oooh", "ah", "ahh", "yeah", "yeh", "yea", "hey", "whoa", "woah", "wo",
+                     "uh", "na", "la", "mm", "hmm", "ha"})
 FRAME_S = 0.5
 # An untagged lead-in or tail at least this long gets its own row.
 EDGE_MIN_S = 5.0
@@ -216,12 +234,14 @@ def align(lyric, heard, match=2, mismatch=-1, gap=-1):
             if s is None:
                 s = cache[key] = match if similar(*key) else mismatch
             d, u, left = prev[j - 1] + s, prev[j] + gap, cur[j - 1] + gap
-            if d >= u and d >= left:
-                cur[j] = d
-            elif u >= left:
-                cur[j], trace[i][j] = u, 1
-            else:
+            # On ties, skip a heard word before taking the diagonal: extra words then land after
+            # the lyric they follow ("one more spin, one more spin" + "get more spin"), not inside it.
+            if left >= d and left >= u:
                 cur[j], trace[i][j] = left, 2
+            elif d >= u:
+                cur[j] = d
+            else:
+                cur[j], trace[i][j] = u, 1
         prev = cur
     pairs, i, j = [], n, m
     while i > 0 and j > 0:
@@ -252,14 +272,70 @@ def main_cluster(items, max_gap=CLUSTER_GAP_S):
     return max(runs, key=len)
 
 
+def _classify_added(tokens, all_lines):
+    """repeat (a whole lyric line again), partial repeat (a fragment of one), or added, plus the line it repeats."""
+    best_frac, best_line, best_len = 0.0, None, 0
+    for line in all_lines:
+        lt = tokenize(line)
+        if not lt:
+            continue
+        found = sum(b.size for b in difflib.SequenceMatcher(None, tokens, lt, autojunk=False).get_matching_blocks())
+        frac = found / len(tokens)
+        if frac > best_frac or (frac == best_frac and abs(len(lt) - len(tokens)) < abs(best_len - len(tokens))):
+            best_frac, best_line, best_len = frac, line, len(lt)
+    if best_frac >= REPEAT_MATCH:
+        return ("repeat" if len(tokens) >= REPEAT_MATCH * best_len else "partial repeat"), best_line
+    return "added", None
+
+
+def _added_runs(words, matched_lt, first_w, last_w, owner, lyric_tokens, sec_lines, all_lines):
+    """Runs of unmatched heard words, between the section's first and last matched words, that add to the lyric.
+
+    Each run is weighed against the lyric words it sits in place of: it counts
+    only when it adds MIN_ADDED_TOKENS words and MIN_ADDED_LETTERS letters
+    beyond them and doesn't sound like them.
+    """
+    out, run, prev_lt = [], [], None
+
+    def close(next_lt):
+        tokens = [t for wi in run for t in tokenize(words[wi]["word"])]
+        if all(t in FILLERS for t in tokens):
+            return
+        gap = lyric_tokens[prev_lt + 1:next_lt]
+        heard_letters, gap_letters = "".join(tokens), "".join(gap)
+        if len(tokens) - len(gap) < MIN_ADDED_TOKENS or len(heard_letters) - len(gap_letters) < MIN_ADDED_LETTERS:
+            return
+        if gap and difflib.SequenceMatcher(None, heard_letters, gap_letters).ratio() >= MISHEARD_SIMILARITY:
+            return
+        li_before, li_after = owner[prev_lt][1], owner[next_lt][1]
+        kind, repeat_of = _classify_added(tokens, all_lines)
+        probs = [words[wi].get("probability", 1.0) for wi in run]
+        out.append({"anchor": prev_lt, "start_s": round(words[run[0]]["start"], 2),
+                    "text": " ".join(words[wi]["word"].strip() for wi in run), "kind": kind, "repeat_of": repeat_of,
+                    "replaces": " ".join(gap) or None, "probability": round(statistics.mean(probs), 2),
+                    "position": "inside a line" if li_before == li_after else "between lines",
+                    "after_line": sec_lines[li_before]})
+
+    for wi in range(first_w, last_w + 1):
+        if wi in matched_lt:
+            if run and prev_lt is not None:
+                close(matched_lt[wi])
+            run = []
+            prev_lt = matched_lt[wi]
+        elif tokenize(words[wi]["word"]):
+            run.append(wi)
+    return out
+
+
 def _locate_core(sections, words):
-    """One transcription pass: each section's coverage, span, heard text and per-line not-heard flags."""
+    """One transcription pass: each section's coverage, span, heard text, per-line not-heard flags and added words."""
     lyric_tokens, owner = [], []  # owner: (section index, line index) per lyric token
     for si, sec in enumerate(sections):
         for li, line in enumerate(sec["lines"]):
             for tok in tokenize(line):
                 lyric_tokens.append(tok)
                 owner.append((si, li))
+    all_lines = [line for sec in sections for line in sec["lines"]]
     heard_tokens, heard_word = [], []
     for wi, w in enumerate(words):
         for tok in tokenize(w["word"]):
@@ -277,7 +353,7 @@ def _locate_core(sections, words):
     for si, sec in enumerate(sections):
         n_tokens = sum(len(tokenize(l)) for l in sec["lines"])
         entry = {"n_tokens": n_tokens, "matched_words": 0, "coverage": None, "start_s": None, "end_s": None,
-                 "heard": "", "line_flags": [False] * len(sec["lines"])}
+                 "heard": "", "line_flags": [False] * len(sec["lines"]), "added": []}
         if n_tokens:
             cluster = main_cluster(by_section.get(si, []))
             matched_lyric = {p[1][0] for p in cluster}
@@ -289,6 +365,11 @@ def _locate_core(sections, words):
                 entry["start_s"] = round(words[first_w]["start"], 2)
                 entry["end_s"] = round(words[last_w]["end"], 2)
                 entry["heard"] = " ".join(w["word"].strip() for w in words[first_w:last_w + 1])
+                matched_lt = {}
+                for _, (lt, wi, _) in cluster:
+                    matched_lt[wi] = max(lt, matched_lt.get(wi, -1))
+                entry["added"] = _added_runs(words, matched_lt, first_w, last_w, owner, lyric_tokens, sec["lines"],
+                                             all_lines)
             line_hits = {}
             for _, (_, _, li) in cluster:
                 line_hits[li] = line_hits.get(li, 0) + 1
@@ -299,12 +380,40 @@ def _locate_core(sections, words):
     return out
 
 
+def _group_added(per, k, tolerance=2):
+    """Group added-word runs from all passes by where they sit (lyric anchor ± tolerance) -> (confirmed, possible).
+
+    Confirmed needs most passes to show the run and Whisper to be reasonably sure of the words
+    (mean probability of LOW_CONFIDENCE or more); anything else is possible.
+    """
+    items = sorted((a["anchor"], pi, a) for pi, p in enumerate(per) for a in p["added"])
+    groups = []
+    for anchor, pi, a in items:
+        if groups and anchor - groups[-1]["last"] <= tolerance:
+            groups[-1]["runs"].append((pi, a))
+            groups[-1]["last"] = anchor
+        else:
+            groups.append({"last": anchor, "runs": [(pi, a)]})
+    confirmed, possible = [], []
+    for g in groups:
+        passes = len({pi for pi, _ in g["runs"]})
+        a = dict(g["runs"][0][1])
+        kinds = [r["kind"] for _, r in g["runs"]]
+        a["kind"] = max(set(kinds), key=kinds.count)
+        a.pop("anchor")
+        a["passes"] = f"{passes}/{k}"
+        sure = statistics.mean(r["probability"] for _, r in g["runs"]) >= LOW_CONFIDENCE
+        (confirmed if passes * 2 > k and sure else possible).append(a)
+    return confirmed, possible
+
+
 def merge_passes(sections, cores):
     """Consensus across transcription passes, one entry per section.
 
     A section is placed when most passes place it, at the median start and end;
-    coverage is the median. A line is not heard when most passes miss it, and
-    uncertain when only some do.
+    coverage is the median. A line is not heard only when every pass misses it
+    (Whisper drops words; it rarely invents an exact lyric line). Added words
+    count when most passes show them and are listed as possible otherwise.
     """
     k = len(cores)
     merged = []
@@ -313,12 +422,13 @@ def merge_passes(sections, cores):
         e = {"tag": sec["tag"], "name": sec["name"], "cue": sec["cue"], "modifiers": sec["modifiers"],
              "inline_tags": sec.get("inline_tags", []), "lyric_words": per[0]["n_tokens"], "matched_words": 0,
              "coverage": None, "status": None, "start_s": None, "end_s": None, "located_passes": None,
-             "heard": "", "lines_not_heard": [], "lines_uncertain": []}
+             "heard": "", "lines_not_heard": [], "added_words": [], "repeats": [], "added_words_possible": []}
         if per[0]["n_tokens"] == 0:
             e["status"] = "instrumental"
             merged.append(e)
             continue
         located = [p for p in per if p["start_s"] is not None]
+        e["pass_spans"] = [[p["start_s"], p["end_s"]] for p in located]
         e["coverage"] = round(statistics.median(p["coverage"] for p in per), 2)
         e["matched_words"] = int(statistics.median(p["matched_words"] for p in per))
         e["located_passes"] = f"{len(located)}/{k}"
@@ -330,11 +440,12 @@ def merge_passes(sections, cores):
         else:
             e["status"] = "not heard"
         for li, line in enumerate(sec["lines"]):
-            misses = sum(p["line_flags"][li] for p in per)
-            if misses * 2 > k:
+            if all(p["line_flags"][li] for p in per):
                 e["lines_not_heard"].append(line)
-            elif misses:
-                e["lines_uncertain"].append({"line": line, "missed_in": misses, "passes": k})
+        confirmed, possible = _group_added(per, k)
+        e["repeats"] = [a for a in confirmed if a["kind"] == "repeat"]
+        e["added_words"] = [a for a in confirmed if a["kind"] != "repeat"]
+        e["added_words_possible"] = [a for a in possible if a["kind"] != "repeat"]
         merged.append(e)
     return merged
 
@@ -365,7 +476,8 @@ def _add_untagged_edges(entries, duration, min_s=EDGE_MIN_S):
 
     def row(tag, a, b):
         return {"tag": tag, "name": tag, "cue": None, "modifiers": [], "inline_tags": [], "lyric_words": 0,
-                "matched_words": 0, "located_passes": None, "lines_uncertain": [],
+                "matched_words": 0, "located_passes": None, "added_words": [], "repeats": [],
+                "added_words_possible": [],
                 "coverage": None, "status": "untagged", "start_s": round(a, 2), "end_s": round(b, 2),
                 "heard": "", "lines_not_heard": []}
 
@@ -413,6 +525,15 @@ def blocks_from_activity(active, frame_s=FRAME_S, bridge_frames=3, min_s=2.0):
             blocks.append((round(i * frame_s, 1), round(j * frame_s, 1)))
         i = j
     return blocks
+
+
+def label_outside(heard, all_lines):
+    """For vocals outside the lyric sections: the lyric line they repeat (whole or in part), else None."""
+    tokens = [t for t in tokenize(heard) if t not in FILLERS]
+    if len(tokens) < 2:
+        return None
+    kind, line = _classify_added(tokens, all_lines)
+    return {"kind": kind, "line": line} if line else None
 
 
 def outside_spans(blocks, spans, min_s=3.0):
@@ -620,18 +741,39 @@ def format_text(m):
         lines.append("")
         lines.append("Lyric lines not heard (dropped, changed, or just mis-transcribed: listen before concluding):")
         lines.extend(f"  [{tag}] {line}" for tag, line in unheard)
-    uncertain = [(e["tag"], u) for e in m["sections"] for u in e.get("lines_uncertain", [])]
-    if uncertain:
+    def added_line(tag, a):
+        partial = "  (partial repeat)" if a["kind"] == "partial repeat" else ""
+        partial += f"  in place of \"{a['replaces']}\"" if a.get("replaces") else ""
+        partial += f"  p={a['probability']}" if a.get("probability") is not None else ""
+        return (f"  [{tag}] {_t(a['start_s'])}  \"{a['text']}\"  {a['position']}, after \"{a['after_line']}\""
+                f"{partial}  ({a['passes']} passes)")
+
+    added = [(e["tag"], a) for e in m["sections"] for a in e.get("added_words", [])]
+    if added:
         lines.append("")
-        lines.append("Lyric lines only some transcription passes missed (uncertain: worth a listen):")
-        lines.extend(f"  [{tag}] {u['line']}  (missed in {u['missed_in']} of {u['passes']})" for tag, u in uncertain)
+        lines.append("Words added to the lyrics (a set line changed or padded; listen, this can rule out a take):")
+        lines.extend(added_line(tag, a) for tag, a in added)
+    repeats = [(e["tag"], a) for e in m["sections"] for a in e.get("repeats", [])]
+    if repeats:
+        lines.append("")
+        lines.append("Whole-line repeats (often fine; judge by ear):")
+        lines.extend(f"  [{tag}] {_t(a['start_s'])}  \"{a['text']}\"  repeats \"{a['repeat_of']}\"  ({a['passes']} passes)"
+                     for tag, a in repeats)
+    possible = [(e["tag"], a) for e in m["sections"] for a in e.get("added_words_possible", [])]
+    if possible:
+        lines.append("")
+        lines.append("Possible added words (only some passes heard them; may be a transcription artifact):")
+        lines.extend(added_line(tag, a) for tag, a in possible)
     if m["vocals_outside_sections"]:
         lines.append("")
         lines.append("Vocals outside the lyric sections (ad-libs, repeats, invented lines, wordless fills):")
         for v in m["vocals_outside_sections"]:
             low = v.get("mean_probability") is not None and v["mean_probability"] < LOW_CONFIDENCE
+            rpt = v.get("repeats")
+            note = (f"  (repeats lyric \"{rpt['line']}\"" + (", in part" if rpt["kind"] == "partial repeat" else "")
+                    + ")") if rpt else ""
             lines.append(f"  {_t(v['start_s'])}-{_t(v['end_s'])}  {v['heard'] or '(wordless: vocalizing, scat, or a held vowel)'}"
-                         + ("  (low confidence: may be a transcription artifact)" if low else ""))
+                         + note + ("  (low confidence: may be a transcription artifact)" if low else ""))
     return "\n".join(lines)
 
 
@@ -670,6 +812,8 @@ def main():
                              "two passes agree)")
     parser.add_argument("--shifts", type=int, default=None,
                         help=f"Demucs time-shifts to average (default: {GPU_SHIFTS} on a GPU, 1 on CPU)")
+    parser.add_argument("--include-words", action="store_true",
+                        help="Keep every pass's word timings in the JSON (word_passes) for a closer look")
     parser.add_argument("--seed", type=int, default=0,
                         help="Seed for the Demucs shifts and Whisper retries; the same seed gives the same map")
     add_tempo_source_arg(parser)
@@ -743,12 +887,16 @@ def main():
 
     blocks = vocal_blocks(stems, sr)
     outside = []
-    for a, b in outside_spans(blocks, [(e["start_s"], e["end_s"]) for e in entries
-                                       if e["status"] in ("sung", "partly sung")]):
+    # A stretch counts as inside a section if any pass placed that section there.
+    covered = [(e["start_s"], e["end_s"]) for e in entries if e["status"] in ("sung", "partly sung")]
+    covered += [tuple(span) for e in entries for span in e.get("pass_spans", [])]
+    for a, b in outside_spans(blocks, covered):
         inside = [w for w in words if a <= w["start"] < b]
-        outside.append({"start_s": a, "end_s": b, "heard": " ".join(w["word"].strip() for w in inside),
+        heard = " ".join(w["word"].strip() for w in inside)
+        outside.append({"start_s": a, "end_s": b, "heard": heard,
                         "mean_probability": round(statistics.mean(w["probability"] for w in inside), 2)
-                        if inside else None})
+                        if inside else None,
+                        "repeats": label_outside(heard, [l for sec in sections for l in sec["lines"]])})
 
     metrics = {
         "file": os.path.basename(args.audio),
@@ -773,6 +921,8 @@ def main():
         },
         "transcript": " ".join(w["word"].strip() for w in words),
     }
+    if args.include_words:
+        metrics["word_passes"] = runs
     json_data = build_json(metrics)
     output = format_text(metrics) if args.output_format == "text" else json.dumps(json_data, indent=2)
     if args.output:

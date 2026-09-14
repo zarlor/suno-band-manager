@@ -4,6 +4,30 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [2.4.1] - 2026-09-14
+
+A **section-map** patch. The section map now catches words Suno adds to a set line, not just lyric words that go missing. It found the added words that got a Solitary Fire - Redux keeper pulled.
+
+### Upgrade at a glance (existing installs)
+
+- **Nothing to migrate.** `git pull`, then `/suno-setup` to record the new module version. This patch isn't submitted to the marketplace; it follows 2.4.0 too closely.
+- **If you consume `section-map.py`'s JSON:** `lines_uncertain` is gone. There are new per-section fields `added_words`, `repeats`, `added_words_possible` and `pass_spans`, and outside-vocal entries gain `repeats`.
+
+### Changes
+
+- **`section-map.py` 1.1.0 flags words added to the lyrics.** v6 sometimes pads a set line: One More Spin's first chorus sang "one more spin, one more spin, **get more spin**, gettin' lost for a while". v2.4.0 only looked for lyric words that went missing, so the added words passed unflagged. Now:
+  - **Added words:** a run of transcribed words inside a section that isn't in the lyric is flagged, with where it sits.
+    - It's weighed against the lyric words it sits in place of, so a mishearing like "runnin'" heard as "run at" isn't mistaken for an addition.
+    - It needs to add at least 2 words and about 6 letters. Fillers (oh, yeah, whoa) are ignored.
+    - Confirmed flags need most passes to agree and Whisper to be reasonably sure of the words. The rest are listed as possible.
+  - **Repeats:** whole-line repeats are listed separately, since they're often fine, and fragments of a line are marked as partial repeats.
+  - **Lines not heard:** a line now counts as not heard only when every Whisper pass misses it. Whisper drops words far more often than it invents an exact lyric line.
+  - **Vocals outside the lyric sections:** a stretch now counts as covered if any pass placed a section there, so real lyrics near a section edge no longer show up as outside vocals. Outside vocals that repeat a lyric line, in whole or in part, now say which line they repeat.
+  - **Word timings:** `--include-words` keeps every pass's word timings in the JSON (`word_passes`) for a closer look.
+  - **JSON changes:** new per-section fields `added_words`, `repeats`, `added_words_possible` and `pass_spans`. `lines_uncertain` is removed.
+
+---
+
 ## [2.4.0] - 2026-09-14
 
 A **tempo-source and section-map** release. If you've opted in to the PyTorch audio tools, every script that measured tempo with librosa now uses Beat This! instead, and a new `section-map.py` lines a render up with its lyrics section by section. If you haven't, nothing changes.

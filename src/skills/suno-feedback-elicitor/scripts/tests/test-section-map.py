@@ -154,11 +154,83 @@ def test_consensus_over_passes():
     p3 = words_for("I stand where the water breaks the thunder nobody hears the last word", 10.2)
     e = next(x for x in sm.locate_consensus(sections, [p1, p2, p3], 40.0) if x["name"] == "Verse")
     assert e["located_passes"] == "3/3" and e["start_s"] == 10.2  # median start
-    assert e["lines_not_heard"] == []  # each line is missed by at most one pass
-    assert {u["line"]: u["missed_in"] for u in e["lines_uncertain"]} == {
-        "I hold what the thunder takes": 1, "nobody hears the last word": 1}
-    e2 = next(x for x in sm.locate_consensus(sections, [p2, p2, p1], 40.0) if x["name"] == "Verse")
-    assert e2["lines_not_heard"] == ["nobody hears the last word"]  # missed by 2 of 3
+    # Whisper drops words; one pass hearing a line is enough to count it as sung.
+    assert e["lines_not_heard"] == []
+    e2 = next(x for x in sm.locate_consensus(sections, [p2, p2, p2], 40.0) if x["name"] == "Verse")
+    assert e2["lines_not_heard"] == ["nobody hears the last word"]  # every pass missed it
+
+
+CHORUS = "[Chorus]\none more spin one more spin\ngettin lost for a while\n[Verse]\nthe needle drops again tonight"
+
+
+def added(heard_chorus, passes=1):
+    sections, _ = sm.parse_sections(CHORUS)
+    words = words_for(heard_chorus + " the needle drops again tonight", 5.0)
+    return next(x for x in sm.locate_consensus(sections, [words] * passes, 60.0) if x["name"] == "Chorus")
+
+
+def test_added_words_between_lines_are_flagged():
+    e = added("one more spin one more spin get more spin gettin lost for a while")
+    assert [a["text"] for a in e["added_words"]] == ["get more spin"]
+    a = e["added_words"][0]
+    assert a["kind"] == "added" and a["position"] == "between lines" and a["after_line"] == "one more spin one more spin"
+    assert e["coverage"] == 1.0 and e["repeats"] == []
+
+
+def test_words_added_inside_a_line():
+    e = added("one more spin one more spin gettin lost in the fog for a while")
+    assert [(a["text"], a["position"]) for a in e["added_words"]] == [("in the fog", "inside a line")]
+
+
+def test_whole_line_repeat_is_listed_not_flagged():
+    e = added("one more spin one more spin gettin lost for a while gettin lost for a while")
+    assert e["added_words"] == []
+    assert [a["repeat_of"] for a in e["repeats"]] in ([], ["gettin lost for a while"])
+
+
+def test_fillers_are_ignored():
+    e = added("one more spin one more spin oh yeah gettin lost for a while")
+    assert e["added_words"] == [] and e["repeats"] == []
+
+
+def test_mishearing_is_not_an_addition():
+    # "gettin" heard as "get it in": one lyric word replaced by three similar-sounding ones.
+    e = added("one more spin one more spin get it in lost for a while")
+    assert e["added_words"] == [] and e["added_words_possible"] == []
+
+
+def test_short_extra_is_not_an_addition():
+    e = added("one more spin one more spin oh at gettin lost for a while")
+    assert e["added_words"] == []
+
+
+def test_unsure_words_stay_possible():
+    sections, _ = sm.parse_sections(CHORUS)
+    words = words_for("one more spin one more spin get more spin gettin lost for a while the needle drops again tonight",
+                      5.0)
+    for w in words[6:9]:
+        w["probability"] = 0.2
+    e = next(x for x in sm.locate_consensus(sections, [words], 60.0) if x["name"] == "Chorus")
+    assert e["added_words"] == [] and [a["text"] for a in e["added_words_possible"]] == ["get more spin"]
+
+
+def test_added_words_need_most_passes():
+    sections, _ = sm.parse_sections(CHORUS)
+    clean = words_for("one more spin one more spin gettin lost for a while the needle drops again tonight", 5.0)
+    padded = words_for("one more spin one more spin get more spin gettin lost for a while the needle drops again tonight",
+                       5.0)
+    one = next(x for x in sm.locate_consensus(sections, [padded, clean, clean], 60.0) if x["name"] == "Chorus")
+    assert one["added_words"] == [] and [a["passes"] for a in one["added_words_possible"]] == ["1/3"]
+    two = next(x for x in sm.locate_consensus(sections, [padded, padded, clean], 60.0) if x["name"] == "Chorus")
+    assert [a["passes"] for a in two["added_words"]] == ["2/3"]
+
+
+def test_format_text_lists_added_words():
+    e = added("one more spin one more spin get more spin gettin lost for a while")
+    metrics = {"file": "x.mp3", "lyrics_source": "pkg.md", "whisper_model": "medium", "whisper_device": "cpu",
+               "tempo_source": "librosa", "overall_bpm": 180.0, "sections": [e], "vocals_outside_sections": []}
+    text = sm.format_text(metrics)
+    assert 'Words added to the lyrics' in text and '"get more spin"  between lines' in text
 
 
 def test_single_pass_matches_locate_sections():
@@ -170,6 +242,15 @@ def test_single_pass_matches_locate_sections():
 def test_blocks_from_activity_bridges_short_gaps():
     active = [False] * 2 + [True] * 6 + [False] * 2 + [True] * 4 + [False] * 10 + [True] * 2
     assert sm.blocks_from_activity(active) == [(1.0, 7.0)]
+
+
+def test_outside_vocals_that_repeat_a_lyric_are_labeled():
+    lines = ["I'm the slide that's violently slammed in the dark", "and another one after that"]
+    assert sm.label_outside("Slammed in the dark", lines) == {"kind": "partial repeat",
+                                                            "line": "I'm the slide that's violently slammed in the dark"}
+    assert sm.label_outside("check and another one after that.", lines)["line"] == "and another one after that"
+    assert sm.label_outside("Screamer! Screamer!", lines) is None
+    assert sm.label_outside("oh yeah", lines) is None
 
 
 def test_outside_spans():

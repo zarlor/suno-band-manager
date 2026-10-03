@@ -22,14 +22,22 @@ Usage:
     uv run scripts/validate-sidecar.py --format json
     uv run scripts/validate-sidecar.py --warn-only  # exit 0 even with findings
     uv run scripts/validate-sidecar.py --sanctum-dir PATH  # test a staging copy
+    uv run scripts/validate-sidecar.py --since 2026-10-01  # + untracked companion files
 
 Checks performed:
     1. Songbook internal consistency — frontmatter status/date vs. body status marker
     2. Audio file existence for published songs
     3. Sanctum Recently Published list (MEMORY.md) matches songbook ground truth
     4. Sanctum Catalog Status counts (MEMORY.md) match actual songbook counts
-    5. Playlist YAML track count matches songbook count for that band
+    5. Playlist YAML track set matches the band's songbook titles (both sides
+       listed: tracks with no songbook entry, published songs not in the playlist)
     6. Markdown cross-references in docs/ resolve to existing files
+    7. Voice-file catalog counts ("N published tracks" in a band's section or
+       songbook row) match the songbook's published count for that band
+    8. MEMORY.md Pending / Parked Work lists no COMPLETED WIP as active, and
+       every active docs/wip-*.md is listed there
+    9. Voice-file Companion Files table entries exist on disk; with --since,
+       docs/ files changed since that date that the table doesn't list
 
 Called by:
     - pack-portable.{sh,ps1} before packing (gates sync)
@@ -84,6 +92,11 @@ class Song:
     # day work started record the publish day here; when present it is the
     # date the body's "Published YYYY-MM-DD" marker must agree with.
     frontmatter_published: str | None = None
+    # Optional `source_wip:` frontmatter — the docs/wip-*.md file the song was
+    # developed from, recorded at publish. scan-wip-status.py correlates on it.
+    source_wip: str | None = None
+    # Optional `short_title:` — the display name a playlist may use instead.
+    short_title: str | None = None
 
     @property
     def is_published(self) -> bool:
@@ -95,7 +108,7 @@ class Song:
 
 @dataclass
 class Finding:
-    category: str  # "songbook_drift" | "audio_missing" | "index_drift" | "playlist_drift" | "cross_reference_missing"
+    category: str  # songbook_drift | audio_missing | index_drift | playlist_drift | cross_reference_missing | voice_catalog_drift | pending_drift | companion_missing | companion_untracked
     severity: str  # "error" | "warning"
     path: str
     message: str
@@ -188,6 +201,12 @@ def parse_song(path: Path, project_root: Path) -> tuple[Song | None, str | None]
             audio_references=audio_refs,
             frontmatter_published=(
                 str(frontmatter.get("published")) if frontmatter.get("published") else None
+            ),
+            short_title=(
+                str(frontmatter.get("short_title")).strip() if frontmatter.get("short_title") else None
+            ),
+            source_wip=(
+                str(frontmatter.get("source_wip")).strip() if frontmatter.get("source_wip") else None
             ),
         ),
         None,
@@ -505,10 +524,48 @@ def check_index_catalog_counts(
 _VERSION_SUFFIX_RE = re.compile(r"\s*\((?:version\s*\d+|v\d+|reprise|encore)\)\s*$", re.IGNORECASE)
 
 
+def normalize_title(title: str) -> str:
+    """Comparable form of a song title: version suffix dropped, curly quotes
+    straightened, whitespace collapsed, casefolded."""
+    t = _VERSION_SUFFIX_RE.sub("", str(title))
+    t = t.replace("\u2019", "'").replace("\u2018", "'").replace("\u201c", '"').replace("\u201d", '"')
+    return re.sub(r"\s+", " ", t).strip().casefold()
+
+
+def title_keys(song: Song) -> set[str]:
+    """Every normalized name a song answers to: its title, each '|'-separated
+    form of a stylized title ("gnoS rorriM|Mirror Song"), and short_title."""
+    names = [song.title, *song.title.split("|")]
+    if song.short_title:
+        names.append(song.short_title)
+    return {normalize_title(n) for n in names if n.strip()}
+
+
+def _band_display_names(project_root: Path) -> dict[str, str]:
+    """band slug -> display `name:` from docs/band-profiles/*.yaml."""
+    names: dict[str, str] = {}
+    profiles_dir = project_root / "docs" / "band-profiles"
+    if not profiles_dir.is_dir():
+        return names
+    for profile_path in sorted(profiles_dir.glob("*.yaml")):
+        try:
+            profile = yaml.safe_load(profile_path.read_text(encoding="utf-8"))
+        except (yaml.YAMLError, OSError, UnicodeDecodeError):
+            continue
+        if isinstance(profile, dict) and str(profile.get("name") or "").strip():
+            names[profile_path.stem] = str(profile["name"]).strip()
+    return names
+
+
 def check_playlist_songbook_parity(
     songs: list[Song], project_root: Path
 ) -> list[Finding]:
-    """Playlist YAMLs should reference songs that exist in the songbook."""
+    """A band's playlist YAML and its songbook should name the same songs.
+
+    Compares title sets, not counts, so a rename (same count, stale title) is
+    caught. Reports both sides: playlist tracks with no songbook entry for the
+    band, and published songbook entries missing from the playlist.
+    """
     findings: list[Finding] = []
     playlist_dir = project_root / "docs"
     if not playlist_dir.is_dir():
@@ -528,28 +585,261 @@ def check_playlist_songbook_parity(
             continue
         if not isinstance(playlist, dict):
             continue
-        # A song placed twice as versions of itself ("The Grey (Version 1)" and
-        # "(Version 2)", an encore reprise) shares one songbook entry — count it once.
-        names = {
-            _VERSION_SUFFIX_RE.sub("", str(t.get("name", ""))).strip().lower()
+        # A song placed twice as versions of itself ("Song (Version 1)" and
+        # "(Version 2)", an encore reprise) shares one songbook entry.
+        tracks = {
+            normalize_title(t.get("name", "")): str(t.get("name", ""))
             for t in (playlist.get("tracks", []) or [])
-            if isinstance(t, dict)
+            if isinstance(t, dict) and str(t.get("name", "")).strip()
         }
-        track_count = len(names)
-        songbook_count = sum(1 for s in songs if s.band == slug)
-        if track_count != songbook_count:
+        band_songs = [s for s in songs if s.band == slug]
+        all_keys = set().union(*(title_keys(s) for s in band_songs)) if band_songs else set()
+        rel = str(playlist_path.relative_to(project_root))
+
+        no_entry = sorted(name for key, name in tracks.items() if key not in all_keys)
+        not_placed = sorted(
+            s.title for s in band_songs if s.is_published and not (title_keys(s) & tracks.keys())
+        )
+        if no_entry:
             findings.append(
                 Finding(
                     category="playlist_drift",
                     severity="warning",
-                    path=str(playlist_path.relative_to(project_root)),
+                    path=rel,
                     message=(
-                        f"{track_count} distinct songs in playlist YAML but "
-                        f"{songbook_count} songbook entries for band {slug!r}"
+                        f"playlist tracks with no songbook entry for band {slug!r}: "
+                        + ", ".join(repr(n) for n in no_entry)
+                    ),
+                )
+            )
+        if not_placed:
+            findings.append(
+                Finding(
+                    category="playlist_drift",
+                    severity="warning",
+                    path=rel,
+                    message=(
+                        f"published songbook entries for band {slug!r} missing from the "
+                        "playlist: " + ", ".join(repr(t) for t in not_placed)
                     ),
                 )
             )
 
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# Voice-file parity checks (catalog counts, Companion Files table)
+# ---------------------------------------------------------------------------
+
+
+_PUBLISHED_COUNT_RE = re.compile(r"\*{0,2}(\d+)\*{0,2}\s+published(?:\s+tracks?)?\b", re.IGNORECASE)
+_SECTION_SPLIT_RE = re.compile(r"^##\s+(.+)$", re.MULTILINE)
+
+
+def _voice_files(project_root: Path) -> list[Path]:
+    docs = project_root / "docs"
+    return sorted(docs.glob("voice-context-*.md")) if docs.is_dir() else []
+
+
+def _band_for_text(text: str, display_names: dict[str, str]) -> str | None:
+    """The band whose display name (longest match wins) appears in `text`."""
+    lowered = text.casefold()
+    best: tuple[int, str] | None = None
+    for slug, name in display_names.items():
+        if name.casefold() in lowered and (best is None or len(name) > best[0]):
+            best = (len(name), slug)
+    return best[1] if best else None
+
+
+def check_voice_catalog_counts(songs: list[Song], project_root: Path) -> list[Finding]:
+    """'N published tracks' claims in voice files must match the songbook.
+
+    A claim is tied to a band when it sits in a `## ...` section whose heading
+    names the band, or on a line pointing at `docs/songbook/{slug}/` (the
+    Companion Files row). The first claim per section or line is checked.
+    """
+    findings: list[Finding] = []
+    display = _band_display_names(project_root)
+    published: dict[str, int] = {}
+    for s in songs:
+        if s.is_published:
+            published[s.band] = published.get(s.band, 0) + 1
+
+    for vf in _voice_files(project_root):
+        try:
+            text = vf.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        rel = str(vf.relative_to(project_root))
+        claims: list[tuple[str, int, str]] = []  # (slug, claimed, where)
+
+        # Songbook-folder rows: `docs/songbook/{slug}/` ... "N published"
+        for line in text.splitlines():
+            m_dir = re.search(r"docs/songbook/([\w.-]+)/", line)
+            m_cnt = _PUBLISHED_COUNT_RE.search(line)
+            if m_dir and m_cnt and line.lstrip().startswith("|"):
+                claims.append((m_dir.group(1), int(m_cnt.group(1)), "songbook row"))
+
+        # Band sections: heading names the band, body claims "N published tracks"
+        parts = _SECTION_SPLIT_RE.split(text)
+        for i in range(1, len(parts) - 1, 2):
+            heading, body = parts[i], parts[i + 1]
+            slug = _band_for_text(heading, display)
+            if slug is None:
+                continue
+            body_lines = [ln for ln in body.splitlines() if not ln.lstrip().startswith("|")]
+            m_cnt = _PUBLISHED_COUNT_RE.search("\n".join(body_lines))
+            if m_cnt:
+                claims.append((slug, int(m_cnt.group(1)), f"section {heading.strip()!r}"))
+
+        for slug, claimed, where in claims:
+            actual = published.get(slug, 0)
+            if slug in display or actual:
+                if claimed != actual:
+                    findings.append(
+                        Finding(
+                            category="voice_catalog_drift",
+                            severity="warning",
+                            path=rel,
+                            message=(
+                                f"{where} claims {claimed} published for band {slug!r} "
+                                f"but the songbook has {actual}"
+                            ),
+                        )
+                    )
+    return findings
+
+
+_COMPANION_ROW_RE = re.compile(r"^\|\s*`([^`]+)`\s*\|", re.MULTILINE)
+
+
+def companion_table_paths(voice_text: str) -> list[str]:
+    """Paths in the first column of a voice file's Companion Files table."""
+    m = re.search(r"^##\s+Companion Files.*?$(.*?)(?=^##\s)", voice_text + "\n## ", re.MULTILINE | re.DOTALL)
+    if not m:
+        return []
+    return [p.strip() for p in _COMPANION_ROW_RE.findall(m.group(1))]
+
+
+def check_companion_files(project_root: Path, since: str | None = None) -> list[Finding]:
+    """Companion Files table entries must exist; optionally list new docs/ files
+    (changed on or after `since`, YYYY-MM-DD) that no table lists."""
+    import datetime as _dt
+
+    findings: list[Finding] = []
+    listed: set[str] = set()
+    for vf in _voice_files(project_root):
+        try:
+            text = vf.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        rel = str(vf.relative_to(project_root))
+        for ref in companion_table_paths(text):
+            if any(c in ref for c in "*?{}"):
+                continue
+            listed.add(ref.rstrip("/"))
+            if not (project_root / ref).exists():
+                findings.append(
+                    Finding(
+                        category="companion_missing",
+                        severity="warning",
+                        path=rel,
+                        message=f"Companion Files table lists {ref!r}, which is not on disk",
+                    )
+                )
+
+    if since:
+        try:
+            cutoff = _dt.datetime.fromisoformat(since).timestamp()
+        except ValueError:
+            return findings
+        docs = project_root / "docs"
+        voice_names = {vf.name for vf in _voice_files(project_root)}
+        for path in sorted(docs.glob("*")) if docs.is_dir() else []:
+            if not path.is_file() or path.suffix not in (".md", ".yaml", ".yml"):
+                continue
+            if path.name.startswith("wip-") or path.name in voice_names:
+                continue  # WIPs are tracked in MEMORY.md Pending / Parked Work
+            rel = path.relative_to(project_root).as_posix()
+            if rel in listed or path.stat().st_mtime < cutoff:
+                continue
+            findings.append(
+                Finding(
+                    category="companion_untracked",
+                    severity="warning",
+                    path=rel,
+                    message=f"changed since {since} but not in any voice file's Companion Files table",
+                )
+            )
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# MEMORY.md Pending / Parked Work vs WIP COMPLETED markers
+# ---------------------------------------------------------------------------
+
+
+# The canonical marker from reconcile.md "The COMPLETED WIP convention".
+# scan-wip-status.py imports this so there is one marker definition.
+COMPLETED_RE = re.compile(r"^##\s*STATUS:\s*COMPLETED\b.*$", re.IGNORECASE | re.MULTILINE)
+_WIP_REF_RE = re.compile(r"docs/wip-[\w.-]+\.md")
+
+
+def wip_marker_status(project_root: Path) -> dict[str, str]:
+    """docs/wip-*.md relative path -> 'completed' | 'active'."""
+    docs = project_root / "docs"
+    out: dict[str, str] = {}
+    for wip in sorted(docs.glob("wip-*.md")) if docs.is_dir() else []:
+        try:
+            text = wip.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        out[wip.relative_to(project_root).as_posix()] = (
+            "completed" if COMPLETED_RE.search(text) else "active"
+        )
+    return out
+
+
+def check_pending_vs_wip(
+    memory_text: str, project_root: Path, memory_display: str
+) -> list[Finding]:
+    """Pending / Parked Work must not list a COMPLETED WIP as active work, and
+    should list every active docs/wip-*.md. A '### Resolved ...' or
+    '... historical ...' subsection is the place for completed ones."""
+    m = re.search(
+        r"^##\s+Pending\s*/\s*Parked Work\s*$(.*?)(?=^##\s|\Z)",
+        memory_text,
+        re.MULTILINE | re.DOTALL,
+    )
+    if not m:
+        return []
+    section = m.group(1)
+    resolved = re.search(r"^###\s+.*(?:resolved|historical).*$", section, re.IGNORECASE | re.MULTILINE)
+    active_part = section[: resolved.start()] if resolved else section
+    statuses = wip_marker_status(project_root)
+    findings: list[Finding] = []
+    for ref in sorted(set(_WIP_REF_RE.findall(active_part))):
+        if statuses.get(ref) == "completed":
+            findings.append(
+                Finding(
+                    category="pending_drift",
+                    severity="warning",
+                    path=memory_display,
+                    message=f"Pending / Parked Work lists {ref} as active, but it carries a COMPLETED marker",
+                )
+            )
+    mentioned = set(_WIP_REF_RE.findall(section))
+    for ref, status in statuses.items():
+        if status == "active" and ref not in mentioned:
+            findings.append(
+                Finding(
+                    category="pending_drift",
+                    severity="warning",
+                    path=memory_display,
+                    message=f"active WIP {ref} is not listed in Pending / Parked Work",
+                )
+            )
     return findings
 
 
@@ -773,7 +1063,7 @@ def check_markdown_cross_references(
 
 
 def run_checks(
-    project_root: Path, sanctum_dir: str | None = None
+    project_root: Path, sanctum_dir: str | None = None, since: str | None = None
 ) -> tuple[list[Finding], dict[str, int]]:
     songs, parse_findings = load_all_songs(project_root)
 
@@ -798,8 +1088,11 @@ def run_checks(
                 memory_text, songs, project_root, memory_display
             )
         )
+        findings.extend(check_pending_vs_wip(memory_text, project_root, memory_display))
 
     findings.extend(check_playlist_songbook_parity(songs, project_root))
+    findings.extend(check_voice_catalog_counts(songs, project_root))
+    findings.extend(check_companion_files(project_root, since))
     findings.extend(check_markdown_cross_references(project_root, resolve_sanctum_dir(project_root, sanctum_dir)))
 
     stats = {
@@ -879,6 +1172,15 @@ def main() -> int:
             "against a staging copy without touching live data."
         ),
     )
+    parser.add_argument(
+        "--since",
+        default=None,
+        metavar="YYYY-MM-DD",
+        help=(
+            "Also list top-level docs/ files changed on or after this date that "
+            "no voice file's Companion Files table lists (e.g. the last save date)"
+        ),
+    )
     args = parser.parse_args()
 
     project_root = Path(args.project_root).resolve()
@@ -886,7 +1188,7 @@ def main() -> int:
         print(f"ERROR: project root not found: {project_root}", file=sys.stderr)
         return 2
 
-    findings, stats = run_checks(project_root, args.sanctum_dir)
+    findings, stats = run_checks(project_root, args.sanctum_dir, args.since)
 
     if args.format == "json":
         payload: dict[str, Any] = {

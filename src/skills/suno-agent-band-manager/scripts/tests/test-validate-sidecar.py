@@ -245,3 +245,127 @@ def test_parity_skips_thematic_playlists_and_counts_versions_once(tmp_path):
     song, _ = mod.parse_song(p, tmp_path)
     assert mod.check_playlist_songbook_parity([song], tmp_path) == []
 
+
+
+# ---------------------------------------------------------------------------
+# Parity checks the prompts used to re-derive by hand
+# ---------------------------------------------------------------------------
+
+
+def _songs(tmp_path):
+    songs, _ = mod.load_all_songs(tmp_path)
+    return songs
+
+
+def test_parity_catches_a_rename_with_the_same_count(tmp_path):
+    _docs(tmp_path, "docs/band-profiles/paper-lanterns.yaml", "name: Paper Lanterns\n")
+    _docs(tmp_path, "docs/paper-lanterns-playlist.yaml",
+          'album: "PL"\ntracks:\n  - name: "Harbour Light"\n    file: a.mp3\n')
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
+    findings = mod.check_playlist_songbook_parity(_songs(tmp_path), tmp_path)
+    messages = " ".join(f.message for f in findings)
+    assert "no songbook entry" in messages and "'Harbour Light'" in messages
+    assert "missing from the playlist" in messages and "'Harbor Lights'" in messages
+
+
+def test_parity_accepts_short_title_and_stylized_forms(tmp_path):
+    _docs(tmp_path, "docs/band-profiles/paper-lanterns.yaml", "name: Paper Lanterns\n")
+    _docs(tmp_path, "docs/paper-lanterns-playlist.yaml",
+          'album: "PL"\ntracks:\n  - name: "Mirror Song"\n    file: a.mp3\n'
+          '  - name: "Harbor Lights"\n    file: b.mp3\n')
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
+    _write_song(tmp_path, "mirror.md", PUBLISHED_SONG.replace(
+        'title: "Harbor Lights"', 'title: "gnoS rorriM|Mirror Song"'))
+    assert mod.check_playlist_songbook_parity(_songs(tmp_path), tmp_path) == []
+
+
+def test_parity_ignores_unpublished_songs_missing_from_playlist(tmp_path):
+    _docs(tmp_path, "docs/band-profiles/paper-lanterns.yaml", "name: Paper Lanterns\n")
+    _docs(tmp_path, "docs/paper-lanterns-playlist.yaml",
+          'album: "PL"\ntracks:\n  - name: "Harbor Lights"\n    file: b.mp3\n')
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
+    _write_song(tmp_path, "draft.md", "---\ntitle: Draft\nband_profile: paper-lanterns\nstatus: wip\n---\n")
+    assert mod.check_playlist_songbook_parity(_songs(tmp_path), tmp_path) == []
+
+
+VOICE_FILE = (
+    "# Voice\n\n## Companion Files — Load On Demand\n\n"
+    "| File | What | When |\n|---|---|---|\n"
+    "| `docs/paper-lanterns-playlist.yaml` | playlist | always |\n"
+    "| `docs/gone.md` | deleted doc | never |\n"
+    "| `docs/songbook/paper-lanterns/` | packages — {count} published as of today | refining |\n\n"
+    "## Paper Lanterns — The Band\n\n**Catalog status:** **{count} published tracks** so far.\n\n"
+    "## Other\n\nnothing\n"
+)
+
+
+def test_voice_catalog_counts_match_songbook(tmp_path):
+    _docs(tmp_path, "docs/band-profiles/paper-lanterns.yaml", "name: Paper Lanterns\n")
+    _docs(tmp_path, "docs/voice-context-owner.md", VOICE_FILE.format(count=1))
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
+    assert mod.check_voice_catalog_counts(_songs(tmp_path), tmp_path) == []
+
+
+def test_voice_catalog_count_drift_is_flagged_in_section_and_row(tmp_path):
+    _docs(tmp_path, "docs/band-profiles/paper-lanterns.yaml", "name: Paper Lanterns\n")
+    _docs(tmp_path, "docs/voice-context-owner.md", VOICE_FILE.format(count=3))
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
+    findings = mod.check_voice_catalog_counts(_songs(tmp_path), tmp_path)
+    assert len(findings) == 2
+    assert all(f.category == "voice_catalog_drift" for f in findings)
+    assert all("claims 3" in f.message and "has 1" in f.message for f in findings)
+
+
+def test_companion_table_missing_entry_flagged(tmp_path):
+    _docs(tmp_path, "docs/voice-context-owner.md", VOICE_FILE.format(count=1))
+    _docs(tmp_path, "docs/paper-lanterns-playlist.yaml", "tracks: []\n")
+    (tmp_path / "docs" / "songbook" / "paper-lanterns").mkdir(parents=True)
+    findings = mod.check_companion_files(tmp_path)
+    assert [f.message for f in findings] == [
+        "Companion Files table lists 'docs/gone.md', which is not on disk"]
+
+
+def test_companion_untracked_since_date(tmp_path):
+    _docs(tmp_path, "docs/voice-context-owner.md", VOICE_FILE.format(count=1))
+    _docs(tmp_path, "docs/paper-lanterns-playlist.yaml", "tracks: []\n")
+    _docs(tmp_path, "docs/gone.md", "now here\n")
+    _docs(tmp_path, "docs/new-research.md", "fresh\n")
+    _docs(tmp_path, "docs/wip-idea.md", "# Idea\n")
+    (tmp_path / "docs" / "songbook" / "paper-lanterns").mkdir(parents=True)
+    findings = mod.check_companion_files(tmp_path, since="2000-01-01")
+    untracked = [f.path for f in findings if f.category == "companion_untracked"]
+    assert untracked == ["docs/new-research.md"]
+    assert mod.check_companion_files(tmp_path) == []  # no --since, no forward check
+
+
+MEMORY_WITH_PENDING = (
+    "# Memory\n\n## Pending / Parked Work\n\n"
+    "- Dock song — `docs/wip-dock.md`\n"
+    "- Old idea — `docs/wip-done.md`\n\n"
+    "### Resolved WIP fragments (historical record only)\n\n"
+    "- `docs/wip-finished.md` -> published\n\n"
+    "## Session History\n"
+)
+
+
+def test_pending_vs_wip_markers(tmp_path):
+    marker = '# X\n\n## STATUS: COMPLETED as "X" — published 2026-01-01\n'
+    _docs(tmp_path, "docs/wip-dock.md", "# Dock\n")
+    _docs(tmp_path, "docs/wip-done.md", marker)
+    _docs(tmp_path, "docs/wip-finished.md", marker)
+    _docs(tmp_path, "docs/wip-unlisted.md", "# Unlisted\n")
+    findings = mod.check_pending_vs_wip(MEMORY_WITH_PENDING, tmp_path, "MEMORY.md")
+    messages = sorted(f.message for f in findings)
+    assert messages == [
+        "Pending / Parked Work lists docs/wip-done.md as active, but it carries a COMPLETED marker",
+        "active WIP docs/wip-unlisted.md is not listed in Pending / Parked Work",
+    ]
+
+
+def test_source_wip_and_short_title_parsed(tmp_path):
+    p = _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG.replace(
+        "status: published\n",
+        'status: published\nsource_wip: docs/wip-dock.md\nshort_title: "Harbor"\n'))
+    song, _ = mod.parse_song(p, tmp_path)
+    assert song.source_wip == "docs/wip-dock.md"
+    assert song.short_title == "Harbor"

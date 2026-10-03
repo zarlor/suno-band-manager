@@ -194,3 +194,63 @@ if __name__ == "__main__":
 
     print(f"\n{passed} passed, {failed} failed out of {len(tests)} tests")
     sys.exit(1 if failed else 0)
+
+
+def run_flags(args: list[str]) -> tuple[int, dict]:
+    """Run parse-feedback.py with the skill's headless flags (no stdin)."""
+    result = subprocess.run([sys.executable, SCRIPT, *args], capture_output=True, text=True)
+    try:
+        return result.returncode, json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return result.returncode, {"raw_stdout": result.stdout, "raw_stderr": result.stderr}
+
+
+def test_flags_translate_to_json_keys(tmp_path):
+    """Headless flags map onto the script's JSON keys; --lyrics is read from the file."""
+    lyrics = tmp_path / "lyrics.txt"
+    lyrics.write_text("[Verse]\nline one\n", encoding="utf-8")
+    log = tmp_path / "song.md"
+    log.write_text("## Round 1\n", encoding="utf-8")
+    code, out = run_flags([
+        "--feedback", "vocals too polished", "--style-prompt", "warm indie rock", "--model", "v6",
+        "--sliders", '{"weirdness": 55, "style_influence": 70}', "--lyrics", str(lyrics),
+        "--band-profile", "test-band", "--iteration-log", str(log), "--title", "My Song", "--no-write",
+    ])
+    assert code == 0, out
+    ctx = out["parsed"]["context"]
+    assert out["parsed"]["feedback_text"] == "vocals too polished"
+    assert ctx["original_style_prompt"] == "warm indie rock"
+    assert ctx["model"] == "v6"
+    assert ctx["slider_settings"] == {"weirdness": 55, "style_influence": 70}
+    assert ctx["original_lyrics"] == "[Verse]\nline one\n"
+    assert ctx["band_profile"] == "test-band"
+    assert ctx["iteration_log_path"] == str(log)
+    assert ctx["title"] == "My Song"
+    assert out["parsed"]["write"] is False
+    assert "pre_categorized" not in out["parsed"] or out["parsed"]["pre_categorized"] == {}
+
+
+def test_feedback_flag_accepts_json_with_pre_categorization():
+    code, out = run_flags(["--feedback", '{"feedback": "too busy", "feedback_type": "clear", "dimensions": ["instrumentation"]}'])
+    assert code == 0, out
+    assert out["parsed"]["feedback_text"] == "too busy"
+    assert out["parsed"]["pre_categorized"] == {"feedback_type": "clear", "dimensions": ["instrumentation"]}
+    assert out["parsed"]["write"] is True
+
+
+def test_missing_lyrics_file_fails_cleanly(tmp_path):
+    code, out = run_flags(["--feedback", "too loud", "--lyrics", str(tmp_path / "nope.txt")])
+    assert code == 1
+    assert out["status"] == "fail" and "--lyrics" in out["findings"][0]["issue"]
+
+
+def test_bad_sliders_json_fails_cleanly():
+    code, out = run_flags(["--feedback", "too loud", "--sliders", "{weirdness: 50"])
+    assert code == 1
+    assert "--sliders" in out["findings"][0]["issue"]
+
+
+def test_context_flag_without_feedback_is_rejected():
+    result = subprocess.run([sys.executable, SCRIPT, "--stdin", "--model", "v6"], input="{}",
+                            capture_output=True, text=True)
+    assert result.returncode == 2 and "needs --feedback" in result.stderr

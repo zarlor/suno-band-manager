@@ -22,7 +22,7 @@ Three failure modes are detected:
   (orphan / abandoned gen)
 
 Filename matching is normalization-aware (since v1.1.0): variations like
-`Foo.mp3` vs `Foo-Redux.mp3` vs `Foo (NSFW).mp3`, em-dash vs ascii hyphen,
+`Foo.mp3` vs `Foo-v2.mp3` vs `Foo (NSFW).mp3`, em-dash vs ascii hyphen,
 equals-sign-as-separator, repeated underscore-hyphen runs are all treated
 as the same song. Band suffixes (e.g. `-Acoustic`, `-Duo`, or whatever
 convention the project uses) are NOT normalized away, because they
@@ -43,8 +43,8 @@ or auto-fix orphans on confirmation.
 
 The audio dir is scanned recursively (since v1.3.0) to match the per-band
 layout docs/audio/{band-slug}/Song.mp3. A band sub-folder is part of a
-file's identity — "solitary-fire/For Now.mp3" never matches
-"lennys-voice/For Now.mp3" — and only the filename part is normalized. A
+file's identity — "band-a/Night Shift.mp3" never matches
+"band-b/Night Shift.mp3" — and only the filename part is normalized. A
 legacy flat manifest (bare filenames) still verifies against a per-band
 local layout by falling back to filename-only matching.
 
@@ -93,7 +93,7 @@ def normalize_for_match(name: str) -> str:
 
     Strips/normalizes filename variations that don't change song identity:
     - File extension (.mp3, .wav, etc.)
-    - Version qualifiers (-Redux, -v2, -alt — common Suno post-publish naming)
+    - Version qualifiers (-v2, -alt, -redux — common post-publish naming)
     - Parenthetical annotations ((NSFW), (clean), (explicit), etc.)
     - Em-dash (—) / en-dash (–) collapsed to ascii hyphen
     - Equals sign (=, occasionally used as separator in mangled Suno-default names) → hyphen
@@ -106,7 +106,7 @@ def normalize_for_match(name: str) -> str:
       and `Song Title-Acoustic.mp3` for the second — these are different audio
       files of the same lyrics, not duplicates).
 
-    The goal: recognize that filenames like `Foo.mp3`, `Foo-Redux.mp3`,
+    The goal: recognize that filenames like `Foo.mp3`, `Foo-v2.mp3`,
     `Foo (NSFW).mp3` all refer to the same song; while `Foo.mp3` and
     `Foo-Acoustic.mp3` are different songs by band-suffix convention.
     """
@@ -142,7 +142,7 @@ def display_path(path: Path, root: Path) -> str:
 def match_key(name: str) -> str:
     """Song-identity key for a name that may carry a band sub-folder.
 
-    The folder ("solitary-fire/For Now.mp3") is part of the identity, so two
+    The folder ("band-a/Night Shift.mp3") is part of the identity, so two
     bands' renderings of the same title never cross-match; only the filename
     part goes through normalize_for_match().
     """
@@ -295,7 +295,7 @@ def main():
 
     # Build normalized → list of (name, size) maps for both sides. Multiple
     # entries can collide on a single normalized key when a manifest carries
-    # both `Foo.mp3` and `Foo-Redux.mp3` — both legitimate gens, distinguished
+    # both `Foo.mp3` and `Foo-v2.mp3` — both legitimate gens, distinguished
     # by size.
     local_by_norm: dict[str, list[tuple[str, int]]] = {}
     # Filename-only index, used when a legacy flat manifest (bare filenames) is

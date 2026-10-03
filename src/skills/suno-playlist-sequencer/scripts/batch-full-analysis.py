@@ -12,6 +12,10 @@ Outputs a summary report in JSON or Markdown text format.
 Tempo and beat stability come from Beat This! (beat-grid.py) when the PyTorch
 audio tools are turned on in the module config (`pytorch_audio_tools`),
 otherwise from librosa; `--tempo-source` overrides the choice for one run.
+With librosa, each track also gets a second reading at a slow starting tempo
+(`bpm_librosa_slow_prior`, start_bpm=80) and how the two relate
+(`librosa_prior_relation`: agree / double / other; double = a likely halftime
+ambiguity, for the ear to settle).
 
 Exit codes:
   0 = analysis completed successfully
@@ -25,12 +29,13 @@ import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from audio_deps import require_audio_deps
 from companion_writer import update_companion, resolve_companion_path
 from json_archiver import resolve_archive_arg, write_archive
-from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, resolve_tempo_source,
-                          feel_sections, source_summary, usable, window_tempos, windowed_stability)
+from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, bpm_cell, feel_sections,
+                          librosa_tempo_pair, resolve_tempo_source, source_summary, usable, window_tempos,
+                          windowed_stability)
 
 SCRIPT_NAME = "batch-full-analysis"
 
@@ -68,6 +73,10 @@ def analyze_track(filepath, beat_reading=None):
             bpm = float(np.atleast_1d(tempo_overall)[0])
             beat_times = librosa.frames_to_time(beats, sr=sr)
             results['tempo_source'] = 'librosa'
+            # A second, slow-prior reading (start_bpm=80), reported only; stability uses the default beats.
+            pair = librosa_tempo_pair(y, sr, default_bpm=bpm)
+            results['bpm_librosa_slow_prior'] = pair['bpm_librosa_slow_prior']
+            results['librosa_prior_relation'] = pair['librosa_prior_relation']
         results['bpm'] = round(bpm, 1)
         if results['tempo_source'] == 'beat-this':
             # Beat This!'s raw beats include the odd stray detection, so judge stability by
@@ -191,6 +200,7 @@ def format_json(all_results):
             'bpm_stability': r['bpm_stability'],
             'bpm_range': list(r['bpm_range']),
             'tempo_source': r.get('tempo_source', 'librosa'),
+            **({k: r[k] for k in ('bpm_librosa_slow_prior', 'librosa_prior_relation') if k in r}),
             **({'feel_sections': r['feel_sections']} if 'feel_sections' in r else {}),
             'key': r['key'],
             'key_confidence': r['key_conf'],
@@ -230,13 +240,18 @@ def format_text(all_results):
         if 'error' in r:
             continue
         dur = format_time(r['duration'])
+        bpm = bpm_cell(r['bpm'], r.get('bpm_librosa_slow_prior'), r.get('librosa_prior_relation'))
         lines.append(
-            f"| {r['file'].replace('.mp3','')} | {dur} | {r['bpm']} "
+            f"| {r['file'].replace('.mp3','')} | {dur} | {bpm} "
             f"| {r['bpm_stability']} | {r['key']} | {r['energy_range']}% "
             f"| {r['dynamic_character']} |"
         )
 
     lines.append(f"\n_Tempo and stability: {SOURCE_LABELS[source_summary(all_results)]}._")
+    if any(r.get('librosa_prior_relation') not in (None, 'agree') for r in all_results if 'error' not in r):
+        lines.append("_BPM a / b = librosa's default reading / its reading with a slow starting tempo "
+                     "(start_bpm=80). (halftime?) = about 2x apart, a likely halftime ambiguity: the ear "
+                     "(or Beat This!) decides which is felt._")
 
     shifted = [r for r in all_results if 'error' not in r and r.get('feel_sections')]
     if shifted:

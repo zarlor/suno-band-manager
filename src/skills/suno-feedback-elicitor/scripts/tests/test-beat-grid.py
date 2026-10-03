@@ -91,6 +91,16 @@ def test_format_text_handles_errors_and_missing_values():
     assert "double-time read" in text and "ERROR: RuntimeError" in text
 
 
+def test_format_text_shows_the_slow_prior_librosa_reading():
+    text = bg.format_text([
+        {"file": "a.mp3", "duration_s": 239.0, "bpm": 60.2, "beats_per_bar": 4, "librosa_bpm": 117.5,
+         "tempo_relation": "librosa_double", "librosa_bpm_slow_prior": 60.1, "librosa_prior_relation": "double"},
+    ])
+    assert "lib@80" in text and " 117.5    60.1  " in text and "start_bpm=80" in text
+    assert "start_bpm=80" not in bg.format_text([{"file": "b.mp3", "duration_s": 5.0, "bpm": None,
+                                                   "beats_per_bar": None}])
+
+
 def test_edge_bpms_reads_first_and_last_windows():
     # 60 s at 120 BPM, then 60 s at 90 BPM.
     beats = [i * 0.5 for i in range(120)] + [60 + i * (60 / 90) for i in range(90)]

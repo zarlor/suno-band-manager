@@ -140,18 +140,18 @@ def main():
     parser.add_argument(
         "profiles_dir",
         nargs="?",
-        default="docs/band-profiles",
-        help="Path to band profiles directory (default: docs/band-profiles)"
+        help="Path to band profiles directory (same as --profiles-dir)."
     )
     parser.add_argument(
         "--profiles-dir",
         dest="profiles_dir_opt",
         help=(
-            "Band profiles directory as a named flag (overrides the positional "
-            "argument; lets callers pass the configured {band_profiles_folder}). "
-            "Default: the positional argument, i.e. docs/band-profiles."
+            "Band profiles directory (wins over the positional). Default: "
+            "band_profiles_folder from {project-root}/_bmad/config.yaml, else "
+            "{project-root}/docs/band-profiles."
         ),
     )
+    parser.add_argument("--project-root", default=".", help="Project root (default: cwd).")
     parser.add_argument("-o", "--output", help="Output file (defaults to stdout)")
     parser.add_argument("--verbose", action="store_true", help="Print diagnostics to stderr")
     parser.add_argument(
@@ -161,10 +161,11 @@ def main():
     )
     args = parser.parse_args()
 
-    # Named --profiles-dir wins when provided; otherwise the positional
-    # argument (which carries the docs/band-profiles default) is used —
-    # so omitting --profiles-dir reproduces the prior behavior exactly.
-    profiles_dir = Path(args.profiles_dir_opt or args.profiles_dir)
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from profile_paths import resolve_dirs
+    profiles_dir = resolve_dirs(
+        args.project_root, profiles_dir=args.profiles_dir_opt or args.profiles_dir
+    )["profiles_dir"]
 
     if args.verbose:
         print(f"Scanning: {profiles_dir}", file=sys.stderr)

@@ -1,9 +1,39 @@
-# Customization surface for suno-playlist-sequencer.
-# Teams override via {project-root}/_bmad/custom/suno-playlist-sequencer.toml
-# Users override via {project-root}/_bmad/custom/suno-playlist-sequencer.user.toml
-# Merge order: this base -> team -> user. Scalars override; plain arrays append.
+# DO NOT EDIT -- overwritten on every update.
+#
+# Workflow customization surface for suno-playlist-sequencer.
+# Team overrides:     {project-root}/_bmad/custom/suno-playlist-sequencer.toml
+# Personal overrides: {project-root}/_bmad/custom/suno-playlist-sequencer.user.toml
 
 [workflow]
+
+# --- Configurable below. Overrides merge per BMad structural rules: ---
+#   scalars: override wins • arrays (persistent_facts, activation_steps_*): append
+#   arrays-of-tables with `code`/`id`: replace matching items, append new ones.
+
+# Steps to run before the standard activation (config load, greet).
+# Overrides append. Use for pre-flight loads, compliance checks, etc.
+
 activation_steps_prepend = []
+
+# Steps to run after greet but before the intake step.
+# Overrides append. Use for context-heavy setup that should happen
+# once the user has been acknowledged.
+
 activation_steps_append = []
-persistent_facts = ["file:{project-root}/**/project-context.md"]
+
+# Persistent facts the workflow keeps in mind for the whole run
+# (standards, compliance constraints, stylistic guardrails).
+# Loaded on activation, headless runs included. Overrides append.
+#
+# Each entry is either:
+#   - a literal sentence, e.g. "Every playlist opens on a track in a major key."
+#   - a file reference prefixed with `file:`, e.g. "file:{project-root}/docs/standards.md"
+#     (glob patterns are supported; the file's contents are loaded and treated as facts).
+
+persistent_facts = []
+
+# Items that are executed when the workflow reaches its terminal stage, after
+# the accepted order is written and the sequencing data re-run. Override wins.
+# Leave empty for no custom post-completion behavior.
+
+on_complete = []

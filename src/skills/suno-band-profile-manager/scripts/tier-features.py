@@ -13,7 +13,7 @@ Authoritative for headless/script consumers. The human-readable twin is
 `references/tier-features.md` — the two must agree; update both together.
 
 Last validated against Suno: 2026-09-12 (v6 family launched 2026-09-09 and
-retired every earlier model; v6 More Options controls; Studio 2.0; download caps
+retired every earlier model; v6 Controls panel; Studio 2.0; download caps
 and ToS effective 2026-09-03; three-mode stem separation).
 """
 
@@ -26,7 +26,7 @@ from pathlib import Path
 # Graceful degradation: if the _shared constants module can't be imported
 # (relocated skill, web sandbox), fall back to the literal tier set so the
 # script still runs rather than crashing on an uncaught ImportError.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 try:
     from suno_constants import VALID_TIERS
 except ImportError:

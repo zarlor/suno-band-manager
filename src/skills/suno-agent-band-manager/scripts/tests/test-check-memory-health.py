@@ -22,13 +22,9 @@ spec.loader.exec_module(mod)
 
 
 def test_healthy_files(tmp_path):
-    """A realistically-curated store is GREEN.
-
-    MEMORY.md can be char-heavy (long derived catalog lines) yet still healthy
-    because it's line-bounded; patterns/chronology are large organic files but
-    well under their generous ceilings.
-    """
-    (tmp_path / "MEMORY.md").write_text(("a line\n" * 102) + "x" * 23000)
+    """A curated store is GREEN: MEMORY.md under its token budget with no packed
+    lines; patterns/chronology large but under their ceilings."""
+    (tmp_path / "MEMORY.md").write_text("- a short curated line\n" * 120)
     (tmp_path / "patterns.md").write_text("x" * 43000)
     (tmp_path / "chronology.md").write_text("x" * 94000)
 
@@ -37,16 +33,60 @@ def test_healthy_files(tmp_path):
     assert result["needs_pruning"] == []
 
 
-def test_memory_over_line_threshold(tmp_path):
-    """MEMORY.md is flagged when it blows its ~200-line curated bound."""
-    (tmp_path / "MEMORY.md").write_text("a line\n" * 250)
-    (tmp_path / "patterns.md").write_text("x" * 100)
-    (tmp_path / "chronology.md").write_text("x" * 100)
-
+def test_memory_over_token_budget_with_few_lines(tmp_path):
+    """Few lines, many tokens: a line count would pass this; the token budget flags it."""
+    (tmp_path / "MEMORY.md").write_text(("y" * 590 + "\n") * 30)  # ~4.4k tokens, 30 lines
     result = mod.check_health(tmp_path)
-    assert result["maintenance_recommended"] is True
     assert "MEMORY.md" in result["needs_pruning"]
-    assert result["files"]["MEMORY.md"]["metric"] == "lines"
+    facts = result["files"]["MEMORY.md"]
+    assert facts["metric"] == "tokens"
+    assert facts["over_threshold"] is True
+    assert facts["size_lines"] == 30
+
+
+def test_packed_line_is_flagged(tmp_path):
+    """One line hiding a whole session narrative is flagged even under budget."""
+    (tmp_path / "MEMORY.md").write_text("- ok\n- " + "z" * 2000 + "\n- ok\n")
+    result = mod.check_health(tmp_path)
+    assert result["files"]["MEMORY.md"]["packed_lines"] == [{"line": 2, "chars": 2002}]
+    assert "MEMORY.md" in result["needs_pruning"]
+
+
+def test_companion_files_measured(tmp_path):
+    """The voice file and mac-preferences are measured; over budget → offer compaction."""
+    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+    sanctum.mkdir(parents=True)
+    (sanctum / "MEMORY.md").write_text("- ok\n")
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "voice-context-sam.md").write_text("v" * 1000)
+    (docs / "mac-preferences.md").write_text("p" * 100000)  # ~25k tokens
+    result = mod.check_health(sanctum)  # project root inferred from the path
+    assert result["companions"]["docs/voice-context-sam.md"]["over_threshold"] is False
+    assert result["companions_over_budget"] == ["docs/mac-preferences.md"]
+    assert "compaction" in result["recommendation"]
+    assert result["maintenance_recommended"] is True
+
+
+def test_index_coverage(tmp_path):
+    """Organic files INDEX.md does not mention are reported."""
+    (tmp_path / "MEMORY.md").write_text("- ok\n")
+    (tmp_path / "INDEX.md").write_text("| `patterns.md` | x |\n| `_collection_*.txt` | y |\n")
+    (tmp_path / "patterns.md").write_text("p")
+    (tmp_path / "_collection_layout.txt").write_text("c")
+    (tmp_path / "liner-notes.md").write_text("new organic file")
+    (tmp_path / "sessions").mkdir()
+    result = mod.check_health(tmp_path)
+    assert result["index_unlisted"] == ["liner-notes.md"]
+    assert result["maintenance_recommended"] is True
+
+
+def test_spine_total_reported(tmp_path):
+    for name in mod.SPINE:
+        (tmp_path / name).write_text("x" * 400)
+    result = mod.check_health(tmp_path)
+    assert result["spine_total_tokens_est"] == 700
+    assert result["spine_over_budget"] is False
 
 
 def test_chronology_over_char_threshold(tmp_path):
@@ -87,7 +127,7 @@ def test_sanctum_dir_override(tmp_path, monkeypatch, capsys):
     (real / "MEMORY.md").write_text("a line\n" * 10)
     staging = tmp_path / "staging"
     staging.mkdir()
-    (staging / "MEMORY.md").write_text("a line\n" * 250)  # over the line bound
+    (staging / "MEMORY.md").write_text("a fairly long curated line here\n" * 500)  # over budget
 
     monkeypatch.setattr(
         sys, "argv",

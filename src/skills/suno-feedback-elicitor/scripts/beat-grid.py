@@ -15,7 +15,10 @@ double. Report both numbers; felt BPM stays a human call.
 Per track: Beat This! BPM (median inter-beat interval), entry and exit BPM
 (first and last 30 s), beats per bar (mode and histogram), bars per minute,
 librosa's BPM, and how the two relate (agree, librosa double, librosa half,
-1.5x / 2/3x triplet-grid readings, or disagree).
+1.5x / 2/3x triplet-grid readings, or disagree). Beside librosa's default
+reading sits a second one at a slow starting tempo (`librosa_bpm_slow_prior`,
+start_bpm=80) and how the two librosa readings relate
+(`librosa_prior_relation`: agree / double / other).
 
 When the owner turns the PyTorch audio tools on (`pytorch_audio_tools` in the
 module config), the librosa scripts call this one for their tempo and beats
@@ -59,10 +62,10 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from audio_deps import require_modules
 from json_archiver import input_archive_identifier, resolve_archive_arg, write_archive
-from tempo_source import tempo_relation
+from tempo_source import librosa_tempo_pair, tempo_relation
 
 SCRIPT_NAME = "beat-grid"
 VERSION = "1.1.0"
@@ -152,17 +155,18 @@ def resolve_device(requested):
 
 def analyze_file(path, a2b, with_librosa=True, include_beats=False):
     import librosa
-    import numpy as np
 
     y, sr = librosa.load(path, sr=ANALYSIS_SR, mono=True)
     beats, downbeats = a2b(y, sr)
     result = {"duration_s": round(len(y) / sr, 1), **beat_stats(beats, downbeats)}
     result["entry_bpm"], result["exit_bpm"] = edge_bpms(beats, len(y) / sr)
     if with_librosa:
-        tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-        lib_bpm = round(float(np.atleast_1d(tempo)[0]), 1)
+        pair = librosa_tempo_pair(y, sr)
+        lib_bpm = pair["bpm_librosa"]
         result["librosa_bpm"] = lib_bpm
         result["tempo_relation"] = tempo_relation(result["bpm"], lib_bpm)
+        result["librosa_bpm_slow_prior"] = pair["bpm_librosa_slow_prior"]
+        result["librosa_prior_relation"] = pair["librosa_prior_relation"]
     if include_beats:
         result["beats_s"] = [round(float(b), 3) for b in beats]
         result["downbeats_s"] = [round(float(d), 3) for d in downbeats]
@@ -175,8 +179,9 @@ def _fmt(v, width):
 
 def format_text(results):
     lines = [
-        f"{'Track':<50} {'Dur(s)':>7} {'BPM(BT)':>8} {'In→out':>13} {'Beats/bar':>9} {'BPM(lib)':>9}  Relation",
-        "-" * 124,
+        f"{'Track':<50} {'Dur(s)':>7} {'BPM(BT)':>8} {'In→out':>13} {'Beats/bar':>9} {'BPM(lib)':>9} "
+        f"{'lib@80':>7}  Relation",
+        "-" * 132,
     ]
     for r in results:
         if "error" in r:
@@ -186,12 +191,16 @@ def format_text(results):
         edges = f"{'-' if r.get('entry_bpm') is None else r['entry_bpm']}→{'-' if r.get('exit_bpm') is None else r['exit_bpm']}"
         lines.append(
             f"{r['file']:<50} {_fmt(r['duration_s'], 7)} {_fmt(r['bpm'], 8)} {edges:>13} "
-            f"{_fmt(r['beats_per_bar'], 9)} {_fmt(r.get('librosa_bpm'), 9)}  {rel}"
+            f"{_fmt(r['beats_per_bar'], 9)} {_fmt(r.get('librosa_bpm'), 9)} "
+            f"{_fmt(r.get('librosa_bpm_slow_prior'), 7)}  {rel}"
         )
     rels = Counter(r.get("tempo_relation") for r in results if "error" not in r and r.get("tempo_relation"))
     if rels:
         lines.append("")
         lines.append("Relation counts: " + ", ".join(f"{RELATION_TEXT[k]} {v}" for k, v in rels.most_common()))
+    if any(r.get("librosa_bpm_slow_prior") is not None for r in results if "error" not in r):
+        lines.append("lib@80 = librosa read again with a slow starting tempo (start_bpm=80). Where it sits ~2x below "
+                     "BPM(lib), librosa itself is torn between the two pulses (a likely halftime ambiguity).")
     lines.append("Felt BPM is a human call: where the two disagree by a clean ratio, the ear decides which pulse is felt.")
     return "\n".join(lines)
 

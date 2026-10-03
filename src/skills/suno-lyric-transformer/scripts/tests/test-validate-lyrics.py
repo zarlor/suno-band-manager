@@ -234,6 +234,75 @@ class TestValidateLyrics:
             assert len(unrecognized) == 0, f"[{cue}] was flagged as unrecognized"
 
 
+BODY = "[Verse 1]\nWalking through the morning light\nCounting shadows on the wall\n"
+
+
+def issues(report, needle):
+    return [f for f in report["findings"] if needle in f["issue"]]
+
+
+class TestEndPlacement:
+    def test_end_last_line_is_clean(self):
+        report, _ = run_script("--text", BODY + "\n[End]")
+        assert not issues(report, "[End]")
+        assert "End" not in report["metrics"]["sections"]
+
+    def test_single_terminal_newline_after_end_is_fine(self):
+        report, _ = run_script("--text", BODY + "\n[End]\n")
+        assert not issues(report, "after [End]")
+
+    def test_missing_end_flagged_low(self):
+        report, _ = run_script("--text", BODY)
+        found = issues(report, "No [End] tag")
+        assert found and found[0]["severity"] == "low"
+
+    def test_text_after_end_flagged(self):
+        report, _ = run_script("--text", BODY + "\n[End]\nOne more line")
+        found = issues(report, "Text follows the final [End]")
+        assert found and found[0]["severity"] == "medium"
+
+    def test_blank_line_after_end_flagged(self):
+        report, _ = run_script("--text", BODY + "\n[End]\n\n")
+        assert issues(report, "after [End]")
+
+    def test_trailing_spaces_on_end_line_flagged(self):
+        report, _ = run_script("--text", BODY + "\n[End]   ")
+        assert issues(report, "after [End]")
+
+    def test_end_not_counted_as_empty_section(self):
+        report, _ = run_script("--text", BODY + "\n[End]")
+        assert not issues(report, "Empty section [End]")
+
+
+class TestNarrativeLabels:
+    def test_em_dash_caps_label_flagged(self):
+        report, _ = run_script("--text", "[Verse 1 — THE ROOM]\nline one\nline two\n\n[End]")
+        found = issues(report, "Narrative section label")
+        assert found and found[0]["severity"] == "medium"
+        assert "Verse 1 — THE ROOM" in report["metrics"]["sections"]
+
+    def test_en_dash_title_case_label_flagged(self):
+        report, _ = run_script("--text", "[Breakdown – The Turn]\nline one\n\n[End]")
+        assert issues(report, "Narrative section label")
+
+    def test_colon_caps_label_flagged(self):
+        report, _ = run_script("--text", "[Verse 1: THE ROOM]\nline one\n\n[End]")
+        assert issues(report, "Narrative section label")
+
+    def test_lowercase_colon_direction_passes(self):
+        report, _ = run_script("--text", "[Verse 1: hushed, tense]\nline one\n\n[End]")
+        assert not issues(report, "Narrative section label")
+        assert not issues(report, "Unrecognized metatag")
+        assert report["metrics"]["section_count"] == 1
+
+    def test_pipe_and_hyphen_cues_are_sections(self):
+        lyrics = "[Verse | whispered]\nline one\n\n[Chorus 1 - riff continues under vocal]\nline two\n\n[End]"
+        report, _ = run_script("--text", lyrics)
+        assert report["metrics"]["section_count"] == 2
+        assert not issues(report, "Unrecognized metatag")
+        assert not issues(report, "Narrative section label")
+
+
 if __name__ == "__main__":
     import pytest
     pytest.main([__file__, "-v"])

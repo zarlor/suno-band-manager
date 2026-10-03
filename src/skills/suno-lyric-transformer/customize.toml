@@ -1,10 +1,38 @@
-# Customization overrides for suno-lyric-transformer.
-# Teams/users override without editing this file:
-#   {project-root}/_bmad/custom/suno-lyric-transformer.toml       (team, committed)
-#   {project-root}/_bmad/custom/suno-lyric-transformer.user.toml  (personal, gitignored)
-# Merge order: this file -> team -> user. Scalars override; plain arrays append.
+# DO NOT EDIT -- overwritten on every update.
+#
+# Workflow customization surface for suno-lyric-transformer.
+# Team overrides:     {project-root}/_bmad/custom/suno-lyric-transformer.toml
+# Personal overrides: {project-root}/_bmad/custom/suno-lyric-transformer.user.toml
 
 [workflow]
+
+# --- Configurable below. Overrides merge per BMad structural rules: ---
+#   scalars: override wins • arrays (persistent_facts, activation_steps_*): append
+#   arrays-of-tables with `code`/`id`: replace matching items, append new ones.
+
+# Steps to run before the standard activation (config load, greet).
+# Overrides append. Applied in headless runs too.
+
 activation_steps_prepend = []
+
+# Steps to run after greet but before Step 1 (Gather Input).
+# Overrides append.
+
 activation_steps_append = []
-persistent_facts = ["file:{project-root}/**/project-context.md"]
+
+# Persistent facts the workflow keeps in mind for the whole run.
+# Each entry is a literal sentence or a `file:` path/glob whose contents load
+# as facts (e.g. "file:{project-root}/docs/project-context.md"). Shipped empty:
+# opt in through an override. Overrides append.
+
+persistent_facts = []
+
+# Run once the lyrics are delivered: after the Step 5 handoff (and songbook
+# save, if any) interactively, or just before the headless JSON is returned,
+# e.g. "commit the songbook entry". Override wins.
+
+on_complete = ""
+
+# Output paths are not set here: songbook entries and their decision logs land
+# where the module config says (`songbook_folder` in the suno: section of
+# {project-root}/_bmad/config.yaml).

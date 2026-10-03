@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from suno_constants import (
     CRITICAL_ZONE,
     EXCLUSION_RECOMMENDED_MAX,
@@ -374,6 +374,33 @@ def generate_adjustments(
     return result
 
 
+def _add_exclude_conflicts(style_items, exclude_items) -> list[dict[str, Any]]:
+    """Style descriptors that an exclusion would cancel (simple substring check, either way)."""
+    warnings = []
+    for add_desc in style_items:
+        for excl in exclude_items:
+            term = excl.lower().removeprefix("no ").strip()
+            if not add_desc.strip() or not term:
+                continue
+            if add_desc.lower() in excl.lower() or term in add_desc.lower():
+                warnings.append({
+                    "type": "add_exclude_conflict",
+                    "detail": f"Style descriptor '{add_desc}' conflicts with exclusion '{excl}'",
+                })
+    return warnings
+
+
+def check_final_package(style_prompt: str, exclusions: str) -> list[dict[str, Any]]:
+    """Check a finished style prompt against its finished exclusions before it is presented.
+
+    Splits both on commas and flags descriptors an exclusion would cancel. Character limits
+    are the suno-style-prompt-builder validator's job, so they are not repeated here.
+    """
+    style_items = [d.strip() for d in style_prompt.split(",") if d.strip()]
+    exclude_items = [e.strip() for e in exclusions.split(",") if e.strip()]
+    return _add_exclude_conflicts(style_items, exclude_items)
+
+
 def check_adjustment_consistency(adjustments: dict[str, Any]) -> list[dict[str, Any]]:
     """Check for internal contradictions in adjustment recommendations."""
     warnings = []
@@ -390,15 +417,7 @@ def check_adjustment_consistency(adjustments: dict[str, Any]) -> list[dict[str, 
             "detail": f"Descriptors appear in both add and remove: {', '.join(conflicts)}",
         })
 
-    # Check for add/exclude conflicts
-    for add_desc in style_add:
-        for excl in exclude_add:
-            # Simple substring check
-            if add_desc.lower() in excl.lower() or excl.replace("no ", "").lower() in add_desc.lower():
-                warnings.append({
-                    "type": "add_exclude_conflict",
-                    "detail": f"Adding '{add_desc}' conflicts with exclusion '{excl}'",
-                })
+    warnings.extend(_add_exclude_conflicts(style_add, exclude_add))
 
     # Check style prompt estimated length
     total_add_chars = sum(len(d) + 2 for d in style_add)  # +2 for ", " separator
@@ -449,6 +468,9 @@ Dimension/Direction combinations:
   quality: artifacts, robotic_vocals, clipping, muffled
   length: too_short, too_long, intro_too_long, outro_cuts_off, pacing_drags
 
+Final check (before presenting a refined package):
+  uv run map-adjustments.py --check-final --style-prompt "raw indie rock, dry vocal" --exclude "no reverb, no autotune"
+
 Example:
   echo '{"dimensions": [{"dimension": "vocals", "direction": "too_polished"}, {"dimension": "energy", "direction": "too_low"}], "tier": "pro"}' | uv run map-adjustments.py --stdin
   echo '{"dimensions": [{"dimension": "vocals", "direction": "too_polished"}]}' | uv run map-adjustments.py --stdin --style-prompt "warm indie rock, ..." --model "v4 Pro"
@@ -458,6 +480,12 @@ Example:
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument("--input", "-i", help="Path to dimensions JSON file")
     input_group.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
+    input_group.add_argument(
+        "--check-final", action="store_true",
+        help="Check a finished --style-prompt against --exclude for descriptors an exclusion cancels "
+        "(no dimensions input; run before presenting a refined package)",
+    )
+    parser.add_argument("--exclude", default="", help="Finished exclusion prompt (with --check-final)")
     parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
     parser.add_argument(
         "--style-prompt",
@@ -472,6 +500,24 @@ Example:
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output to stderr")
 
     args = parser.parse_args()
+
+    if args.check_final:
+        if not args.style_prompt:
+            parser.error("--check-final needs --style-prompt")
+        warnings = check_final_package(args.style_prompt, args.exclude)
+        output_json = json.dumps({
+            "script": "map-adjustments",
+            "version": "1.0.0",
+            "mode": "check-final",
+            "status": "warning" if warnings else "pass",
+            "consistency_warnings": warnings,
+        }, indent=2)
+        if args.output:
+            with open(args.output, "w") as f:
+                f.write(output_json)
+        else:
+            print(output_json)
+        sys.exit(0)
 
     try:
         if args.stdin:

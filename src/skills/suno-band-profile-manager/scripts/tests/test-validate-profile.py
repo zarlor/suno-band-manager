@@ -483,3 +483,29 @@ def test_free_tier_model_is_v6_mini(tmp_path):
     result = validate_profile(write_profile(tmp_path, data))
     assert any("v6-mini" in f.get("fix", "") for f in result["findings"])
 
+
+
+def test_songbook_dir_override_follows_config_location(tmp_path):
+    # songbook_folder relocated: the default {docs}/songbook no longer holds the
+    # entries, so only an explicit songbook_dir finds them.
+    profile_path = _make_standard_layout(tmp_path)
+    moved = tmp_path / "music" / "songbook"
+    moved.parent.mkdir()
+    (tmp_path / "docs" / "songbook").rename(moved)
+    assert not _has_missing_playlist_finding(validate_profile(profile_path))
+    assert _has_missing_playlist_finding(validate_profile(profile_path, songbook_dir=moved))
+
+
+def test_cli_reads_songbook_folder_from_config(tmp_path):
+    import subprocess
+    profile_path = _make_standard_layout(tmp_path)
+    moved = tmp_path / "music" / "songbook"
+    moved.parent.mkdir()
+    (tmp_path / "docs" / "songbook").rename(moved)
+    (tmp_path / "_bmad").mkdir()
+    (tmp_path / "_bmad" / "config.yaml").write_text(
+        "suno:\n  songbook_folder: '{project-root}/music/songbook'\n")
+    script = Path(__file__).parent.parent / "validate-profile.py"
+    proc = subprocess.run([sys.executable, str(script), str(profile_path),
+                           "--project-root", str(tmp_path)], capture_output=True, text=True)
+    assert _has_missing_playlist_finding(json.loads(proc.stdout))

@@ -8,7 +8,9 @@ and off-beats.
 
 Beats come from Beat This! (beat-grid.py) when the PyTorch audio tools are
 turned on in the module config (`pytorch_audio_tools`), otherwise from librosa;
-`--tempo-source` overrides the choice for one run.
+`--tempo-source` overrides the choice for one run. With librosa, a second
+reading at a slow starting tempo (start_bpm=80) is reported beside the overall
+BPM; when the two sit ~2x apart it's flagged as a likely halftime ambiguity.
 
 Usage:
     uv run tempo-detail.py <audio-file> [options]
@@ -31,9 +33,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from audio_deps import require_audio_deps
-from tempo_source import SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, resolve_tempo_source, usable
+from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, slow_prior_fields,
+                          resolve_tempo_source, usable)
 
 SCRIPT_NAME = "tempo-detail"
 VERSION = "1.1.0"
@@ -130,6 +133,12 @@ def analyze_tempo_text(filepath, tempo_source="librosa"):
     # Overall tempo and beat times
     tempo_val, beat_times, source_used = get_beats(y, sr, filepath, tempo_source)
     print(f"\nOverall BPM: {tempo_val:.1f} ({SOURCE_LABELS[source_used]})")
+    slow = slow_prior_fields(y, sr, tempo_val) if source_used == "librosa" else {}
+    if slow:
+        print(f"librosa slow-prior reading (start_bpm=80): {slow['bpm_librosa_slow_prior']} "
+              f"({slow['librosa_prior_relation']})")
+        if slow.get("tempo_note"):
+            print(slow["tempo_note"])
 
     if len(beat_times) < 4:
         print("Too few beats detected for detailed analysis.")
@@ -191,6 +200,7 @@ def analyze_tempo_json(filepath, tempo_source="librosa"):
     duration = librosa.get_duration(y=y, sr=sr)
 
     tempo_val, beat_times, source_used = get_beats(y, sr, filepath, tempo_source)
+    slow = slow_prior_fields(y, sr, tempo_val) if source_used == "librosa" else {}
 
     if len(beat_times) < 4:
         return {
@@ -203,6 +213,7 @@ def analyze_tempo_json(filepath, tempo_source="librosa"):
                 "duration_seconds": round(duration, 2),
                 "bpm_overall": round(tempo_val, 1),
                 "tempo_source": source_used,
+                **slow,
                 "beats_detected": len(beat_times),
                 "note": "Too few beats for detailed analysis",
             },
@@ -243,6 +254,7 @@ def analyze_tempo_json(filepath, tempo_source="librosa"):
             "duration_seconds": round(duration, 2),
             "bpm_overall": round(tempo_val, 1),
             "tempo_source": source_used,
+            **slow,
             "beats_detected": len(beat_times),
             "median_inter_beat_interval": round(median_ibi, 4),
             "tempo_windows": windows,

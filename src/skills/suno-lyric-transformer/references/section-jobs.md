@@ -148,4 +148,4 @@ This technique is most powerful for prog and through-composed structures where t
 - The poem's themes include concepts that have natural musical analogs (freedom/confinement, chaos/order, tension/release)
 - The target genre supports rhythmic experimentation (prog, post-metal, NOLA funk — less applicable to straightforward rock/pop)
 
-Note: Time signature changes are inconsistently respected by Suno (see metatag-reference.md experimental tags), so structural metaphor should be treated as aspirational — worth attempting for the payoff when it lands, but not something to depend on for the song to work.
+Note: Time signature changes are inconsistently respected by Suno (see `references/metatag-reference.md` → Experimental Section Tags), so structural metaphor should be treated as aspirational — worth attempting for the payoff when it lands, but not something to depend on for the song to work.

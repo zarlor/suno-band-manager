@@ -6,7 +6,10 @@
 """Validate transformed lyrics structure for Suno compatibility.
 
 Checks metatag formatting, section structure, blank line separators,
-style cue contamination, and reasonable song length.
+style cue contamination, reasonable song length, [End] placement (last line,
+nothing after it), and narrative section labels such as [Verse 1 — THE ROOM]
+that Suno has no signal for. Parameterized section tags ([Verse 1: hushed],
+[Verse | whispered], [Verse 1 - riff continues]) count as sections.
 
 Usage:
     uv run validate-lyrics.py <lyrics-file-or-text> [options]
@@ -31,7 +34,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from suno_constants import SUNO_LYRICS_HARD_LIMIT, SUNO_LYRICS_QUALITY_BUDGET
 
 SCRIPT_NAME = "validate-lyrics"
@@ -86,6 +89,46 @@ STYLE_CONTAMINATION_PATTERNS = [
     r'\b(?:punchy|warm|crisp)\s+(?:drums|bass|mix|production)\b',
 ]
 
+# Section names, shared by the plain and parameterized forms.
+SECTION_BASE = (r'(?:verse|chorus|bridge|breakdown|build-up|buildup|pre-chorus|post-chorus|'
+                r'hook|refrain|interlude|solo|instrumental|break|drop|build|end|intro|outro|'
+                r'final chorus|fade\s*(?:out|in))')
+PLAIN_SECTION_RE = re.compile(rf'^{SECTION_BASE}\s*\d*$', re.IGNORECASE)
+# [Verse 1: hushed], [Verse | whispered], [Verse 1 - riff continues], [Verse 1 — THE ROOM]
+PARAM_SECTION_RE = re.compile(rf'^{SECTION_BASE}\s*\d*\s*(?::|\||\s[-–—]\s?|[–—]).+$', re.IGNORECASE)
+DASH_LABEL_RE = re.compile(rf'^{SECTION_BASE}\s*\d*\s*[–—]\s*(?P<label>.+)$', re.IGNORECASE)
+COLON_LABEL_RE = re.compile(rf'^{SECTION_BASE}\s*\d*\s*:\s*(?P<label>.+)$', re.IGNORECASE)
+
+
+def is_section_tag(tag_text: str) -> bool:
+    """True for a recognized section tag, plain or parameterized."""
+    tag_lower = tag_text.lower().strip()
+    return bool(tag_lower in VALID_SECTIONS
+                or PLAIN_SECTION_RE.match(tag_lower)
+                or PARAM_SECTION_RE.match(tag_lower))
+
+
+def narrative_label(tag_text: str) -> str | None:
+    """Return the label when a section tag carries a narrative title.
+
+    An em/en-dash label in title or capital case ([Verse 1 — THE ROOM],
+    [Breakdown – The Turn]) or an all-caps colon label ([Verse 1: THE ROOM])
+    reads as a story title, not a direction. Lower-case cues
+    ([Verse 1: hushed, tense]) are directions and pass.
+    """
+    m = DASH_LABEL_RE.match(tag_text.strip())
+    if m:
+        words = re.findall(r"[^\W\d_]+", m.group("label"))
+        if words and all(w[0].isupper() for w in words):
+            return m.group("label").strip()
+    m = COLON_LABEL_RE.match(tag_text.strip())
+    if m:
+        letters = [c for c in m.group("label") if c.isalpha()]
+        if len(letters) >= 2 and all(c.isupper() for c in letters):
+            return m.group("label").strip()
+    return None
+
+
 # Reasonable song length bounds (in non-empty, non-tag lines)
 MIN_LYRIC_LINES = 8
 MAX_LYRIC_LINES = 80
@@ -121,12 +164,10 @@ def parse_lyrics(text: str) -> dict:
 
             # Check if it's a section tag
             tag_lower = tag_content.lower()
-            # Strip numbers for matching: "Verse 1" -> "verse 1", but also match base "verse"
-            is_section = (tag_lower in VALID_SECTIONS or
-                         tag_lower in VALID_VOCAL_CUES or
-                         re.match(r'^(verse|chorus|bridge|breakdown|build-up|buildup|pre-chorus|post-chorus|hook|refrain|interlude|solo|instrumental|break|drop|build|end|fade\s*(?:out|in))\s*\d*$', tag_lower))
+            is_section = is_section_tag(tag_content) or tag_lower in VALID_VOCAL_CUES
 
-            if is_section:
+            # [End] is a stop marker, not a section with lyrics of its own.
+            if is_section and tag_lower != "end":
                 current_section = {
                     "tag": tag_content,
                     "line": i,
@@ -268,8 +309,7 @@ def validate_lyrics(text: str) -> list[dict]:
         tag_text = tag_info["text"]
         tag_lower = tag_text.lower()
         # Is it a valid section?
-        is_section = (tag_lower in VALID_SECTIONS or
-                     re.match(r'^(verse|chorus|bridge|breakdown|build-up|buildup|pre-chorus|post-chorus|hook|refrain|interlude|solo|instrumental|break|drop|build|end|fade\s*(?:out|in))\s*\d*$', tag_lower))
+        is_section = is_section_tag(tag_text)
         # Is it a valid vocal delivery cue?
         is_vocal_cue = tag_lower in VALID_VOCAL_CUES
         # Is it a valid descriptor?
@@ -310,6 +350,57 @@ def validate_lyrics(text: str) -> list[dict]:
                 "location": {"line": i},
                 "issue": f"Heavy punctuation density ({density:.2f}) at line {i}: '{stripped[:60]}'. Heavy punctuation can confuse Suno's cadence.",
                 "fix": "Simplify punctuation to let Suno interpret natural phrasing."
+            })
+
+    # Narrative section labels: Suno has no signal for them and may sing them.
+    for tag_info in parsed["all_tags"]:
+        label = narrative_label(tag_info["text"])
+        if label:
+            findings.append({
+                "severity": "medium",
+                "category": "structure",
+                "location": {"line": tag_info["line"]},
+                "issue": f"Narrative section label [{tag_info['text']}] at line {tag_info['line']}: '{label}' gives Suno no direction and may be sung.",
+                "fix": "Translate the label to Suno-actionable direction (e.g. [Verse 1: hushed, tense]); keep the narrative label in songbook notes."
+            })
+
+    # [End] placement: the absolute last line, nothing below it.
+    end_lines = [i for i, line in enumerate(lines, 1) if line.strip().lower() == "[end]"]
+    if sections and not end_lines:
+        findings.append({
+            "severity": "low",
+            "category": "structure",
+            "issue": "No [End] tag.",
+            "fix": "Add [End] as the final line of the lyrics."
+        })
+    for line_num in end_lines[:-1]:
+        findings.append({
+            "severity": "medium",
+            "category": "structure",
+            "location": {"line": line_num},
+            "issue": f"[End] at line {line_num} is not the last line; more lyrics follow it.",
+            "fix": "Keep a single [End] on the final line."
+        })
+    if end_lines:
+        last = end_lines[-1]
+        after = lines[last:]
+        tail = lines[last - 1][lines[last - 1].lower().index("[end]") + len("[end]"):]
+        if any(line.strip() for line in after):
+            findings.append({
+                "severity": "medium",
+                "category": "structure",
+                "location": {"line": last},
+                "issue": f"Text follows the final [End] at line {last}.",
+                "fix": "Move [End] to the absolute last line."
+            })
+        elif tail or len(after) > 1 or (after and after[0] != ""):
+            # One terminating newline (a file's last line) is fine; anything more is not.
+            findings.append({
+                "severity": "low",
+                "category": "structure",
+                "location": {"line": last},
+                "issue": f"Whitespace or blank lines after [End] at line {last}.",
+                "fix": "End the lyrics block on [End] with nothing below it, not even a blank line."
             })
 
     # Check for empty sections

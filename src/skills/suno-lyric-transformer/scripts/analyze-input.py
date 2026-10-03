@@ -6,7 +6,10 @@
 """Pre-analyze raw input text to extract deterministic metrics before LLM processing.
 
 Detects existing structure, counts lines/words/characters, finds repeated phrases,
-identifies potential rhyme pairs, and estimates needed structure.
+lists line-ending suffix matches (rhyme candidates only -- spelling is not sound),
+classifies each line's script (Latin / non-Latin), flags unbroken prose, records
+the writer's spatial layout (indentation, internal space runs, blank-line gaps),
+and estimates needed structure.
 
 Usage:
     uv run analyze-input.py <text-file> [options]
@@ -26,11 +29,12 @@ import hashlib
 import json
 import re
 import sys
+import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from suno_constants import SUNO_LYRICS_HARD_LIMIT, SUNO_LYRICS_QUALITY_BUDGET
 
 SCRIPT_NAME = "analyze-input"
@@ -87,8 +91,12 @@ def find_repeated_phrases(text: str, min_words: int = 3, min_count: int = 2) -> 
     return [{"phrase": p, "count": c} for p, c in sorted(filtered.items(), key=lambda x: -x[1])]
 
 
-def find_rhyme_pairs(text: str) -> list[dict]:
-    """Find potential rhyme pairs based on ending sounds (last 2-3 chars)."""
+def find_suffix_matches(text: str) -> list[dict]:
+    """List line-ending words that share their last 2-3 letters.
+
+    This is an orthographic candidate list, not a rhyme judgment: love/move
+    match here and through/blue do not. The model judges rhyme strength.
+    """
     lines = text.split('\n')
     content_lines = []
     for line in lines:
@@ -136,6 +144,101 @@ def find_rhyme_pairs(text: str) -> list[dict]:
     return pairs
 
 
+TAG_ONLY_LINE = re.compile(r'^\s*\[[^\]]*\]\s*$')
+
+# Unbroken prose: running text with few or no poem-style line breaks.
+# Free verse with long lines averages well under this many words per line.
+PROSE_WORDS_PER_LINE = 25
+
+
+def classify_script(line: str) -> str:
+    """Classify a line's letters as latin, non_latin, mixed, or none."""
+    latin = non_latin = 0
+    for ch in line:
+        if not ch.isalpha():
+            continue
+        try:
+            name = unicodedata.name(ch)
+        except ValueError:
+            name = ""
+        if name.startswith("LATIN"):
+            latin += 1
+        else:
+            non_latin += 1
+    if latin and non_latin:
+        return "mixed"
+    if latin:
+        return "latin"
+    if non_latin:
+        return "non_latin"
+    return "none"
+
+
+def analyze_scripts(lines: list[str]) -> dict:
+    """Per-line script class for content lines (1-based line numbers)."""
+    by_class = {"latin": [], "non_latin": [], "mixed": []}
+    for n, line in enumerate(lines, 1):
+        if not line.strip() or TAG_ONLY_LINE.match(line):
+            continue
+        cls = classify_script(line)
+        if cls in by_class:
+            by_class[cls].append(n)
+    has_latin = bool(by_class["latin"] or by_class["mixed"])
+    has_non_latin = bool(by_class["non_latin"] or by_class["mixed"])
+    if has_latin and has_non_latin:
+        script_type = "mixed"
+    elif has_non_latin:
+        script_type = "non_latin"
+    elif has_latin:
+        script_type = "latin"
+    else:
+        script_type = "none"
+    return {
+        "script_type": script_type,
+        "mixed_script": script_type == "mixed",
+        "script_lines": by_class,
+    }
+
+
+def analyze_spatial_layout(lines: list[str]) -> dict:
+    """Record the writer's authored spacing so it can be carried verbatim.
+
+    Leading whitespace, internal runs of 2+ whitespace characters (or any tab),
+    and blank-line gaps are reported with 1-based line numbers. Nothing here
+    is a defect: it is the layout the transform must preserve.
+    """
+    indented, internal_runs = [], []
+    for n, line in enumerate(lines, 1):
+        if not line.strip():
+            continue
+        if line[:1].isspace():
+            indented.append(n)
+        core = line.strip()
+        if re.search(r'\s{2,}|\t', core):
+            internal_runs.append(n)
+
+    gaps = []  # blank-line runs between content lines
+    run_start, run_len, seen_content = None, 0, False
+    for n, line in enumerate(lines, 1):
+        if line.strip():
+            if run_len and seen_content:
+                gaps.append({"after_line": run_start - 1, "blank_lines": run_len})
+            run_start, run_len, seen_content = None, 0, True
+        else:
+            if run_len == 0:
+                run_start = n
+            run_len += 1
+    gap_sizes = sorted({g["blank_lines"] for g in gaps})
+    irregular_gaps = len(gap_sizes) > 1 or any(size > 1 for size in gap_sizes)
+    return {
+        "has_spatial_layout": bool(indented or internal_runs or irregular_gaps),
+        "indented_lines": indented,
+        "internal_space_run_lines": internal_runs,
+        "blank_line_gaps": gaps,
+        "irregular_gaps": irregular_gaps,
+    }
+
+
 def estimate_structure(line_count: int) -> dict:
     """Estimate structure category and needed sections from line count."""
     if line_count < 16:
@@ -180,11 +283,17 @@ def analyze_input(text: str) -> dict:
     # Repeated phrases
     repeated = find_repeated_phrases(text)
 
-    # Rhyme pairs
-    rhymes = find_rhyme_pairs(text)
+    # Line-ending suffix matches (rhyme candidates; the model judges rhyme)
+    suffixes = find_suffix_matches(text)
 
     # Structure estimate (based on content lines)
     structure = estimate_structure(len(content_lines))
+
+    # Script class per line, unbroken-prose flag, authored spatial layout
+    scripts = analyze_scripts(lines)
+    words_per_line = word_count / len(content_lines) if content_lines else 0
+    unbroken_prose = bool(content_lines) and words_per_line >= PROSE_WORDS_PER_LINE
+    spatial = analyze_spatial_layout(lines)
 
     return {
         "has_existing_structure": has_existing_structure,
@@ -195,7 +304,11 @@ def analyze_input(text: str) -> dict:
         "character_count": char_count,
         "source_hash": source_hash,
         "repeated_phrases": repeated,
-        "potential_rhyme_pairs": rhymes,
+        "suffix_matches": suffixes,
+        "average_words_per_line": round(words_per_line, 1),
+        "unbroken_prose": unbroken_prose,
+        **scripts,
+        "spatial_layout": spatial,
         **structure
     }
 
@@ -227,6 +340,30 @@ def build_report(analysis: dict, text: str, skill_path: str = "") -> dict:
             "fix": f"Consider trimming — quality degrades above ~{SUNO_LYRICS_QUALITY_BUDGET} characters. Hard limit is {SUNO_LYRICS_HARD_LIMIT}."
         })
 
+    if analysis["unbroken_prose"]:
+        findings.append({
+            "severity": "info",
+            "category": "structure",
+            "issue": f"Input reads as unbroken prose (~{analysis['average_words_per_line']} words per line).",
+            "fix": "Segment into candidate lines on clause and breath boundaries before line-based analysis; mark the breaks as inferred, not the writer's."
+        })
+
+    if analysis["script_type"] in ("non_latin", "mixed"):
+        findings.append({
+            "severity": "info",
+            "category": "language",
+            "issue": f"Script type is {analysis['script_type']} (see script_lines).",
+            "fix": "Non-Latin lines get structure and arc work only; syllable, rhyme and cliche checks apply to Latin lines."
+        })
+
+    if analysis["spatial_layout"]["has_spatial_layout"]:
+        findings.append({
+            "severity": "info",
+            "category": "spacing",
+            "issue": "Writer's text carries authored spacing (indentation, internal space runs, or uneven blank-line gaps).",
+            "fix": "Carry every space and blank line verbatim; check the result with spacing-check.py."
+        })
+
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
     for f in findings:
         severity_counts[f["severity"]] = severity_counts.get(f["severity"], 0) + 1
@@ -250,7 +387,13 @@ def build_report(analysis: dict, text: str, skill_path: str = "") -> dict:
             "character_count": analysis["character_count"],
             "source_hash": analysis["source_hash"],
             "repeated_phrases": analysis["repeated_phrases"],
-            "potential_rhyme_pairs": analysis["potential_rhyme_pairs"],
+            "suffix_matches": analysis["suffix_matches"],
+            "average_words_per_line": analysis["average_words_per_line"],
+            "unbroken_prose": analysis["unbroken_prose"],
+            "script_type": analysis["script_type"],
+            "mixed_script": analysis["mixed_script"],
+            "script_lines": analysis["script_lines"],
+            "spatial_layout": analysis["spatial_layout"],
             "estimated_structure": analysis["estimated_structure"],
             "estimated_sections_needed": analysis["estimated_sections_needed"],
         },
@@ -278,7 +421,10 @@ Metrics extracted:
   - Line, word, and character counts
   - sha256 source_hash (authoritative LT-STATE / headless change-tracking hash)
   - Repeated phrases (3+ words, 2+ occurrences)
-  - Potential rhyme pairs (shared endings)
+  - Suffix matches (line endings sharing 2-3 letters; rhyme candidates only)
+  - Script type per line (latin / non_latin / mixed) and a mixed_script flag
+  - unbroken_prose flag (average words per line >= 25)
+  - spatial_layout (indented lines, internal space runs, blank-line gaps)
   - Estimated structure size (short/medium/long)
 
 Exit codes: 0=pass, 1=issues, 2=error

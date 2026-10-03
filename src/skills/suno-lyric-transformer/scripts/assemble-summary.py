@@ -6,7 +6,10 @@
 """Assemble Transformation Summary from validation, syllable, and cliche reports.
 
 Collects outputs from validate-lyrics.py, syllable-counter.py, and cliche-detector.py
-and assembles a formatted Transformation Summary markdown block.
+and assembles a formatted Transformation Summary markdown block. Every number in the
+summary (sections, character budget and percentage, syllable range, duration) is read
+from those reports, so the JSON `metrics` map straight into the headless
+`transformation_summary` and nothing is computed by hand.
 
 Usage:
     uv run assemble-summary.py --validation val.json --syllables syl.json --cliches cli.json [options]
@@ -27,11 +30,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
+from suno_constants import SUNO_LYRICS_HARD_LIMIT, SUNO_LYRICS_QUALITY_BUDGET
+
 SCRIPT_NAME = "assemble-summary"
 VERSION = "1.0.0"
 
 # Canonical option codes and human-readable meanings.
-# SOURCE OF TRUTH: src/skills/suno-lyric-transformer/SKILL.md "Full menu" table
+# SOURCE OF TRUTH: src/skills/suno-lyric-transformer/SKILL.md menu table
 # (Step 2: Select Transformations). Keep this dict in lockstep with that table
 # and with the identical CODE_DESCRIPTIONS in validate-options.py.
 CODE_DESCRIPTIONS = {
@@ -45,7 +51,8 @@ CODE_DESCRIPTIONS = {
     "WF": "Word Fidelity Mode",
 }
 
-# Approximate duration: ~15 seconds per section on average
+# Fallback duration when syllable-counter.py ran without --estimate-duration:
+# ~15 seconds per section on average.
 SECONDS_PER_SECTION = 15
 
 
@@ -68,10 +75,11 @@ def assemble_summary(validation: dict, syllables: dict, cliches: dict,
     lyric_lines = val_metrics.get("lyric_lines", 0)
     total_lines = val_metrics.get("total_lines", 0)
 
-    # Estimate character count from validation raw data or total lines
-    char_count = 0
-    if "raw_text" in validation:
-        char_count = len(validation["raw_text"])
+    # Character budget, straight from validate-lyrics.py
+    char_count = val_metrics.get("character_count", 0)
+    lyric_chars = val_metrics.get("lyric_character_count", 0)
+    metatag_chars = val_metrics.get("metatag_character_count", 0)
+    budget_pct = round(100 * char_count / SUNO_LYRICS_QUALITY_BUDGET) if char_count else 0
 
     # Extract from syllable report
     syl_metrics = syllables.get("metrics", {})
@@ -86,10 +94,14 @@ def assemble_summary(validation: dict, syllables: dict, cliches: dict,
     cliche_categories = cli_metrics.get("categories", {})
     cli_status = cliches.get("status", "unknown")
 
-    # Estimated duration
-    estimated_duration_sec = section_count * SECONDS_PER_SECTION
-    minutes = estimated_duration_sec // 60
-    seconds = estimated_duration_sec % 60
+    # Estimated duration: syllable-counter's range when present, else the section heuristic
+    syl_duration = syl_metrics.get("estimated_duration") or {}
+    if syl_duration.get("formatted"):
+        estimated_duration = syl_duration["formatted"]
+        estimated_duration_sec = syl_duration.get("max_seconds", 0)
+    else:
+        estimated_duration_sec = section_count * SECONDS_PER_SECTION
+        estimated_duration = f"{estimated_duration_sec // 60}:{estimated_duration_sec % 60:02d}"
 
     # Transformation descriptions
     trans_descriptions = [
@@ -106,10 +118,16 @@ def assemble_summary(validation: dict, syllables: dict, cliches: dict,
         "lyric_lines": lyric_lines,
         "total_lines": total_lines,
         "character_count": char_count,
+        "lyric_character_count": lyric_chars,
+        "metatag_character_count": metatag_chars,
+        "character_budget": f"{char_count}/{SUNO_LYRICS_QUALITY_BUDGET} ({budget_pct}%)",
+        "character_budget_pct": budget_pct,
+        "over_quality_budget": char_count > SUNO_LYRICS_QUALITY_BUDGET,
+        "over_hard_limit": char_count > SUNO_LYRICS_HARD_LIMIT,
         "syllable_range": f"{min_syl}-{max_syl}",
         "average_syllables": avg_syl,
         "total_syllables": total_syl,
-        "estimated_duration": f"{minutes}:{seconds:02d}",
+        "estimated_duration": estimated_duration,
         "estimated_duration_sec": estimated_duration_sec,
         "total_cliches": total_cliches,
         "cliche_categories": cliche_categories,
@@ -133,7 +151,11 @@ def format_markdown(data: dict) -> str:
     ]
 
     if data['character_count'] > 0:
-        lines.append(f"**Character Count:** {data['character_count']}")
+        lines.append(
+            f"**Character Budget:** Lyrics {data['lyric_character_count']} + Metatags "
+            f"{data['metatag_character_count']} = {data['character_budget']} of the quality "
+            f"budget ({SUNO_LYRICS_HARD_LIMIT} hard limit)"
+        )
 
     lines.append("")
     lines.append(f"**Cliche Detection:** {data['total_cliches']} found ({data['cliche_status']})")

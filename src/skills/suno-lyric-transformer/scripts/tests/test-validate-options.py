@@ -13,7 +13,7 @@ from pathlib import Path
 
 SCRIPT = str(Path(__file__).parent.parent / "validate-options.py")
 
-# Canonical code -> meaning, mirrored from SKILL.md "Full menu" table
+# Canonical code -> meaning, mirrored from SKILL.md menu table
 # (Step 2: Select Transformations). This is the source of truth; both
 # validate-options.py and assemble-summary.py must agree with it.
 CANONICAL_CODE_DESCRIPTIONS = {
@@ -133,7 +133,7 @@ class TestValidateOptions:
 
     def test_code_descriptions_match_canonical(self):
         # Guard against silent drift: validate-options.py CODE_DESCRIPTIONS must
-        # match the canonical SKILL.md "Full menu" mapping exactly.
+        # match the canonical SKILL.md menu-table mapping exactly.
         module = _load_module()
         assert module.CODE_DESCRIPTIONS == CANONICAL_CODE_DESCRIPTIONS
 

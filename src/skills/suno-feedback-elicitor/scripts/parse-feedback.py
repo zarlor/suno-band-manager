@@ -6,9 +6,11 @@
 """
 Parse and validate structured feedback input for headless mode.
 
-Accepts JSON feedback input and extracts structured dimensions for
-the Feedback Elicitor skill. Validates required fields and normalizes
-the input structure for downstream processing.
+Accepts the skill's headless flags (--feedback, --style-prompt, --model,
+--sliders, --lyrics, --band-profile, --iteration-log) or a JSON blob, and
+extracts structured dimensions for the Feedback Elicitor skill. Validates
+required fields and normalizes the input structure for downstream processing.
+The flag-to-key translation lives here so the calling model doesn't do it.
 
 Exit codes:
   0 = valid input, structured output returned
@@ -22,7 +24,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from suno_constants import VALID_MODELS
 
 VALID_DIMENSIONS = [
@@ -42,12 +44,57 @@ VALID_DIMENSIONS = [
 VALID_FEEDBACK_TYPES = ["clear", "positive", "vague", "contradictory", "technical"]
 
 
+def flags_to_input(args: argparse.Namespace) -> dict[str, Any]:
+    """Translate the skill's headless flags into the input JSON keys (deterministic).
+
+    --feedback may be plain text or a JSON object carrying feedback_text (or feedback) plus
+    optional pre-categorization (feedback_type, dimensions). --lyrics and --iteration-log are
+    file paths; lyrics are read, the iteration log is passed through as a path.
+    Raises ValueError for unreadable files or malformed --sliders JSON.
+    """
+    data: dict[str, Any] = {}
+    fb = args.feedback
+    try:
+        parsed = json.loads(fb)
+    except (json.JSONDecodeError, TypeError):
+        parsed = None
+    if isinstance(parsed, dict):
+        data.update(parsed)
+        if "feedback_text" not in data and "feedback" in data:
+            data["feedback_text"] = data.pop("feedback")
+    else:
+        data["feedback_text"] = fb
+    if args.style_prompt is not None:
+        data["original_style_prompt"] = args.style_prompt
+    if args.model is not None:
+        data["model"] = args.model
+    if args.sliders is not None:
+        try:
+            data["slider_settings"] = json.loads(args.sliders)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"--sliders is not valid JSON: {e}") from e
+    if args.lyrics is not None:
+        try:
+            data["original_lyrics"] = Path(args.lyrics).read_text(encoding="utf-8")
+        except OSError as e:
+            raise ValueError(f"--lyrics file could not be read: {args.lyrics} ({e.strerror})") from e
+    if args.band_profile is not None:
+        data["band_profile"] = args.band_profile
+    if args.title is not None:
+        data["title"] = args.title
+    if args.iteration_log is not None:
+        if not Path(args.iteration_log).is_file():
+            raise ValueError(f"--iteration-log file not found: {args.iteration_log}")
+        data["iteration_log_path"] = args.iteration_log
+    return data
+
+
 def validate_feedback_input(data: dict[str, Any]) -> list[dict[str, Any]]:
     """Validate structured feedback input and return findings."""
     findings = []
 
     # feedback_text is required
-    if "feedback_text" not in data or not data["feedback_text"].strip():
+    if not isinstance(data.get("feedback_text"), str) or not data["feedback_text"].strip():
         findings.append({
             "severity": "critical",
             "category": "structure",
@@ -124,7 +171,7 @@ def validate_feedback_input(data: dict[str, Any]) -> list[dict[str, Any]]:
 def extract_structured_output(data: dict[str, Any]) -> dict[str, Any]:
     """Extract and normalize structured feedback for downstream processing."""
     output = {
-        "feedback_text": data.get("feedback_text", "").strip(),
+        "feedback_text": str(data.get("feedback_text", "")).strip(),
         "context": {
             "original_style_prompt": data.get("original_style_prompt", ""),
             "original_lyrics": data.get("original_lyrics", ""),
@@ -132,6 +179,8 @@ def extract_structured_output(data: dict[str, Any]) -> dict[str, Any]:
             "model": data.get("model", ""),
             "slider_settings": data.get("slider_settings", {}),
             "intent": data.get("intent", ""),
+            "iteration_log_path": data.get("iteration_log_path", ""),
+            "title": data.get("title", ""),
         },
         "pre_categorized": {
             "feedback_type": data.get("feedback_type", ""),
@@ -166,8 +215,16 @@ Input JSON schema:
     feedback_type (string) - clear, positive, vague, contradictory
     dimensions (array) - Problem dimensions: music, vocals, energy, structure, lyrics, vibe, production, tempo, instrumentation
 
+Skill flags (headless) -> JSON keys:
+  --feedback -> feedback_text (or a JSON object with feedback_text/feedback, feedback_type, dimensions)
+  --style-prompt -> original_style_prompt   --model -> model
+  --sliders -> slider_settings (JSON)       --lyrics PATH -> original_lyrics (file contents)
+  --band-profile -> band_profile            --iteration-log PATH -> iteration_log_path
+  --title -> title                          --no-write -> parsed.write = false
+
 Example:
-  echo '{"feedback_text": "The guitar is too loud", "model": "v5 Pro"}' | uv run parse-feedback.py --stdin
+  uv run parse-feedback.py --feedback "vocals too polished" --style-prompt "warm indie rock" --model v6
+  echo '{"feedback_text": "The guitar is too loud", "model": "v6"}' | uv run parse-feedback.py --stdin
   uv run parse-feedback.py --input feedback.json
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -175,20 +232,41 @@ Example:
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument("--input", "-i", help="Path to feedback JSON file")
     input_group.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
+    input_group.add_argument("--feedback", help="Feedback text, or a JSON object (skill headless flag)")
+    parser.add_argument("--style-prompt", help="Original style prompt (with --feedback)")
+    parser.add_argument("--model", help="Suno model used (with --feedback)")
+    parser.add_argument("--sliders", help='Slider JSON, e.g. \'{"weirdness": 50, "style_influence": 70}\' (with --feedback)')
+    parser.add_argument("--lyrics", help="Path to the original lyrics file (with --feedback)")
+    parser.add_argument("--band-profile", help="Band profile name (with --feedback)")
+    parser.add_argument("--iteration-log", help="Path to the song's iteration log (with --feedback)")
+    parser.add_argument("--title", help="Song title, which names the iteration log (with --feedback)")
+    parser.add_argument("--no-write", action="store_true",
+                        help="Caller wants no durable writes; echoed as parsed.write = false")
     parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output to stderr")
 
     args = parser.parse_args()
+    flag_only = [n for n in ("style_prompt", "model", "sliders", "lyrics", "band_profile", "iteration_log", "title")
+                 if getattr(args, n) is not None]
+    if flag_only and args.feedback is None:
+        parser.error(f"--{flag_only[0].replace('_', '-')} needs --feedback (with --stdin/--input, put it in the JSON)")
 
     try:
-        if args.stdin:
+        if args.feedback is not None:
+            data = flags_to_input(args)
+        elif args.stdin:
             raw = sys.stdin.read()
         else:
             with open(args.input, "r") as f:
                 raw = f.read()
 
-        data = json.loads(raw)
-    except json.JSONDecodeError as e:
+        if args.feedback is None:
+            data = json.loads(raw)
+    except ValueError as e:
+        if isinstance(e, json.JSONDecodeError):
+            issue, fix = f"Invalid JSON: {e}", "Provide valid JSON input"
+        else:
+            issue, fix = str(e), "Check the flag value or file path"
         result = {
             "script": "parse-feedback",
             "version": "1.0.0",
@@ -197,8 +275,8 @@ Example:
                 "severity": "critical",
                 "category": "structure",
                 "location": {"field": "root"},
-                "issue": f"Invalid JSON: {e}",
-                "fix": "Provide valid JSON input",
+                "issue": issue,
+                "fix": fix,
             }],
             "summary": {"total": 1, "critical": 1, "high": 0, "medium": 0, "low": 0, "info": 0},
         }
@@ -280,6 +358,7 @@ Example:
     }
 
     if structured_output:
+        structured_output["write"] = not args.no_write
         result["parsed"] = structured_output
 
     if args.verbose:

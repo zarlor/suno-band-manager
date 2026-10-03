@@ -1,6 +1,6 @@
 # Style Prompt Builder
 
-The Style Prompt Builder generates model-aware Suno style prompts optimized for the user's chosen model tier, blending band profile baselines with per-song creative direction. It understands the fundamental differences between Suno model families — v4.5 wants conversational descriptions while v5 wants crisp film-brief descriptors — and produces a complete prompt package: style prompt, exclusion prompt, slider recommendations, and an optional experimental wild card variant. The skill enforces the 1,000-character limit (200 for v4 Pro) and prioritizes the critical first 200 characters where Suno's attention is strongest.
+The Style Prompt Builder generates model-aware Suno style prompts optimized for the user's chosen model tier, blending band profile baselines with per-song creative direction. It writes for the current v6 family (ordered production direction) and can migrate prompts written for the retired models, and it produces a complete package: style prompt, Exclude Styles, Controls settings, a title suggestion, and a wild-card variant. The skill enforces the 1,000-character limit (200 for the retired v4 Pro) and prioritizes the critical first 200 characters where Suno's attention is strongest.
 
 ## When to Use Directly vs. Through Mac
 
@@ -13,23 +13,23 @@ Use this skill directly when you already have a band profile or clear musical di
 1. **Gather Inputs** — Collects song direction, band profile, model selection, creativity mode (conservative/balanced/experimental), and specific requests
 2. **Build Style Prompt** — Constructs model-specific prompt with critical zone awareness; decomposes reference tracks into concrete descriptors (never puts artist names in prompts)
 3. **Build Exclusion Prompt** — Generates "Exclude Styles" content from profile defaults, user requests, and genre inference
-4. **Slider Recommendations** — Weirdness, Style Influence, and Audio Influence settings based on creativity mode and tier
-5. **Wild Card Variant** — Experimental alternative that pushes creative boundaries
-6. **Validate & Present** — Character count validation, copy-ready output blocks, refinement loop
+4. **Controls** — Weirdness and Style Influence chosen per song, Audio Influence by slot (Persona or Voice), Variety, Max Mode, Duration, Personalize, Vocal Gender
+5. **Wild Card Variant** — A genre or subgenre shift inside the band's core sound, on the primary's model and sliders
+6. **Validate & Present** — Validation of both prompts, copy-ready output blocks, refinement loop
 
 ### Headless Mode (`--headless` or `-H`)
 
-- `--headless:from-profile` — Generate prompt package using only profile baseline
-- `--headless:custom` — Generate from provided parameters without a profile
+- `--headless` — Build a package from the inputs given: a band profile's baseline plus any overrides, or `genre_mood` alone without a profile (`--headless:from-profile` and `--headless:custom` are accepted aliases)
 - `--headless:refine` — Apply structured adjustments from the Feedback Elicitor to an existing prompt
 - `--headless:migrate` — Reformat an existing prompt from one model's style to another
-- `--headless` with profile name — Hybrid mode (profile baseline + overrides)
+
+The input and output contract is in `references/headless-contract.md`.
 
 ## Scripts
 
 | Script | Description |
 |--------|-------------|
-| `validate-prompt.py` | Validates style prompt character count (model-specific limits), critical zone content, and structure |
+| `validate-prompt.py` | Validates the primary and wild-card style prompts (model-specific limits, critical zone, structure, scream/keyboard/crowd-noise triggers, inline negatives), the Exclude Styles text, and the Audio Influence range. Takes the package as JSON on stdin |
 
 ## Example Invocation
 
@@ -39,9 +39,9 @@ Use this skill directly when you already have a band profile or clear musical di
 "Create a Suno prompt for a dreamy indie folk song on v6"
 
 # Headless
---headless:from-profile --profile midnight-echoes
---headless:custom --model v6 --genre "indie folk" --mood "dreamy, introspective"
---headless:migrate --prompt "warm indie rock..." --from v5.5-pro --to v6
+--headless --profile midnight-echoes
+--headless --model v6 --genre_mood "dreamy, introspective indie folk"
+--headless:migrate --prompt "warm indie rock..." --from "v5.5 Pro" --to v6
 ```
 
 ## Creativity Modes

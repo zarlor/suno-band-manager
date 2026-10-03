@@ -24,68 +24,43 @@ Translates subjective musical reactions into concrete parameter adjustments for 
 
 ## Conventions
 
-- Bare paths (e.g. `references/feedback-triage-guide.md`) resolve from the skill root.
-- `{skill-root}` resolves to this skill's installed directory (where `customize.toml` lives).
-- `{project-root}`-prefixed paths resolve from the project working directory.
-- `{skill-name}` resolves to the skill directory's basename.
-
-## Activation Mode Detection
-
-**Check activation context immediately:**
-
-1. **Headless mode**: If `--headless` or `-H` flags are present, or intent clearly indicates non-interactive execution:
-   - If `--headless:analyze` -- triage and categorize feedback only, return analysis as JSON
-   - If `--headless:adjustments` -- accept feedback + original prompts, return full adjustment recommendations. Runs triage internally if `feedback_type`/`dimensions` are absent; if they're present in the input, trusts them and skips re-triage.
-   - If just `--headless` -- analyze + generate adjustments with balanced defaults
-   - **Headless contracts:** Load `references/headless-contract.md` for output JSON schema, input flag specs, and the flag-to-JSON translation note (you are the translation layer between advertised flags and the scripts' JSON keys).
-
-2. **Interactive mode** (default): Proceed to On Activation
+- Bare paths (`references/...`, `scripts/...`) resolve from the skill root (`{skill-root}`); `{project-root}` paths from the project working directory. A sibling skill's file is named by skill ("the suno-style-prompt-builder skill's `scripts/validate-prompt.py`") and resolves from that skill's installed directory.
+- Run every script with `uv run`; `--help` documents its flags and outputs.
 
 ## On Activation
 
-1. **Resolve customization** -- run `python3 {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --key workflow`. This reads the merged `[workflow]` block (base `customize.toml` -> team `{project-root}/_bmad/custom/{skill-name}.toml` -> user `{project-root}/_bmad/custom/{skill-name}.user.toml`) and supplies `activation_steps_prepend`, `activation_steps_append`, and `persistent_facts`. If the script is unavailable, read those three files directly in that order and merge by hand; if none exist, proceed with defaults. Run any `activation_steps_prepend` before the next step and load `persistent_facts`.
-2. **Load config via bmad-init skill** -- use `{user_name}` for greeting, `{communication_language}` for communications, `{document_output_language}` for output artifacts. **Fallback:** If bmad-init is unavailable, greet generically, default to English. Do not block.
-3. **Greet user** as `{user_name}` in `{communication_language}`
-4. **Intent check:** If the request clearly isn't about feedback on an existing Suno generation, redirect to the Band Manager agent or Style Prompt Builder. If it's ambiguous -- e.g. you can't tell whether they want to refine an existing take or build something new -- ask one disambiguating question ("Are we refining a generation you've already heard, or starting a fresh one?") before redirecting; don't bounce a user who's actually in scope.
-5. **Run any `activation_steps_append`,** then **proceed to Step 1**
+These steps run in every mode, headless included.
+
+1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. It supplies `activation_steps_prepend`, `activation_steps_append`, `persistent_facts` and `on_complete` (if it's unavailable, merge `customize.toml` with the overrides in `{project-root}/_bmad/custom/` by hand). Run any `activation_steps_prepend` and load `persistent_facts`.
+2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key core` for `{user_name}`, `{communication_language}` and `{document_output_language}`. Module settings (`suno_tier`, `band_profiles_folder`, `pytorch_audio_tools`) are in the `suno:` section of `{project-root}/_bmad/config.yaml`. If either is missing, greet generically, default to English and the documented folder defaults, and carry on.
+3. **Headless** (`--headless` / `-H`, or clearly non-interactive intent): load `references/headless-contract.md`, run any `activation_steps_append`, and follow the steps without greeting or asking.
+4. **Greet** `{user_name}` in `{communication_language}`.
+5. **Intent check.** If the request clearly isn't about feedback on an existing Suno generation, redirect: a new song goes to the Band Manager agent or the Style Prompt Builder; album, playlist or tracklist ordering goes to `suno-playlist-sequencer`. If it's ambiguous, ask one question first ("Are we refining a generation you've already heard, or starting a fresh one?") -- don't bounce a user who's actually in scope.
+6. Run any `activation_steps_append`, then go to Step 1.
 
 ## Workflow Steps
 
 ### Step 1: Receive Feedback
 
-Accept natural language feedback. Let them express freely -- don't interrupt or categorize yet. Prompt: "How did it turn out?" / "What worked? What didn't?"
+Let them express freely -- don't interrupt or categorize yet ("How did it turn out?"). Capture their exact words. Section-specific feedback ("verse was great but chorus fell flat") points to section-level editing over full regeneration. Capture strategic intent ("thinking concept album") for Step 7 without redirecting.
 
-**Capture everything** -- note specific words about sound, vocals, structure, mood, energy. Listen for section-specific feedback ("verse was great but chorus fell flat") -- informs full regeneration vs. section-level editing. If user shares strategic intent alongside feedback ("thinking concept album"), capture for Step 7 without redirecting.
-
-From this round onward, append to the iteration log: what was tried and the user's reaction to it. The log is one markdown file per song at `docs/feedback-history/{band-or-session}/{song-slug}.md` — `{band-or-session}` is the band-profile name (or a session timestamp `YYYYMMDD-HHMM` when no profile is in play), `{song-slug}` is the song title kebab-cased (or the same session timestamp when the song is untitled). Each round is a dated `## Round {n}` heading. The log is the living spine of refinement, not an end-of-session export.
-
-**Headless:** Accept as text or structured JSON with optional pre-categorized dimensions.
+**Iteration log.** Each song has one markdown log, the canonical memory of refinement (`references/durable-writes.md`). Append each round's attempt and the user's reaction, plus mid-elicitation anchors (narrowed dimensions, references, locked anchors, technical attempts), as they land -- not at the end -- so a compaction never loses them.
 
 ### Step 2: Gather Context
 
-Prioritize ruthlessly. Start with the most valuable question, gate further questions on triage results.
+**Resume prior rounds first.** Locate the log (`scripts/feedback-log.py locate`); if it exists, surface it ("We worked on this last on {date} -- round {n}; here's what we tried and how it landed") and resume from it so the user isn't re-explaining settled ground.
 
-**Resume prior rounds first.** Derive `{song-slug}` from the title and check whether `docs/feedback-history/{band-or-session}/{song-slug}.md` already exists (when the song name is fuzzy, scan that band's folder for a slug that matches). If it exists, surface it ("We worked on this last on {date} -- round {n}; here's what we tried and how it landed") and resume from that record so the user isn't re-explaining settled ground; reading the log recovers full context even after compaction. This log is the canonical memory of multi-round refinement -- write to it from round 1 onward (per Step 1), don't treat it as a terminal artifact.
+**Priority 1 (always):** the style prompt -- or a description of what they asked for, to reconstruct it from. Never block on the verbatim prompt. If the opening already supplied it, confirm the package in one line and go to triage.
 
-**Priority 1 (always):** "Can you share the style prompt you used? If you don't have it handy, just describe what you asked for and I'll reconstruct it from that plus your feedback." Reconstruction is a real path, not a fallback gate -- never block on the verbatim prompt.
+**Priority 2 (only as feedback demands):** lyrics (when vocal-relevant), band profile (`{band_profiles_folder}/{profile-name}.yaml`), model (only if Step 5's overflow check needs it), sliders, creativity mode, intent. Instrumental track: skip every vocal and lyric question outright. Soft gate: "That's enough to get started -- anything else before we dig in?" No profile: skip profile features and mention them for next time.
 
-**Express path:** If the opening already supplied the style prompt, skip the Q&A and go straight to triage -- confirm the package in one line rather than re-asking. The model isn't needed to start; only ask for it inline at Step 5 if overflow validation needs to know the character limit (and only when the adjusted prompt is near the limit). Lyrics likewise come in on demand if the feedback turns out to be vocal-relevant.
+**Audio (optional).** With a render in hand, load `references/audio-analysis-scripts.md` and run what fits (`section-map.py` when the PyTorch audio tools are on and you have the render's lyrics). Skip gracefully when unavailable.
 
-**Priority 2 (as needed):** Original lyrics, band profile (`docs/band-profiles/{profile-name}.yaml`), model used, slider settings, creativity mode, intent description.
-
-**Instrumental skip cue:** If the prompt or the user signals an instrumental track (no vocals), skip every vocal/lyric question outright -- don't spend a turn confirming there are no vocals.
-
-**Soft gate:** After the style prompt: "That's enough to get started -- anything else before we dig in?"
-
-**Optional audio intake:** If audio file available, run `scripts/analyze-audio.py` or `scripts/audio-deep-analysis.py` for objective measurements. Skip gracefully if unavailable.
-
-**Section map (PyTorch audio tools on):** when you have the render and the lyrics it was generated from (the package doc or songbook entry), run `scripts/section-map.py <render> --lyrics <package-or-lyrics-file> --format text` before judging structure, dynamics, or vocal placement. Compare each section's timing, loudness step, vocal-minus-band, tempo/feel and key against the tags and cues that were asked for, rather than assuming the render followed them. Transcribing sung vocals is imperfect: a line reported as not heard means listen there, not proof of a change. With the switch off, say what the map would add and carry on without it. If context is sparse, work with what you have. Cold start without band profile -- skip profile features, mention for next time.
-
-**Headless:** Accept all fields per `references/headless-contract.md` (you translate advertised flags into the scripts' JSON keys). Run `scripts/parse-feedback.py` to validate and extract structured dimensions.
+**Headless:** run `uv run scripts/parse-feedback.py` with the skill's flags; it validates the input and builds the JSON.
 
 ### Step 3: Triage Feedback
 
-Classify into one of five types. Load `references/feedback-triage-guide.md` for classification rules.
+Classify with `references/feedback-triage-guide.md`:
 
 | Type | Signal | Example | Route |
 |------|--------|---------|-------|
@@ -95,168 +70,49 @@ Classify into one of five types. Load `references/feedback-triage-guide.md` for 
 | **Contradictory** | Wants conflicting things | "More energetic but also more chill" | Step 4d |
 | **Technical** | Audio quality, artifacts, glitches | "Weird glitch," "Vocals sound robotic" | Step 4e |
 
-If iteration log loaded, narrow triage to remaining dimensions. Mixed feedback: address clear and technical first -- resolving concrete issues often clarifies vague ones. For 3+ types, outline the plan.
+With a prior log, narrow triage to the dimensions still open. Mixed feedback: handle clear and technical first -- resolving concrete issues often clarifies vague ones; for 3+ types, outline the plan. **Headless:** use `pre_categorized` from parse-feedback when present; otherwise triage with the guide and record the inferred type in `decision_log`.
 
-**Headless:** Use parsed output from `scripts/parse-feedback.py` for classification.
+### Step 4a: Direct Mapping (Clear)
 
-### Step 4a: Direct Mapping (Clear Feedback)
+Load `references/suno-parameter-map.md` (and `references/model-controls.md` when a v6 control, Voice or Custom Model is in play) and map the complaint to style wording, exclusions, sliders, lyric structure and metatags. Explain each move concretely ("To reduce guitar prominence, I'd add 'subtle guitar, background acoustic' and exclude 'no heavy guitar, no guitar solo'"). Go to Step 5.
 
-The user knows what's wrong. Translate their complaint into Suno parameter adjustments.
+### Step 4b: Positive Refinement (Positive)
 
-Load `references/suno-parameter-map.md` and map to: style prompt wording, exclusion additions/removals, slider adjustments, lyric structural changes, metatag additions. Explain each adjustment concretely ("To reduce guitar prominence, I'd add 'subtle guitar, background acoustic' and exclude 'no heavy guitar, no guitar solo'"). Proceed to Step 5.
+Lead with the win, not a manufactured problem. **Satisfied, no evolution ask:** celebrate and offer to bank the winning settings to the band profile -- don't push "change one thing" on someone who's happy; go to Step 7. **Wants to evolve:** ask what to keep vs. push further, anchor the rest, go to Step 5.
 
-### Step 4b: Positive Refinement (Positive Feedback)
+### Step 4c: Guided Elicitation (Vague)
 
-The user likes it. Lead with the win, not a manufactured problem.
+Narrow from broad dimensions to a concrete anchor using the techniques in `references/feedback-triage-guide.md`, starting wherever the user's awareness already is. Zero awareness ("all of it is off") goes straight to a reference: "Point me at anything that sounds like what you wanted -- a song, an artist, a movie scene, or just a feeling." If 3-4 questions don't converge, offer 2-3 contrasting variants plus one creative wild card, so elicitation becomes selection. Summarize and confirm before Step 5.
 
-**If they're satisfied (no evolution ask):** Celebrate it and offer the clean close -- bank the winning combination to the band profile so it's reusable next time ("This one landed. Want me to save these settings to your band profile so we can build from them?"). Don't push "change one thing" on someone who's happy. Route to Step 7 for the profile-bank offer.
+### Step 4d: First Principles Reset (Contradictory)
 
-**If they want to evolve:** Ask what to keep vs. evolve ("What specifically do you love?" / "What would you push further?"). Identify parameters to adjust while anchoring the rest. Proceed to Step 5.
+First check for dynamic contrast: "It sounds like you might want quiet verses building to powerful choruses -- is that it?" If yes, route to section-specific metatags (`[Energy: Low]` verse, `[Energy: High]` chorus). If genuinely contradictory, acknowledge the tension without judgment and ask: "If you could only keep ONE thing about this song exactly as it is, what would it be?" Rebuild from that anchor one dimension at a time, reframing leftover contradictions as structural insights. Non-convergence: the 4c variants fallback. Go to Step 5.
 
-### Step 4c: Guided Elicitation (Vague Feedback)
+### Step 4e: Technical Resolution (Technical)
 
-The user knows something is off but can't say what. Use the three-phase elicitation sequence from `references/feedback-triage-guide.md` (opposing pairs table, parameter mappings, technique details).
-
-**Maximally vague shortcut:** If zero dimensional awareness ("all of it is off"), skip to Phase 2: "Can you point me at anything that sounds like what you wanted -- a song, an artist, a movie scene, or even just a feeling?" Any of these decomposes into concrete audio characteristics; musical knowledge isn't required.
-
-**Phase 1: Binary Narrowing** -- Yes/no questions across dimension checklist (music/production, vocals, energy, structure, lyrics, vibe). One at a time. If narrowed in 2 questions, skip to Phase 2.
-
-**Phase 2: Comparative Anchoring** -- Artist/song references, spectrum placement, A/B contrasts. Musical knowledge not required -- "a movie scene" or "a feeling" works.
-
-**Phase 3: Emotional Vocabulary Bridge** -- Present opposing pairs from the triage guide. User places current output AND desired target on spectrum -- the gap determines adjustment magnitude.
-
-**Escape hatch:** If narrowing doesn't converge after 3-4 questions, pivot to reference-first approach. Summarize and confirm before proceeding.
-
-**Non-convergence fallback:** Suggest 2-3 variants with different parameter profiles plus one "creative wild card" -- turns elicitation into selection.
-
-**Elicitation checkpoint:** As you narrow, append the working state (narrowed dimensions, references, spectrum placements) to the iteration log so a compaction mid-elicitation doesn't lose the anchor. This checkpoint discipline applies to every multi-turn branch (4c/4d/4e), not just this one. Proceed to Step 5.
-
-### Step 4d: First Principles Reset (Contradictory Feedback)
-
-The user wants conflicting things. But first -- check if they're describing dynamic contrast.
-
-**Structural contrast quick-check:** "It sounds like you might want contrast between sections -- quiet verses building to powerful choruses. Is that what you're describing?" If yes, route to section-specific adjustments via metatags (`[Energy: Low]` for verse, `[Energy: High]` for chorus).
-
-**If genuinely contradictory:** Acknowledge the tension without judgment. Ask the First Principles question: "If you could only keep ONE thing about this song exactly as it is, what would it be?" Rebuild from that anchor, layering back each dimension. Reframe remaining contradictions as structural insights. Append the locked anchor and each layered decision to the iteration log as you go -- a long rebuild is exactly where compaction loses the load-bearing anchor.
-
-**Non-convergence fallback:** Same as Step 4c -- suggest 2-3 variants.
-
-Proceed to Step 5.
-
-### Step 4e: Technical Resolution (Technical/Quality Feedback)
-
-Audio quality issues, artifacts, glitches, or pronunciation problems -- typically generation-specific, not prompt-specific.
-
-Set expectations: "Audio artifacts are usually specific to a particular generation, not the prompt itself."
-
-Load `references/suno-parameter-map.md` (Audio Quality & Artifacts, Editor and Studio Resolution Paths). For deeper analysis, also load `references/gemini-audio-analysis.md`.
-
-**Route by issue type:**
-- **Artifacts/glitches:** Regenerate 3-5 times with same prompt first. If persistent, simplify the style prompt.
-- **Vocal quality:** On v6, flat, rushed, or buried vocals usually trace to lyric density, missing delivery direction, or an unplaced vocal -- see the parameter map's "v6 Controls and Symptoms"; Max Mode for vocals that drift through the song. Suggest Replace Section for section-specific issues.
-- **Timing issues:** Premier — fix in Studio before regenerating (Warp Markers was the Studio 1.x tool for this and is not in current Studio 2.0 copy; check the live UI). Pro — Replace Section on the offending span, or export stems and correct timing in a DAW.
-- **Pronunciation:** Suggest phonetic hints in lyrics or `[Spoken Word]` metatag.
-- **Quality degradation in long songs:** Within-track degradation past ~2 minutes is the most-replicated community claim — vocals lose timbre, and the style prompt reportedly stops being followed after 1-2 minutes. Build in sub-2:00 segments and stitch, or Replace Section the late material; a full regeneration reproduces it.
-- **Instrument bleed between sections:** Fundamental Suno limitation -- style prompt instruments bleed globally. Fix: generate with all instruments, then extract stems (Pro/Premier **Auto Split**, up to 12 stems, 50 credits; Premier also has **Advanced Split**, ~100 instruments) and remove unwanted instruments per section in a DAW. One-way edit -- complete all Suno editing first. From 2026-09-03 the whole stem set counts as that song's single download.
-- **Section-specific issues (Pro/Premier):**
-  - **Pro and Premier:** Song Editor (Legacy Editor) -- select the problem region, hit Replace to get alternatives while keeping what works. Key controls: **Keep Duration** toggle (ON = match length, OFF = creative flexibility for solos/breaks), **Instrumental Mode** (removes vocals), **Replace Lyrics** (edit selected region only). Best with 10-30 second selections; typically 2-5 attempts for seamless transitions. **Availability is not viability** -- production testing found audible transition seams even at sweet-spot scale, so evaluate the join as well as the content, and fall back to Cover or a full re-gen when the seam is the problem.
-  - **Premier additionally:** Suno Studio 2.0 (MIDI, chat bar, custom plugins, 32-bit multitrack export) for anything needing a real multitrack workspace, plus **Take Lanes and comping** for auditioning several versions of a section and keeping the best parts -- those survived the overhaul and are safe to name. The Studio 1.x names that did NOT survive (Alternates, Quick Replace, Remove FX, Warp Markers) are archived and absent from current official copy -- route those to the outcome, not the tool name.
-  - **Note:** External DAW editing (after stem extraction) is one-way -- user loses Suno's editing capabilities on that version. Complete all Suno edits before exporting to DAW.
-
-**Tier limitations:** Replace Section and stems are **Pro and Premier**; **Suno Studio is Premier-only** and nothing in Studio 2.0 reaches Pro. Free tier's primary path is regeneration.
-
-**Dual-path issues:** If the issue has both a quality and prompt component (e.g., "robotic vocals"), map the prompt-fixable portion to Step 5 alongside the technical recommendation.
-
-Across a multi-attempt technical session (regenerate-and-recheck loops, Studio passes), append each attempt and its outcome to the iteration log so the trail survives compaction.
-
-Proceed to Step 5 (prompt adjustments) or Step 6 (pure regeneration/Studio recommendation).
+Set expectations: "Audio artifacts are usually specific to a particular generation, not the prompt itself." Route each issue through `references/technical-resolution.md`; v6 vocal symptoms through `references/model-controls.md`; deeper listening analysis through `references/gemini-audio-analysis.md`. Gate every editor or Studio path on `{suno_tier}` (ask only when unset): Replace Section and stems are Pro and Premier, Studio is Premier-only, and Free relies on regeneration. **Dual-path issues** (e.g. "robotic vocals"): send the prompt-fixable part to Step 5 alongside the technical fix. Then Step 5, or Step 6 for a pure regeneration/editor recommendation.
 
 ### Step 5: Map to Adjustments
 
-Synthesize feedback into concrete Suno parameter adjustments.
+Translate the findings into dimensions for `uv run scripts/map-adjustments.py` (e.g. "vocals feel too polished" -> `{"dimension": "vocals", "direction": "too_polished"}`), passing `--style-prompt`, `--model` and `tier` from `{suno_tier}` when known so overflow and free-tier slider limits surface as data. Refine its baseline with judgment from the full context (band profile, intent, Step 1's creative context).
 
-**Translate to structured dimensions** for `scripts/map-adjustments.py` (e.g., "vocals feel too polished" -> `{"dimension": "vocals", "direction": "too_polished"}`). Pass `--style-prompt` and `--model` when known so the script flags a `style_prompt_overflow` warning against the model's character limit (v4 Pro silently truncates at 200). If the model wasn't captured earlier and the adjusted prompt is running near the limit, this is the one place to ask for it inline -- otherwise don't. Run the script for baseline recommendations, then refine with LLM judgment based on full context (band profile, intent, creative context from Step 1).
+**Effectiveness:** reason against the iteration log -- don't re-recommend a move that failed; lean on one that worked. With search tools, check descriptors against current Suno behavior -- models evolve.
 
-**Consistency check:** Verify adds don't conflict with exclusions, sliders don't contradict style prompt, and no adjustment risks breaking liked elements.
+**Recommendations, across every relevant dimension:**
+- **Style prompt:** add (strongest descriptors in the first ~200-character critical zone), remove, reorder.
+- **Exclusions:** add 2-3 specific items, or remove.
+- **Sliders (paid tiers):** Weirdness / Style Influence direction and magnitude, per section when the feedback is section-specific. Respect the structural Weirdness ceiling in the parameter map's slider guide.
+- **Lyrics**, as a Lyric Transformer adjustment spec (`references/output-template.md`).
+- **Model suggestion** when the issue maps to a model's known strengths, and **post-generation editing** where it applies.
 
-**Effectiveness tracking:** Read the iteration log for this song/band and reason against what prior rounds already tried -- don't re-recommend a move that already failed, and lean on one that worked. Two distinct writes to the band profile, per the band-profile data contract:
-- **`generation_history`** -- this round's settings + reaction snapshot (the per-round record). Append it every round.
-- **`generation_learnings`** -- a durable pattern only when one round generalizes across songs (e.g., "reverb on lead vocals always reads as 'too polished' for this band"). Offer to store these; don't log one-song specifics here.
+**Check before presenting.** Run the final style prompt and exclusions through the suno-style-prompt-builder skill's `scripts/validate-prompt.py` (limits, triggers; pass `--model`) and `scripts/map-adjustments.py --check-final` (descriptors an exclusion cancels), and fix what they flag. Whether sliders contradict the prompt, and whether a change risks a liked element, stays your judgment.
 
-**Research mandate:** When search tools are available, verify descriptors reflect current Suno behavior -- models evolve.
-
-**Weirdness ceiling warning:** At 85+, Suno loses structural metatag adherence -- `[End]` ignored, songs continue with gibberish. **75 is the practical ceiling** for structured songs. 80+ only for experimental/jam mode; community reports put the danger zone as low as 78. Pair high Weirdness with the `[Fade Out]` + `[End]` combo, but do not promise a clean ending from tags -- crop in the editor is the only deterministic path.
-
-**Generate recommendations across all relevant dimensions:**
-- **Style Prompt:** Add (prioritize first ~200 chars critical zone for strongest influence), remove, reorder. Validates against the 1,000-char limit (200 for v4 Pro) -- community-attested figures, not officially documented by Suno. Content beyond ~200 is supplementary, not wasted.
-- **Exclusion Prompt:** Add (2-3 specific), remove. Validates against ~200 char target.
-- **Sliders (paid tiers):** Weirdness/Style Influence direction + magnitude. Per-section values for section-specific feedback (via Replace Section at Pro, Studio at Premier).
-- **Lyric Adjustments** -- structure as Lyric Transformer adjustment spec:
-  ```json
-  {"adjustments": [
-    {"type": "section-restructure", "detail": "..."},
-    {"type": "line-rewrite", "lines": [3, 4], "reason": "..."},
-    {"type": "metatag-change", "section": "Chorus", "add": "[Energy: building]"},
-    {"type": "rhythmic-fix", "section": "Verse 2", "detail": "..."}
-  ]}
-  ```
-- **Model Suggestion:** If issue maps to known model strengths/weaknesses.
-- **Post-generation editing:** Replace Section / Crop / Extend (Pro and Premier), Studio 2.0 (Premier only) where applicable -- name the outcome rather than an archived Studio 1.x tool.
+**Band profile** (only with a profile in play; commands in `references/durable-writes.md`): append this round's `generation_history` snapshot through the suno-band-profile-manager skill's `scripts/apply-profile.py` (capped at 10), never by hand-editing YAML.
 
 ### Step 6: Present Recommendations
 
-**Before/After Preview:** Open with a vivid narrative of current vs. target sound ("Right now: arena rock with polished vocals. Target: coffee-shop acoustic, rawer and intimate").
-
-**Output format:** Load `references/output-template.md` for template, iteration log format, and "What Changed and Why" micro-diff. Omit inapplicable sections.
-
-**Multi-version comparison:** If comparing generations, structure: what each does well/poorly, elements to carry forward, which changes had most impact.
-
-**Offer refinement:** "Does this capture what you're after?" Loop back if needed.
+Open with a vivid before/after ("Right now: arena rock with polished vocals. Target: coffee-shop acoustic, rawer and intimate"). Load `references/output-template.md` for the template and the "What Changed and Why" micro-diff; omit sections that don't apply. Comparing generations: what each does well or poorly, what to carry forward, which changes mattered most. Ask "Does this capture what you're after?" and loop back if needed.
 
 ### Step 7: Handoff
 
-After user approves, offer next steps (outcomes first, skill names parenthetically):
-- "Want me to build an updated style prompt?" -> `suno-style-prompt-builder --headless:refine`
-- "Want me to rewrite the lyrics with these changes?" -> `suno-lyric-transformer --headless:refine`
-- Both can run in parallel -- independent artifacts.
-
-**Band profile update:** If feedback revealed a systematic preference (not one-song), offer to add it to the profile's `generation_learnings` (the durable-pattern field from Step 5). The per-round `generation_history` snapshot is written every round regardless.
-
-**Iteration log audit:** The log has been accumulating since round 1 -- at handoff, make sure this round's tried-adjustments and the user's reaction are captured in `docs/feedback-history/{band-or-session}/{song-slug}.md`, and confirm the record reads as a faithful account of the session so the next round (or the next session) resumes cleanly. Encourage returning after trying the updated version.
-
-## Scripts
-
-**Invoke every script via `uv run scripts/<name>.py`** — uv reads each script's PEP 723 inline metadata and auto-provisions its dependencies (`pyyaml` for the manifest pair; `librosa` + `numpy` for the audio-analysis scripts), so no manual `pip install` is needed. If `uv` is unavailable, install it (`pip install uv`) or run a dependency-free script directly with `python3`.
-
-### Core Scripts (no external dependencies)
-
-- `parse-feedback.py` -- Validates and extracts structured dimensions from feedback input (headless mode). Run `--help` for usage.
-- `map-adjustments.py` -- Maps feedback dimensions to Suno parameter adjustment recommendations with consistency validation. Run `--help` for usage.
-
-### Multi-Machine Audio Verification
-
-- `audio-files-manifest.py` -- Generates `docs/audio-files-manifest.yaml` (name + size + mtime per file, recursive — band-folder files are recorded as `band-slug/Song.mp3`) on the canonical machine. Travels in the portable-sync archive instead of the audio MP3s themselves.
-- `verify-audio-files.py` -- Receiving machine reads the manifest and detects missing / wrong-gen / extra audio. Filename-normalization-aware (handles `-Redux`, band suffixes, `(NSFW)`, em-dash variants) and size-tolerance-aware (default 1024 bytes for ID3 metadata variance). `--playlist-context` cross-references playlist YAMLs.
-
-### Audio Analysis Scripts (optional -- `librosa` + `numpy` + `pyloudnorm`, auto-provisioned by `uv run`)
-
-Objective audio measurements to complement subjective feedback. Running them via `uv run` provisions `librosa`, `numpy`, and `pyloudnorm` automatically from each script's PEP 723 metadata; if `uv` is unavailable and the deps are missing, the script returns JSON with install instructions (exit code 2). Core workflow works fully without them.
-
-- `analyze-audio.py` -- Batch analysis (BPM, key, duration, and BS.1770 loudness: integrated LUFS and loudness range) for all tracks in a directory.
-- `audio-deep-analysis.py` -- Deep single-track analysis (energy arc, chords, section boundaries, spectral balance).
-- `chord-progression.py` -- Beat-synchronized chord detection with Camelot wheel mapping.
-- `tempo-detail.py` -- Detailed tempo analysis with stability metrics and beat regularity. On Beat This! beats it reports 15-second window medians, so a stray beat doesn't read as a tempo change.
-
-**Tempo source:** when the owner turns on the PyTorch audio tools in `/suno-setup` (config key `pytorch_audio_tools`), the librosa scripts take tempo and beats from Beat This! (`beat-grid.py`) instead of librosa. That applies to `analyze-audio.py`, `tempo-detail.py`, `chord-progression.py` (which then reads chords per real bar, from Beat This! downbeats), and the sequencer's scripts. Off, they use librosa as before. If Beat This! can't run, they fall back to librosa with a note, and every report says which source it used (`tempo_source`). `--tempo-source auto|beat-this|librosa` overrides the switch for one run. Beat This! narrows the halftime problem without ending it, so felt BPM is still the ear's call.
-
-**Optional heavy tools (PyTorch — opt-in; the first `uv run` provisions 1–3 GB plus model weights, and a CUDA GPU is used when present):**
-
-- `beat-grid.py` -- Beat This! neural beat and downbeat tracking: the tempo source when the PyTorch audio tools are on, and a second opinion otherwise. Takes several files or folders at once. It reports BPM, entry and exit BPM (first and last 30 s), beats per bar, and how librosa's BPM relates to it (agree / double / half / triplet grid). When the two differ by a clean ratio, the ear decides which pulse is felt — neither number settles it alone. Beats per bar reads how the pulse groups, not the notated meter: a 6/8 *feel* typically reads 4. `--include-beats` adds the beat and downbeat timestamps.
-- `section-map.py` -- Lines a render up with the lyrics it was generated from. Demucs isolates the vocal stem, faster-whisper transcribes it with word timestamps, and the words are aligned to the lyric lines, so each tagged section gets a real start and end even where Suno runs sections together. Per section: mix loudness and the step from the section before, vocal-minus-band, tempo and feel (Beat This! when the PyTorch audio tools are on), and key. It also flags words added to the lyrics: v6 sometimes pads a set line, which can rule out a take. Whole-line repeats are listed separately, since they're often fine. It also lists lyric lines not heard and vocals outside the lyric sections, and gives untagged lead-ins and tails their own rows. For consistency it averages instead of switching features off: seeded Demucs shifts, and a consensus over up to 3 seeded Whisper passes. Added words need most passes to agree, and a line counts as not heard only when every pass misses it. `--lyrics` takes a plain lyrics file or a package/songbook doc. About a minute per song (Whisper runs on CPU); the first run downloads the Whisper medium model (~1.5 GB).
-- `vocal-placement.py` -- Demucs stem separation, then vocal-stem loudness minus the rest of the mix (LU), overall and by thirds, with thirds lacking a real vocal flagged. It describes placement rather than grading it; most useful for comparing renderings of the same song, or one voice across models. Fast on a GPU; minutes per track on CPU.
-
-**Album/playlist scope:** Album, playlist, and tracklist sequencing — ordering a body of tracks into a coherent listening experience (energy arcs, Camelot transitions, locked arcs, encore design) — is **not** this single-song feedback skill's job. Route requests to "sequence my playlist", "order my album", or "plan my tracklist" to the **`suno-playlist-sequencer`** skill, which owns the per-band playlist YAML, the `playlist-sequencing-data.py` / `batch-full-analysis.py` scripts, and the album-craft methodology.
-
-**Persistent JSON archive + companion-doc auto-refresh:** `analyze-audio.py` and `audio-deep-analysis.py` write JSON archives to `docs/audio-analysis/songs/` and refresh markdown companion docs at `docs/{...}.md` (with AUTOGEN markers preserving hand-curated sections) by default. Pass `--no-archive` / `--no-companion` to skip.
-
-All audio scripts support `--format json|text` (default: json) and `-o` for file output. `section-map.py` archives to `docs/audio-analysis/songs/[{band-slug}/]{song}-section-map.json`. `beat-grid.py` and `vocal-placement.py` archive to `docs/audio-analysis/catalog/<date>-{script}.json` (directory run) or `docs/audio-analysis/songs/[{band-slug}/]{song}-{script}.json` (single file); `--no-archive` to skip.
+After approval, offer next steps (outcomes first, skill names in parentheses): an updated style prompt (`suno-style-prompt-builder --headless:refine`) and/or reworked lyrics (`suno-lyric-transformer --headless:refine`) -- independent artifacts, so both can run in parallel. If the feedback revealed a preference that holds across songs (not one-song), offer it as a `generation_learnings` entry and write it only on a yes. Encourage returning after trying the new version. Then run `{workflow.on_complete}` if it is non-empty.

@@ -1,376 +1,370 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Pre-activation script for Band Manager agent.
+"""Waking for Mac (suno-agent-band-manager).
 
-Checks first-run status, scaffolds the v2 sanctum if needed (by delegating to
-init-sanctum.py — NOT by writing the old inline stubs), and renders the
-capability menu from module-help.csv.
+One script decides the mode and gathers what activation needs:
+
+  - config (core settings + the `suno:` module section), resolved here on
+    BMad v6.12 — no separate config step
+  - the sanctum state: absent / v1 / v2 / damaged (case-sensitive markers; an
+    incomplete spine is damaged)
+  - the dynamic menu and routing table from module-help.csv (null with a
+    warning when the CSV is missing — the sanctum still wakes)
+  - the voice file and docs/mac-preferences.md, with their sizes
+
+Default output is JSON (headless callers, tests). `--wake` prints a MODE line,
+the state JSON, and then the sanctum files in load order in one pass, so the
+agent becomes itself in a single read. `--pulse` (with `--wake`) prints the
+Pulse set instead: access-boundaries, CREED, PERSONA, PULSE.
 
 Usage:
-    uv run scripts/pre-activate.py <project-root> [--scaffold] [--sanctum-dir PATH] [-o OUTPUT]
-    uv run scripts/pre-activate.py --help
-
-Arguments:
-    project-root    Project root directory path
+    uv run scripts/pre-activate.py <project-root> [--wake] [--pulse] [--scaffold]
+                                   [--user-name NAME] [--sanctum-dir PATH] [-o OUTPUT]
 
 Options:
-    --scaffold      Scaffold the v2 sanctum (via init-sanctum.py) if missing
-    --sanctum-dir   Override the sanctum directory (for first-run detection /
-                    scaffolding against a staging copy). Default is the real
-                    sanctum under the project root.
-    -o, --output    Write JSON output to file instead of stdout
+    --wake          Print MODE + state + sanctum files (one-pass wake).
+    --pulse         Pulse wake: print the maintenance set (implies --wake).
+    --scaffold      Scaffold the v2 sanctum (via init-sanctum.py) if it is absent.
+    --user-name     Override the configured user name (voice-file matching).
+    --sanctum-dir   Override the sanctum directory (staging copies, tests).
+    -o, --output    Write the output to a file instead of stdout.
 """
 
+from __future__ import annotations
+
 import argparse
-import csv
 import json
+import re
 import subprocess
 import sys
-from io import StringIO
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
-AGENT_SKILL_NAME = "suno-agent-band-manager"
-SETUP_SKILL_NAME = "suno-setup"
-MODULE_CODE = "Suno Band Manager"
+
+def _load_sanctum_seed():
+    seed_path = Path(__file__).resolve().parent / "_sanctum_seed.py"
+    spec = spec_from_file_location("_sanctum_seed", seed_path)
+    mod = module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_seed = _load_sanctum_seed()
+
+AGENT_SKILL_NAME = _seed.AGENT_SKILL_NAME
+SETUP_SKILL_NAME = _seed.SETUP_SKILL_NAME
+MODULE_CODE = _seed.MODULE_CODE
+SANCTUM_LOAD_ORDER = _seed.SANCTUM_LOAD_ORDER
+PULSE_LOAD_ORDER = _seed.PULSE_LOAD_ORDER
+MENU_ALIASES = _seed.MENU_ALIASES
+find_module_csv = _seed.find_module_csv
+normalize_username = _seed.normalize_username
+
 VOICE_FILE_PREFIX = "voice-context-"
 VOICE_FILE_SUFFIX = ".md"
-
-# Default sanctum location (preserved bespoke divergence: double-underscore parent,
-# fixed dir name). The v2 sanctum is scaffolded by init-sanctum.py.
-DEFAULT_SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
-
-# Files the agent loads on every rebirth (per references/activation.md). Surfaced
-# in the pre-activate output so the activation router references the new file set.
-# This is the canonical always-loaded set — exactly 7 files. Every doc that lists
-# the rebirth set (SKILL.md, activation.md, memory-system.md, INDEX-template) must
-# agree with this list.
-SANCTUM_LOAD_ORDER = [
-    "access-boundaries.md",  # Dominion contract — loads FIRST, before any file op
-    "INDEX.md",              # thin map of the sanctum
-    "MEMORY.md",             # curated long-term memory (carries derived sections)
-    "CREED.md",              # always-loaded creed CORE (Package Assembly Rule core)
-    "PERSONA.md",            # Mac's living self
-    "BOND.md",               # thin owner-model orienting file
-    "CAPABILITIES.md",       # built-in + learned capability roster (auto-generated)
-]
+PREFERENCES_FILE = "docs/mac-preferences.md"
 
 
 def resolve_sanctum_dir(project_root: Path, sanctum_dir: str | None) -> Path:
-    """Resolve the sanctum directory, honoring a --sanctum-dir override."""
-    if sanctum_dir:
-        return Path(sanctum_dir)
-    return project_root.joinpath(*DEFAULT_SANCTUM_REL)
+    return _seed.sanctum_dir(project_root, sanctum_dir)
 
 
-def normalize_username(name: str) -> str:
-    """Normalize a user name for use in filenames: lowercase, spaces to hyphens."""
-    return name.strip().lower().replace(" ", "-")
+def file_size(path: Path) -> dict:
+    """Size facts for a loaded file. tokens_est is chars/4 (a rough guide)."""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    return {
+        "chars": len(text),
+        "lines": text.count("\n") + (1 if text and not text.endswith("\n") else 0),
+        "tokens_est": round(len(text) / 4),
+    }
 
 
 def detect_voice_files(project_root: Path, user_name: str | None) -> dict:
-    """Detect voice/context files in the docs/ directory.
-
-    Scans for files matching voice-context-*.md and checks if one matches
-    the current user_name from config.
-
-    Returns:
-        Dict with voice_files (list of relative paths), matched_file
-        (relative path or None), and normalized user_name.
-    """
+    """Voice files in docs/, the one matching the user, and docs/mac-preferences.md."""
     docs_dir = project_root / "docs"
     result: dict = {
         "voice_files": [],
         "matched_file": None,
         "expected_filename": None,
+        "mac_preferences": None,
+        "sizes": {},
     }
-
     if user_name:
-        normalized = normalize_username(user_name)
-        result["expected_filename"] = f"{VOICE_FILE_PREFIX}{normalized}{VOICE_FILE_SUFFIX}"
-
-    if not docs_dir.is_dir():
-        return result
-
-    for path in sorted(docs_dir.glob(f"{VOICE_FILE_PREFIX}*{VOICE_FILE_SUFFIX}")):
-        rel_path = str(path.relative_to(project_root))
-        result["voice_files"].append(rel_path)
-        if result["expected_filename"] and path.name == result["expected_filename"]:
-            result["matched_file"] = rel_path
-
+        result["expected_filename"] = f"{VOICE_FILE_PREFIX}{normalize_username(user_name)}{VOICE_FILE_SUFFIX}"
+    if docs_dir.is_dir():
+        for path in sorted(docs_dir.glob(f"{VOICE_FILE_PREFIX}*{VOICE_FILE_SUFFIX}")):
+            rel_path = str(path.relative_to(project_root))
+            result["voice_files"].append(rel_path)
+            if result["expected_filename"] and path.name == result["expected_filename"]:
+                result["matched_file"] = rel_path
+    prefs = project_root / PREFERENCES_FILE
+    if prefs.is_file():
+        result["mac_preferences"] = PREFERENCES_FILE
+    for rel in (result["matched_file"], result["mac_preferences"]):
+        if rel:
+            result["sizes"][rel] = file_size(project_root / rel)
     return result
 
 
 def detect_sync_package(project_root: Path) -> dict:
-    """Check for a portable-sync archive to unpack.
-
-    Checks docs/ first (canonical location), then project root (backward compat).
-
-    Returns:
-        Dict with found (bool) and path (relative path or None).
-    """
+    """A portable-sync archive waiting to be unpacked (docs/ first, then root)."""
     for rel_path in ("docs/portable-sync.tar.gz", "portable-sync.tar.gz"):
         if (project_root / rel_path).is_file():
             return {"found": True, "path": rel_path}
     return {"found": False, "path": None}
 
 
-def check_first_run(project_root: Path, sanctum_dir: str | None = None) -> bool:
-    """Check if the sanctum directory exists (first run when it doesn't).
+def detect_sidecar_format(project_root: Path, sanctum_dir: str | None = None) -> dict:
+    """absent / v1 / v2 / damaged — see _sanctum_seed.classify_sanctum."""
+    return _seed.classify_sanctum(resolve_sanctum_dir(project_root, sanctum_dir))
 
-    Back-compat shim: `first_run` is exactly the "absent" sidecar state. The
-    richer three-way picture (absent / v1 / v2 / damaged) lives in
-    `detect_sidecar_format`; this stays so existing callers keep working.
-    """
+
+def check_first_run(project_root: Path, sanctum_dir: str | None = None) -> bool:
+    """True only when the sanctum is absent."""
     return detect_sidecar_format(project_root, sanctum_dir)["sidecar_format"] == "absent"
 
 
-def detect_sidecar_format(project_root: Path, sanctum_dir: str | None = None) -> dict:
-    """Classify the sidecar so the router can pick scaffold / migrate / load / repair.
-
-    Four states, distinguished by which marker files are present:
-
-    - "absent"  — the sanctum dir doesn't exist → genuine first run → scaffold.
-    - "v2"      — dir exists and carries the v2 marker (`MEMORY.md`) → normal load.
-    - "v1"      — dir exists, has the old `index.md` content store, but NO v2
-                  markers (`MEMORY.md` absent, and `CREED.md`/`INDEX.md` absent)
-                  → a memory store from a previous version → needs migration.
-    - "damaged" — dir exists but has neither `index.md` nor `MEMORY.md` → there's
-                  no recognizable content store to migrate or load → the existing
-                  damaged-sanctum fallback (offer re-scaffold).
-
-    `needs_migration` is true only for "v1": that's the one state where there's
-    real user content (`index.md`) that the v2 load path can't read and must be
-    upgraded — backup-first — before the normal rebirth load runs.
-    """
-    sanctum = resolve_sanctum_dir(project_root, sanctum_dir)
-
-    if not sanctum.exists():
-        return {"sidecar_format": "absent", "needs_migration": False}
-
-    has_v2_marker = (sanctum / "MEMORY.md").is_file()
-    has_v1_marker = (sanctum / "index.md").is_file()
-    # Be conservative about what counts as "already v2": MEMORY.md is the primary
-    # marker, but if either of the other v2 spine files is present we treat the
-    # store as v2 (load path), not v1 (migrate path) — a half-built v2 is not a
-    # v1 store and must not be force-migrated over.
-    has_other_v2_marker = (sanctum / "CREED.md").is_file() or (sanctum / "INDEX.md").is_file()
-
-    if has_v2_marker or has_other_v2_marker:
-        return {"sidecar_format": "v2", "needs_migration": False}
-    if has_v1_marker:
-        return {"sidecar_format": "v1", "needs_migration": True}
-    return {"sidecar_format": "damaged", "needs_migration": False}
-
-
-def scaffold_sidecar(
-    project_root: Path, skill_dir: Path, sanctum_dir: str | None = None
-) -> dict:
-    """Scaffold the v2 sanctum by delegating to init-sanctum.py.
-
-    The old inline 3-stub scaffold (access-boundaries.md / patterns.md /
-    chronology.md) is superseded — init-sanctum.py builds the full v2 sanctum
-    from the templates in assets/ (INDEX.md, MEMORY.md, PERSONA.md, CREED.md,
-    BOND.md, PULSE.md, CAPABILITIES.md + sessions/ + capabilities/). After
-    scaffolding, the conversational First Breath (references/init.md) calibrates.
-    """
+def scaffold_sidecar(project_root: Path, skill_dir: Path, sanctum_dir: str | None = None) -> dict:
+    """Scaffold the v2 sanctum by delegating to init-sanctum.py."""
     init_script = skill_dir / "scripts" / "init-sanctum.py"
     if not init_script.is_file():
-        return {
-            "scaffolded": False,
-            "error": True,
-            "message": f"init-sanctum.py not found at {init_script}",
-        }
-
-    cmd = [
-        sys.executable,
-        str(init_script),
-        str(project_root),
-        str(skill_dir),
-        "--format",
-        "json",
-    ]
+        return {"scaffolded": False, "error": True, "message": f"init-sanctum.py not found at {init_script}"}
+    cmd = [sys.executable, str(init_script), str(project_root), str(skill_dir), "--format", "json"]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     except OSError as exc:
-        return {
-            "scaffolded": False,
-            "error": True,
-            "message": f"could not invoke init-sanctum.py: {exc}",
-        }
-
+        return {"scaffolded": False, "error": True, "message": f"could not invoke init-sanctum.py: {exc}"}
     payload: dict = {}
     if result.stdout.strip():
         try:
             payload = json.loads(result.stdout)
         except json.JSONDecodeError:
             payload = {"raw_output": result.stdout.strip()}
-
-    sanctum = resolve_sanctum_dir(project_root, sanctum_dir)
     return {
         "scaffolded": result.returncode == 0,
         "via": "init-sanctum.py",
-        "sanctum_path": str(sanctum),
+        "sanctum_path": str(resolve_sanctum_dir(project_root, sanctum_dir)),
         "init_result": payload,
         "files_created": payload.get("created", []),
     }
 
 
-def find_module_csv(project_root: Path, skill_dir: Path) -> Path | None:
-    """Find module-help.csv — installed location first, then setup skill assets.
+# ---------------------------------------------------------------------------
+# Menu + routing
+# ---------------------------------------------------------------------------
 
-    Search order:
-    1. BMad installed location (_bmad/module-help.csv)
-    2. Setup skill assets (sibling of this skill in the discovery directory)
-    3. Setup skill assets (in src/skills/ — standalone/source installs)
-    """
-    # 1. BMad installed location
-    installed = project_root / "_bmad" / "module-help.csv"
-    if installed.is_file():
-        return installed
-
-    # 2. Setup skill assets (sibling directory — works for symlinked and copied skills)
-    skills_dir = skill_dir.parent
-    setup_csv = skills_dir / SETUP_SKILL_NAME / "assets" / "module-help.csv"
-    if setup_csv.is_file():
-        return setup_csv
-
-    # 3. Source directory fallback (standalone install without BMad)
-    source_csv = project_root / "src" / "skills" / SETUP_SKILL_NAME / "assets" / "module-help.csv"
-    if source_csv.is_file():
-        return source_csv
-
-    return None
+LEARNED_ROW_RE = re.compile(r"^\|\s*\[([A-Za-z0-9]+)\]\s*\|([^|]*)\|([^|]*)\|([^|]*)\|")
 
 
-def parse_csv(csv_path: Path, include_modules: list[str] | None = None) -> list[dict]:
-    """Parse module-help.csv and return rows filtered by module (excluding setup).
-
-    Args:
-        csv_path: Path to module-help.csv
-        include_modules: If provided, only include rows whose 'module' column
-            matches one of these values. If None, include all rows.
-    """
-    with open(csv_path, encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        rows = []
-        for row in reader:
-            # Skip the setup skill's own entry
-            if row.get("skill", "").strip() == SETUP_SKILL_NAME:
-                continue
-            # Filter by module if specified
-            if include_modules is not None:
-                module = row.get("module", "").strip()
-                if module not in include_modules:
-                    continue
-            rows.append(row)
+def learned_capabilities(sanctum: Path) -> list[dict]:
+    """Rows of the `## Learned` table in the sanctum's CAPABILITIES.md."""
+    path = sanctum / "CAPABILITIES.md"
+    if not path.is_file():
+        return []
+    rows: list[dict] = []
+    in_learned = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## "):
+            in_learned = line.strip() == "## Learned"
+            continue
+        if not in_learned:
+            continue
+        match = LEARNED_ROW_RE.match(line.strip())
+        if match:
+            source = match.group(4).strip().strip("`")
+            if source.startswith("External:"):
+                target_type, target = "skill", source.split(":", 1)[1].strip().strip("`")
+            else:
+                target_type, target = "learned", str(sanctum / source) if source else ""
+            rows.append(
+                {
+                    "code": match.group(1).strip(),
+                    "name": match.group(2).strip(),
+                    "description": match.group(3).strip(),
+                    "type": target_type,
+                    "target": target,
+                }
+            )
     return rows
 
 
-def render_menu(csv_path: Path, include_modules: list[str] | None = None) -> str:
-    """Render capability menu from module-help.csv."""
-    rows = parse_csv(csv_path, include_modules)
-
+def render_menu(csv_path: Path, include_modules: list[str] | None = None, learned: list[dict] | None = None) -> str:
+    """Mac's menu: module-help.csv rows (minus setup and FL) + learned capabilities."""
+    rows = _seed.menu_rows(csv_path, include_modules)
     lines = ["What would you like to do today?\n"]
+    codes = set()
     for i, row in enumerate(rows, 1):
-        code = row.get("menu-code", "??").strip()
-        display = row.get("display-name", "").strip()
-        desc = row.get("description", "No description").strip()
+        code = (row.get("menu-code") or "??").strip()
+        codes.add(code)
+        display = (row.get("display-name") or "").strip()
+        desc = (row.get("description") or "No description").strip()
         lines.append(f"{i}. [{code}] {display} — {desc}")
-
+    n = len(rows)
+    for cap in learned or []:
+        if cap["code"] in codes:
+            continue
+        n += 1
+        lines.append(f"{n}. [{cap['code']}] {cap['name']} — {cap['description']} (learned)")
     return "\n".join(lines)
 
 
-def build_routing_table(csv_path: Path, include_modules: list[str] | None = None) -> dict:
-    """Build menu-code to capability routing table."""
-    rows = parse_csv(csv_path, include_modules)
-
-    table = {}
+def build_routing_table(
+    csv_path: Path, include_modules: list[str] | None = None, learned: list[dict] | None = None
+) -> dict:
+    """Menu code / position -> {name, type, target}. Aliases (FL -> RS) included."""
+    rows = _seed.menu_rows(csv_path, include_modules)
+    table: dict = {}
     for i, row in enumerate(rows, 1):
-        code = row.get("menu-code", "").strip()
-        skill = row.get("skill", "").strip()
-        action = row.get("action", "").strip()
-
-        entry = {"name": action}
-        if skill == AGENT_SKILL_NAME:
-            # Agent's own capabilities — load reference prompt
-            entry["type"] = "prompt"
-            entry["target"] = f"./references/{action}.md"
-        else:
-            # External skill capabilities
-            entry["type"] = "skill"
-            entry["target"] = skill
-
-        table[code] = entry
+        entry = _seed.route_for(row)
+        table[(row.get("menu-code") or "").strip()] = entry
         table[str(i)] = entry
-
+    n = len(rows)
+    for cap in learned or []:
+        if cap["code"] in table:
+            continue
+        n += 1
+        entry = {"name": cap["name"], "type": cap["type"], "target": cap["target"]}
+        table[cap["code"]] = entry
+        table[str(n)] = entry
+    for alias, code in MENU_ALIASES.items():
+        if code in table and alias not in table:
+            table[alias] = dict(table[code], alias_of=code)
     return table
 
 
+# ---------------------------------------------------------------------------
+# State + wake
+# ---------------------------------------------------------------------------
+
+
+def mode_for(state: dict, pulse: bool) -> str:
+    fmt = state["sidecar_format"]
+    if pulse:
+        return "PULSE" if fmt == "v2" else "PULSE_SKIPPED"
+    return {"absent": "FIRST_BREATH", "v1": "UPGRADE_V1", "v2": "WAKING", "damaged": "DAMAGED"}[fmt]
+
+
+def build_state(args, project_root: Path, skill_dir: Path) -> dict:
+    config = _seed.resolve_config(project_root)
+    user_name = args.user_name or config["values"].get("user_name")
+    sanctum = resolve_sanctum_dir(project_root, args.sanctum_dir)
+    warnings: list[str] = list(config["warnings"])
+    if args.user_name:
+        warnings = [w for w in warnings if not w.startswith("user_name")]
+
+    sidecar = detect_sidecar_format(project_root, args.sanctum_dir)
+    if args.scaffold and sidecar["sidecar_format"] == "absent":
+        scaffold = scaffold_sidecar(project_root, skill_dir, args.sanctum_dir)
+        sidecar = detect_sidecar_format(project_root, args.sanctum_dir)
+    else:
+        scaffold = None
+
+    csv_path = find_module_csv(project_root, skill_dir)
+    learned = learned_capabilities(sanctum) if sidecar["sidecar_format"] in ("v2", "damaged") else []
+    if csv_path is None:
+        menu_text = None
+        routing_table = None
+        warnings.append(
+            "module-help.csv not found: the menu is unavailable. Wake normally and "
+            "tell the owner the suno-setup skill restores the menu."
+        )
+    else:
+        menu_text = render_menu(csv_path, [MODULE_CODE], learned)
+        routing_table = build_routing_table(csv_path, [MODULE_CODE], learned)
+
+    pulse = bool(getattr(args, "pulse", False))
+    state = {
+        "mode": mode_for(sidecar, pulse),
+        "first_run": sidecar["sidecar_format"] == "absent",
+        "sidecar_format": sidecar["sidecar_format"],
+        "needs_migration": sidecar["needs_migration"],
+        "missing_spine": sidecar["missing_spine"],
+        "config": {**config["values"], "user_name": user_name},
+        "config_sources": config["sources"],
+        "sync_package": detect_sync_package(project_root),
+        "menu_text": menu_text,
+        "routing_table": routing_table,
+        "menu_aliases": dict(MENU_ALIASES),
+        "voice_context": detect_voice_files(project_root, user_name),
+        "sanctum_path": str(sanctum),
+        "sanctum_load_order": PULSE_LOAD_ORDER if pulse else SANCTUM_LOAD_ORDER,
+        "warnings": warnings,
+    }
+    if scaffold is not None:
+        state["scaffold"] = scaffold
+        if scaffold.get("scaffolded"):
+            # Just born: the sanctum now exists, but this is still First Breath.
+            state["mode"] = "FIRST_BREATH"
+    return state
+
+
+WAKE_GUIDANCE = {
+    "FIRST_BREATH": (
+        "No sanctum yet. Re-run with --scaffold to create it from the templates; "
+        "the output will print the newborn sanctum. Then load references/init.md."
+    ),
+    "UPGRADE_V1": (
+        "A v1 memory store from an earlier version is here. Load references/upgrade-v1.md: "
+        "back it up and migrate it. Never re-scaffold over it."
+    ),
+    "DAMAGED": (
+        "The sanctum is incomplete (see missing_spine). The files that exist are printed "
+        "below. Follow references/activation.md 'Damaged sanctum'."
+    ),
+    "PULSE_SKIPPED": "No complete sanctum, so there is nothing for Pulse to maintain. Stop.",
+}
+
+
+def render_wake(state: dict) -> str:
+    """MODE line, state JSON, then the sanctum files in load order."""
+    mode = state["mode"]
+    out = [f"MODE: {mode}", f"Sanctum: {state['sanctum_path']}"]
+    if mode == "FIRST_BREATH" and state.get("scaffold", {}).get("scaffolded"):
+        out.append("Sanctum created from the templates and printed below. Become it, then load references/init.md.")
+    elif mode in WAKE_GUIDANCE:
+        out.append(WAKE_GUIDANCE[mode])
+    out += ["", "===== STATE =====", json.dumps(state, indent=2, ensure_ascii=False)]
+    if mode in ("WAKING", "PULSE", "DAMAGED") or (
+        mode == "FIRST_BREATH" and state.get("scaffold", {}).get("scaffolded")
+    ):
+        sanctum = Path(state["sanctum_path"])
+        for name in state["sanctum_load_order"]:
+            path = sanctum / name
+            out.append(f"\n===== {name} =====")
+            if path.is_file():
+                out.append(path.read_text(encoding="utf-8").rstrip())
+            else:
+                out.append(f"(missing: {name})")
+    return "\n".join(out) + "\n"
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Band Manager pre-activation checks")
+    parser = argparse.ArgumentParser(description="Mac waking: config, sanctum state, menu, one-pass load")
     parser.add_argument("project_root", help="Project root directory")
-    parser.add_argument(
-        "--scaffold",
-        action="store_true",
-        help="Scaffold the v2 sanctum (via init-sanctum.py) if missing",
-    )
-    parser.add_argument(
-        "--sanctum-dir",
-        default=None,
-        help=(
-            "Override the sanctum directory for first-run detection (default: "
-            "<project_root>/_bmad/_memory/band-manager-sidecar)."
-        ),
-    )
-    parser.add_argument("--user-name", help="Current user name (for voice file matching)")
+    parser.add_argument("--wake", action="store_true", help="Print MODE + state + sanctum files")
+    parser.add_argument("--pulse", action="store_true", help="Pulse wake (maintenance set); implies --wake")
+    parser.add_argument("--scaffold", action="store_true", help="Scaffold the v2 sanctum if absent")
+    parser.add_argument("--sanctum-dir", default=None, help="Override the sanctum directory")
+    parser.add_argument("--user-name", help="Override the configured user name (voice-file matching)")
     parser.add_argument("-o", "--output", help="Output file path")
     args = parser.parse_args()
 
-    project_root = Path(args.project_root)
-    skill_dir = Path(__file__).parent.parent
-
-    csv_path = find_module_csv(project_root, skill_dir)
-    if csv_path is None:
-        print(json.dumps({
-            "error": True,
-            "message": "module-help.csv not found. Run the setup skill first.",
-        }))
-        sys.exit(1)
-
-    # Only show this module's own capabilities in the menu.
-    menu_modules = [MODULE_CODE]
-
-    sidecar_state = detect_sidecar_format(project_root, args.sanctum_dir)
-
-    result = {
-        # `first_run` == the "absent" sidecar state (kept for back-compat).
-        "first_run": sidecar_state["sidecar_format"] == "absent",
-        # Richer routing signal: absent / v1 / v2 / damaged + the migration flag.
-        "sidecar_format": sidecar_state["sidecar_format"],
-        "needs_migration": sidecar_state["needs_migration"],
-        "sync_package": detect_sync_package(project_root),
-        "menu_text": render_menu(csv_path, menu_modules),
-        "routing_table": build_routing_table(csv_path, menu_modules),
-        "voice_context": detect_voice_files(project_root, args.user_name),
-        # The activation router loads these sanctum files, in this order, on rebirth.
-        "sanctum_load_order": SANCTUM_LOAD_ORDER,
-    }
-
-    if args.scaffold and result["first_run"]:
-        result["scaffold"] = scaffold_sidecar(
-            project_root, skill_dir, args.sanctum_dir
-        )
-
-    output = json.dumps(result, indent=2)
+    project_root = Path(args.project_root).resolve()
+    skill_dir = Path(__file__).resolve().parent.parent
+    state = build_state(args, project_root, skill_dir)
+    output = render_wake(state) if (args.wake or args.pulse) else json.dumps(state, indent=2, ensure_ascii=False)
 
     if args.output:
-        Path(args.output).write_text(output)
+        Path(args.output).write_text(output, encoding="utf-8")
         print(f"Results written to {args.output}", file=sys.stderr)
     else:
-        print(output)
+        reconfigure = getattr(sys.stdout, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8")
+        sys.stdout.write(output if output.endswith("\n") else output + "\n")
 
 
 if __name__ == "__main__":

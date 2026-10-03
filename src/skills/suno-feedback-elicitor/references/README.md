@@ -1,75 +1,22 @@
 # Feedback Elicitor
 
-The Feedback Elicitor guides users through a structured post-generation feedback loop after they have listened to their Suno output, translating subjective musical reactions into concrete parameter adjustments. It handles five feedback types — clear, positive, vague, contradictory, and technical — each with a tailored elicitation strategy. For vague feedback ("it just doesn't feel right"), it uses a three-phase guided elicitation sequence (binary narrowing, comparative anchoring, emotional vocabulary bridge) to draw out specifics. The skill produces structured adjustment recommendations that feed directly back into the Style Prompt Builder and Lyric Transformer.
+The Feedback Elicitor turns your reactions to a Suno generation ("it feels too busy", "the vocals sound robotic") into concrete changes: style prompt and exclusion edits, slider moves, lyric adjustments, and editor or Studio suggestions. It sorts feedback into five types — clear, positive, vague, contradictory, technical — and handles each differently, and it keeps a per-song log so later rounds pick up where the last one stopped.
 
 ## When to Use Directly vs. Through Mac
 
-Use this skill directly when you have already generated a song on Suno and want to refine it based on what you heard. Use Mac (the orchestrating agent) when feedback refinement is part of a larger iterative workflow where you want seamless handoff between skills.
+Use it directly (`/suno-feedback-elicitor`) when you've heard a generation and want to work through what to change. Mac also calls it while refining a song, then hands the adjustments to the Style Prompt Builder and Lyric Transformer for you.
 
-## Feedback Types
+## Where Things Live
 
-| Type | Signal | Strategy |
-|------|--------|----------|
-| **Clear** | Specific, actionable problem ("the guitar is too loud") | Direct parameter mapping |
-| **Positive** | Likes the result, wants to evolve or lock in | Identify what to preserve vs. evolve |
-| **Vague** | Knows something is off but cannot articulate it | Three-phase guided elicitation |
-| **Contradictory** | Wants conflicting things ("more energetic but also chill") | First Principles reset; check for section contrast |
-| **Technical** | Artifacts, glitches, pronunciation issues | Regeneration or Suno Studio feature recommendations |
+- **Workflow and rules:** `SKILL.md`
+- **Headless use** (`--headless`, `--headless:analyze`; flags, writes, output JSON): `references/headless-contract.md`
+- **What it writes** (iteration log, band-profile history): `references/durable-writes.md`
+- **Adjustment knowledge:** `references/suno-parameter-map.md`, `references/model-controls.md`, `references/technical-resolution.md`, `references/feedback-triage-guide.md`
+- **Audio analysis:** `references/audio-analysis-scripts.md` (scripts) and `references/gemini-audio-analysis.md` (AI listening tools)
+- **Scripts:** `scripts/` — each one documents itself with `uv run scripts/<name>.py --help`
 
-## Workflow
-
-1. **Receive Feedback** — Accept natural language reactions; capture everything including creative context
-2. **Gather Context** — Collect original style prompt, lyrics, model, sliders, and intent as relevant
-3. **Triage** — Classify feedback type (mixed feedback is handled per-component)
-4. **Elicit/Map** — Apply type-specific strategy to extract actionable specifics
-5. **Map to Adjustments** — Translate findings into style prompt changes, exclusion updates, slider adjustments, lyric adjustment specs, and model/Studio suggestions
-6. **Present Recommendations** — Before/after narrative preview, structured adjustment package with confidence scores
-7. **Handoff** — Offer to invoke Style Prompt Builder or Lyric Transformer with the adjustments; suggest band profile updates for systematic preferences
-
-### Headless Mode (`--headless` or `-H`)
-
-- `--headless:analyze` — Triage and categorize feedback only, return analysis JSON
-- `--headless:adjustments` — Accept feedback + original prompts, return full adjustment recommendations
-- `--headless` — Analyze + generate adjustments with balanced defaults
-
-The `--feedback` / `--style-prompt` / `--model` / `--sliders` flags are the *skill's* interface. The agent (or LLM) translates them into the JSON keys the scripts actually read (`feedback_text`, `original_style_prompt`, `model`, `slider_settings`) before invoking `parse-feedback.py` / `map-adjustments.py`. The return carries a top-level `status` (`complete`/`blocked`), a `reason` on block, and a `decision_log[]`. See `headless-contract.md` for the full mapping table and output schema.
-
-## Scripts
-
-| Script | Description |
-|--------|-------------|
-| `parse-feedback.py` | Validates and extracts structured dimensions from feedback input in a single pass |
-| `map-adjustments.py` | Maps feedback dimensions to Suno parameter adjustments with consistency validation |
-| `audio-files-manifest.py` | Generates `docs/audio-files-manifest.yaml` on the canonical machine (name + size + mtime per file) for portable-sync drift detection |
-| `verify-audio-files.py` | Receiving machine reads the manifest and detects missing / wrong-gen / extra audio (filename-normalization + size-tolerance aware) |
-| `analyze-audio.py` / `audio-deep-analysis.py` | librosa audio analysis stack — write JSON archives to `docs/audio-analysis/songs/` and refresh companion `.md` docs by default. See `SKILL.md` for full list. |
-| `chord-progression.py` / `tempo-detail.py` | Single-track librosa specialty analyses (chord changes, beat-level tempo). |
-| `section-map.py` | Optional PyTorch tool: Demucs vocal stem + Whisper word timestamps aligned to the song's lyrics — when each tagged section lands and how it sounds (loudness step, vocal-minus-band, tempo/feel, key), plus unheard lines. See `SKILL.md`. |
-| `beat-grid.py` / `vocal-placement.py` | Optional PyTorch tools: Beat This! beat/downbeat tracking (the preferred tempo source once the PyTorch audio tools are turned on; a second opinion otherwise) and Demucs vocal placement (vocal-vs-band loudness). Opt-in; see `SKILL.md`. |
-
-> **Album/playlist sequencing** (`playlist-sequencing-data.py`, `batch-full-analysis.py`, and the album-craft methodology) moved to the **`suno-playlist-sequencer`** skill. Route "sequence my playlist" / "order my album" there.
-
-## Example Invocation
-
-```
-# Interactive
-"The vocals feel too polished on my last Suno generation"
-"It just doesn't feel right — can you help me figure out what to change?"
-
-# Headless
---headless:adjustments --feedback "vocals too polished, needs rawer feel" --style-prompt "warm indie rock..." --model "v6"
---headless:analyze --feedback "it sounds off somehow"
-```
-
-## Output Integration
-
-Adjustment recommendations are structured to feed directly into other skills:
-
-- **Style prompt changes** go to the Style Prompt Builder via `--headless:refine`
-- **Lyric changes** go to the Lyric Transformer via `--headless:refine` as an adjustment spec
-- **Systematic preferences** can be saved back to the band profile
-- **Iteration logs** can be persisted at `docs/feedback-history/` for multi-round refinement
+Album and playlist ordering is the `suno-playlist-sequencer` skill's job.
 
 ## Part of the Suno Band Manager Module
 
-This skill is part of the Suno Band Manager module and works with any LLM CLI supporting the [Agent Skills](https://agentskills.io) standard. For the full guided experience, invoke Mac — the orchestrating agent — instead of using this skill directly.
+This skill works with any LLM CLI supporting the [Agent Skills](https://agentskills.io) standard. For the full guided experience, invoke Mac — the orchestrating agent.

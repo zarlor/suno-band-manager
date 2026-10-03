@@ -28,7 +28,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from audio_deps import require_audio_deps
 from json_archiver import resolve_archive_arg, write_archive
 

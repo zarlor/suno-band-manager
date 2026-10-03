@@ -141,6 +141,56 @@ def test_tempo_relation_labels():
     assert ts.tempo_relation(None, 120.0) is None
 
 
+def test_librosa_prior_relation_labels():
+    # default ~2x slow: the halftime double-read the slow prior exists to expose
+    assert ts.librosa_prior_relation(117.5, 60.1) == "double"
+    assert ts.librosa_prior_relation(152.0, 76.0) == "double"
+    assert ts.librosa_prior_relation(95.7, 95.7) == "agree"
+    assert ts.librosa_prior_relation(99.0, 96.0) == "agree"       # within 5%
+    assert ts.librosa_prior_relation(129.2, 89.1) == "other"      # 1.45x: neither
+    assert ts.librosa_prior_relation(107.7, 55.0) == "double"     # a fast song halved by the prior still reads double
+    assert ts.librosa_prior_relation(130.0, 60.0) == "other"      # 2.17x: outside the 5% band
+    assert ts.librosa_prior_relation(60.0, 120.0) == "other"      # slow above default isn't 'double'
+    assert ts.librosa_prior_relation(None, 60.0) is None
+    assert ts.librosa_prior_relation(120.0, 0) is None
+    assert ts.librosa_prior_relation(130.0, 60.0, tolerance=0.1) == "double"
+
+
+def test_librosa_tempo_pair_reuses_the_default_and_runs_the_slow_prior(monkeypatch):
+    calls = []
+
+    def fake_bpm(y, sr, **kwargs):
+        calls.append(kwargs)
+        return 60.1 if kwargs.get("start_bpm") == ts.SLOW_PRIOR_BPM else 117.5
+
+    monkeypatch.setattr(ts, "_librosa_bpm", fake_bpm)
+    assert ts.librosa_tempo_pair(None, 22050) == {
+        "bpm_librosa": 117.5, "bpm_librosa_slow_prior": 60.1, "librosa_prior_relation": "double"}
+    assert calls == [{}, {"start_bpm": 80}]
+    calls.clear()
+    pair = ts.librosa_tempo_pair(None, 22050, default_bpm=117.4876)
+    assert pair["bpm_librosa"] == 117.5 and calls == [{"start_bpm": 80}]
+
+
+def test_halftime_note_and_slow_prior_fields(monkeypatch):
+    double = {"bpm_librosa": 117.5, "bpm_librosa_slow_prior": 60.1, "librosa_prior_relation": "double"}
+    note = ts.halftime_note(double)
+    assert "117.5" in note and "60.1" in note and "halftime" in note
+    assert ts.halftime_note({**double, "librosa_prior_relation": "agree"}) is None
+    assert ts.halftime_note(None) is None
+    monkeypatch.setattr(ts, "_librosa_bpm", lambda y, sr, **kw: 60.1)
+    fields = ts.slow_prior_fields(None, 22050, 117.5)
+    assert fields == {"bpm_librosa_slow_prior": 60.1, "librosa_prior_relation": "double", "tempo_note": note}
+    assert "tempo_note" not in ts.slow_prior_fields(None, 22050, 60.0)
+
+
+def test_bpm_cell():
+    assert ts.bpm_cell(117.5, 60.1, "double") == "117.5 / 60.1 (halftime?)"
+    assert ts.bpm_cell(129.2, 89.1, "other") == "129.2 / 89.1"
+    assert ts.bpm_cell(95.7, 95.7, "agree") == "95.7"
+    assert ts.bpm_cell(76.9) == "76.9"
+
+
 def steady_beats(bpm, start, end):
     ibi = 60.0 / bpm
     n = int((end - start) / ibi)

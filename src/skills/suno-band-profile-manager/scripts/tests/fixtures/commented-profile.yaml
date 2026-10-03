@@ -1,0 +1,56 @@
+# Band Profile — Copper Lantern Choir
+# Created: 2026-03-20
+# Last modified: 2026-09-12 (moved to v6)
+
+name: "Copper Lantern Choir"
+version: 2
+instrumental: false
+
+# Sound Identity
+genre: "Delta swamp rock with brass-band seasoning"
+mood: 'brooding, then triumphant'
+language: English
+reference_tracks:
+- Invented Act One — sludgy groove, bayou darkness
+- Invented Act Two — second-line horns as color, not genre
+
+# Model & Tier
+model_preference: "v6"  # moved to v6 2026-09-12 (was: v4.5 Pro)
+tier: pro
+
+# Style Prompt — front-load essentials
+# NOTE: "sludge" in the prompt triggers harsh vocals for this band — say "thick, heavy".
+style_baseline: >
+  Swamp rock with heavy groove, detuned rhythm guitar, brass stabs on the
+  choruses, clean lead vocal, wide mix.
+exclusion_defaults:
+- no harsh-scream vocals
+- no steel guitar
+
+# Vocal Direction
+vocal:
+  gender: ""
+  tone: "warm, weathered baritone"
+  delivery: conversational, swelling on choruses
+  energy: restrained, building
+  # NOTE: Personas pull the sound toward the era of the source song.
+  # Audio Influence at 10-15% reduces this era-anchoring.
+  voice_id: "Clean Sample A"  # the Voice defines gender and timbre
+  persona_reference: ''
+
+sliders:
+  weirdness: 45
+  style_influence: 65   # tight, so the prompt leads the arrangement
+
+known_working_patterns: []
+  # Record specific formulations that nail the identity.
+
+generation_learnings:
+- "'metal' triggers screaming — use 'heavy groove' instead"
+- Weirdness above 60 is inconsistent for this sound
+
+# Generation History
+generation_history: []
+# Each entry:
+#   - date: "2026-03-19"
+#     note: "nailed the vocal tone"

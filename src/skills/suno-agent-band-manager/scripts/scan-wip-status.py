@@ -18,10 +18,13 @@ For each `docs/wip-*.md` file it emits:
   - completed_as:         the published title quoted in the marker (or null)
   - published_date:       the date in the marker (or null)
   - songbook_ref:         the songbook path the marker points at (or null)
-  - correlation_warning:  for an *active* (unmarked) WIP whose working title
-                          collides with a *published* songbook entry — i.e. it
-                          "looks like the source of a just-published song but
-                          isn't marked." null when no collision.
+  - correlation_warning:  for an *active* (unmarked) WIP that looks like the
+                          source of a *published* songbook entry but isn't
+                          marked. null when nothing correlates.
+  - correlated_by:        "source_wip" when a published entry's `source_wip:`
+                          frontmatter names this file (provenance recorded at
+                          publish — survives renames), "title" when only the
+                          working title matches (fallback), else null.
 
 The LLM keeps only the genuinely judgmental part: confirming the match and
 authorizing the marker write. This script does the scan + match + correlate.
@@ -66,7 +69,7 @@ _vs = _load_validate_sidecar()
 # the marker *line* (its presence is what flips status → completed); title and
 # date are pulled from that line with separate, eager sub-patterns so quoting /
 # separator variants don't swallow the captures.
-COMPLETED_RE = re.compile(r"^##\s*STATUS:\s*COMPLETED\b.*$", re.IGNORECASE | re.MULTILINE)
+COMPLETED_RE = _vs.COMPLETED_RE  # one marker definition, shared with validate-sidecar
 COMPLETED_TITLE_RE = re.compile(r'\bas\s+["“]([^"”\n]+)["”]', re.IGNORECASE)
 COMPLETED_DATE_RE = re.compile(r"published\s+(\d{4}-\d{2}-\d{2})", re.IGNORECASE)
 
@@ -110,11 +113,14 @@ def scan_wip_files(project_root: Path) -> list[dict]:
     if not docs_dir.is_dir():
         return results
 
-    # Published songbook titles (normalized) → for the correlation warning.
+    # Published songbook entries → for the correlation warning. Provenance
+    # (`source_wip:` recorded at publish) first; working-title match second.
     songs, _ = _vs.load_all_songs(project_root)
-    published_titles = {
-        _normalize_title(s.title): str(s.path) for s in songs if s.is_published
+    published = [s for s in songs if s.is_published]
+    by_source_wip = {
+        s.source_wip.strip().lstrip("./"): s for s in published if s.source_wip
     }
+    published_titles = {_normalize_title(s.title): str(s.path) for s in published}
 
     for wip_path in sorted(docs_dir.glob("wip-*.md")):
         try:
@@ -138,18 +144,28 @@ def scan_wip_files(project_root: Path) -> list[dict]:
                     "published_date": date_m.group(1) if date_m else None,
                     "songbook_ref": ref_match.group(1) if ref_match else None,
                     "correlation_warning": None,
+                    "correlated_by": None,
                 }
             )
             continue
 
-        # Active (unmarked) WIP — correlate its working title against published songs.
+        # Active (unmarked) WIP — correlate against published songs.
         working_title = _wip_working_title(wip_path, text)
         norm = _normalize_title(working_title)
-        warning = None
-        if norm and norm in published_titles:
+        warning = songbook_ref = correlated_by = None
+        source_song = by_source_wip.get(Path(rel).as_posix())
+        if source_song is not None:
+            songbook_ref, correlated_by = str(source_song.path), "source_wip"
+            warning = (
+                f"published songbook entry {songbook_ref} ({source_song.title!r}) "
+                f"records this file as its source_wip, but this WIP carries no "
+                f"'## STATUS: COMPLETED' marker. Mark it COMPLETED."
+            )
+        elif norm and norm in published_titles:
+            songbook_ref, correlated_by = published_titles[norm], "title"
             warning = (
                 f"working title {working_title!r} matches published songbook entry "
-                f"{published_titles[norm]} but this WIP carries no "
+                f"{songbook_ref} but this WIP carries no "
                 f"'## STATUS: COMPLETED' marker — looks like the source of a "
                 f"published song. Confirm and mark COMPLETED if so."
             )
@@ -159,8 +175,9 @@ def scan_wip_files(project_root: Path) -> list[dict]:
                 "status": "active",
                 "completed_as": None,
                 "published_date": None,
-                "songbook_ref": published_titles.get(norm),
+                "songbook_ref": songbook_ref,
                 "correlation_warning": warning,
+                "correlated_by": correlated_by,
             }
         )
 
@@ -209,7 +226,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Scan docs/wip-*.md for COMPLETED markers and correlate unmarked "
-            "WIPs against published songbook titles. The scan/match/correlate is "
+            "WIPs against published songbook entries (their source_wip: field "
+            "first, the working title as fallback). The scan/match/correlate is "
             "deterministic; the LLM keeps the judgment (confirm the match, "
             "authorize the state change)."
         )

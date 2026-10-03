@@ -135,21 +135,48 @@ class TestTriggerDetection:
         assert triggers[0]["severity"] == "high"
         assert "metal" in triggers[0]["data"]["triggers"]
 
-    def test_paired_metal_not_flagged(self):
-        """'metal' paired with a positive vocal phrase should NOT be flagged as a scream trigger."""
+    def test_paired_metal_reported_low(self):
+        """A positive vocal pairing lowers the trigger to low but still reports it as data."""
         findings = validate_prompt.validate_style_prompt(
             "heavy swamp metal, raw melodic singing, down-tuned weight"
         )
         triggers = [f for f in findings if f["category"] == "trigger" and "scream" in f["issue"].lower()]
-        assert len(triggers) == 0
+        assert len(triggers) == 1
+        assert triggers[0]["severity"] == "low"
+        assert triggers[0]["data"]["paired"] is True
+        assert "raw melodic singing" in triggers[0]["data"]["pairings"]
 
-    def test_no_screaming_pairing_clears_trigger(self):
-        """'no screaming' counts as a positive vocal pairing."""
-        findings = validate_prompt.validate_style_prompt(
-            "sludge metal, gritty male vocals, no screaming"
-        )
+    def test_no_screaming_is_not_a_pairing(self):
+        """'metal, no screaming' must not pass as safe: the negative is no pairing, and it is flagged."""
+        findings = validate_prompt.validate_style_prompt("metal, no screaming")
         triggers = [f for f in findings if f["category"] == "trigger" and "scream" in f["issue"].lower()]
-        assert len(triggers) == 0
+        assert len(triggers) == 1
+        assert triggers[0]["severity"] == "high"
+        assert triggers[0]["data"]["paired"] is False
+        negations = [f for f in findings if f["category"] == "negation"]
+        assert negations and negations[0]["severity"] == "high"
+        assert "no screaming" in negations[0]["data"]["phrases"]
+        report = validate_prompt.build_report(findings, [], "metal, no screaming", "")
+        assert report["status"] == "warning"
+
+    def test_negated_positive_phrase_does_not_pair(self):
+        """'without clean vocals' doesn't count as a clean-vocal pairing."""
+        findings = validate_prompt.validate_style_prompt("doom metal, without clean vocals")
+        triggers = [f for f in findings if f["category"] == "trigger" and "scream" in f["issue"].lower()]
+        assert triggers[0]["severity"] == "high"
+        assert triggers[0]["data"]["paired"] is False
+
+    def test_fix_text_carries_no_negative(self):
+        """The trigger fix text must not recommend an inline negative."""
+        findings = validate_prompt.validate_style_prompt("sludge metal, heavy riffs")
+        trigger = [f for f in findings if f["category"] == "trigger"][0]
+        assert "no screaming" not in trigger["fix"]
+
+    def test_instrumental_trigger_is_info(self):
+        """In an instrumental prompt an unpaired heavy term is informational only."""
+        findings = validate_prompt.validate_style_prompt("doom metal, crushing riffs, slow", instrumental=True)
+        triggers = [f for f in findings if f["category"] == "trigger" and "scream" in f["issue"].lower()]
+        assert triggers[0]["severity"] == "info"
 
     def test_word_boundary_no_false_trip(self):
         """Substrings like 'blackbird' should not trip the 'black' trigger."""
@@ -262,7 +289,7 @@ class TestBuildReport:
         """Report should have all required fields."""
         report = validate_prompt.build_report([], [], "test", "", "/test/path")
         assert report["script"] == "validate-prompt"
-        assert report["version"] == "1.2.0"
+        assert report["version"] == "1.3.0"
         assert report["status"] == "pass"
         assert "findings" in report
         assert "summary" in report
@@ -326,5 +353,169 @@ class TestCLI:
         result = subprocess.run(
             [sys.executable, str(SCRIPT_PATH)],
             capture_output=True, text=True
+        )
+        assert result.returncode == 2
+
+
+class TestNegationDetection:
+    """Inline negatives read as inclusion on v6; the validator flags them."""
+
+    def test_no_and_without_are_high(self):
+        findings = validate_prompt.validate_style_prompt("indie rock, warm vocals, no reverb, without autotune")
+        neg = [f for f in findings if f["category"] == "negation" and f["severity"] == "high"]
+        assert len(neg) == 1
+        assert neg[0]["data"]["phrases"] == ["no reverb", "without autotune"]
+
+    def test_not_and_avoid_are_medium(self):
+        findings = validate_prompt.validate_style_prompt("indie rock, chorus energy from instruments, not extra voices")
+        neg = [f for f in findings if f["category"] == "negation"]
+        assert len(neg) == 1
+        assert neg[0]["severity"] == "medium"
+        assert neg[0]["data"]["phrases"] == ["not extra"]
+
+    def test_do_not_counted_once(self):
+        assert validate_prompt.find_negations("rock, do not rush") == ["do not rush"]
+
+    def test_never_persistence_phrasing_not_flagged(self):
+        """v6-endorsed persistence phrasing ('never stops') is direction, not negation."""
+        findings = validate_prompt.validate_style_prompt(
+            "hard rock, the intro riff continues under the verse vocal, never stops"
+        )
+        assert not [f for f in findings if f["category"] == "negation"]
+
+    def test_hyphenated_no_not_flagged(self):
+        findings = validate_prompt.validate_style_prompt("garage rock, no-frills production")
+        assert not [f for f in findings if f["category"] == "negation"]
+
+
+class TestCrowdNoiseWords:
+    """The 'live' word family and crowd/audience words pull crowd noise."""
+
+    def test_live_family_flagged(self):
+        for prompt in ["hard rock, live recording", "southern rock, live-band drums", "rock, live energy"]:
+            findings = validate_prompt.validate_style_prompt(prompt)
+            crowd = [f for f in findings if f["category"] == "trigger" and "crowd-noise" in f["issue"].lower()]
+            assert len(crowd) == 1, prompt
+            assert "live" in crowd[0]["data"]["words"]
+
+    def test_crowd_and_audience_words_flagged(self):
+        findings = validate_prompt.validate_style_prompt("pop rock, anthemic, stadium chorus, roaring crowds, audience claps")
+        crowd = [f for f in findings if "crowd-noise" in f["issue"].lower()][0]
+        assert set(crowd["data"]["words"]) >= {"anthemic", "stadium", "crowd", "audience"}
+        assert crowd["severity"] == "medium"
+
+    def test_lively_and_alive_not_flagged(self):
+        findings = validate_prompt.validate_style_prompt("folk rock, lively strummed guitar, alive and bright")
+        assert not [f for f in findings if "crowd-noise" in f["issue"].lower()]
+
+    def test_crowd_words_in_exclusions_are_fine(self):
+        findings = validate_prompt.validate_exclusion_prompt("crowd noise, live audience")
+        assert not [f for f in findings if f["category"] == "trigger"]
+
+
+class TestGenreWordBoundary:
+    def test_substring_does_not_count_as_genre(self):
+        """'soulful' is not 'soul' and 'synthetic' is not 'synth'."""
+        findings = validate_prompt.validate_style_prompt("soulful vocals over synthetic textures, warm and slow")
+        assert [f for f in findings if "no obvious genre keyword" in f.get("issue", "").lower()]
+
+    def test_hyphenated_genre_still_counts(self):
+        findings = validate_prompt.validate_style_prompt("folk-rock, warm, intimate")
+        assert not [f for f in findings if "no obvious genre keyword" in f.get("issue", "").lower()]
+
+
+class TestControls:
+    def test_persona_with_voice_value_is_range_error(self):
+        findings = validate_prompt.validate_controls(50, "persona")
+        assert findings[0]["category"] == "range" and findings[0]["severity"] == "high"
+
+    def test_voice_with_persona_value_is_range_error(self):
+        findings = validate_prompt.validate_controls(20, "voice")
+        assert findings[0]["category"] == "range"
+
+    def test_values_inside_range_pass(self):
+        assert validate_prompt.validate_controls(25, "persona") == []
+        assert validate_prompt.validate_controls(55, "voice") == []
+        assert validate_prompt.validate_controls(None, "") == []
+
+    def test_vocal_gender_with_voice_flagged(self):
+        findings = validate_prompt.validate_controls(55, "voice", vocal_gender="Male")
+        assert [f for f in findings if "vocal gender" in f["issue"].lower()]
+
+
+class TestPackageValidation:
+    def _package(self, **overrides):
+        package = {
+            "model": "v6",
+            "style_prompt": "heartland rock, warm male vocal, chimey electric guitar, driving groove",
+            "exclusion_prompt": "steel guitar, autotune",
+            "wild_card": {"style_prompt": "southern rock, warm male vocal, slide guitar lead, swampy groove"},
+        }
+        package.update(overrides)
+        return package
+
+    def test_clean_package_passes(self):
+        report = validate_prompt.validate_package(self._package())
+        assert report["status"] == "pass"
+        assert report["metrics"]["wild_card_prompt_chars"] > 0
+
+    def test_wild_card_is_validated(self):
+        package = self._package(wild_card={"style_prompt": "rock, " * 200})
+        report = validate_prompt.validate_package(package)
+        wc = [f for f in report["findings"] if f["location"]["field"] == "wild_card_prompt"]
+        assert any(f["severity"] == "critical" for f in wc)
+        assert report["status"] == "fail"
+
+    def test_wild_card_triggers_flagged(self):
+        package = self._package(wild_card={"style_prompt": "doom metal, live recording, no screaming"})
+        report = validate_prompt.validate_package(package)
+        wc = [f for f in report["findings"] if f["location"]["field"] == "wild_card_prompt"]
+        categories = {f["category"] for f in wc}
+        assert {"trigger", "negation"} <= categories
+
+    def test_metrics_report_model_limit(self):
+        report = validate_prompt.validate_package({"model": "v4 Pro", "style_prompt": "rock, warm"})
+        assert report["metrics"]["style_prompt_limit"] == 200
+
+    def test_controls_in_package(self):
+        package = self._package(sliders={"audio_influence": 50, "audio_source": "persona"})
+        report = validate_prompt.validate_package(package)
+        assert [f for f in report["findings"] if f["location"]["field"] == "controls"]
+
+
+class TestPackageCLI:
+    def test_stdin_package(self):
+        package = {"model": "v6", "style_prompt": "indie rock, \"quoted\" $HOME `tick` vocals",
+                   "wild_card_prompt": "indie folk, warm"}
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT_PATH), "--stdin"],
+            input=json.dumps(package), capture_output=True, text=True,
+        )
+        output = json.loads(result.stdout)
+        assert output["metrics"]["style_prompt_chars"] == len(package["style_prompt"])
+        assert output["metrics"]["wild_card_prompt_chars"] == len("indie folk, warm")
+
+    def test_input_file_json(self, tmp_path):
+        path = tmp_path / "package.json"
+        path.write_text(json.dumps({"model": "v6", "style_prompt": "metal, no screaming"}))
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT_PATH), "--input-file", str(path)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 1
+        assert json.loads(result.stdout)["status"] == "warning"
+
+    def test_wild_card_flag(self):
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT_PATH), "--style", "indie rock, warm", "--wild-card", "rock, live energy"],
+            capture_output=True, text=True,
+        )
+        output = json.loads(result.stdout)
+        assert [f for f in output["findings"] if f["location"]["field"] == "wild_card_prompt"]
+
+    def test_bad_json_exits_2(self):
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT_PATH), "--stdin"],
+            input="{not json", capture_output=True, text=True,
         )
         assert result.returncode == 2

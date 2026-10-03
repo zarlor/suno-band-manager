@@ -182,3 +182,26 @@ def test_render_emits_band_audio_dir():
     assert 'audio_dir: "docs/audio/my-band"' in out
     # Without a band slug the key is omitted (resolver falls back to derivation).
     assert "audio_dir:" not in render_playlist_yaml("My Band", [], from_songbook=False)
+
+
+def test_main_follows_module_config(tmp_path):
+    # band_profiles_folder and songbook_folder relocated in config: the playlist
+    # lands beside the profiles folder and --from-songbook reads the songbook there.
+    (tmp_path / "_bmad").mkdir()
+    (tmp_path / "_bmad" / "config.yaml").write_text(
+        "suno:\n"
+        "  band_profiles_folder: '{project-root}/music/band-profiles'\n"
+        "  songbook_folder: '{project-root}/music/songbook'  # moved\n")
+    entry = tmp_path / "music" / "songbook" / "my-band" / "song.md"
+    entry.parent.mkdir(parents=True)
+    entry.write_text('---\ntitle: "Moved Song"\nstatus: published\n---\n')
+    proc = _run("my-band", "--project-root", str(tmp_path), "--from-songbook")
+    assert proc.returncode == 0, proc.stderr
+    target = tmp_path / "music" / "my-band-playlist.yaml"
+    assert target.exists()
+    assert "Moved Song" in target.read_text()
+
+
+def test_template_documents_optional_sequencer_fields():
+    out = render_playlist_yaml("My Band", [], from_songbook=False)
+    assert "felt_bpm" in out and "locked_arcs" in out

@@ -168,3 +168,51 @@ def test_fresh_birth_matches_migration_file_set(project):
     }
     missing = expected - born
     assert not missing, f"fresh birth missing seeded files: {sorted(missing)}"
+
+
+def test_capabilities_md_carries_builtin_roster(project):
+    """CAPABILITIES.md lists Mac's real capabilities from module-help.csv."""
+    mod.scaffold(project, SKILL_DIR)
+    caps = (project / "_bmad" / "_memory" / "band-manager-sidecar" / "CAPABILITIES.md").read_text()
+    assert "| [CS] | Create Song |" in caps
+    assert "| [RS] | Refine Song |" in caps
+    assert "| [FL] |" not in caps
+    assert "## Learned" in caps
+
+
+def test_fresh_birth_templates_carry_no_install_history(project):
+    """A fresh sanctum lists only files that exist and no migration story."""
+    mod.scaffold(project, SKILL_DIR)
+    sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
+    index = (sanctum / "INDEX.md").read_text()
+    bond = (sanctum / "BOND.md").read_text()
+    for stale in ("_collection_", "SUPERSEDED", "chronology.md"):
+        assert stale not in index
+    assert "patterns.md" not in bond
+    persona = (sanctum / "PERSONA.md").read_text()
+    assert "v4.5" not in persona and "v5.5" not in persona
+    assert "SUNO-REFERENCE.md" in persona
+
+
+def test_fresh_birth_creed_has_standing_orders_and_mission_placeholder(project):
+    mod.scaffold(project, SKILL_DIR)
+    creed = (project / "_bmad" / "_memory" / "band-manager-sidecar" / "CREED.md").read_text()
+    assert "## Standing Orders" in creed
+    assert "references/prompt-quality-canon.md" in creed
+    assert "Discovered during First Breath" in creed
+    assert "You wake." in creed
+    assert "Settings in Controls panel order" in creed
+
+
+def test_fresh_birth_memory_has_downloads_and_pulse_report(project):
+    mod.scaffold(project, SKILL_DIR)
+    memory = (project / "_bmad" / "_memory" / "band-manager-sidecar" / "MEMORY.md").read_text()
+    assert "## Downloads" in memory
+    assert "## Pulse Report" in memory
+    assert "200 lines" not in memory
+
+
+def test_bundle_ships_what_the_canon_order_points_to():
+    """The CREED's Author-to-the-standard order points at files the skill ships."""
+    assert (SKILL_DIR / "references" / "prompt-quality-canon.md").is_file()
+    assert (SKILL_DIR / "references" / "capability-authoring.md").is_file()

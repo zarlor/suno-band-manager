@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = []
 # ///
 """Migration of Mac's legacy (v1) sidecar into a v2 sanctum.
@@ -36,9 +36,14 @@ What it does
 4. Seed PERSONA.md / CREED.md (+ shards + incident log) / BOND.md /
    CAPABILITIES.md / PULSE.md from the skill's assets/ templates, with config
    values substituted.
-5. Build a thin INDEX.md map of the produced sanctum.
+5. Build INDEX.md from the template, plus rows for the preserved organic
+   files; mark the PERSONA Evolution Log with a migration line.
 6. Copy (preserve) the bespoke organic files: patterns.md, chronology.md,
-   access-boundaries.md, _collection_*.txt.
+   access-boundaries.md, _collection_*.txt. If the old store had no
+   access-boundaries.md, seed it from the template so the spine is complete.
+
+This tool moves a v1 store to v2. To bring an existing v2 sanctum up to date
+with newer templates, use upgrade-sanctum.py instead.
 
 Usage
 -----
@@ -61,7 +66,7 @@ import re
 import shutil
 import sys
 import tarfile
-from datetime import date, datetime
+from datetime import datetime
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
@@ -116,39 +121,46 @@ SECTION_SPLIT_RE = re.compile(r"(?m)^(?=##\s)")
 # ---------------------------------------------------------------------------
 
 
-def parse_yaml_config(config_path: Path) -> dict:
-    config: dict[str, str] = {}
-    if not config_path.exists():
-        return config
-    for line in config_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if ":" in line:
-            key, _, value = line.partition(":")
-            value = value.strip().strip("'\"")
-            if value:
-                config[key.strip()] = value
-    return config
-
-
 def build_variables(project_root: Path) -> dict:
-    bmad_dir = project_root / "_bmad"
-    config: dict[str, str] = {}
-    for config_file in ("config.yaml", "config.user.yaml"):
-        config.update(parse_yaml_config(bmad_dir / config_file))
-    return {
-        "user_name": config.get("user_name", "friend"),
-        "communication_language": config.get("communication_language", "English"),
-        "birth_date": date.today().isoformat(),
-        "project_root": str(project_root),
-    }
+    return _seed.template_variables(project_root)
 
 
-def substitute_vars(content: str, variables: dict) -> str:
-    for key, value in variables.items():
-        content = content.replace(f"{{{key}}}", value)
-    return content
+substitute_vars = _seed.substitute_vars
+
+# Rows added to INDEX.md's "Not Loaded" table for organic files the earlier
+# store carried. A fresh birth has none of these, so the template stays generic.
+PRESERVED_INDEX_ROWS = {
+    "patterns.md": "| `patterns.md` | Learned musical/production patterns carried forward from the earlier store. | Reference; consult when recalling learned preferences. |",
+    "chronology.md": "| `chronology.md` | Append-only timeline of sessions, breakthroughs and profile changes, carried forward. | Reference; consult for deep history. |",
+    "_collection_extracted.txt": "| `_collection_*.txt` | Working source-text exports carried forward from the earlier store. | Large working exports; consult when mining source material. |",
+}
+MIGRATED_PERSONA_LINE = (
+    "- **{birth_date}** — Woke into the v2 sanctum. The memories came forward from "
+    "the earlier store; the NOLA character held."
+)
+FRESH_PERSONA_LINE_RE = re.compile(r"(?m)^- \*\*(\d{4}-\d{2}-\d{2})\*\* — First Breath\..*$")
+
+
+def migration_index(index_text: str, preserved: list[str]) -> str:
+    """Add rows for the preserved organic files to INDEX.md's Not Loaded table."""
+    rows = [PRESERVED_INDEX_ROWS[n] for n in PRESERVED_INDEX_ROWS if n in preserved]
+    if not rows:
+        return index_text
+    marker = "## Not Loaded"
+    start = index_text.find(marker)
+    if start == -1:
+        return index_text.rstrip() + "\n\n" + "\n".join(rows) + "\n"
+    nxt = index_text.find("\n## ", start + len(marker))
+    end = nxt if nxt != -1 else len(index_text)
+    block = index_text[start:end].rstrip("\n")
+    return index_text[:start] + block + "\n" + "\n".join(rows) + "\n" + index_text[end:]
+
+
+def migration_persona(persona_text: str) -> str:
+    """Swap the fresh-birth Evolution Log line for the migration line."""
+    return FRESH_PERSONA_LINE_RE.sub(
+        lambda m: MIGRATED_PERSONA_LINE.replace("{birth_date}", m.group(1)), persona_text, count=1
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -231,8 +243,8 @@ def build_memory(
 def current_work_pointer_block(current_section: str | None) -> str | None:
     """A short MEMORY.md pointer at the most-recent Current Work session file.
 
-    The full narrative lives in sessions/YYYY-MM-DD.md (not loaded on rebirth).
-    MEMORY.md gets a one-line pointer so the rebirth read knows where the active
+    The full narrative lives in sessions/YYYY-MM-DD.md (not loaded on waking).
+    MEMORY.md gets a one-line pointer so the waking read knows where the active
     thread's detail lives without carrying the whole block.
     """
     if not current_section:
@@ -244,7 +256,7 @@ def current_work_pointer_block(current_section: str | None) -> str | None:
     return (
         "## Current Work\n\n"
         f"Active thread: **{heading_text}**. Full session detail lives in the raw "
-        f"layer at `sessions/{d}.md` (not loaded on rebirth). Distill the live "
+        f"layer at `sessions/{d}.md` (not loaded on waking). Distill the live "
         "state up into this section as the work progresses.\n"
     )
 
@@ -312,10 +324,12 @@ def migrate(project_root: Path, sanctum_path: Path, out_dir: Path, skill_path: P
         header = (
             f"# Session Log — {d}\n\n"
             "> Raw session narrative migrated from the legacy index.md. NOT "
-            "loaded on rebirth — curated material lives in MEMORY.md.\n\n"
+            "loaded on waking — curated material lives in MEMORY.md.\n\n"
         )
         (out_dir / "sessions" / f"{d}.md").write_text(header + body + "\n", encoding="utf-8")
         produced.append(f"sessions/{d}.md")
+
+    preserved_present = [n for n in PRESERVED_FILES if (sanctum_path / n).exists()]
 
     # --- Template-seeded sanctum files (skip MEMORY — already woven) ---
     for template_name, out_name in TEMPLATE_MAP.items():
@@ -325,8 +339,19 @@ def migrate(project_root: Path, sanctum_path: Path, out_dir: Path, skill_path: P
         if not template_path.exists():
             continue
         content = substitute_vars(template_path.read_text(encoding="utf-8"), variables)
+        if out_name == "INDEX.md":
+            content = migration_index(content, preserved_present)
+        elif out_name == "PERSONA.md":
+            content = migration_persona(content)
         (out_dir / out_name).write_text(content, encoding="utf-8")
         produced.append(out_name)
+
+    # --- access-boundaries.md: preserved verbatim if the old store had one,
+    # otherwise seeded from the template so the spine is complete. ---
+    if "access-boundaries.md" not in preserved_present:
+        seeded = _seed.write_access_boundaries(out_dir, assets_dir, variables)
+        if seeded:
+            produced.append(seeded)
 
     # --- Creed shards + incident log (seeded from the skill creed) ---
     creed_src = references_dir / "creed.md"
@@ -335,18 +360,10 @@ def migrate(project_root: Path, sanctum_path: Path, out_dir: Path, skill_path: P
             (out_dir / shard_name).write_text(shard_text, encoding="utf-8")
             produced.append(shard_name)
 
-    # --- CAPABILITIES.md (pointer at the skill roster) ---
-    caps = (
-        "# Capabilities\n\n## Built-in\n\n"
-        "_Mac's capability roster (external skills, audio analysis, playlist "
-        "sequencing) lives in the skill's `references/capabilities.md`. Load it "
-        "for the full list._\n\n"
-        "## Learned\n\n"
-        "_Owner-taught capability prompts live in `capabilities/`._\n\n"
-        "| Code | Name | Description | Source | Added |\n"
-        "|------|------|-------------|--------|-------|\n"
-    )
-    (out_dir / "CAPABILITIES.md").write_text(caps, encoding="utf-8")
+    # --- CAPABILITIES.md (built-in roster from module-help.csv) ---
+    csv_path = _seed.find_module_csv(project_root, skill_path)
+    roster = _seed.menu_rows(csv_path, [_seed.MODULE_CODE]) if csv_path else []
+    (out_dir / "CAPABILITIES.md").write_text(_seed.generate_capabilities_md(roster), encoding="utf-8")
     produced.append("CAPABILITIES.md")
 
     # --- Preserve bespoke organic files (copy verbatim) ---
@@ -492,21 +509,10 @@ def verify(sanctum_path: Path, out_dir: Path) -> dict:
 def sidecar_state(sanctum_path: Path) -> str:
     """Classify the live sidecar: 'absent' | 'v2' | 'v1' | 'damaged'.
 
-    Mirrors pre-activate.py's detection so the router and this driver agree:
-    MEMORY.md (or another v2 spine file) ⇒ v2; index.md with no v2 marker ⇒ v1;
-    a dir with neither ⇒ damaged; no dir ⇒ absent.
+    The same case-sensitive classification pre-activate.py uses
+    (`_sanctum_seed.classify_sanctum`), so the router and this driver agree.
     """
-    if not sanctum_path.exists():
-        return "absent"
-    if (
-        (sanctum_path / "MEMORY.md").is_file()
-        or (sanctum_path / "CREED.md").is_file()
-        or (sanctum_path / "INDEX.md").is_file()
-    ):
-        return "v2"
-    if (sanctum_path / "index.md").is_file():
-        return "v1"
-    return "damaged"
+    return _seed.classify_sanctum(sanctum_path)["sidecar_format"]
 
 
 def _timestamp() -> str:
@@ -565,8 +571,9 @@ def migrate_in_place(
         return {
             "status": "blocked",
             "reason": (
-                "sidecar has neither index.md (v1) nor MEMORY.md (v2) — no "
-                "recognizable content store to migrate; re-scaffold instead"
+                "not a v1 store (no index.md content store, or a partial v2 "
+                "spine) — nothing to migrate. Restore missing spine files with "
+                "upgrade-sanctum.py, or re-scaffold if nothing is left"
             ),
             "sanctum_path": str(sanctum_path),
         }

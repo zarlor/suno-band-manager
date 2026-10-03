@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # ///
-"""Tests for merge-help-csv.py — anti-zombie row replacement, header handling,
-legacy CSV cleanup, and error paths."""
+"""Tests for merge-help-csv.py — anti-zombie row replacement, header handling
+(including the after,before → preceded-by,followed-by rewrite), no file
+deletion, the unresolved-token guard, and error paths."""
 
 import csv
 import json
@@ -16,7 +17,8 @@ from pathlib import Path
 SCRIPT = Path(__file__).resolve().parent.parent / "merge-help-csv.py"
 
 HEADER = ("module,skill,display-name,menu-code,description,action,args,phase,"
-          "after,before,required,output-location,outputs\n")
+          "preceded-by,followed-by,required,output-location,outputs\n")
+OLD_HEADER = HEADER.replace("preceded-by,followed-by", "after,before")
 
 
 def write(path: Path, text: str) -> Path:
@@ -81,29 +83,59 @@ def test_empty_source_errors():
         assert code == 1
 
 
-def test_legacy_csv_cleanup_requires_module_code():
+def test_old_header_in_target_is_rewritten():
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
+        target = write(tmp / "module-help.csv",
+                       OLD_HEADER + "Other,other-skill,Keep,KP,keep,run,,anytime,a:b,,false,,\n")
         source = write(tmp / "src.csv", HEADER + "Suno,suno-setup,S,SU,d,run,,anytime,,,false,,\n")
-        code, _ = run([
-            "--target", str(tmp / "out.csv"), "--source", str(source),
-            "--legacy-dir", str(tmp),
-        ])
-        assert code == 1
-
-
-def test_legacy_csv_deleted():
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        legacy = write(tmp / "suno" / "module-help.csv", HEADER)
-        source = write(tmp / "src.csv", HEADER + "Suno,suno-setup,S,SU,d,run,,anytime,,,false,,\n")
-        code, data = run([
-            "--target", str(tmp / "out.csv"), "--source", str(source),
-            "--legacy-dir", str(tmp), "--module-code", "suno",
-        ])
+        code, data = run(["--target", str(target), "--source", str(source)])
         assert code == 0, data
-        assert not legacy.exists()
-        assert str(legacy) in data["legacy_csvs_deleted"]
+        assert data["header_migrated"] is True
+        rows = read_rows(target)
+        assert rows[0][8:10] == ["preceded-by", "followed-by"]
+        # Row data is positional and unchanged.
+        assert ["Other", "other-skill", "Keep", "KP", "keep", "run", "", "anytime", "a:b", "", "false", "", ""] in rows
+
+
+def test_old_header_in_source_is_canonicalized():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        source = write(tmp / "src.csv", OLD_HEADER + "Suno,suno-setup,S,SU,d,run,,anytime,,,false,,\n")
+        target = tmp / "module-help.csv"
+        code, data = run(["--target", str(target), "--source", str(source)])
+        assert code == 0, data
+        assert read_rows(target)[0][8:10] == ["preceded-by", "followed-by"]
+
+
+def test_no_files_deleted():
+    """Per-module CSVs (core/, suno/) are installer sources — never deleted."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        core_csv = write(tmp / "core" / "module-help.csv", HEADER)
+        suno_csv = write(tmp / "suno" / "module-help.csv", HEADER)
+        source = write(tmp / "src.csv", HEADER + "Suno,suno-setup,S,SU,d,run,,anytime,,,false,,\n")
+        code, data = run(["--target", str(tmp / "module-help.csv"), "--source", str(source)])
+        assert code == 0, data
+        assert core_csv.exists() and suno_csv.exists()
+
+
+def test_legacy_dir_option_is_gone():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        source = write(tmp / "src.csv", HEADER + "Suno,suno-setup,S,SU,d,run,,anytime,,,false,,\n")
+        code, _ = run(["--target", str(tmp / "out.csv"), "--source", str(source), "--legacy-dir", str(tmp)])
+        assert code != 0
+
+
+def test_unresolved_project_root_rejected():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        source = write(tmp / "src.csv", HEADER + "Suno,suno-setup,S,SU,d,run,,anytime,,,false,,\n")
+        code, data = run(["--target", "{project-root}/_bmad/module-help.csv", "--source", str(source)])
+        assert code == 1, data
+        assert "{project-root}" in data["error"]
+        assert not Path("{project-root}").exists()
 
 
 if __name__ == "__main__":
@@ -111,8 +143,11 @@ if __name__ == "__main__":
         test_fresh_target_created,
         test_anti_zombie_replaces_same_module,
         test_empty_source_errors,
-        test_legacy_csv_cleanup_requires_module_code,
-        test_legacy_csv_deleted,
+        test_old_header_in_target_is_rewritten,
+        test_old_header_in_source_is_canonicalized,
+        test_no_files_deleted,
+        test_legacy_dir_option_is_gone,
+        test_unresolved_project_root_rejected,
     ]
     passed = failed = 0
     for test in tests:

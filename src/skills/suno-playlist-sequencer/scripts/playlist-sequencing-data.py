@@ -14,7 +14,28 @@ otherwise from librosa; `--tempo-source` overrides the choice for one run.
 
 When given a --playlist YAML config, uses the specified track order and
 album name. Without a config, auto-discovers all .mp3 files in the
-audio directory (sorted alphabetically).
+audio directory (sorted alphabetically). A track's optional `felt_bpm:` in the
+YAML (the ear-verified tempo) corrects that track's half/double-time misreads
+in the seam math.
+
+The JSON also reports, so nobody has to work them out by hand:
+  - `dropped[]` and `analyzed_count`: playlist entries that were not analyzed
+    (audio file missing, or analysis error).
+  - per seam: `key_relation` (same / relative / parallel / adjacent / two-step /
+    distant) and `key_compat` (compatible / near / distant). Both describe the
+    KEY relationship only; a seam's smoothness also depends on tempo, energy,
+    loudness, and genre register, which is a listening judgment.
+  - per seam: `pulse_pair` (the two tempos sit about 2x apart, sharing a grid).
+  - per track (librosa tempo): `bpm_librosa_slow_prior` (librosa read again with
+    a slow starting tempo, start_bpm=80) and `librosa_prior_relation` (agree /
+    double / other). `double` = the default reading is ~2x the slow one, a
+    likely halftime ambiguity; the ear (or Beat This!) decides.
+  - per track: `felt_bpm_check` (no `felt_bpm:` is recorded and the measured
+    tempo is in a half/double-time danger range, or librosa's two readings are
+    a `double`).
+  - `runs[]`: same-key runs longer than 2, and tempo-bucket runs.
+  - `compare`: what moved against the prior archive (read BEFORE the archive is
+    overwritten): per-track deltas and per-seam label changes.
 
 Exit codes:
   0 = analysis completed successfully
@@ -28,13 +49,13 @@ import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from audio_deps import require_audio_deps
 from companion_writer import update_companion, resolve_companion_path
-from json_archiver import resolve_archive_arg, write_archive
+from json_archiver import archive_path, resolve_archive_arg, write_archive
 from loudness import load_native, seam_quality, seam_step, summarize as loudness_summary
-from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, resolve_tempo_source,
-                          source_summary, usable)
+from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, bpm_cell,
+                          librosa_tempo_pair, resolve_tempo_source, source_summary, usable)
 
 SCRIPT_NAME = "playlist-sequencing-data"
 
@@ -110,6 +131,83 @@ def camelot_distance(code1, code2):
     return num_dist + 0.5
 
 
+FLAT_TO_SHARP = {'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'}
+
+
+def _split_key(key):
+    """'Eb minor' -> ('D#', 'minor'); None when the name isn't '<tonic> <mode>'."""
+    parts = (key or "").split()
+    if len(parts) != 2 or parts[1] not in ("major", "minor"):
+        return None
+    return FLAT_TO_SHARP.get(parts[0], parts[0]), parts[1]
+
+
+def key_relation(from_key, to_key, cam_dist):
+    """Name the key relationship across a seam. Parallel keys (same tonic, other
+    mode) sit far apart on the wheel but share a harmonic center, so they get
+    their own name rather than reading as 'distant'."""
+    a, b = _split_key(from_key), _split_key(to_key)
+    if cam_dist < 0 or a is None or b is None:
+        return "unknown"
+    if a == b or cam_dist == 0:
+        return "same"
+    if a[0] == b[0]:
+        return "parallel"
+    if cam_dist == 0.5:
+        return "relative"
+    if cam_dist == 1:
+        return "adjacent"
+    if cam_dist == 2:
+        return "two-step"
+    return "distant"
+
+
+def key_compat(cam_dist):
+    """Camelot key compatibility only — not the seam's smoothness."""
+    if cam_dist < 0:
+        return "unknown"
+    return "compatible" if cam_dist <= 1 else "near" if cam_dist <= 2 else "distant"
+
+
+# Measured tempos most often read half or double time in these ranges.
+FELT_CHECK_RANGES = ((70, 100), (130, 180))
+PULSE_PAIR_TOLERANCE = 0.06  # within 6% of an exact 2:1 ratio
+# Tempo buckets for run counting (felt BPM when recorded, else measured).
+TEMPO_BUCKETS = (("slow", 0, 90), ("mid", 90, 125), ("up", 125, 10_000))
+RUN_LIMITS = {"same-key": 3, "slow": 2, "mid": 3, "up": 3}  # report runs this long or longer
+
+
+def octave_correct(measured, felt):
+    """Fold a measured tempo by x0.5 / x1 / x2 to whichever lands nearest the felt BPM.
+
+    Keeps a track's real entry/exit tempo drift while undoing half/double reads."""
+    if not felt or not measured:
+        return measured
+    return min((measured * f for f in (0.5, 1, 2)), key=lambda v: abs(v - felt))
+
+
+def needs_felt_check(bpm, felt, prior_relation=None):
+    """True when no felt BPM is recorded and the measured tempo is in a danger range,
+    or librosa's default reading is ~2x its slow-prior one (a likely halftime ambiguity)."""
+    if felt is not None or bpm is None:
+        return False
+    return prior_relation == 'double' or any(lo <= bpm <= hi for lo, hi in FELT_CHECK_RANGES)
+
+
+def is_pulse_pair(a, b):
+    if not a or not b:
+        return False
+    ratio = max(a, b) / min(a, b)
+    return abs(ratio - 2) / 2 <= PULSE_PAIR_TOLERANCE
+
+
+def tempo_bucket(bpm):
+    for name, lo, hi in TEMPO_BUCKETS:
+        if lo <= bpm < hi:
+            return name
+    return None
+
+
 def format_time(seconds):
     return f"{int(seconds//60)}:{int(seconds%60):02d}"
 
@@ -140,13 +238,19 @@ def analyze_track(filepath, beat_reading=None):
         t, _ = librosa.beat.beat_track(y=segment, sr=sr)
         return float(np.atleast_1d(t)[0])
 
+    slow = {}
     if usable(beat_reading):
         bpm = beat_reading['bpm']
         entry_bpm = beat_reading.get('entry_bpm') or bpm
         exit_bpm = beat_reading.get('exit_bpm') or bpm
         tempo_source = 'beat-this'
     else:
-        bpm = _bpm(y)
+        # Overall tempo: librosa's default reading plus a slow-prior one (start_bpm=80),
+        # reported only; the seams use the default readings as before.
+        pair = librosa_tempo_pair(y, sr)
+        bpm = pair['bpm_librosa']
+        slow = {'bpm_librosa_slow_prior': pair['bpm_librosa_slow_prior'],
+                'librosa_prior_relation': pair['librosa_prior_relation']}
         edge = int(30 * sr)
         entry_bpm = _bpm(y[:edge]) if len(y) > 2 * edge else bpm
         exit_bpm = _bpm(y[-edge:]) if len(y) > 2 * edge else bpm
@@ -178,6 +282,7 @@ def analyze_track(filepath, beat_reading=None):
         'entry_bpm': round(entry_bpm, 1),
         'exit_bpm': round(exit_bpm, 1),
         'tempo_source': tempo_source,
+        **slow,
         'overall_key': overall_key,
         'overall_conf': round(overall_conf, 3),
         'overall_camelot': get_camelot(overall_key),
@@ -237,6 +342,20 @@ def load_playlist(playlist_path):
     return album, tracks, config.get('audio_dir')
 
 
+def load_felt_bpm(playlist_path):
+    """{track name: felt_bpm} for tracks whose playlist entry records one."""
+    import yaml
+
+    with open(playlist_path, 'r') as f:
+        config = yaml.safe_load(f) or {}
+    out = {}
+    for t in config.get('tracks', []):
+        felt = t.get('felt_bpm')
+        if isinstance(felt, (int, float)) and felt > 0:
+            out[t['name']] = float(felt)
+    return out
+
+
 def discover_tracks(audio_dir):
     """Auto-discover .mp3 files under a directory, recursively.
 
@@ -264,21 +383,27 @@ def transition_between(r, n):
     """Transition data from track r into track n: key, BPM, and loudness across the seam."""
     cam_dist = camelot_distance(r['exit_camelot'], n['entry_camelot'])
     # Seam tempo: this track's exit BPM against the next track's entry BPM when both
-    # exist (first/last 30 s); older archives fall back to the overall BPMs.
+    # exist (first/last 30 s); older archives fall back to the overall BPMs. A recorded
+    # felt BPM folds each reading to the felt octave.
     edges = r.get('exit_bpm') is not None and n.get('entry_bpm') is not None
     from_bpm = r['exit_bpm'] if edges else r['bpm']
     to_bpm = n['entry_bpm'] if edges else n['bpm']
+    felt = bool(r.get('felt_bpm') or n.get('felt_bpm'))
+    from_bpm = round(octave_correct(from_bpm, r.get('felt_bpm')), 1)
+    to_bpm = round(octave_correct(to_bpm, n.get('felt_bpm')), 1)
     bpm_pct = abs(from_bpm - to_bpm) / from_bpm * 100 if from_bpm > 0 else 0
     step = seam_step(r.get('loudness'), n.get('loudness'))
     return {
         'to': n['name'],
         'camelot_distance': cam_dist,
-        'key_quality': "PERFECT" if cam_dist <= 0.5 else "GOOD" if cam_dist <= 1 else "OK" if cam_dist <= 2 else "JARRING",
+        'key_relation': key_relation(r.get('exit_key'), n.get('entry_key'), cam_dist),
+        'key_compat': key_compat(cam_dist),
         'bpm_from': from_bpm,
         'bpm_to': to_bpm,
-        'bpm_basis': 'exit/entry' if edges else 'overall',
+        'bpm_basis': ('exit/entry' if edges else 'overall') + ('+felt' if felt else ''),
         'bpm_change': round(abs(from_bpm - to_bpm), 1),
         'bpm_quality': "smooth" if bpm_pct < 3 else "ok" if bpm_pct < 6 else f"jump ({bpm_pct:.0f}%)",
+        'pulse_pair': is_pulse_pair(from_bpm, to_bpm),
         'loudness_step_lu': step,
         'loudness_quality': seam_quality(step),
     }
@@ -292,17 +417,47 @@ def compute_transitions(results):
         results[i]['transition'] = transition_between(results[i], results[i+1])
 
 
-def format_json(album_name, results):
-    """Format results as standard module JSON."""
-    tracks = []
+def find_runs(results):
+    """Runs of adjacent analyzed tracks sharing an overall key, or a tempo bucket.
+
+    Reports same-key runs longer than 2 and tempo-bucket runs (slow: 2+, mid/up: 3+).
+    A run is a fact; whether it is a deliberate block is a judgment."""
+    runs = []
+
+    def flush(kind, label, members):
+        if label is not None and len(members) >= RUN_LIMITS.get(kind if kind == 'same-key' else label, 3):
+            entry = {'kind': kind, 'value': label, 'tracks': [m['name'] for m in members]}
+            if kind == 'tempo':
+                entry['felt_verified'] = all(m.get('felt_bpm') for m in members)
+            runs.append(entry)
+
+    for kind, value_of in (('same-key', lambda r: r.get('overall_camelot') if r.get('overall_camelot') != '??' else None),
+                           ('tempo', lambda r: tempo_bucket(r.get('felt_bpm') or r['bpm']))):
+        members, label = [], None
+        for r in results:
+            value = None if 'error' in r else value_of(r)
+            if value is not None and value == label:
+                members.append(r)
+                continue
+            flush(kind, label, members)
+            members, label = ([r], value) if value is not None else ([], None)
+        flush(kind, label, members)
+    return runs
+
+
+def build_report(album_name, results):
+    """The standard module JSON report as a dict."""
+    tracks, dropped = [], []
     for i, r in enumerate(results):
         if 'error' in r:
             tracks.append({
                 'position': i + 1,
                 'name': r['name'],
+                'file': r.get('file'),
                 'status': 'error',
                 'error': r['error'],
             })
+            dropped.append({'position': i + 1, 'name': r['name'], 'file': r.get('file'), 'reason': r['error']})
             continue
         entry = {
             'position': i + 1,
@@ -313,6 +468,10 @@ def format_json(album_name, results):
             'entry_bpm': r.get('entry_bpm'),
             'exit_bpm': r.get('exit_bpm'),
             'tempo_source': r.get('tempo_source'),
+            'bpm_librosa_slow_prior': r.get('bpm_librosa_slow_prior'),
+            'librosa_prior_relation': r.get('librosa_prior_relation'),
+            'felt_bpm': r.get('felt_bpm'),
+            'felt_bpm_check': needs_felt_check(r['bpm'], r.get('felt_bpm'), r.get('librosa_prior_relation')),
             'key': {
                 'overall': r['overall_key'],
                 'overall_confidence': r['overall_conf'],
@@ -336,14 +495,127 @@ def format_json(album_name, results):
             entry['transition_to_next'] = r['transition']
         tracks.append(entry)
 
-    return json.dumps({
+    return {
         'script': 'playlist-sequencing-data',
         'status': 'ok',
         'album': album_name,
         'track_count': len(results),
+        'analyzed_count': len(results) - len(dropped),
+        'dropped': dropped,
         'tempo_source': source_summary(results),
+        'runs': find_runs(results),
         'tracks': tracks,
-    }, indent=2)
+    }
+
+
+def format_json(album_name, results):
+    """Format results as standard module JSON."""
+    return json.dumps(build_report(album_name, results), indent=2)
+
+
+# --- Re-evaluation compare -------------------------------------------------
+
+BPM_DELTA = 2.0       # BPM shifts smaller than this are measurement noise
+LUFS_DELTA = 1.0      # LU
+LEGACY_KEY_QUALITY = {"PERFECT": "compatible", "GOOD": "compatible", "OK": "near", "JARRING": "distant"}
+RANKS = {
+    'key_compat': {"compatible": 0, "near": 1, "distant": 2},
+    'bpm_quality': {"smooth": 0, "ok": 1, "jump": 2},
+    'loudness_quality': {"smooth": 0, "noticeable": 1, "big jump": 2},
+}
+
+
+def _seam_labels(t):
+    """Comparable labels for one seam; maps pre-rename archives (key_quality) forward."""
+    compat = t.get('key_compat') or LEGACY_KEY_QUALITY.get(t.get('key_quality'))
+    bpm = (t.get('bpm_quality') or '').split(' (')[0] or None
+    loud = (t.get('loudness_quality') or '').split(' (')[0] or None
+    return {'key_compat': compat, 'bpm_quality': bpm, 'loudness_quality': loud}
+
+
+def compare_runs(prior, current):
+    """What moved between two playlist-sequencing-data reports (parsed JSON dicts).
+
+    Tracks are matched by name, seams by (from, to) pair. Returns added/removed
+    tracks, per-track deltas past the noise floor, and seams whose key/BPM/loudness
+    labels changed, each marked worse / better / mixed.
+    """
+    def analyzed(d):
+        return {t['name']: t for t in d.get('tracks', []) if t.get('status') != 'error'}
+
+    def seams(d):
+        return {(t['name'], t['transition_to_next']['to']): t['transition_to_next']
+                for t in d.get('tracks', []) if t.get('transition_to_next')}
+
+    prior_names = [t['name'] for t in prior.get('tracks', [])]
+    current_names = [t['name'] for t in current.get('tracks', [])]
+    p, c = analyzed(prior), analyzed(current)
+
+    track_changes = []
+    for name, now in c.items():
+        was = p.get(name)
+        if was is None:
+            continue
+        deltas = {}
+        for field in ('bpm', 'entry_bpm', 'exit_bpm'):
+            a, b = was.get(field), now.get(field)
+            if a is not None and b is not None and abs(b - a) >= BPM_DELTA:
+                deltas[field] = [a, b]
+        for field in ('overall_camelot', 'entry_camelot', 'exit_camelot'):
+            a, b = (was.get('key') or {}).get(field), (now.get('key') or {}).get(field)
+            if a != b and a is not None and b is not None:
+                deltas[field] = [a, b]
+        a, b = (was.get('energy') or {}).get('level'), (now.get('energy') or {}).get('level')
+        if a != b and a is not None and b is not None:
+            deltas['energy_level'] = [a, b]
+        a, b = (was.get('loudness') or {}).get('integrated_lufs'), (now.get('loudness') or {}).get('integrated_lufs')
+        if a is not None and b is not None and abs(b - a) >= LUFS_DELTA:
+            deltas['integrated_lufs'] = [a, b]
+        if was.get('position') != now.get('position'):
+            deltas['position'] = [was.get('position'), now.get('position')]
+        if deltas:
+            track_changes.append({'name': name, 'changes': deltas})
+
+    ps, cs = seams(prior), seams(current)
+    seam_changes = []
+    for pair, now in cs.items():
+        was = ps.get(pair)
+        if was is None:
+            continue
+        before, after = _seam_labels(was), _seam_labels(now)
+        diff = {k: [before[k], after[k]] for k in before if before[k] != after[k]}
+        if not diff:
+            continue
+        moves = set()
+        for k, (a, b) in diff.items():
+            ra, rb = RANKS[k].get(a), RANKS[k].get(b)
+            if ra is not None and rb is not None:
+                moves.add('worse' if rb > ra else 'better')
+        direction = moves.pop() if len(moves) == 1 else ('mixed' if moves else 'changed')
+        seam_changes.append({'from': pair[0], 'to': pair[1], 'direction': direction, 'changes': diff})
+    seam_changes.sort(key=lambda s: {'worse': 0, 'mixed': 1, 'changed': 2, 'better': 3}[s['direction']])
+
+    return {
+        'status': 'compared',
+        'added_tracks': [n for n in current_names if n not in prior_names],
+        'removed_tracks': [n for n in prior_names if n not in current_names],
+        'reordered': [n for n in current_names if n in prior_names] != [n for n in prior_names if n in current_names],
+        'track_changes': track_changes,
+        'unchanged_tracks': sum(1 for n in c if n in p) - len(track_changes),
+        'seam_changes': seam_changes,
+        'new_seams': [{'from': a, 'to': b} for (a, b) in cs if (a, b) not in ps],
+    }
+
+
+def load_prior(path):
+    """Read the prior archive before this run overwrites it. Returns (data, status)."""
+    if not path or not os.path.isfile(path):
+        return None, 'no-prior'
+    try:
+        with open(path) as f:
+            return json.load(f), 'ok'
+    except (OSError, ValueError) as exc:
+        return None, f'unreadable: {exc}'
 
 
 def format_text(album_name, results):
@@ -360,8 +632,9 @@ def format_text(album_name, results):
         if 'error' in r:
             continue
         loud = r.get('loudness') or {}
+        bpm = bpm_cell(r['bpm'], r.get('bpm_librosa_slow_prior'), r.get('librosa_prior_relation'))
         lines.append(
-            f"| {i+1} | {r['name']} | {r['bpm']} | {_fmt(r.get('entry_bpm'))}→{_fmt(r.get('exit_bpm'))} | {r['overall_key']} "
+            f"| {i+1} | {r['name']} | {bpm} | {_fmt(r.get('entry_bpm'))}→{_fmt(r.get('exit_bpm'))} | {r['overall_key']} "
             f"| {r['overall_camelot']} | {r['entry_key']} ({r['entry_camelot']}) "
             f"| {r['exit_key']} ({r['exit_camelot']}) | {r['energy_level']} "
             f"| {r['intro_energy_pct']}% | {r['outro_energy_pct']}% "
@@ -369,9 +642,15 @@ def format_text(album_name, results):
             f"| {_fmt(loud.get('entry_lufs'))}→{_fmt(loud.get('exit_lufs'))} "
             f"| {_fmt(loud.get('lra_lu'))} |"
         )
+    if any(r.get('librosa_prior_relation') not in (None, 'agree') for r in results if 'error' not in r):
+        lines.append(
+            "\n_BPM a / b = librosa's default reading / its reading with a slow starting tempo (start_bpm=80). "
+            "(halftime?) = about 2x apart, a likely halftime ambiguity: the ear (or Beat This!) decides which is "
+            "felt, and a `felt_bpm:` in the playlist settles it for the seams._"
+        )
 
     lines.append("\n## Transition Analysis\n")
-    lines.append("| From | To | Key Distance | BPM Change | Quality | Loudness Step |")
+    lines.append("| From | To | Key Distance | Key Relation | BPM Change | Loudness Step |")
     lines.append("|------|----|-------------|------------|---------|---------------|")
     for i in range(len(results) - 1):
         if 'error' in results[i] or 'error' in results[i+1]:
@@ -384,14 +663,16 @@ def format_text(album_name, results):
         lines.append(
             f"| {r['name']} | {n['name']} | {t['camelot_distance']} "
             f"({r['exit_camelot']}->{n['entry_camelot']}) "
-            f"| {t['bpm_change']:.0f} ({t['bpm_quality']}) | {t['key_quality']} | {loud} |"
+            f"| {t.get('key_relation', '-')} ({t.get('key_compat', '-')}) "
+            f"| {t['bpm_change']:.0f} ({t['bpm_quality']}{', 2:1 pulse' if t.get('pulse_pair') else ''}) | {loud} |"
         )
     lines.append(
         f"\n_Tempo: {tempo_label}. BPM change = this track's exit tempo (last 30 s) against the next track's "
         "entry tempo (first 30 s). "
         "Loudness step = next track's entry loudness (first 15 s) minus this track's exit loudness (last 15 s), "
         "silence trimmed, in LU: "
-        "smooth < 3, noticeable < 6, big jump >= 6. Descriptive, not a verdict: "
+        "smooth < 3, noticeable < 6, big jump >= 6. Key relation describes the keys only (Camelot), "
+        "not how smooth the seam sounds. Descriptive, not a verdict: "
         "a quiet open after a loud close is often the point._"
     )
 
@@ -447,6 +728,18 @@ def main():
         "--no-companion", dest="companion", action="store_const", const=None,
         help="Skip refreshing the Markdown companion file.",
     )
+    parser.add_argument(
+        "--compare-to", nargs="?", const="", default="",
+        help=(
+            "Compare this run against a prior report and add a `compare` block to the JSON "
+            "(per-track deltas, per-seam label changes). With no path: the canonical archive, "
+            "read BEFORE this run overwrites it. Default: ON when that archive exists."
+        ),
+    )
+    parser.add_argument(
+        "--no-compare", dest="compare_to", action="store_const", const=None,
+        help="Skip the compare against the prior archive.",
+    )
     add_tempo_source_arg(parser)
     args = parser.parse_args()
 
@@ -464,8 +757,10 @@ def main():
             }), file=sys.stderr)
             sys.exit(1)
         album_name, track_list, yaml_audio_dir = load_playlist(args.playlist)
+        felt_bpm = load_felt_bpm(args.playlist)
         audio_dir = resolve_audio_dir(args.audio_dir, args.playlist, yaml_audio_dir)
     else:
+        felt_bpm = {}
         audio_dir = resolve_audio_dir(args.audio_dir)
 
     if not os.path.isdir(audio_dir):
@@ -489,6 +784,12 @@ def main():
 
     print(f"Analyzing playlist sequencing data for: {album_name} (audio: {audio_dir})\n", file=sys.stderr)
 
+    # Read the prior report now: the archive step below overwrites the default path.
+    prior, prior_status, prior_path = None, None, None
+    if args.compare_to is not None:
+        prior_path = args.compare_to or args.archive or archive_path("playlists", album_name)
+        prior, prior_status = load_prior(prior_path)
+
     readings = {}
     if resolve_tempo_source(args.tempo_source) == "beat-this":
         present = list(dict.fromkeys(
@@ -504,11 +805,17 @@ def main():
         filepath = os.path.join(audio_dir, filename)
         if not os.path.exists(filepath):
             print(f"  MISSING: {filename}", file=sys.stderr)
-            results.append({'name': track_name, 'error': 'file not found'})
+            results.append({'name': track_name, 'file': filename, 'error': 'missing audio file'})
             continue
         print(f"  {track_name}...", end="", flush=True, file=sys.stderr)
-        data = analyze_track(filepath, readings.get(filepath))
+        try:
+            data = analyze_track(filepath, readings.get(filepath))
+        except Exception as exc:  # one bad file must not sink the whole playlist
+            print(f" ERROR: {exc}", file=sys.stderr)
+            results.append({'name': track_name, 'file': filename, 'error': f'analysis error: {exc}'})
+            continue
         data['name'] = track_name
+        data['felt_bpm'] = felt_bpm.get(track_name)
         results.append(data)
         print(
             f" {data['bpm']} BPM | {data['overall_key']} ({data['overall_camelot']}) "
@@ -520,11 +827,23 @@ def main():
     # Compute transition data for JSON output
     compute_transitions(results)
 
+    report = build_report(album_name, results)
+    if report['dropped']:
+        names = ", ".join(f"{d['name']} ({d['reason']})" for d in report['dropped'])
+        print(f"\n  DROPPED {len(report['dropped'])} of {report['track_count']}: {names}", file=sys.stderr)
+
+    compare = None
+    if args.compare_to is not None:
+        compare = compare_runs(prior, report) if prior else {'status': prior_status}
+        compare['prior'] = prior_path
+
     # Format output
     if args.format == "json":
-        output = format_json(album_name, results)
+        output = json.dumps({**report, 'compare': compare} if compare else report, indent=2)
     else:
         output = format_text(album_name, results)
+        if compare:
+            output += "\n## Compare With Prior Run\n\n```json\n" + json.dumps(compare, indent=2) + "\n```\n"
 
     # Write output
     if args.output:
@@ -537,13 +856,8 @@ def main():
     # JSON archive (default ON unless --no-archive)
     archive_target = resolve_archive_arg("playlists", album_name, args.archive)
     if archive_target is not None:
-        try:
-            json_data = json.loads(format_json(album_name, results))
-        except Exception as exc:
-            print(f"  WARN: archive skipped — JSON build failed: {exc}", file=sys.stderr)
-        else:
-            res = write_archive(archive_target, json_data)
-            print(f"  ARCHIVED: {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
+        res = write_archive(archive_target, report)
+        print(f"  ARCHIVED: {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
 
     # Companion .md refresh (default ON unless --no-companion).
     # The body includes its own title + timestamp at the top so each refresh

@@ -2,7 +2,7 @@
 
 This reference covers album-level playlist sequencing: how to evaluate and order a body of tracks into a coherent listening experience. The focus is on the **album-craft layer** that sits above pairwise transition scoring — narrative structure, energy arcs, key positions, locked arcs, encore design.
 
-For the **transition-evaluation layer** (Camelot wheel rules, BPM tolerances, felt-vs-librosa BPM corrections, listening-experience-as-primary criterion, parallel-key insights), see `gemini-audio-analysis.md` in the `suno-feedback-elicitor` skill's `references/` directory — particularly the "DJ Harmonic Mixing (Camelot Wheel)" section and the "Felt BPM" subsection. This doc assumes that material as foundational and builds on it.
+The **transition-evaluation layer** it builds on (Camelot moves, BPM tolerances, felt BPM, loudness steps, and what the Camelot wheel cannot see) is in "Transition Discipline" below.
 
 ## When to Use
 
@@ -15,46 +15,23 @@ Apply this methodology when:
 Skip the heavy methodology when:
 - Reordering 1-2 adjacent tracks with no upstream/downstream impact
 - The user has a fixed sequence preference and wants only sonic-transition feedback within it
+- The playlist has four or fewer tracks. There is no front, peak, and close to balance, so skip the arc models, surface any locked pair, and reason about the few seams directly.
 
-## Per-Band Playlist YAML — the canonical input
+## The Input
 
-Each band in a project owns exactly one canonical playlist file at `docs/{band-slug}-playlist.yaml`. This file is the **single source of truth** for the band's track sequence and the input to the sequencing script. The schema is straightforward:
+Each band owns one playlist file, `docs/{band-slug}-playlist.yaml`: the single source of truth for its track order and the input to `scripts/playlist-sequencing-data.py`. Its schema, audio-folder layout, and scaffolding live in the suno-band-profile-manager skill's `references/playlist-yaml.md`. This skill reads two optional keys beyond that schema:
 
-```yaml
-album: "<Band display name>"
-audio_dir: "docs/audio/<band-slug>"   # optional — defaults to docs/audio/<band-slug>/ when that folder exists
-tracks:
-  - name: "<Song title (matches songbook frontmatter title)>"
-    file: "<exact filename in the band's audio folder, e.g. My Song.mp3>"
-  # ... one entry per track, in playlist order
-```
+- `felt_bpm:` on a track: the tempo the user confirmed by ear. The script uses it to fold that track's half- or double-time readings in the seam math.
+- `locked_arcs:` at the top level: a list of arcs, each a list of track names or an `"A > B > C"` string. `scripts/validate-sequence.py` checks them.
 
-Multi-band projects keep each band's playlist independent — a band's YAML lives at its own slug and produces its own auto-generated companion + JSON archive. There's no shared global playlist file; that pattern is what causes drift between bands. Audio follows the same split: each band's files live in `docs/audio/{band-slug}/`, which the sequencing script resolves on its own (resolution order and cross-band playlists: `suno-band-profile-manager/references/profile-schema.md` "Audio folder layout").
-
-If a band exists with songbook entries but no playlist YAML, scaffold one:
-
-```bash
-uv run src/skills/suno-band-profile-manager/scripts/scaffold-playlist.py {band-slug} --from-songbook
-```
-
-The schema and lifecycle rules (creation on band profile creation, deprecation of the `playlist:` block in band profile YAML, workflow rules on song publish) are documented in `suno-band-profile-manager/references/profile-schema.md` "Per-Band Playlist YAML" section.
-
-## Tools Stack
-
-The methodology is supported by `scripts/playlist-sequencing-data.py` which generates per-track structured data (BPM, overall/entry/exit keys, Camelot codes, energy level, intro/outro energy, loudness, transition quality including the loudness step across each seam) for every track in a per-band playlist YAML. Output is auto-saved to:
-- `docs/audio-analysis/playlists/{band-slug}.json` — raw JSON archive (per-band; does not collide across bands)
-- `docs/{band-slug}-playlist-sequencing.md` — refreshed Markdown companion summary (per-band path so each band gets its own; AUTOGEN markers preserve hand-curated content outside)
-
-See the script's `--archive` and `--companion` flags (default ON). Catalog-wide deeper analysis (energy shifts, section boundaries, spectral balance, dynamic character) comes from `scripts/batch-full-analysis.py` writing to `docs/catalog-analysis-report.md`.
-
-The data layer is the *input* to the methodology; it doesn't make sequencing decisions on its own.
+The script's JSON is the *input* to the methodology; it doesn't make sequencing decisions on its own. Its fields are documented in `uv run scripts/playlist-sequencing-data.py --help`.
 
 ## Per-Track Variables to Track
 
 For each track in the playlist, gather and reason about all ten of these. Earlier variables tend to dominate when conflicts arise — but every variable matters and a "perfect score" on one (e.g., Camelot) doesn't override a poor score on another (e.g., tempo).
 
 1. **BPM** (measured) — the script's tempo: Beat This! when the PyTorch audio tools are on, librosa otherwise (the report says which)
-2. **Felt BPM** (human-verified) — the *perceived* tempo, often half or double the measured value (more often with librosa than Beat This!). **Felt BPM is what governs listening experience**; the measured BPM may need halftime/double-time correction. Always verify felt BPM by ear before trusting raw numbers for sequencing decisions. (See `gemini-audio-analysis.md` in the `suno-feedback-elicitor` skill's `references/` directory, "Felt BPM" subsection, for the correction patterns.)
+2. **Felt BPM** (human-verified) — the *perceived* tempo, often half or double the measured value (more often with librosa than Beat This!). **Felt BPM is what governs listening experience**, so verify it by ear before trusting raw numbers. The usual misreads: speed metal reads half-time, doom and sludge read double-time, power ballads overcount, and slow contemplative songs (felt 70-80) read about 150-160. With librosa tempo, each track also carries a second reading started from a slow tempo (`bpm_librosa_slow_prior`) and how it relates to the default (`librosa_prior_relation`). A `double` (shown as `117.5 / 60.1 (halftime?)`) is a likely halftime ambiguity; both numbers are candidates and neither is the felt tempo. The script flags tracks in the danger ranges, and tracks whose two librosa readings are a `double`, with `felt_bpm_check` until a `felt_bpm:` is recorded. More patterns: the suno-feedback-elicitor skill's `references/audio-analysis-scripts.md`, "Reading librosa numbers".
 3. **Overall key + Camelot code** — the dominant key center
 4. **Entry key + Camelot code** (first 30 sec) — the key the track *opens* in. May differ from overall.
 5. **Exit key + Camelot code** (last 30 sec) — the key the track *ends* in. May differ from overall and from entry.
@@ -76,7 +53,26 @@ The transition between two adjacent tracks is the actual moment the listener exp
 
 **Exit key matters more than overall key.** A track that's "overall in C minor" but ends in G minor will transition into the next track via G minor, not C minor. Use exit-Camelot of track N → entry-Camelot of track N+1 as the actual transition assessment. The script's `transition_to_next` field already does this.
 
-**Camelot wheel scoring is one input, not the verdict.** See `gemini-audio-analysis.md` (in the `suno-feedback-elicitor` skill's `references/` directory) "DJ Harmonic Mixing (Camelot Wheel)" for the rules and "Camelot framework limitations" for what it misses. In particular: parallel-key transitions (same root, different mode — e.g., D# major → D# minor) score JARRING on Camelot but are musically a deliberate emotional pivot on the same harmonic center. The listener may hear continuity even when the wheel says discontinuity.
+**Camelot moves.** The wheel puts the 24 keys on a clock: number = position, A = minor, B = major. The script reports each seam's `key_relation`:
+- **same** (8A→8A): seamless, but monotonous if overused.
+- **relative** (8A→8B): a mood shift on the same harmonic center. Minor to major lifts; major to minor darkens.
+- **adjacent** (8A→7A or 9A): the most common professional move; one scale note changes.
+- **two-step** (8A→10A): an energy boost, more noticeable. Use it sparingly.
+- **distant**: risks an audible clash. Use it for intentional contrast.
+- **parallel** (A minor→A major): same tonic, other mode. The wheel puts these far apart, but the ear hears one harmonic center, a deliberate emotional pivot. Name it as a pivot, not as a clash.
+
+`key_compat` (compatible / near / distant) grades the same thing in three steps. Both fields describe the key relationship only. Neither is the seam's verdict.
+
+**Camelot is a key-relationship tool, not a measure of how smooth a seam is.** It cannot see:
+- **Tempo gaps.** A compatible key move with a 20 BPM jump sounds worse than a small key clash at the same tempo. Tempo usually outranks key.
+- **Genre and style register.** Power-pop crashing into a slow heavy track or a piano lament sounds abrupt whatever the keys.
+- **Energy and dynamic level.** A sustained-high banger next to sustained-low melancholy won't blend, even with aligned keys.
+- **Loudness.** See the loudness step below.
+- **Production aesthetic.** A warm analog mix next to a modern compressed one is a seam of its own.
+
+So describe the **listening experience** (smooth / fluid / abrupt / jarring) as the primary criterion, and name tempo, register, and energy gaps alongside the key relation when they're significant. A key-compatible seam with a 70+ BPM gap is "key-compatible but tempo-jarring," not "the strongest option." Camelot is reliable when the songs also share a tempo pocket and a genre; it breaks down as those diverge.
+
+*Example of the failure:* a 152 BPM power-pop track had a slot open where three seams in a row were key-compatible, next to two heavy tracks felt at about 78. The writer rejected it by ear as abrupt. A slot with rougher keys but neighbors closer in tempo and energy sounded less jarring and won. What it shows: the "Camelot trade-off" framing was wrong. The reason was that the song sounded less abrupt there, and the proposal should say so.
 
 **BPM transition tolerance:** <3% smooth, 3-6% noticeable, >6% requires intentional contrast. Halftime/double-time pairs (e.g., felt 70 and felt 140) share a pulse grid and can mix coherently even though the felt-tempo difference is dramatic — but treat this as a *deliberate* breath-in / breath-out move, not a "smooth" transition.
 
@@ -120,19 +116,23 @@ Variety is an active design choice, not a side effect of randomization.
 
 ### Tempo Variety
 
-Categorize tracks into up-tempo / mid-tempo / slow buckets. Avoid placing too many from the same category adjacent. Two slow songs back-to-back loses listeners unless deliberate.
+Categorize tracks into up-tempo / mid-tempo / slow buckets (`runs[]` counts them). Avoid placing too many from the same category adjacent. Two slow songs back-to-back loses listeners unless deliberate.
 
 But: **a deliberate slow-tempo block is a real album convention.** Doom albums, ambient stretches, contemplative interludes — three or four felt-tempo-matched tracks in a row can be an immersive zone if the *sonic palette* and *mood* shift across them. The methodology cautions against accidental same-tempo runs, not against intentional ones.
 
 ### Same-Key Adjacency
 
-3-4 songs in the same key consecutively gets boring. When you finally shift keys after too many same-key tracks, the change feels more jarring than a varied stretch would have. Limit same-key consecutive runs to 2 unless you have a specific reason to push to 3.
+3-4 songs in the same key consecutively gets boring. When you finally shift keys after too many same-key tracks, the change feels more jarring than a varied stretch would have. Limit same-key consecutive runs to 2 unless you have a specific reason to push to 3. The script's `runs[]` lists same-key runs longer than 2 and tempo-bucket runs (slow under 90, mid 90-125, up 125+; felt BPM where recorded). A run is a fact; whether it is deliberate is your call.
 
 ### Similar-Songs-Need-Distance
 
-Tracks that cover similar **thematic** ground (e.g., two songs about "knowing nothing," two songs about a parent, two songs about NOLA mythology) should be separated in the playlist so each hits fresh. Adjacency blurs them into one long meditation; spacing lets each song carry its own weight.
+Tracks that cover similar **thematic** ground (e.g., two songs about "knowing nothing," two songs about a parent, two songs drawing on the same local folklore) should be separated in the playlist so each hits fresh. Adjacency blurs them into one long meditation; spacing lets each song carry its own weight.
 
 This is distinct from the same-key rule and the sonic-palette rule — a track can be sonically and harmonically distinct from its neighbor but cover the same lyrical territory.
+
+### Cause and Effect at the Seam
+
+When one song is the cause of another (an overload and the shutdown it causes, a betrayal and its aftermath), never fix a key or tempo seam by handing the effect straight into its cause. The listener hears the story run backwards, and that thematic jar is worse than the musical one it fixed. The constraint binds the seam only. Apart, the two songs can sit in either order, and seam quality ranks freely among the placements that respect it. Don't stretch it into a rule about global running order.
 
 ### Locked Arcs / Preserved Sequences
 
@@ -143,7 +143,7 @@ When evaluating playlist changes:
 - Treat the arc's position as flexible (the block may move) but the order within as fixed
 - If a proposed reorder requires breaking the arc, stop and ask the user — never break a documented locked arc on your own authority
 
-A locked arc is typically a thematic sequence the writer positioned deliberately — for example, a four-song love → loss → grief → healing run whose emotional logic depends on the songs staying together and in order. The playlist YAML (or the user) flags such arcs as not-to-be-separated; the block may shift position as a unit, but the songs inside it never reorder and never split.
+A locked arc is typically a thematic sequence the writer positioned deliberately — for example, a four-song love → loss → grief → healing run whose emotional logic depends on the songs staying together and in order. Arcs come from the playlist YAML's optional `locked_arcs:`, from the user, or in headless runs from `--locked`. `uv run scripts/validate-sequence.py docs/{band-slug}-playlist.yaml` reports each one as intact, split, or out of order; pass `--locked "A > B"` for arcs the user names that aren't in the YAML yet. The block may shift position as a unit, but the songs inside it never reorder and never split.
 
 ### Encore Structure
 
@@ -160,31 +160,33 @@ If your final stretch lacks this shape (e.g., averages mid-energy throughout wit
 
 ## What the Methodology Doesn't Capture
 
-**Listening experience is the ultimate arbiter.** Per `gemini-audio-analysis.md` (in the `suno-feedback-elicitor` skill's `references/` directory): *"describe the listening experience (smooth / fluid / abrupt / jarring) as the primary criterion. Camelot is one input. Explicitly call out tempo gaps, genre register gaps, and energy gaps alongside Camelot when significant."*
+**Listening experience is the ultimate arbiter.** The variables feed it; none of them replaces it (see "Transition Discipline").
 
-**Parallel-key transitions** (same root, different mode) are musically a deliberate emotional pivot — minor → major lifts; major → minor darkens. Camelot wheel scores them JARRING because the wheel positions are different, but the listener hears the same harmonic center. When evaluating transitions, name parallel-key relationships explicitly when they appear; don't let the JARRING score override what the ear knows.
+**Felt-tempo lock vs. raw-BPM lock.** Three tracks at "136 measured" don't necessarily lock at felt-136 — one of them may be felt-68 with halftime detection. Verify felt BPM before claiming tempo continuity across tracks. A seam the script marks `pulse_pair` (about 2:1) shares a pulse grid; treat it as a deliberate breath, not a smooth handoff.
 
-**Felt-tempo lock vs. raw-BPM lock.** Three tracks at "136 librosa" don't necessarily lock at felt-136 — one of them may be felt-68 with halftime detection. Verify felt BPM before claiming tempo continuity across tracks.
-
-**Genre-outlier placement.** A power-pop track in a swamp-metal album won't have a Camelot-AND-tempo-AND-genre-perfect placement anywhere. Pick where the listening experience is *least jarring*, accept that no slot is ideal, and document the trade-off rather than pretending it's seamless.
+**Genre-outlier placement.** A power-pop track in a doom-metal album won't have a Camelot-AND-tempo-AND-genre-perfect placement anywhere. Pick where the listening experience is *least jarring*, accept that no slot is ideal, and document the trade-off rather than pretending it's seamless.
 
 **The narrative dimension is non-data.** No script measures whether two adjacent tracks are thematically coherent. That's the user's call (or the orchestrating agent's judgment based on lyrical content + writer voice context). Don't treat the data analysis as sufficient — sonic flow and thematic flow are independent and both must work.
 
 ## Process for Reviewing a Playlist
 
-A repeatable approach for "is this playlist sequence working?" — apply variables in this order:
+Three gates run in order. The checks between them are independent.
 
-1. **Surface locked arcs** — what cannot move? Document them up front.
-2. **Run the script** — get all 38+ tracks' per-track data and per-transition scoring.
-3. **Verify felt BPM** for any track with library raw in the 130-180 BPM range or 70-100 BPM range — these are the bands where halftime/double-time confusion is most common. Ask the user when uncertain.
-4. **READ THE SONGBOOKS — MANDATORY** — for every song adjacent to the placement(s) under consideration AND the song being placed, the full songbook entry at `docs/songbook/{band-slug}/{song-slug}.md` must be read before making any thematic claim. See "Thematic Verification" below — this is non-negotiable. **Scale the read to the job:** for a 1-2-track placement, read the handful of entries directly. For a catalog-scale pass (a full re-sequence touching dozens of tracks), delegate the full read to a subagent and have it return ONLY a compact per-song theme summary (one or two lines each: actual theme, any surface-vs-actual inversion, a load-bearing quote-in-context) — never read all entries into the parent context, where they'd compact out before the recommendation forms.
-5. **Identify the act structure** — is the playlist organized around narrative acts? What are their thematic functions? How many tracks per act?
-6. **Check the energy arc** — what shape does the playlist have? Does it match the intended shape (W, inverted-U, concert peak-end, contemplative descent)?
-7. **Check key positions** — do positions 1, 4, 7, 10 have load-bearing tracks? Is the closer a resolution?
-8. **Walk transitions act-by-act** — within each act, evaluate transitions on the full variable stack (Camelot, BPM-felt, intro/outro%, sonic palette, theme). Flag the worst.
-9. **Identify cluster opportunities** — are felt-tempo cousins scattered when they could be a deliberate immersive block? Are thematic cousins adjacent when they should be separated?
-10. **Form a recommendation** — propose specific moves with named justifications across multiple variables. Don't just say "swap X and Y" without naming what each variable says about that swap.
-11. **Surface trade-offs honestly** — every move has trade-offs. Name them. Don't claim a move is "cleaner" if it's actually "trades A-jarring for B-jarring."
+1. **Surface locked arcs** — what cannot move? Run `scripts/validate-sequence.py` on the current order and state the arcs up front.
+2. **Settle felt BPM and read the theme, before drafting any option.**
+   - Felt BPM: for each track with `felt_bpm_check`, ask the user when uncertain, and record the answer as `felt_bpm:`.
+   - Thematic read: for every song involved (the one being placed and every neighbor in play), read its entry before any thematic claim. See "Thematic Verification" below. Scale the read to the job:
+     - A 1-2-track placement: read the handful of entries directly.
+     - A catalog-scale pass: delegate the read to a subagent that returns only a compact per-song summary (one or two lines each: the actual theme, any surface-vs-actual inversion, a load-bearing quote in context). Don't read every entry into the parent context, where they compact out before the recommendation forms.
+     - No subagents available: use `docs/song-thematic-dossier.md` entries where they exist (compact, and cross-band). Otherwise read the entries in batches and write the per-song summary to `docs/{band-slug}-playlist-sequencing/theme-summary.md` as you go, so it survives compaction. The read is never skipped for lack of a subagent.
+3. **Recommend, then surface trade-offs.** Propose specific moves with named justifications across several variables. Don't just say "swap X and Y" without naming what each variable says. Every move trades something; don't call it "cleaner" when it "trades A-jarring for B-jarring."
+
+Checks between gates 2 and 3, in any order:
+- **Act structure** — narrative acts, their thematic functions, tracks per act.
+- **Energy arc** — the shape it has, and whether it matches the intended one (W, inverted-U, concert peak-end, contemplative descent).
+- **Key positions** — load-bearing tracks at 1, 4, 7, 10; a closer that resolves.
+- **Transitions** — each seam on the full variable stack (key relation, felt tempo, intro/outro %, loudness step, sonic palette, theme). Flag the worst.
+- **Clusters** — felt-tempo cousins scattered that could be a deliberate block; thematic cousins adjacent that should be spaced (`runs[]` helps).
 
 The output isn't a metrics dump — it's an opinionated proposal grounded in the variables, with explicit acknowledgment of what's locked, what's a judgment call, and where the user's ear should be the tiebreaker. Write the proposal narrative in `{communication_language}`; any persisted companion/proposal document is written in `{document_output_language}`.
 
@@ -198,9 +200,9 @@ a neighbor on a title-chain association instead of the neighbor's actual, alread
 theme — the exact failure this section exists to prevent, skipped precisely because it happened
 in conversation rather than through this skill. Placement math (Camelot distance, BPM delta) is
 never a substitute for the thematic read, and running the math first is not license to treat the
-theme as secondary color commentary added afterward — read the theme BEFORE drafting any option.
+theme as secondary color commentary added afterward — read the theme before drafting any option.
 
-**Before making any thematic claim about a song in a placement recommendation, READ the song's songbook entry at `docs/songbook/{band-slug}/{song-slug}.md`** (or the consolidated `docs/song-thematic-dossier.md` entry, which distills the songbook plus the writer's direct quotes across every band in the project — either is acceptable, but read one of them). Inferring a song's theme from its title, surface imagery, or fragments-pulled-out-of-context is FORBIDDEN. Songs whose surface features suggest one register often turn out to be the opposite when read in full context.
+**Before making any thematic claim about a song in a placement recommendation, read the song's songbook entry at `{songbook_folder}/{band-slug}/{song-slug}.md`** (default `docs/songbook/`), or its entry in the consolidated `docs/song-thematic-dossier.md`, which distills the songbook plus the writer's direct quotes across every band in the project. Either is acceptable, but read one of them. Don't infer a song's theme from its title, its surface imagery, or fragments pulled out of context: songs whose surface suggests one register often turn out to be the opposite when read in full.
 
 **Documented examples where surface inference produced inverted reads:**
 
@@ -225,12 +227,11 @@ theme as secondary color commentary added afterward — read the theme BEFORE dr
 
 ## Cross-References
 
-- `gemini-audio-analysis.md` (in the `suno-feedback-elicitor` skill's `references/` directory) — Camelot wheel mechanics, felt-BPM corrections, listening-experience-as-primary criterion (foundational; this doc builds on it)
-- `scripts/playlist-sequencing-data.py` — generates the per-track sequencing data
-- `scripts/batch-full-analysis.py` — generates the catalog-wide deeper analysis (energy shifts, section boundaries, dynamic character)
-- `suno-feedback-elicitor/scripts/audio-deep-analysis.py` — per-song deep analysis (lives in the Feedback Elicitor skill)
-- `docs/audio-analysis/playlists/{band-slug}.json` — per-band JSON archive of the playlist sequencing data
-- `docs/audio-analysis/catalog/<date>-deep.json` — JSON archive of the deep catalog analysis
-- `docs/{band-slug}-playlist-sequencing.md` — per-band auto-refreshed Markdown companion to the playlist sequencing JSON
-- `docs/catalog-analysis-report.md` — auto-refreshed Markdown companion to the deep catalog analysis
-- `docs/audio-analysis-reference.md` — felt-BPM corrections + LLM-comparison hand-curated alongside the auto-table
+- `scripts/playlist-sequencing-data.py` — per-track and per-seam sequencing data, drops, runs, re-eval compare
+- `scripts/validate-sequence.py` — locked-arc check and the pre-write gate on the playlist YAML
+- `scripts/batch-full-analysis.py` — catalog-wide deeper analysis (energy shifts, section boundaries, dynamic character)
+- The suno-feedback-elicitor skill's `scripts/audio-deep-analysis.py` (per-song deep analysis) and `references/audio-analysis-scripts.md` ("Reading librosa numbers": felt-BPM misread patterns)
+- The suno-band-profile-manager skill's `references/playlist-yaml.md` — playlist YAML schema and audio-folder layout
+- `docs/audio-analysis/playlists/{band-slug}.json` — the per-band JSON archive (the re-eval compare reads it before each run overwrites it)
+- `docs/{band-slug}-playlist-sequencing.md` — the auto-refreshed Markdown companion
+- `docs/catalog-analysis-report.md` and `docs/audio-analysis/catalog/<date>-deep.json` — the catalog-wide analysis and its archive

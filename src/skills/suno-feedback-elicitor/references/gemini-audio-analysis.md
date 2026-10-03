@@ -1,6 +1,6 @@
 ## Audio Analysis Workflow
 
-**Single-song scope:** This reference covers analyzing one track to inform feedback on that track — instrument presence, dynamic arc, mood/energy, style-prompt accuracy. Catalog-wide pipelines (consistent data storage across all songs, felt-BPM catalog checks, playlist placement) are the Band Manager agent's and `suno-playlist-sequencer`'s job, not this skill's; this skill works the song in hand.
+**Single-song scope:** This reference covers analyzing one track to inform feedback on that track — instrument presence, dynamic arc, mood/energy, style-prompt accuracy.
 
 ### Overview
 
@@ -30,61 +30,9 @@ When using multiple analysis sources, you'll often get different answers for the
 
 **Don't burn cycles asking which tool to trust on settled fields.** For BPM, default to the scripts' tempo (Beat This! when the PyTorch audio tools are on, librosa otherwise); for key and section boundaries, librosa. For instrument ID beyond the basic rhythm section, verify before filing. For mood, trust the human ear. This calibration is consistent across catalogs and shouldn't be relitigated for every track.
 
-### librosa Analysis Scripts
+### librosa and PyTorch Scripts
 
-Requirements: Python 3.12+, librosa, numpy, pyloudnorm — provisioned automatically by `uv run` (manual fallback: `pip install librosa numpy pyloudnorm`). The two optional PyTorch tools below (`beat-grid.py`, `vocal-placement.py`) provision their own heavier dependencies on first `uv run`.
-
-**Persistent JSON archive + companion-doc auto-refresh:** `analyze-audio.py` and `audio-deep-analysis.py` write JSON archives to `docs/audio-analysis/songs/` and refresh markdown companion docs at `docs/{...}.md` by default. Companion docs use AUTOGEN markers to preserve hand-curated sections across regeneration. Pass `--no-archive` / `--no-companion` to skip. (The album-level `batch-full-analysis.py` and `playlist-sequencing-data.py`, with their `playlists/` and `catalog/` archives, now live in the `suno-playlist-sequencer` skill.)
-
-**analyze-audio.py** — Batch BPM, key, and loudness for all MP3s in a directory. Uses Krumhansl-Kessler chroma correlation for key estimation and ITU-R BS.1770 (pyloudnorm) for loudness. Outputs a summary table with BPM, key, key confidence, duration, integrated loudness (LUFS), and loudness range (LRA).
-```bash
-uv run scripts/analyze-audio.py /path/to/mp3s/
-```
-
-**audio-deep-analysis.py** — Deep single-track analysis: chord progression over time, energy curve, spectral features, section boundaries, harmonic/percussive separation.
-```bash
-uv run scripts/audio-deep-analysis.py track.mp3
-```
-
-**tempo-detail.py** — Detailed tempo analysis showing BPM over time in windows. Detects tempo changes, off-beats, and stability.
-```bash
-uv run scripts/tempo-detail.py track.mp3
-```
-
-**beat-grid.py** (optional, PyTorch) — Beat This! neural beat and downbeat tracking. Gives BPM, beats per bar, and librosa's relation to it (agree / double / half / triplet grid) — the second opinion for the halftime question below.
-```bash
-uv run scripts/beat-grid.py track.mp3 --format text
-```
-
-**vocal-placement.py** (optional, PyTorch) — Demucs stem separation, then how loud the vocal sits against the band (LU), overall and by thirds.
-```bash
-uv run scripts/vocal-placement.py track.mp3 --format text
-```
-
-**section-map.py** (optional, PyTorch) — Lines a render up with its lyrics: Demucs isolates the vocal, Whisper transcribes it with word timestamps, and the words are aligned to the lyric lines. Each tagged section gets a start and end, loudness and the step from the section before, vocal-minus-band, tempo and feel, and key. Also lists lyric lines not heard and vocals outside the lyric sections. The lyrics are not given to Whisper as a hint, so it reports what was sung.
-```bash
-uv run scripts/section-map.py track.mp3 --lyrics docs/songbook/my-band/song.md --format text
-```
-
-**batch-full-analysis.py** (album/catalog scope — now in the `suno-playlist-sequencer` skill) — Batch full analysis across a catalog: tempo stability, energy arc, section boundaries, spectral balance. Outputs a comprehensive summary report. Run it from that skill: `uv run scripts/batch-full-analysis.py --audio-dir docs/audio`.
-
-#### librosa Notes
-
-- **BPM misreads are genre-dependent and go both directions:**
-  - Speed metal → reads **half-time** (e.g., reports 99 BPM when felt tempo is ~198 — reads snare on beat 3 as beat 1)
-  - Doom/sludge → reads **double-time** (e.g., reports 144 BPM when felt tempo is ~72 — counts subdivisions as pulse)
-  - Power ballads → overcounts (e.g., reports 96 BPM when felt is ~68)
-  - Heartbeat/pulse tracks → overcounts (e.g., reports 96 when tagged 60)
-- **~19% of tracks have significant BPM misreads** in production testing (31-track catalog). Always verify against genre/feel.
-- **"Felt BPM"** — the human-perceived tempo vs. librosa's measurement. When a user says "it feels too fast/slow," compare their perception against felt BPM, not librosa BPM. Felt BPM is what matters for playlist sequencing and feedback triage.
-- **LLM BPM estimates also diverge** — Gemini AI Studio, Gemini web, and ChatGPT produce different values for the same track. No single source is reliable for BPM; cross-reference at least two.
-- Key confidence below 0.5 is low reliability
-- Enharmonic equivalents: D# = Eb, C# = Db, A# = Bb, F# = Gb
-- librosa is deterministic — same file always produces the same results. Use as ground truth for BPM/key baseline, but always apply genre-aware correction before acting on the number.
-- **Slow contemplative songs (felt tempo 70-80 BPM) trigger halftime detection consistently.** librosa raw values around 150-160 BPM with felt tempo around 75-80 BPM is a well-documented pattern. When librosa reports 152 BPM on a song that "feels" much slower than that, the felt tempo is likely half (76). Cross-verify with hi-hat counting before trusting either value.
-- **Which tempo the scripts report.** With the PyTorch audio tools turned on in `/suno-setup` (`pytorch_audio_tools`), every script that reads tempo takes it from Beat This! and says so (`tempo_source`); off, librosa. `--tempo-source` overrides it for one run.
-- **Second opinion: `beat-grid.py` (Beat This!).** On an 83-track reference catalog, Beat This! matched the human-verified felt BPM on 9 of 15 tracks, against librosa's 7, and fixed most slow-song halftime double-reads. It still reads slow doom and ballad feels double, so when it and librosa disagree by a clean ratio, the ear (or the hi-hat count below) decides. Its beats-per-bar reads how the pulse groups, not the meter: songs with a 6/8 feel read 4.
-- **Manual hi-hat counting is the cheap reliable BPM verification** when AI tools disagree. Count hi-hat hits in a 10-second window of a steady-groove section. Most rock/pop songs play hi-hats as straight eighth notes. Calculation: `(hat hits in 10 sec ÷ 2) × 6 = quarter-note BPM`. Example: 25 hi-hat hits in 10 sec → (25 ÷ 2) × 6 = 75 BPM. When sources contest the BPM, this 30-second manual check is the tiebreaker.
+The script catalog, the tempo source, and how to read the numbers (including librosa's genre-dependent BPM misreads and the hi-hat check) are in `references/audio-analysis-scripts.md`.
 
 ### ChatGPT Audio Analysis
 
@@ -256,39 +204,4 @@ A/B testing on the same track (brass-metal fusion) with blind prompts at differe
 ### Integration with Feedback Elicitor
 - Style Prompt Accuracy as feedback loop: compare what was prompted vs. what Gemini hears → identify what Suno ignores, misinterprets, or adds unbidden → adjust future prompts
 - A/B prompt testing: change one variable, generate both, analyze both, compare. Quantifies what prompt changes actually do.
-- Per-song objective measurements (BPM, key, dynamic arc) complement subjective feedback on the track in hand. (Cross-catalog batch analysis for playlist ordering belongs to `suno-playlist-sequencer`, not this skill.)
-
-### Gemini as Suno Prompt Engineering Feedback Loop
-
-The highest-value use of Gemini audio analysis is **real-time A/B testing of Suno prompts during song creation**, not retrospective catalog analysis. Retrospective analysis of already-published songs is limited — you have one audio snapshot per song and no controlled comparison. The real power is testing prompt changes as you make them.
-
-**Recommended workflow for prompt improvement:**
-1. Write style prompt + lyrics package
-2. Generate 2-3 versions on Suno
-3. Run each through Gemini blind at 0.5 temp (NO style prompt in the analysis request)
-4. Compare what Gemini hears across versions to what was prompted
-5. Identify what the prompt actually controlled vs. what Suno ignored
-6. Adjust ONE variable (word position, tag, slider value), regenerate, analyze again
-7. Document what moved and what didn't in the songbook generation log
-
-**A/B testing discipline:** Change ONE variable per test. Move "art rock" from position 1 to position 3? Generate both, analyze both, compare. Add "driving technical bass"? Generate with and without, analyze both. This is the only way to systematically learn what Suno actually responds to vs. what it ignores.
-
-**Why Gemini's strengths align with this workflow:** It reliably detects instrument presence, dynamic arc, mood/energy, and stereo placement — exactly the things prompt changes are trying to influence. Its weaknesses (BPM, bass technique, endings) don't matter for A/B comparisons because they'd be equally wrong on both versions.
-
-### Preferred Workflow
-Opus 4.6 (Claude) as primary prompter/orchestrator, Gemini 3.1 as audio analysis assistant. Claude builds Suno packages, Gemini analyzes resulting audio, Claude interprets analysis to inform next iteration. Mac can suggest A/B testing as an optional step after presenting a Suno package: "Want to test this prompt? Generate 2-3 versions, run them through Gemini, and I'll tell you what landed and what didn't."
-
----
-
-## Single-Track Harmonic Scripts
-
-**chord-progression.py** — Analyzes chord changes and key centers in 30-second windows within a single track. Measure-by-measure detection is too noisy with distorted guitars, but 30-second key center summaries are useful.
-```bash
-uv run scripts/chord-progression.py track.mp3
-```
-
-**Camelot wheel mapping** is embedded in `chord-progression.py` — all 24 keys (12 major, 12 minor) mapped to codes 1A-12A (minor) and 1B-12B (major). The same mapping in the `suno-playlist-sequencer` skill's `playlist-sequencing-data.py` is what that skill uses for cross-track sequencing.
-
-## Playlist Sequencing (moved to `suno-playlist-sequencer`)
-
-Album/playlist sequencing — Camelot harmonic mixing, felt-BPM transitions, energy arcs, the album-craft methodology, and the `playlist-sequencing-data.py` full sequencing report — is **not** part of single-song feedback. It now lives in the **`suno-playlist-sequencer`** skill. Route album/playlist/tracklist work there.
+- Per-song objective measurements (BPM, key, dynamic arc) complement subjective feedback on the track in hand.

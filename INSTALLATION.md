@@ -2,7 +2,7 @@
 
 Mac follows the [Agent Skills](https://agentskills.io) open standard. The same SKILL.md files work across multiple LLM CLI tools. Choose the installation path that matches your setup.
 
-> **Requirement: `uv`.** The module's Python scripts run via `uv run`, which reads each script's [PEP 723](https://peps.python.org/pep-0723/) inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`) — no virtualenv or manual `pip install` to manage. Install it once: `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux/WSL) or `pip install uv`. Dependency-free scripts can fall back to plain `python3` (3.10+) if `uv` is unavailable. (BMad v6.9.0 flags this ahead of the v7 standardization on `uv run`.)
+> **Requirement: `uv`.** The module's Python scripts run via `uv run`, which reads each script's [PEP 723](https://peps.python.org/pep-0723/) inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`) — no virtualenv or manual `pip install` to manage. Install it once: `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux/WSL) or `pip install uv`. Dependency-free scripts can fall back to plain `python3` (3.11+) if `uv` is unavailable. (BMad v6.9.0 flags this ahead of the v7 standardization on `uv run`.)
 
 ## Standalone Installation (Recommended)
 
@@ -54,7 +54,7 @@ Tell Mac what kind of song you want. See the [Usage Guide](src/skills/suno-agent
 
 ## Installation with BMad Method
 
-If you use [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.2.0+), the module integrates with BMad's config management and help system. Two install paths:
+If you use [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.12+; not yet the v7 preview), the module integrates with BMad's config management and help system. Two install paths:
 
 ### Option A: Marketplace install (recommended)
 

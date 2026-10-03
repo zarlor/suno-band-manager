@@ -1,8 +1,8 @@
 # Suno Platform Reference
 
-Quick-reference for Suno models, plans, parameters, metatags, and common pitfalls. This is a companion to the [Usage Guide](./USAGE.md) (how to use Mac), the [Studio & Editor Reference](../../_shared/references/STUDIO-EDITOR-REFERENCE.md) (post-generation editing tools), and covers *how Suno works* for generation.
+Quick-reference for Suno models, plans, parameters, metatags, and common pitfalls. This is a companion to the [Usage Guide](USAGE.md) (how to use Mac), the [Studio & Editor Reference](STUDIO-EDITOR-REFERENCE.md) (post-generation editing tools), and covers *how Suno works* for generation.
 
-> **Platform state as of 2026-09-12.** **Suno launched the v6 family (v6, v6-wild, v6-mini) on 2026-09-09 and retired every earlier model.** The v6 More Options panel adds **Max Mode**, **Variety**, and **Personalize** alongside Duration, and v6 is reported to want a different prompt shape — see "Platform Changes — 2026-09-09 (v6)" below and `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Suno v6 Family" (**PREVIEW** guidance). Earlier changes still in force: **downloads capped from 2026-09-03** with commercial rights attached to the download; **Studio 2.0** Premier-only. Verify anything time-sensitive against [suno.com/release-notes](https://suno.com/release-notes) before telling a user.
+> **Platform state as of 2026-10-03** (no model change since v6 launched; Speech beta added 2026-10-01 — see "Platform Changes — 2026-10-03"). **Suno launched the v6 family (v6, v6-wild, v6-mini) on 2026-09-09 and retired every earlier model.** The v6 Controls panel (formerly "More Options") adds **Max Mode**, **Variety**, and **Personalize** alongside Duration, and v6 is reported to want a different prompt shape — see "Platform Changes — 2026-09-09 (v6)" below and the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "Suno v6 Family" (**PREVIEW** guidance). Earlier changes still in force: **downloads capped from 2026-09-03** with commercial rights attached to the download; **Studio 2.0** Premier-only. Verify anything time-sensitive against [suno.com/release-notes](https://suno.com/release-notes) before telling a user.
 
 ---
 
@@ -88,9 +88,9 @@ Quick-reference for Suno models, plans, parameters, metatags, and common pitfall
 
 **Credit model:** Every press of the Create button costs **10 credits** and produces **2 songs** (a pair to choose from — Suno always generates two takes for variety). This means: 50 credits/day = 5 Creates = 10 songs to evaluate. 2,500 credits/mo = 250 Creates = 500 songs. When budgeting credits for a session, count in **Creates (10 credits each)**, not individual songs. Replace Section and Extend also cost credits (amount varies by section length). **When daily credits run low:** Suno provides 50 bonus credits per day on all tiers, refreshing daily.
 
-Free-tier "More Options" includes: Vocal Gender, Manual/Auto Lyrics mode, Song Title only.
+Free-tier Controls panel (formerly "More Options") includes: Vocal Gender, Manual/Auto Lyrics mode, Song Title only.
 
-Pro/Premier "More Options" additionally includes: Weirdness slider, Style Influence slider, Audio Influence slider (with Persona, Voice, or audio upload), Exclude Styles, Personas, Inspo, and the Legacy Editor for section-level editing. **On v6 it also carries Duration (Auto or 0:10-6:00), Max Mode (2× credits), Variety (*Exact style* through *Unreasonably varied*; above *Exact* it rewrites the style prompt), and Personalize (applies My Taste)** — observed at Pro 2026-09-12; Free-tier availability not verified.
+Pro/Premier Controls panel additionally includes: Weirdness slider, Style Influence slider, Audio Influence slider (with Persona, Voice, or audio upload), Exclude Styles, Personas, Inspo, and the Legacy Editor for section-level editing. **On v6 it also carries Duration (Auto or 0:10-6:00), Max Mode (2× credits), Variety (*Exact style* through *Unreasonably varied*; above *Exact* it rewrites the style prompt), and Personalize (applies My Taste)** — observed at Pro 2026-09-12; Free-tier availability not verified.
 
 **Vocal consistency across songs:** Suno interprets the same style prompt differently on every generation. Descriptive prompt language (e.g., "breathy female vocal with indie folk phrasing") gets you in the right neighborhood but not an exact match. The **Persona** feature (Pro/Premier) is the only reliable way to lock in a consistent vocal identity across songs -- it reuses the vocal character from a source generation. If you are working on an album or project where songs need to sound like the same singer, Personas are essential.
 
@@ -104,9 +104,31 @@ Pro/Premier "More Options" additionally includes: Weirdness slider, Style Influe
 
 Community testing (JG BeatsLab, March 2026) puts diminishing returns past ~70%, but that is **general guidance, not a ceiling** — Suno's own escalation for a clone that doesn't sound right is to *raise* Audio Influence first and rebuild the profile from a clean acapella second, and module production profiling of one voice found clean results at 85% where 55% showed artifacts. Profile per voice.
 
-**The full table, the official escalation path, the local per-voice finding, and the intent-split values (70+ to preserve source character, 80 to stop invented intros on covers, 50+ to stop invented lyrics, 30-40 to let a strong style prompt through) live in one place — `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Voices". Do not restate ranges from memory; read that section.**
+**The full table, the official escalation path, the local per-voice finding, and the intent-split values (70+ to preserve source character, 80 to stop invented intros on covers, 50+ to stop invented lyrics, 30-40 to let a strong style prompt through) live in one place — the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "Voices". Do not restate ranges from memory; read that section.**
 
 ---
+
+## Platform Changes — 2026-10-03 (week-five check)
+
+Graded as elsewhere in this file. The full prompting and repair guidance from this sweep lives in the sibling skills (pointers at the end of this section).
+
+- **No model change since launch** (OFFICIAL, by absence, checked 2026-10-03). There's no v6.1. The newest help-article edit is 2026-09-09; the app builds since then say only "bug fixes and performance improvements". The v6 guidance in this module is now about three weeks old.
+- **Speech (beta), 2026-10-01** (OFFICIAL): a separate spoken-word model that *"generates voice and music together as one cohesive track."*
+  - It has a **Custom Script** box (the words) and a **Style** box (the delivery and the music). Advanced mode adds Variety, vocal gender and a background-music switch (on by default). Length is *"up to around 8 minutes"*.
+  - Script advice: *"Plain paragraphs work best"* with no lyric formatting or bracketed section tags. That applies to Speech only; song cues don't change.
+  - Suno names *"poetry, a monologue, narration"* as uses. One known issue: *"Dramatic pauses may be very dramatic."*
+  - **Not stated:** credit cost, tier limits, and whether Voices work with it. Early Reddit reaction is mostly negative (mispronunciations, gasping breaths) (COMMUNITY).
+  - **For Mac:** a possible route for a spoken piece, as an alternative to `[Spoken Word]` inside a song. **Untested here.** Offer it as an option, and say so. The song pipeline (style builder, lyric transformer) is built for songs, so a Speech script is plain paragraphs, not a transformed lyric sheet.
+- **A Persona and a Voice "work together"** (OFFICIAL, Suno's Voices page, undated, first archived 2026-09-25): *"Does Voices replace Personas? No… They work together: pick a Persona for the sound and your Voice for the vocal."* This contradicts an earlier vendor compile ("Personas are now Voices"). **Whether the Create form takes both at once on v6 is unverified in the UI.** The "Persona = sound" wording is marketing copy, not tested behaviour. The same page says *"a clean acapella gives the best results."*
+- **Custom Models picked up v6 automatically** (OFFICIAL, Suno's Custom Models page): *"including its section editing and multimodal inputs."* They need at least six songs, train in about 2–5 minutes, and Pro holds up to three. Results for heavy lanes are split (ANECDOTAL ×3).
+- **Exclude Styles cap: 1,000 characters** (the live page markup, `maxlength="1000"`). The form's own counter is the final word. An earlier "no cap" claim doesn't hold for the web form.
+- **Suno's EQ blog** (OFFICIAL, 2026-09-29, Studio): a muddy vocal *"is fighting other instruments in the same frequency range"*; the fix is a low-mid cut (*"start with -6dB at 400Hz"*). That's a **mix-stage fix, not a prompt lever**, and Studio is Premier-only. It frames the problem the way this module does: the band competing with the voice. On the prompt side, the answer is giving the band a job that leaves the voice room.
+- **"Premier gets better models than Pro"** was claimed and refuted (COMMUNITY): *"The differences are all outside of the models."*
+
+**Where the rest of this sweep went:**
+- Style-side guidelines (the band's job instead of gravity words, chorus job vs feeling, vocal-space phrasing, `key change` in Exclude, Voice character words) and the measured outside evidence (Style Influence 100 = 85; Variety's per-take rewrite, which Exclude survives): the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "v6 prompt guidelines from production testing and the 2026-09 / 2026-10 research sweeps".
+- Lyric-side items (mood tags on bare sections, `[Silence]` on rushing lines, line-start duet tags, spoken drift, `[Instrument: X In/Out]`): the suno-lyric-transformer skill's `references/metatag-reference.md` → "Suno v6 (PREVIEW)".
+- Reading results and repairing a near-keeper (trust the audio over the song page, tempo miss as a listening cue, the repair ladder, late-song degradation reports, the stripped final chorus): the suno-feedback-elicitor skill's `references/technical-resolution.md`, `references/model-controls.md` and `references/feedback-triage-guide.md`.
 
 ## Platform Changes — 2026-09-09 (v6)
 
@@ -117,15 +139,21 @@ OFFICIAL unless graded otherwise. Sources: [v6 FAQ](https://help.suno.com/en/art
 - **Credits unchanged:** a Create is still 10 credits for two songs (image/video inputs can cost more). **Max Mode costs 2×.**
 - **Up to 8 minutes per generation.** Style and lyrics limits unchanged at 1,000 / 5,000 (VENDOR, day-one test).
 - **New capabilities:** plain-language section editing, single-lyric or single-word updates without regenerating, multi-source mashups, sample-isolate-build, and starting from text, audio (voice memos), images, or video. Launch-week reports say section edits are uneven — some come back as a different take — so the Song Editor's trim and replace stay the deterministic path (COMMUNITY).
-- **Where section editing lives (v6, observed in the live UI 2026-09-12):** open the finished song's ⋯ **More Actions** menu → **Edit** → **Replace Section**. That opens the **Create form** with the song attached as **Audio** and the panel's mode dropdown set to **Replace section**. Select the span on the waveform, or type start and end times. The span can run anywhere up to the whole song, and lining it up precisely is fiddly. The Voice, the **full** Lyrics box, the **full** Styles box and More Options all stay editable, and there's **no separate plain-language instruction box**. The launch note's "edit… using plain language" most plausibly means editing the Styles and Lyrics boxes for the replaced span (inference, untested). Suno's older help text describes a lyrics-only box; treat that detail as pre-v6. One early report says edits still shift voice and melody (ANECDOTAL), so judge the seams by ear.
+- **v6 Create sidebar layout (owner screenshots, 2026-09-17 — the Controls panel replaced "More Options"):** top to bottom — Song / Sounds toggle with the model picker (v6) at top right; a **"Describe your song"** text box with a "Controls" chip (the natural-language prompt; leave it empty for a custom lyrics-plus-style package); **Optional controls** chips: + Audio, + Voices, + Inspo; **+ Lyrics** (expands); **Styles** (a tag-chip field with a library button, a magic-wand suggest button and a refresh); a **Controls** panel: Exclude styles, Vocal Gender (Male / Female), Duration (Custom / Auto), Max Mode (Off / On), Weirdness, Style Influence, Audio Influence (appears when a Voice or Audio is loaded), Variety (leftmost notch "Off", with a reset icon), Personalize (My Taste, Off / On); then **Song Title (Optional)** and **Save to…** (a workspace/folder picker — send the take to that band's own workspace so it lands with the rest of that band's songs; e.g. a band with its own workspace gets a package Save to line naming that workspace); then the Create button. Defaults seen: Weirdness 50, Style Influence 50, Variety Off, Personalize Off, Max Mode Off, Duration Auto. **Interface in flux (owner, 2026-09-17):** the "+" at the bottom-left of the Describe box opens a drop-down listing much the same controls as the advanced fields, so Suno may be moving toward the single Describe box as the main entry point. Until that settles, packages keep the Lyrics / Styles / Controls workflow as documented here.
+
+- **The "+" attachment menu (owner screenshots, 2026-09-17).** The "+" at the bottom-left of the Describe box opens: **Lyrics ▸ · Styles ▸ · Playlist · Image · Video · Audio ▸ · Voices ▸** (Voices expands to *Use Voice* / *Add new*; the ▸ items open submenus). Notes:
+  - **The order is not the sidebar's order**, and it carries three inputs the Controls sidebar has no row for: **Playlist, Image, Video**. Image and Video are presumably the multimodal inputs v6's launch copy advertised ("create with text, audio, images and video"); what **Playlist** does as an input is unknown — it may attach a playlist as reference material or set where the song saves. Untested.
+  - **Mac's package order does not change.** Keep presenting Voice → Lyrics → Style → Exclude → Settings → Title → Save to → Wild Card, which follows the sidebar. For a user who works from the "+" menu instead, the same fields are reached in that menu's order — name the field, not the position, if they ask where something goes.
+  - The Lyrics field's own placeholder confirms the instrumental route: *"leave this empty for instrumental."*
+- **Where section editing lives (v6, observed in the live UI 2026-09-12):** open the finished song's ⋯ **More Actions** menu → **Edit** → **Replace Section**. That opens the **Create form** with the song attached as **Audio** and the panel's mode dropdown set to **Replace section**. Select the span on the waveform, or type start and end times. The span can run anywhere up to the whole song, and lining it up precisely is fiddly. The Voice, the **full** Lyrics box, the **full** Styles box and the Controls panel all stay editable, and there's **no separate plain-language instruction box**. The launch note's "edit… using plain language" most plausibly means editing the Styles and Lyrics boxes for the replaced span (inference, untested). Suno's older help text describes a lyrics-only box; treat that detail as pre-v6. One early report says edits still shift voice and melody (ANECDOTAL), so judge the seams by ear.
 - **Plain-language editing is a Simple-mode feature** (VENDOR ×2, quoting Suno's announcement): "In Simple mode, the model works out which creation or editing operation the instruction calls for, reducing the need to choose separately between tools such as Cover, Remix and Extend." Suno's examples are "Change the chorus so it's sung by a gospel choir" and "Change the lyric from 'love' to 'light.'" This is why the Advanced/Custom Replace-section view has no instruction box. The route is untested here, and section edits reportedly can rewrite more than requested.
 - **Cover vs. Inspiration for re-cutting your own songs:** a Cover tracks the original closely. Some users prefer the Inspiration option instead, believing Covers limit re-use and monetization (unverified — check Suno's current terms). A sound workflow: generate fresh first, and reach for Inspiration only if the original is far better than anything new.
-- **Fade In / Fade Out** (owner-observed on Pro, 2026-09-12): a finished song's Edit menu has Fade In and Fade Out options. Use them after generation to fix an ending that trails or stops wrong, rather than re-rolling or fighting it with end tags.
+- **Fade In / Fade Out** (owner-observed on Pro, 2026-09-12; how-to 2026-09-14): a finished song's Edit menu has Fade In and Fade Out options. On v6 the fade is set in an expandable Fade Out section of the song's Create panel, and hitting Create makes a new, faded version. To end on a chosen chord, Crop first (a new version), then Fade Out that cropped version. See the Studio editor reference. Use them after generation to fix an ending that trails or stops wrong, rather than re-rolling or fighting it with end tags.
 - **Training data:** "trained from the ground up… on a new set of data" — licensed music from Warner Music Group and BMG, participating Believe/TuneCore artists, and user data. Which catalogs, and how much, is undisclosed.
-- **How it prompts (PREVIEW):** production direction rather than a descriptor list; negatives only in Exclude Styles; **Variety at *Exact style*** unless you want the prompt rewritten; Style Influence reportedly defaults to 50. Full treatment: `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Suno v6 Family."
+- **How it prompts (PREVIEW):** production direction rather than a descriptor list; negatives only in Exclude Styles; **Variety at *Exact style*** unless you want the prompt rewritten; Style Influence reportedly defaults to 50. Full treatment: the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "Suno v6 Family."
 - **Where it struggles (COMMUNITY):** late-song degradation in longer tracks, and the heavier genres — metal and high-gain guitar above all. Fidelity is widely described as cleaner than v5.5 while character is described as flatter; results are strongly genre-dependent.
 
-**What Mac should do differently:** build every package for v6. The wild card stays on v6 with the same sliders and inside the band's core sound; running the unchanged primary prompt on v6-wild is an optional alternative wild card. put Variety, Max Mode, Duration, and Personalize in the Settings block, and treat the rest of this file's model-specific advice as history until it is re-confirmed on v6. Tell a user plainly that v6 guidance is a week old.
+**What Mac should do differently:** build every package for v6. The wild card stays on v6 with the same sliders and inside the band's core sound; running the unchanged primary prompt on v6-wild is an optional alternative wild card. put Variety, Max Mode, Duration, and Personalize in the Settings block, and treat the rest of this file's model-specific advice as history until it is re-confirmed on v6. Tell a user plainly that v6 guidance is still young (the model hasn't changed since launch, as of 2026-10-03).
 
 ## Platform Changes — 2026-08-13
 
@@ -156,13 +184,13 @@ Sources: same as above, plus [BMG partnership](https://suno.com/blog/suno-partne
 
 ### Studio 2.0 (2026-08-13, Premier-only)
 
-Studio was "totally overhauled": MIDI import/record/edit with piano roll and audio-to-MIDI, MIDI-as-prompt, a session-aware chat bar that generates instruments, vocals, and custom plugins, a wavetable synth, audio effects including sidechain compression and convolution reverb, automation curves, and 32-bit/48kHz multitrack export. **Nothing in Studio 2.0 reaches Pro.** The Studio 1.x feature names (Warp Markers, Remove FX, Alternates, EQ, Context Window, Sounds Mode, Stem Cover, Heal Edits, MILO-1080) are **not in current official copy** — Suno moved those articles into a "Studio Archive." No community field-testing exists yet. Full detail: [STUDIO-EDITOR-REFERENCE.md](../../_shared/references/STUDIO-EDITOR-REFERENCE.md).
+Studio was "totally overhauled": MIDI import/record/edit with piano roll and audio-to-MIDI, MIDI-as-prompt, a session-aware chat bar that generates instruments, vocals, and custom plugins, a wavetable synth, audio effects including sidechain compression and convolution reverb, automation curves, and 32-bit/48kHz multitrack export. **Nothing in Studio 2.0 reaches Pro.** The Studio 1.x feature names (Warp Markers, Remove FX, Alternates, EQ, Context Window, Sounds Mode, Stem Cover, Heal Edits, MILO-1080) are **not in current official copy** — Suno moved those articles into a "Studio Archive." No community field-testing exists yet. Full detail: [STUDIO-EDITOR-REFERENCE.md](STUDIO-EDITOR-REFERENCE.md).
 
 **VERIFIED-ABSENT:** nothing states that Studio 2.0 replaces or deprecates the Song Editor / Legacy Editor. Replace Section is documented live at Pro today. Assume coexistence.
 
 ### Duration slider (2026-07-20, web, v5.5 only)
 
-A Duration slider in the web Create form sets target song length. Suno published no range, but the endpoints — **10 seconds to 6:00** — are verified in live UI (Pro account, 2026-08-14); the 5-second step granularity is COMMUNITY-attested and unverified. Pre-generation only, **and it requires Style set to Custom**. Characteristic failures run in both directions: a hard cutoff at the target; rushed delivery or skipped sections on short targets (the model bends BPM and crams syllables to hit the number); and on long targets a **premature end followed by a restart** rather than trailing silence. **Adherence is inconsistent and the reports are starkly split** — one controlled batch matched 4 of 40, other users report near-perfect adherence, and nobody has explained the variance. It is worst on covers, remixes, extends, and custom models. Recommended handling: run **Auto** first to find the natural length, then set Custom at natural **+10-15s**, and always pair it with an explicit `[Outro]`. The "How long will my song be?" help article was not updated and still documents only Extend and the ~8-minute cap. See `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Duration Slider."
+A Duration slider in the web Create form sets target song length. Suno published no range, but the endpoints — **10 seconds to 6:00** — are verified in live UI (Pro account, 2026-08-14); the 5-second step granularity is COMMUNITY-attested and unverified. Pre-generation only, **and it requires Style set to Custom**. Characteristic failures run in both directions: a hard cutoff at the target; rushed delivery or skipped sections on short targets (the model bends BPM and crams syllables to hit the number); and on long targets a **premature end followed by a restart** rather than trailing silence. **Adherence is inconsistent and the reports are starkly split** — one controlled batch matched 4 of 40, other users report near-perfect adherence, and nobody has explained the variance. It is worst on covers, remixes, extends, and custom models. Recommended handling: run **Auto** first to find the natural length, then set Custom at natural **+10-15s**, and always pair it with an explicit `[Outro]`. The "How long will my song be?" help article was not updated and still documents only Extend and the ~8-minute cap. See the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "Duration Slider."
 
 ### Lyricist (shipped 2026-07-09) — present at Pro; free-tier gating still UNVERIFIED
 
@@ -208,18 +236,18 @@ Where each component of Mac's output package goes in Suno's Custom Mode:
 | **Persona** (Pro/Premier) | Vocal identity from a source song | Persona selector (if applicable) |
 | **Inspo** (v4.5+ Pro) | Playlist analysis for vibe channeling | Inspo feature (if applicable) |
 | **Lyrics** | Structured text with metatags | Lyrics field (Custom Mode) |
-| **Style Prompt** | Sound description optimized for your model | Style of Music field |
+| **Style Prompt** | Sound description optimized for your model | Styles field (formerly "Style of Music") |
 | **Exclude Styles** (Pro/Premier) | Comma-separated list of what to avoid | Exclude Styles field |
-| **Vocal Gender** | Male/Female voice selection | Under More Options |
+| **Vocal Gender** | Male/Female voice selection | Controls panel |
 | **Lyrics Mode** | Manual (your lyrics) or Auto (Suno generates) | Lyrics toggle |
-| **Weirdness** (Pro/Premier) | Creative deviation: lower = safer, higher = experimental | Under More Options |
-| **Style Influence** (Pro/Premier) | Prompt adherence: lower = looser, higher = tighter | Under More Options |
-| **Audio Influence** (Pro/Premier) | Persona/upload resemblance (appears with Persona or audio upload) | Under More Options |
+| **Weirdness** (Pro/Premier) | Creative deviation: lower = safer, higher = experimental | Controls panel |
+| **Style Influence** (Pro/Premier) | Prompt adherence: lower = looser, higher = tighter | Controls panel |
+| **Audio Influence** (Pro/Premier) | Persona/upload resemblance (appears with Persona or audio upload) | Controls panel |
 | **Model** | v6 (default), v6-wild (exploratory), or v6-mini (Free) | Model selector |
-| **Variety** (v6) | How far Suno may rewrite the style prompt — *Exact style* keeps it as written. The slider shows shorthand labels — the leftmost notch reads **"Off"** (= *Exact style*) — and a finished song's page shows the rewritten style | Under More Options |
-| **Max Mode** (v6) | Extra compute for consistency through the song; 2× credits | Under More Options |
-| **Duration** | Auto, or a Custom target (0:10-6:00) | Under More Options |
-| **Personalize** (v6) | Applies your My Taste profile | Under More Options |
+| **Variety** (v6) | How far Suno may rewrite the style prompt — *Exact style* keeps it as written. The slider shows shorthand labels — the leftmost notch reads **"Off"** (= *Exact style*) — and a finished song's page shows the rewritten style | Controls panel |
+| **Max Mode** (v6) | Extra compute for consistency through the song; 2× credits | Controls panel |
+| **Duration** | Auto, or a Custom target (0:10-6:00) | Controls panel |
+| **Personalize** (v6) | Applies your My Taste profile | Controls panel |
 | **Song Title** | Title for the generation | Title field |
 | **Wild Card Variant** | An experimental alternative style prompt | Optional -- try it if you want |
 
@@ -227,7 +255,7 @@ Where each component of Mac's output package goes in Suno's Custom Mode:
 
 ## Style Prompt Best Practices
 
-- **On v6, write the style prompt as ordered production direction** — each instrument's job per section, the vocal placed rather than praised, both edges stated, negatives only in Exclude Styles. PREVIEW guidance: `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Suno v6 Family." The bullets below were written against the retired models; re-check each on v6.
+- **On v6, write the style prompt as ordered production direction** — each instrument's job per section, the vocal placed rather than praised, both edges stated, negatives only in Exclude Styles. PREVIEW guidance: the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "Suno v6 Family." The bullets below were written against the retired models; re-check each on v6.
 - **1,000-character limit** (200 for v4 Pro) -- content beyond this is silently truncated. The first ~200 chars are the "critical zone" where front-loaded terms have strongest influence. Content beyond ~200 is supplementary, not wasted — v5.5 may interpret more effectively. **5-8 descriptors is the sweet spot** (HookGenius 1000+ prompt analysis, April 2026 — fewer than 4 produces generic results; exceeding 10 causes conflicting signals and quality degradation).
 - **Word order is weighted** -- front-loaded terms dominate. Priority order: Genre > Mood/Energy > Instruments > Vocals > Production. Treat the first ~200 characters as the "critical zone."
 - **Hyper-specific beats generic** -- "1980s synth-pop" not "pop"; "distorted electric guitar, power chords" not "guitar"
@@ -266,7 +294,8 @@ The Exclude Styles field is a dedicated exclusion input separate from the style 
 - Format as a **comma-separated list** for easy copy-paste: `screaming vocals, steel guitar, autotune`
 - Be specific: "screaming vocals" is better than "screaming"
 - **Limit to 2-3 most important exclusions** -- too many destabilizes the arrangement
-- In-prompt negatives also work: add "no [element]" at the end of your style prompt as a supplement
+- **On v6, negatives go only in this field.** Inline "no [element]" reads as inclusion, and Variety's rewrite drops "no X" phrases while Exclude survives intact (VENDOR + COMMUNITY + ANECDOTAL-controlled). *(Pre-v6: "no [element]" at the end of the style prompt worked as a supplement.)*
+- Length cap: 1,000 characters (page markup, 2026-10-03)
 - With Exclude Styles handling exclusions, the style prompt can focus entirely on POSITIVE instructions
 - Heavier genre words ("metal", "sludge") become usable in the style prompt when the Exclude Styles field blocks their unwanted defaults
 - **Note:** Exclude Styles is currently in Early Access Beta and may not be 100% reliable for all instrument exclusions
@@ -278,8 +307,8 @@ The Exclude Styles field is a dedicated exclusion input separate from the style 
 ## Metatag Reference
 
 > This is Mac's quick reference. For comprehensive metatag documentation, consult the Lyric Transformer's detailed references — invoke `suno-lyric-transformer` or read its reference files directly:
-> - **Full metatag catalog:** `suno-lyric-transformer/references/metatag-reference.md` — all known tags with confidence levels, production findings, and detailed usage notes
-> - **Section job framework:** `suno-lyric-transformer/references/section-jobs.md` — what each section does emotionally, poem-to-song mapping guide, structural metaphor techniques
+> - **Full metatag catalog:** the suno-lyric-transformer skill's `references/metatag-reference.md` — all known tags with confidence levels, production findings, and detailed usage notes
+> - **Section job framework:** the suno-lyric-transformer skill's `references/section-jobs.md` — what each section does emotionally, poem-to-song mapping guide, structural metaphor techniques
 
 ### Section Tags
 
@@ -321,7 +350,7 @@ Suno v5/v5.5 cannot reliably produce two genuinely distinct male voices trading 
 
 **Gender contrast is the easiest path** — `[Male]`/`[Female]` per-line is the only reliably working duet technique. Same-gender dual voicing is the hardest case. For songs that genuinely need male/male dual distinct voices, plan for multi-stage Studio workflow from the start.
 
-See `suno-lyric-transformer/references/metatag-reference.md` "Dual Vocals" section for full workarounds and ranked reliability.
+See the suno-lyric-transformer skill's `references/metatag-reference.md` "Dual Vocals" section for full workarounds and ranked reliability.
 
 ### Parameterized Section Tags
 
@@ -380,7 +409,7 @@ This table covers problems with Suno's output. For issues with Mac itself (wrong
 | **Dense punctuation** | Heavy punctuation confuses vocal cadence | Simplify; use commas and dashes intentionally |
 | **Scream bleed-through** | Aggressive vocals carry into subsequent sections | Add `[Vocal Style: whispered]` reset after aggressive sections |
 | **Sections sound flat despite energy tags** | Energy metatags alone don't drive tempo changes | Combine with line density changes (short lines = slow, packed lines = fast), half-time/double-time drum metatags (`[Heavy: halftime]`, `[Double Time]`), arrangement density changes, and Weirdness slider. Do NOT use BPM tags — they are confirmed ineffective. |
-| **Persona style conflicts** | Persona's auto-style clashes with your style prompt | Persona auto-fills Style of Music -- keep additions simple (1-2 genres, 1 mood, 2-4 instruments max). Change ONE variable at a time (music direction OR Persona, not both). |
+| **Persona style conflicts** | Persona's auto-style clashes with your style prompt | Persona auto-fills the Styles field -- keep additions simple (1-2 genres, 1 mood, 2-4 instruments max). Change ONE variable at a time (music direction OR Persona, not both). |
 | **Unwanted instrument in wrong section** | Suno's style prompt is global | Move section-specific instruments to end of prompt, use `[Instrument: ...]` metatags, or generate sections separately via Legacy Editor (Pro) |
 
 ### Audio Quality Issues
@@ -393,7 +422,7 @@ This table covers problems with Suno's output. For issues with Mac itself (wrong
 | **Timing feels wrong** | Rhythm or pacing issues | Premier: fix in Studio (Warp Markers were the Studio 1.x tool for this and are not in current Studio 2.0 copy — check the live UI). Pro: Replace Section on the offending span, or export stems and correct timing in a DAW |
 | **Long song degradation** | Quality drops in extended generations | Generate shorter segments and use Extend carefully |
 | **Voices spoken word/narration** | Voice drifts toward singing, inconsistent tone between sections, unnatural pacing | Suno remains music-first. Voices is not suitable for spoken word or narration — consider narration as a separate recording edited in via DAW |
-| **Voices vocal artifacts at high Audio Influence** | Shimmer, warble, or robotic quality at the top of the range | Try 40-60% — but this is voice-dependent, not a rule: some voices are clean at 85%. If the complaint is "it doesn't sound like me" rather than "it sounds artefacty," Suno's official path is to RAISE it first, then rebuild the profile from a clean acapella. See `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Voices" |
+| **Voices vocal artifacts at high Audio Influence** | Shimmer, warble, or robotic quality at the top of the range | Try 40-60% — but this is voice-dependent, not a rule: some voices are clean at 85%. If the complaint is "it doesn't sound like me" rather than "it sounds artefacty," Suno's official path is to RAISE it first, then rebuild the profile from a clean acapella. See the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "Voices" |
 
 ### Creative Issues
 
@@ -440,6 +469,10 @@ This table covers problems with Suno's output. For issues with Mac itself (wrong
 ## Community Research Sources & Further Reading
 
 > **Last updated:** August 13, 2026. These sources informed the findings in this reference. Suno evolves fast — verify claims against current platform behavior.
+
+### Official Suno Documentation — 2026-10-03 check
+
+- [Introducing Speech (beta)](https://suno.com/release-notes/introducing-speech-beta) · [Voices page](https://suno.com/voices) · [Custom Models page](https://suno.com/custom-models) · [Suno blog: EQ](https://suno.com/blog/about-eq)
 
 ### Official Suno Documentation — v6 (2026-09-12)
 

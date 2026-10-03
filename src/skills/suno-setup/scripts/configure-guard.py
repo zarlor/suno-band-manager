@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = []
 # ///
 """Configure pipeline guard hook for Claude Code and standing order for all platforms.
@@ -20,8 +20,10 @@ Options:
     --agents-md-path    Path to AGENTS.md (or CLAUDE.md / GEMINI.md)
     -o, --output        Write JSON output to file instead of stdout
 
-Exit codes: 0=success, 1=validation error (no targets), 2=runtime error
-    (e.g. malformed settings JSON)
+Path arguments must be real paths: a literal {project-root} token is rejected.
+
+Exit codes: 0=success, 1=validation error (no targets, unresolved path token),
+    2=runtime error (e.g. malformed settings JSON)
 """
 
 import argparse
@@ -38,6 +40,23 @@ The Package Assembly Rule core (marked INVARIANT) lives in the agent's loaded sa
 """.strip()
 
 STANDING_ORDER_MARKER = "## Suno Pipeline Rule"
+
+
+def reject_unresolved_paths(named_paths: list[tuple[str, str | None]]) -> None:
+    """Exit with a clear error if any path argument still contains the literal
+    ``{project-root}`` token. That token is meaningful only inside config
+    values; filesystem path arguments must be resolved by the caller. Failing
+    loudly here prevents silently creating a junk ``{project-root}/`` directory.
+    """
+    for name, value in named_paths:
+        if value and "{project-root}" in value:
+            message = (
+                f"Unresolved '{{project-root}}' token in {name} path: {value!r}. "
+                "Resolve '{project-root}' to the actual project root before running "
+                "this script — it is a filesystem path, not a config value."
+            )
+            print(json.dumps({"results": [{"status": "error", "message": message}]}, indent=2))
+            sys.exit(1)
 
 
 def configure_claude_hook(settings_path: Path, guard_script_path: str) -> dict:
@@ -109,6 +128,12 @@ def main():
     parser.add_argument("--agents-md-path", help="Path to AGENTS.md (or CLAUDE.md / GEMINI.md)")
     parser.add_argument("-o", "--output", help="Output file path")
     args = parser.parse_args()
+    reject_unresolved_paths([
+        ("--settings-path", args.settings_path),
+        ("--guard-script-path", args.guard_script_path),
+        ("--agents-md-path", args.agents_md_path),
+        ("--output", args.output),
+    ])
 
     results = []
 

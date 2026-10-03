@@ -174,7 +174,7 @@ generation_history: []
 | `known_working_patterns` | No | list of strings | Prompt formulations proven to reliably produce good results for this band's sound. Record specific wording that nails the identity. |
 | `known_limitations` | No | list of strings | Known failure modes or dead ends for this band's genre/style in Suno. Saves time by documenting things that don't work. |
 | `generation_learnings` | No | list of strings | Accumulated observations about what prompt language triggers what Suno behavior for this band's genre/style. Updated from testing and feedback sessions. |
-| `generation_history` | No | list of objects | Max 10 entries. Each entry: date, style_prompt, model, sliders, note |
+| `generation_history` | No | list of objects | Max 10 entries (appends trim the oldest). Each entry: date, style_prompt, model, sliders, note |
 
 ## Validation Rules
 
@@ -204,12 +204,12 @@ generation_history: []
 
 - **Style Prompt Builder** reads: `style_baseline`, `reference_tracks`, `vocal`, `voices`, `exclusion_defaults`, `sliders`, `creativity_default`, `model_preference`, `language`, `instrumental`
 - **Lyric Transformer** reads: `writer_voice`, `language`
-- **Feedback Elicitor** reads: `style_baseline`, `sliders`, `model_preference`; writes BOTH `generation_history` and `generation_learnings` via headless:edit.
+- **Feedback Elicitor** reads: `style_baseline`, `sliders`, `model_preference`; writes BOTH `generation_history` and `generation_learnings` through this skill's `scripts/apply-profile.py --append` (`--append generation_history --append-json '<entry>' --max 10` for the round's snapshot), which keeps the list's existing entries and the file's comments.
 - **`generation_learnings` vs `generation_history` (the data contract):** `generation_learnings` holds **durable learned patterns across songs** — the distilled "what works / what doesn't" for this band's sound, not tied to any single generation. `generation_history` holds **per-generation snapshots** — this round's exact settings (style prompt, model, sliders) plus the reaction. The Feedback Elicitor writes both: it appends the round's snapshot to `generation_history` and promotes any durable pattern that snapshot taught into `generation_learnings`. Treat `generation_learnings` (alongside `known_working_patterns` / `known_limitations`) as the band's institutional memory; `generation_history` as the changelog those learnings were distilled from.
 - When a Persona is active, its style auto-populates the Style of Music field — keep additional style modifications simple (1-2 genres, 1 mood, 2-4 instruments max)
 - **Persona Era-Anchoring:** Personas pull the sound toward the era/style of the source song. Audio Influence at 10-15% reduces this but doesn't eliminate it. For era-specific pieces, generate without a persona or create era-specific personas from era-appropriate source songs.
 - **Voices (v5.5):** Voices sit alongside Personas rather than replacing them (both live in the Voices menu; Personas still work). When `voice_id` is set, the Voice defines the vocal identity — omit gender **and timbre** descriptors from `style_baseline`; delivery descriptors still matter and should stay. The style prompt should focus on instrumentation, production, and mood rather than vocal character.
-- **v5.5 Voice-Character Principle:** Voices capture vocal *character* — timbre, lilt, vibrato tendencies, attack patterns, dynamics behavior, mic artifacts. They don't carry trained genre gravity; Suno adapts the captured character to whatever genre the prompt directs. Six practical rules for Voice-aware profiles (see `suno-style-prompt-builder/references/model-prompt-strategies.md` for full details and validated case study):
+- **v5.5 Voice-Character Principle:** Voices capture vocal *character* — timbre, lilt, vibrato tendencies, attack patterns, dynamics behavior, mic artifacts. They don't carry trained genre gravity; Suno adapts the captured character to whatever genre the prompt directs. Six practical rules for Voice-aware profiles (see the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` for full details and a validated case study):
   1. **Drop descriptors that duplicate what the Voice already delivers** — if the Voice captures vulnerable-breathy delivery, drop "warm," "vulnerable," "clean," "storytelling vocal" from `style_baseline`. They're redundant and can conflict with the captured character.
   2. **Load descriptors that specify what the song needs from the arrangement.** The style prompt drives arrangement (instrumentation, genre, production, dynamics); the Voice provides vocal character. Be explicit about arrangement — "overdriven rhythm guitar with crunch," "driving mid-tempo rock groove" — rather than relabeling what the Voice does.
   3. **Keep Style Influence tight (65+)** so the prompt leads the arrangement firmly. Profiles using a Voice for cross-genre work should bump `sliders.style_influence` to 65 as the default.
@@ -222,65 +222,6 @@ generation_history: []
 
 ---
 
-## Per-Band Playlist YAML (the canonical playlist source)
+## Per-Band Playlist YAML
 
-Each band in the project owns exactly **one** canonical playlist file:
-
-```
-docs/{band-slug}-playlist.yaml
-```
-
-The slug matches the band profile filename — `docs/band-profiles/iron-meridian.yaml` pairs with `docs/iron-meridian-playlist.yaml`. This file is the single source of truth for the band's track sequence; **do not duplicate the track list elsewhere.** Other files (sidecar narrative, voice context, ordering doc) reference or derive from this YAML.
-
-### Schema
-
-```yaml
-album: "<Band display name>"
-audio_dir: "docs/audio/<band-slug>"   # optional — the band's audio folder (see "Audio folder layout" below)
-tracks:
-  - name: "<Song title (must match the songbook entry's frontmatter title)>"
-    file: "<exact filename in the band's audio folder, e.g. My Song.mp3>"
-  - name: "<next song>"
-    file: "<next file>"
-  # ...
-```
-
-The two required fields per track are `name` (the human-readable song title — must match the songbook entry's frontmatter `title`) and `file` (the audio filename, relative to the band's audio folder, used as the input to the `suno-playlist-sequencer` skill's `playlist-sequencing-data.py`). The optional top-level `audio_dir` names that folder.
-
-### Audio folder layout (per band)
-
-Each band's audio lives in its own folder, `docs/audio/{band-slug}/` — the same slug as the band profile and the playlist YAML. Two bands can then publish the same title (one lyricist writing for several bands, or a band re-recording its catalog) with no filename collisions and no suffix conventions.
-
-- `playlist-sequencing-data.py --playlist docs/{band-slug}-playlist.yaml` resolves each `file:` against, in order: the `--audio-dir` flag, the YAML's `audio_dir:`, `docs/audio/{band-slug}/` when that folder exists, then the legacy flat `docs/audio/`.
-- A playlist whose filename is not a band slug (a cross-cutting thematic playlist drawn from one band) sets `audio_dir:` explicitly. A playlist that mixes bands sets `audio_dir: "docs/audio"` and writes each `file:` with its band folder (`band-slug/Song.mp3`).
-- `analyze-audio.py`, `batch-full-analysis.py`, `audio-files-manifest.py`, and `verify-audio-files.py` scan `docs/audio/` recursively and label files by band-folder path (`{band-slug}/Song.mp3`). The verifier treats the folder as part of a file's identity, so one band's file never satisfies another band's manifest entry.
-- `audio-deep-analysis.py` archives a band-folder file to `docs/audio-analysis/songs/{band-slug}/{song-slug}.json`.
-- A flat `docs/audio/` keeps working everywhere; per-band folders are recommended once a project has a second band.
-
-### Bootstrapping
-
-If a band already has songbook entries but no playlist YAML, scaffold one:
-
-```bash
-uv run src/skills/suno-band-profile-manager/scripts/scaffold-playlist.py {band-slug} --from-songbook
-```
-
-This writes `docs/{band-slug}-playlist.yaml` with discovered song titles populated and `file:` fields left as empty strings (TODO: fill in from the band's audio folder, `docs/audio/{band-slug}/`) and the `audio_dir:` key already set. The user reviews, fills in audio filenames, sets the order, and saves.
-
-For a brand new band with no songbook entries yet, run without `--from-songbook` to write an empty template.
-
-### Auto-creation on band profile creation
-
-When a new band profile is created via `suno-band-profile-manager`, the playlist YAML scaffold MUST be created in the same write batch. New bands without a playlist YAML are caught by `validate-profile.py` once they have any songbook entries.
-
-### The `playlist:` block in band profile YAML is invalid
-
-The band profile YAML must NOT contain a `playlist:` block. `validate-profile.py` warns on profiles that carry one. Authoritative track-list data lives in `docs/{band-slug}-playlist.yaml`; sequencing-history narrative notes belong in a band-specific ordering doc (`docs/{band-slug}-playlist-ordering.md`) if maintained.
-
-### Workflow rules (apply in same write batch)
-
-- **On song publish:** the band's `docs/{band-slug}-playlist.yaml` MUST be updated alongside the songbook entry.
-- **On track reorder:** edit `docs/{band-slug}-playlist.yaml` first; the script's per-album companion `docs/{band-slug}-playlist-sequencing.md` auto-refreshes from this on the next run.
-- **On track removal/rename:** update the YAML, the songbook (if renaming), the sidecar narrative, and any ordering doc all in the same write batch.
-
-See also `suno-playlist-sequencer/references/playlist-sequencing-methodology.md` for the album-craft methodology that consumes this file's data.
+Moved to `references/playlist-yaml.md` (schema, audio folder layout, bootstrapping, workflow rules).

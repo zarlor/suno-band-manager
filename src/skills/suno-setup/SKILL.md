@@ -8,170 +8,96 @@ description: Sets up Suno Band Manager module in a project. Use when the user re
 ## Conventions
 
 - Bare paths (e.g. `scripts/merge-config.py`) resolve from the skill root.
-- `{skill-root}` resolves to this skill's installed directory (where `SKILL.md` lives).
 - `{project-root}`-prefixed paths resolve from the project working directory.
-- `{skill-name}` resolves to the skill directory's basename.
 
-`{project-root}` is also a **literal token** in config *values* — never substitute it with an actual path when writing config. It signals to the consuming LLM that the value is relative to the project root, not the skill root. (Resolve it only for filesystem operations like directory creation, never when persisting the value.)
+`{project-root}` is a **literal token** in config *values*: never substitute it when writing config. It tells the consuming LLM the value is relative to the project root, not the skill root. Script **path arguments** (`--*-path`, `--*-dir`, `--target`, `--source`, `--project-root`) are real filesystem paths, so resolve the token to the actual project root before running. The scripts reject an unresolved token.
 
 ## Overview
 
-Installs and configures a BMad module into a project. Module identity (name, code, version) and variable definitions come from `assets/module.yaml`; the capability rows registered for the help system come from `assets/module-help.csv`. Collects user preferences and writes them to three files:
+Installs and configures the Suno Band Manager module. Module identity, variables and the agent roster come from `assets/module.yaml`; capability rows come from `assets/module-help.csv`. Setup writes:
 
-- **`{project-root}/_bmad/config.yaml`** — shared project config: core settings at root (e.g. `output_folder`, `document_output_language`) plus a section per module with metadata and module-specific values. User-only keys (`user_name`, `communication_language`) are **never** written here.
-- **`{project-root}/_bmad/config.user.yaml`** — personal settings intended to be gitignored: `user_name`, `communication_language`, and any module variable marked `user_setting: true` in `assets/module.yaml`. These values live exclusively here.
-- **`{project-root}/_bmad/module-help.csv`** — registers module capabilities for the help system.
-- **`{project-root}/_bmad/core/config.yaml`** and **`{project-root}/_bmad/suno/config.yaml`** — per-module config files written automatically by `merge-config.py` so that `bmad-init` can load config at runtime. These bridge the shared config format with `bmad-init`'s expected per-module layout.
+- **`{project-root}/_bmad/config.yaml`**: core settings at root (`output_folder`, `document_output_language`) plus a `suno:` section with metadata and module values. `user_name` and `communication_language` are never written here.
+- **`{project-root}/_bmad/config.user.yaml`**: personal settings, meant to be gitignored: `user_name`, `communication_language`, and any module variable marked `user_setting: true`.
+- **`{project-root}/_bmad/module-help.csv`**: the capability list Mac's menu reads.
+- **`{project-root}/_bmad/suno/module-help.csv`**: the same rows, where the BMad v6.12 installer looks for them. Its next run (`npx bmad-method install`) adds them to the bmad-help catalog.
+- **`{project-root}/_bmad/suno/config.yaml`**: a flat copy of the config that the module's audio scripts read first. Written only when no BMad installer manages `{project-root}/_bmad/`; otherwise the installer owns that file.
 
-`merge-config.py` (config.yaml) and `merge-help-csv.py` (module-help.csv) each use an anti-zombie pattern — both rewrite this module's section fresh, removing any existing entries before writing, so stale values never persist.
+Both merges are anti-zombie: they rebuild this module's section and rows from scratch, so stale entries never persist. Setup never writes, moves or deletes anything the BMad installer or another module owns: `{project-root}/_bmad/_config/`, `{project-root}/_bmad/core/` (including `core/config.yaml`), other modules' folders.
 
 ## On Activation
 
-**Preflight — ensure `uv` is available.** This module's Python tooling runs via `uv run`, which reads each script's PEP 723 inline metadata and provisions dependencies (e.g. `pyyaml`) automatically — so the setup itself depends on `uv`. Check once, up front:
+**Preflight.** Run `uv --version`. If uv is missing, offer to install it (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`). Without uv, the scripts run with `python3`, but `merge-config.py` then needs `pip install pyyaml`.
 
-```bash
-command -v uv >/dev/null 2>&1 && uv --version || echo "uv not found"
-```
-
-If `uv` is missing, tell the user it's required for the module's scripts and offer to install it — the standalone installer is `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux) or `pip install uv`. This is the "install and set up uv" step the BMad v6.9.0 release flags ahead of the v7 standardization on `uv run`. The dependency-free scripts can fall back to `python3`, but `merge-config.py` needs `pyyaml`, so without `uv` the user would install that by hand (`pip install pyyaml`). Proceed once `uv` is available (or the user explicitly opts for the manual `python3` + `pip` path).
-
-1. Read `assets/module.yaml` for module metadata and variable definitions (the `code` field is the module identifier)
-2. **Detect installation mode deterministically** with the pre-pass — it classifies the install the same way the merge will, so the narrated mode never drifts from what gets written or returned:
+1. Read `assets/module.yaml` (the `code` field is the module identifier).
+2. Run the detection pre-pass. It writes nothing:
 
    ```bash
    uv run scripts/merge-config.py --detect-mode --config-path "{project-root}/_bmad/config.yaml" --module-yaml assets/module.yaml --legacy-dir "{project-root}/_bmad"
    ```
 
-   It returns `{mode, has_module_section, has_legacy, version_transition}`. Narrate the `mode`:
-   - **`update`** — config.yaml already has this module's section. Lead Confirm with the `version_transition`. Any per-module init configs present are this installer's own runtime bridge files (`has_legacy: true` here is expected), **not** pre-consolidation legacy — do not show the legacy-migration message.
-   - **`fresh`** — `{project-root}/_bmad/` exists, no module section. If `has_legacy`, a prior installer left per-module config; tell the user it was detected and values will be consolidated into the new format (used as fallback defaults).
-   - **`standalone`** — no `{project-root}/_bmad/`. Create it and proceed with defaults. Inform the user: "Setting up standalone — no BMad Method detected, using direct configuration."
-   - **`migration`** — genuine pre-consolidation legacy: per-module config exists but config.yaml has no module section. Inform the user legacy values will be used as fallback defaults.
+   It returns `mode`, `installer_managed`, `cleanup_needed`, `has_core`, `version_transition`, and `defaults`. Narrate the mode:
+   - **`update`**: the `suno:` section exists. Lead Confirm with the version transition.
+   - **`fresh`**: `{project-root}/_bmad/` exists with no `suno:` section. This includes a v6.12 installer-managed project, whose per-module configs belong to the installer and only seed defaults.
+   - **`standalone`**: no `{project-root}/_bmad/`. Say: "Setting up standalone — no BMad Method detected, using direct configuration."
+   - **`migration`**: an earlier installer left per-module config and no installer manages `{project-root}/_bmad/` now. Its values become the defaults, and leftover module copies are cleaned up after setup.
 
-   In the `fresh`-with-legacy and `migration` cases, the per-module config files and directories are cleaned up after setup.
-
-If the user provides arguments (e.g. `accept all defaults`, `--headless` / `-H`, or inline values like `user name is BMad, I speak Swahili`), map any provided values to config keys, use defaults for the rest, and skip interactive prompting. Still display the full confirmation summary at the end. See **Headless mode** for the autonomous-run contract.
+If the invocation includes `--headless` / `-H` or "accept all defaults", load `references/headless.md` and follow it. If the user gave inline values (e.g. `user name is BMad, I speak Swahili`), map them to config keys, use defaults for the rest, skip prompting, and still show the full summary at the end.
 
 ## Collect Configuration
 
-Ask the user for values. Show defaults in brackets. Present all values together so the user can respond once with only the values they want to change (e.g. "change language to Swahili, rest are fine"). Never tell the user to "press enter" or "leave blank" — in a chat interface they must type something to respond.
+Show every value at once, with its default in brackets, so the user can reply once with only what they want to change (e.g. "change language to Swahili, rest are fine"). Never tell the user to "press enter" or "leave blank": in a chat interface they must type something to respond.
 
-**Default priority** (highest wins): existing new config values > legacy config values > `assets/module.yaml` defaults. When legacy configs exist, read them and use matching values as defaults instead of `module.yaml` defaults. Only keys that match the current schema are carried forward — changed or removed keys are ignored.
+Take each default from `defaults` in the pre-pass output. It already applies the priority: existing config, then per-module config files, then `assets/module.yaml` defaults, with folder values shown without the `{project-root}/` prefix.
 
-**Core config** (only if no core keys exist yet): `user_name` (default: BMad), `communication_language` and `document_output_language` (default: English — ask as a single language question, both keys get the same answer), `output_folder` (default: `{project-root}/_bmad-output`). Of these, `user_name` and `communication_language` are written exclusively to `config.user.yaml`. The rest go to `config.yaml` at root and are shared across all modules.
-
-**Module config**: Read each variable in `assets/module.yaml` that has a `prompt` field. Ask using that prompt with its default value (or legacy value if available).
+- **Core** (ask only when `has_core` is false): `user_name`, one language question that sets both `communication_language` and `document_output_language`, and `output_folder`.
+- **Module**: each variable in `assets/module.yaml` with a `prompt` field, asked with its prompt.
 
 ## Write Files
 
-Before the first write, echo the resolved project root once ("Installing into `<resolved path>`") so a user who launched from the wrong directory can catch it before anything is created or deleted.
+Before the first write, echo the resolved project root once ("Installing into `<resolved path>`"), so a user who launched from the wrong directory can catch it.
 
-**Resolve the update-diff and keep/overwrite decisions BEFORE the merge runs** — the anti-zombie rewrite is destructive, so the preview has to happen against the still-untouched config. On an update, run the dry-run pass first (it writes nothing), settle any keeps with the user, fold kept values back into the answers JSON, and only then run the merge below. See **Update mode** for the diff mechanics.
+Write a temp JSON file with the answers as `{"core": {...}, "module": {...}}`. Values keep the literal `{project-root}` token. Keys you leave out keep their current value; nothing is reset to a default behind the user's back.
 
-Write a temp JSON file with the collected answers structured as `{"core": {...}, "module": {...}}` (omit `core` if it already exists). Then run both scripts — they can run in parallel since they write to different files (batch them in a single message to guarantee concurrency):
+**On an update, preview before the merge**, because the anti-zombie rewrite is what could revert a hand edit. Run the pre-pass again with `--answers {temp-file}`. Its `changes` list (`{file, key, old, new}`) is exactly what the merge will write. Show each as "current → new" (`new: null` is a key the module no longer uses) and let the user keep the current value; put kept values back in the answers file. A preview shown after the write would be a replay, not a preview.
+
+Then run the three writes. They touch different files, so batch them in one message:
 
 ```bash
 uv run scripts/merge-config.py --config-path "{project-root}/_bmad/config.yaml" --user-config-path "{project-root}/_bmad/config.user.yaml" --module-yaml assets/module.yaml --answers {temp-file} --legacy-dir "{project-root}/_bmad"
-uv run scripts/merge-help-csv.py --target "{project-root}/_bmad/module-help.csv" --source assets/module-help.csv --legacy-dir "{project-root}/_bmad" --module-code suno
+uv run scripts/merge-help-csv.py --target "{project-root}/_bmad/module-help.csv" --source assets/module-help.csv
+uv run scripts/merge-help-csv.py --target "{project-root}/_bmad/suno/module-help.csv" --source assets/module-help.csv
 ```
 
-Both scripts output JSON to stdout with results. If either exits non-zero, surface the error and stop. The scripts automatically read legacy config values as fallback defaults, then delete the legacy files after a successful merge. `merge-config.py` also writes per-module config files (`{project-root}/_bmad/core/config.yaml` and `{project-root}/_bmad/suno/config.yaml`) that `bmad-init` reads at runtime. Check `legacy_configs_deleted`, `legacy_csvs_deleted`, and `init_configs_written` in the output to confirm.
-
-`merge-config.py` requires `pyyaml`; `uv run` resolves it automatically from the script's PEP 723 metadata. If `uv` is unavailable and the run fails on a missing `pyyaml`, retry with `pip install pyyaml` (or `python3 -m pip install pyyaml`) then re-run. If `merge-config.py` reports a clean error about a corrupt existing config or user config, surface its message verbatim and stop — do not overwrite the file.
-
-Run `scripts/merge-config.py --help` or `scripts/merge-help-csv.py --help` for full usage.
-
-**Update mode — preview what changes before overwriting.** On an update, the anti-zombie rewrite replaces the whole module section, which can silently revert hand-edited values. Get the deterministic diff from the same pre-pass that classified the mode, passing the answers temp file so it dry-run-diffs them against the existing config (it writes nothing):
-
-```bash
-uv run scripts/merge-config.py --detect-mode --config-path "{project-root}/_bmad/config.yaml" --module-yaml assets/module.yaml --answers {temp-file}
-```
-
-- Report `version_transition` (e.g. "upgrading suno 1.8.2 → 1.8.3").
-- For each entry in `changes:[{key, old, new}]`, show a "current → new" line and let the user keep the existing value. Carry kept values forward into the answers JSON so the merge writes them back. This whole exchange happens **before** the merge command above runs — a preview reported after the write would be a replay, not a preview.
+Each prints JSON. If one exits non-zero, surface its error verbatim and stop. A corrupt existing config is reported, never overwritten. Run any script with `--help` for full usage.
 
 ## Create Output Directories
-
-After writing config, create the module's declared output directories with one deterministic call. `merge-config.py --create-dirs` consumes the `directories:` list plus `output_folder` from the resolved config and creates any that don't exist (resolving `{project-root}` for the filesystem only — the stored config values keep the literal token):
 
 ```bash
 uv run scripts/merge-config.py --create-dirs --config-path "{project-root}/_bmad/config.yaml" --module-yaml assets/module.yaml --project-root "{project-root}"
 ```
 
-Pass the real project root for `--project-root` so the token resolves on disk. The script returns JSON `{created, existed}` — report `created` in the Confirm step.
+It creates `output_folder` and the module's `directories:` on disk and returns `{created, existed}`. The stored values keep the token.
 
-## Cleanup Legacy Directories
+## Clean Up Legacy Copies
 
-After both merge scripts complete successfully, remove the installer's package directories. Skills and agents in these directories are already installed at `.claude/skills/` — the `{project-root}/_bmad/` directory should only contain config files.
-
-```bash
-uv run scripts/cleanup-legacy.py --bmad-dir "{project-root}/_bmad" --module-code suno --also-remove _config --skills-dir "{project-root}/.claude/skills"
-```
-
-The script verifies that every skill in the legacy directories exists at `.claude/skills/` before removing anything. Directories without skills (like `_config/`) are removed directly. The script preserves `config.yaml` files in directories being cleaned — `bmad-init` needs these per-module config files at runtime. If the script exits non-zero, surface the error and stop. Missing directories (already cleaned by a prior run) are not errors — the script is idempotent.
-
-Check `directories_removed` and `files_removed_count` in the JSON output for the confirmation step. Run `scripts/cleanup-legacy.py --help` for full usage.
-
-## Configure Pipeline Guard (Optional)
-
-After config and cleanup are complete, offer to configure the pipeline guard. The guard enforces Mac's mandatory production pipeline — it prevents hand-building Suno packages without running the formal skill pipeline (Style Prompt Builder + Lyric Transformer).
-
-Ask: "Want me to set up the pipeline guard? It ensures Mac always runs the production skills before presenting a Suno package. I can configure it for your coding tool."
-
-If the user declines, skip to Confirm.
-
-If the user accepts, configure both layers. The two commands write to different files, so batch them in a single message to run in parallel; report what was configured in Confirm.
-
-### Claude Code Stop Hook
-
-If the project has a `.claude/` directory (indicating Claude Code usage), configure the deterministic Stop hook:
+Run this only when the pre-pass said `cleanup_needed: true` (`migration` mode). It removes only copies of this module's own skills (`{project-root}/_bmad/suno/suno-*/`) that are installed in a platform skills folder and that no BMad installer tracks. Pass every skills folder the project has (`.claude/skills`, `.agents/skills`, `.gemini/skills`, `.cursor/skills`, and so on), each as a `--skills-dir`. Preview first:
 
 ```bash
-uv run scripts/configure-guard.py --settings-path "{project-root}/.claude/settings.local.json" --guard-script-path ".claude/skills/suno-agent-band-manager/scripts/pipeline-guard.py"
+uv run scripts/cleanup-legacy.py --bmad-dir "{project-root}/_bmad" --module-code suno --skills-dir "{project-root}/.claude/skills" --dry-run
 ```
 
-The script merges the hook into existing settings without overwriting other configuration. It's idempotent — skips if already configured. Check the JSON output for `status` ("configured", "already_configured", or "error").
+If `would_remove` is empty, skip the rest. Otherwise show the paths and file counts, and run the same command without `--dry-run` once the user agrees. Copies listed in `unverified` (not found in any skills folder) are kept; mention them.
 
-**Path note:** The hook command uses `$CLAUDE_PROJECT_DIR` (a Claude Code environment variable) so it works regardless of where the project lives on disk.
+## Pipeline Guard (Optional)
 
-### Standing Order (All Platforms)
-
-Configure the cross-platform standing order in `AGENTS.md` — readable by Codex CLI, Cursor, GitHub Copilot, Windsurf, Amp, and Gemini CLI (when configured to read AGENTS.md):
-
-```bash
-uv run scripts/configure-guard.py --agents-md-path "{project-root}/AGENTS.md"
-```
-
-The script appends the standing order section to AGENTS.md (creates the file if it doesn't exist). Idempotent — skips if the section already exists.
-
-**No-platform fallback:** if the project has neither a `.claude/` directory nor an `AGENTS.md`, run only the `--agents-md-path` command — `configure-guard.py` creates `AGENTS.md` from scratch, so the standing order still lands.
+Ask: "Want me to set up the pipeline guard? It makes sure Mac always runs the production skills before presenting a Suno package." If the user accepts, load `references/pipeline-guard.md` and follow it.
 
 ## Confirm
 
-Summarize the install from the scripts' JSON output — what config, user settings, init configs, help entries, and output directories were written, plus the install mode. On an update, lead with the version transition and any kept-vs-overwritten values from Write Files. If legacy files or directories were removed, mention the migration and the cleanup count (e.g. "Cleaned up 106 installer package files from bmb/, core/, \_config/ — skills are installed at .claude/skills/"). The result keys are bound at their source sections; surface them as an outcome, don't re-list them mechanically.
+Summarize from the scripts' JSON: the mode, what went into each config file, help rows registered, folders created, cleanup (if any), and the guard. On an update, lead with the version transition and any kept-versus-changed values.
 
-Then close with a concrete next step, not just the generic `module_greeting`. A fresh install's natural first move falls out of the `assets/module-help.csv` `after:`/`before:` graph: `create-song` lists `after: suno-band-profile-manager:manage-profiles`, which itself runs `before: build-style-prompt` — so the entry point is creating a band profile, then a song. Point the user there explicitly (e.g. "Next: say 'create a band profile', then 'create a song'"), then display the `module_greeting` from `assets/module.yaml`. On a **standalone** install, drop the greeting's multi-machine-sync paragraph — it needs the top-level `scripts/` folder that a standalone/marketplace install lacks, and it's the wrong pitch for a first-timer.
-
-## Headless mode
-
-These "flags" are natural language the orchestrating model interprets, not an argv parser — a caller invokes this skill the way it invokes any skill. Example: *"install suno module -H, user name is BMad, language English, accept the guard default."*
-
-When invoked headlessly (`--headless` / `-H`, or "accept all defaults"), run end-to-end with no prompts: take provided inline values, fill the rest from the default-priority chain, and run all scripts. **Update keep-vs-overwrite default:** on a headless update, keep existing hand-edited values where they differ from the new defaults (run the `--detect-mode --answers` diff, fold the `changes` back as keeps) and record the override in `decisions[]`. **Pipeline-guard default:** auto-configure for whatever platform files exist — run the Stop-hook command if `{project-root}/.claude/` exists, run the AGENTS.md command if `{project-root}/AGENTS.md` exists, and if neither exists, create `AGENTS.md` (run the `--agents-md-path` command). Skip only if the caller passed an explicit guard opt-out.
-
-**Headless return.** Emit, as the final line of your response, a single JSON object the calling process can parse:
-
-```json
-{"status": "complete", "config_path": "...", "user_config_path": "...", "module_code": "suno", "version": "1.8.3", "mode": "fresh", "guard_configured": true, "output_dirs": {"band_profiles_folder": "{project-root}/docs/band-profiles", "songbook_folder": "{project-root}/docs/songbook"}, "decisions": []}
-```
-
-- `status`: `complete` or `blocked`. On `blocked`, add a one-line `"reason"` and still return whatever paths are known.
-- `mode`: `fresh` | `update` | `standalone` | `migration` (the detected installation mode, from `--detect-mode`).
-- `version`: the `module_version` just written; on an update, use `"<old> → <new>"`.
-- `guard_configured`: whether the pipeline guard was wired.
-- `config_path` / `user_config_path`: resolved paths from `merge-config.py`'s JSON output.
-- `output_dirs`: the resolved module output folders (the `band_profiles_folder` / `songbook_folder` values written to the module section, literal `{project-root}` token intact) so a chaining caller can wire the next skill without re-reading config. Optionally also include the `--create-dirs` `{created, existed}` result.
-- `decisions`: lightweight inline list of any default chosen without the user (e.g. `"language defaulted to English"`, `"headless update kept hand-edited suno_tier=pro"`, `"guard auto-configured: AGENTS.md (no .claude/)"`). Full Decision-Log ceremony is overkill for an installer; this list is the audit trail.
+Close with the first step: "Next: say 'create a band profile', then 'create a song'." Then show the `module_greeting` from `assets/module.yaml`. On a **standalone** install, drop the greeting's multi-machine-sync paragraph: it needs the repo's top-level `scripts/` folder, which a standalone or marketplace install lacks.
 
 ## Outcome
 
-Once the user's `user_name` and `communication_language` are known (from collected input, arguments, or existing config), use them consistently for the remainder of the session: address the user by their configured name and communicate in their configured `communication_language`.
+Once `user_name` and `communication_language` are known, address the user by that name and communicate in that language for the rest of the session.

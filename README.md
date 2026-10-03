@@ -1,12 +1,12 @@
 # Suno Agent — Mac, the Band Manager
 
-An AI-powered music production assistant that helps you create professional Suno-ready song packages through guided creative conversation. Mac orchestrates four specialized skills into a seamless workflow: from initial inspiration to a complete package — style prompt, lyrics, and parameter recommendations — that you can paste directly into Suno.
+An AI-powered music production assistant that helps you create professional Suno-ready song packages through guided creative conversation. Mac orchestrates five specialized skills into a seamless workflow: from initial inspiration to a complete package — style prompt, lyrics, and parameter recommendations — that you can paste directly into Suno.
 
 ## Features
 
 You talk to Mac like you'd talk to a producer. Tell Mac what kind of song you want — a genre, a mood, a poem, a feeling, a reference track — and Mac produces a complete package:
 
-- **Style Prompt** — Model-specific, optimized for your chosen Suno model (v4.5-all, v5 Pro, etc.)
+- **Style Prompt** — Model-specific, optimized for your chosen Suno model (v6, v6-wild, v6-mini)
 - **Structured Lyrics** — With Suno metatags (`[Verse]`, `[Chorus]`, etc.), rhythmic consistency, and cliché detection
 - **Exclusion Prompt** — What Suno should avoid
 - **Parameter Recommendations** — Slider values, vocal gender, persona references (tier-aware)
@@ -41,7 +41,7 @@ For detailed documentation on all features, interaction modes, band profiles, th
 
 ## Architecture
 
-Mac is an orchestrating agent that coordinates four specialized skills — three pre-generation, one post-generation:
+Mac is an orchestrating agent that coordinates five specialized skills — three pre-generation, two post-generation — plus a setup skill:
 
 ```mermaid
 graph TD
@@ -50,23 +50,26 @@ graph TD
     Mac --> SPB["Style Prompt<br/>Builder"]
     Mac --> LT["Lyric<br/>Transformer"]
     Mac -.->|after Suno generation| FE["Feedback<br/>Elicitor"]
+    Mac -.->|across a catalog| PS["Playlist<br/>Sequencer"]
     classDef agent fill:#fff3cd,stroke:#856404,stroke-width:2px
     classDef pre fill:#e7f3ff,stroke:#0366d6,stroke-width:1px
     classDef post fill:#f0e7ff,stroke:#6f42c1,stroke-width:1px
     class Mac agent
     class BPM,SPB,LT pre
-    class FE post
+    class FE,PS post
 ```
 
 The orchestrating agent and each skill have their own documentation:
 
 | Component | Purpose | Key Scripts |
 |-----------|---------|-------------|
-| [**Mac (Band Manager)**](src/skills/suno-agent-band-manager/references/README.md) | Orchestrating agent — guides the full song creation workflow across all skills | `pre-activate.py`, `validate-path.py`, `check-memory-health.py` |
-| [**Band Profile Manager**](src/skills/suno-band-profile-manager/references/README.md) | CRUD for band identity profiles, writer voice analysis, tier feature awareness | `validate-profile.py`, `list-profiles.py`, `tier-features.py`, `diff-profiles.py` |
+| [**Mac (Band Manager)**](src/skills/suno-agent-band-manager/references/README.md) | Orchestrating agent — guides the full song creation workflow across all skills | `pre-activate.py` (the wake: `--wake`, `--pulse`), `validate-sidecar.py`, `songbook-catalog.py`, `find-stale-refs.py`, `upgrade-sanctum.py`, `check-memory-health.py`, `validate-path.py` |
+| [**Band Profile Manager**](src/skills/suno-band-profile-manager/references/README.md) | CRUD for band identity profiles, writer voice analysis, tier feature awareness, per-band playlist YAML | `apply-profile.py`, `validate-profile.py`, `list-profiles.py`, `tier-features.py`, `diff-profiles.py`, `scaffold-playlist.py` |
 | [**Style Prompt Builder**](src/skills/suno-style-prompt-builder/references/README.md) | Model-aware style prompt generation with creativity modes and wild card variants | `validate-prompt.py` |
-| [**Lyric Transformer**](src/skills/suno-lyric-transformer/references/README.md) | Poem/text to Suno-ready structured lyrics with metatags and cliché detection | `validate-lyrics.py`, `cliche-detector.py`, `syllable-counter.py`, `analyze-input.py`, `section-length-checker.py`, `lyrics-diff.py` |
-| [**Feedback Elicitor**](src/skills/suno-feedback-elicitor/references/README.md) | Post-generation feedback triage and guided refinement with musical vocabulary translation. Also hosts the audio-analysis toolkit, playlist sequencing, and multi-machine audio verification scripts | `parse-feedback.py`, `map-adjustments.py`, `analyze-audio.py`, `audio-deep-analysis.py`, `batch-full-analysis.py`, `chord-progression.py`, `tempo-detail.py`, `playlist-sequencing-data.py`, `audio-files-manifest.py`, `verify-audio-files.py` |
+| [**Lyric Transformer**](src/skills/suno-lyric-transformer/references/README.md) | Poem/text to Suno-ready structured lyrics with metatags and cliché detection | `validate-lyrics.py`, `cliche-detector.py`, `syllable-counter.py`, `analyze-input.py`, `section-length-checker.py`, `lyrics-diff.py`, `spacing-check.py` (the writer's spacing survives verbatim), `validate-options.py`, `assemble-summary.py` |
+| [**Feedback Elicitor**](src/skills/suno-feedback-elicitor/references/README.md) | Post-generation feedback triage and guided refinement with musical vocabulary translation. Also hosts the audio-analysis toolkit and multi-machine audio verification scripts | `parse-feedback.py`, `map-adjustments.py`, `feedback-log.py`, `analyze-audio.py`, `audio-deep-analysis.py`, `chord-progression.py`, `tempo-detail.py`, `beat-grid.py`, `vocal-placement.py`, `section-map.py`, `audio-files-manifest.py`, `verify-audio-files.py` |
+| **Playlist Sequencer** (`src/skills/suno-playlist-sequencer/`) | Album-craft track ordering: energy arcs, key moves, locked arcs, encore design | `playlist-sequencing-data.py`, `batch-full-analysis.py`, `validate-sequence.py` |
+| **Setup** (`src/skills/suno-setup/`) | Module configuration, help registration, pipeline-guard hook | `merge-config.py`, `merge-help-csv.py`, `configure-guard.py`, `cleanup-legacy.py` |
 
 Each skill can be invoked directly for standalone use — see the linked READMEs for details, headless modes, and examples.
 
@@ -75,11 +78,11 @@ Each skill can be invoked directly for standalone use — see the linked READMEs
 Each band has a canonical `docs/{band-slug}-playlist.yaml` as its single source of truth. The `playlist-sequencing-data.py` script reads it and produces:
 
 - A persistent JSON archive at `docs/audio-analysis/playlists/{band-slug}.json` (durable raw data — read it directly to answer different questions of the same audio without re-running)
-- An auto-refreshed Markdown summary at `docs/{band-slug}-playlist-sequencing.md` (Camelot transitions, energy levels, intro/outro percentages, transition quality)
+- An auto-refreshed Markdown summary at `docs/{band-slug}-playlist-sequencing.md` (Camelot key moves rated `key_compat` compatible / near / distant — the key relationship only — plus the BPM change, the loudness step, energy levels and intro/outro percentages, each read separately)
 
-The album-craft methodology (per-track variables, energy arc models including W-shape, key positions, locked-arc preservation, sonic palette variety, encore structure) is documented at [`src/skills/suno-feedback-elicitor/references/playlist-sequencing-methodology.md`](src/skills/suno-feedback-elicitor/references/playlist-sequencing-methodology.md). Multi-band projects keep each band's playlist independent — there's no shared global file that drifts between bands.
+The album-craft methodology (per-track variables, energy arc models including W-shape, key positions, locked-arc preservation, sonic palette variety, encore structure) is documented at [`src/skills/suno-playlist-sequencer/references/playlist-sequencing-methodology.md`](src/skills/suno-playlist-sequencer/references/playlist-sequencing-methodology.md). Multi-band projects keep each band's playlist independent — there's no shared global file that drifts between bands.
 
-For multi-machine projects, `audio-files-manifest.py` generates a small `docs/audio-files-manifest.yaml` (audio MP3s are too large to ship in the sync archive) and `verify-audio-files.py` runs on the receiving machine after sync-unpack to flag missing / wrong-gen / extra files. The verifier is filename-normalization-aware (`Foo.mp3` ≡ `Foo-Redux.mp3` ≡ `Foo (NSFW).mp3` for song-identity matching) and size-tolerance-aware (absorbs Suno's per-download ID3 metadata variance so identical-audio doesn't false-positive as different gen).
+For multi-machine projects, `audio-files-manifest.py` generates a small `docs/audio-files-manifest.yaml` (audio MP3s are too large to ship in the sync archive) and `verify-audio-files.py` runs on the receiving machine after sync-unpack to flag missing / wrong-gen / extra files. The verifier is filename-normalization-aware (`Foo.mp3` ≡ `Foo-v2.mp3` ≡ `Foo (NSFW).mp3` for song-identity matching) and size-tolerance-aware (absorbs Suno's per-download ID3 metadata variance so identical-audio doesn't false-positive as different gen).
 
 ## Prerequisites
 
@@ -110,7 +113,7 @@ This unlocks:
 
 - **Per-song deep analysis** — BPM, key (Krumhansl-Kessler), energy arc, chord progression, section boundaries, spectral balance
 - **Loudness (ITU-R BS.1770)** — integrated LUFS and loudness range per track, plus loudness by thirds
-- **Playlist sequencing** — Camelot wheel transitions, entry/exit keys, intro/outro energy, BPM transition quality, and the loudness step across every seam, for the full per-band playlist
+- **Playlist sequencing** — Camelot key moves (compatible / near / distant, rating the key relationship only), entry/exit keys, intro/outro energy, the BPM change, and the loudness step across every seam, for the full per-band playlist
 - **Catalog-wide batch analysis** — tempo stability, dynamic character (FLAT / MODERATE / DYNAMIC / HIGHLY-DYNAMIC), energy shifts >20%, section boundary detection across every track at once
 - **JSON archive layer** — every analysis is persisted to `docs/audio-analysis/{songs,playlists,catalog}/` so future sessions read the archive instead of re-running the script
 - **Auto-refreshed Markdown summaries** — each script writes a human-readable companion doc (per-band for playlist sequencing, catalog-wide for the others) that auto-refreshes between AUTOGEN markers; hand-curated content outside the markers is preserved
@@ -138,7 +141,7 @@ Then activate Mac using your LLM CLI's skill invocation (e.g., `/suno-agent-band
 
 ### With BMad Method — install from the community marketplace
 
-If you use [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.2.0+), the easiest path is the marketplace install:
+If you use [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.12+; not yet the v7 preview), the easiest path is the marketplace install:
 
 ```bash
 npx bmad-method install
@@ -213,7 +216,7 @@ Mac was developed and tested primarily on Claude Code. Other LLM CLIs should wor
 
 ## Suno Model Compatibility
 
-Mac builds packages for Suno's **v6 family** — v6, v6-wild, and v6-mini — which replaced every earlier model on 2026-09-09. The v6 guidance in this release is a **preview**, compiled in v6's first week; expect it to firm up in the next major release. Retired model names (v4 through v5.5 Pro) are still recognized in older band profiles and songbook entries and flagged for update. See the [Suno Reference](src/skills/suno-agent-band-manager/references/SUNO-REFERENCE.md) for models, plans, and prompting, and the [Studio & Editor Reference](src/skills/_shared/references/STUDIO-EDITOR-REFERENCE.md) for post-generation editing (Song Editor, Studio 2.0, stems, and more).
+Mac builds packages for Suno's **v6 family** — v6, v6-wild, and v6-mini — which replaced every earlier model on 2026-09-09. The v6 guidance in this release is a **preview**, compiled in v6's first week; expect it to firm up in the next major release. Retired model names (v4 through v5.5 Pro) are still recognized in older band profiles and songbook entries and flagged for update. See the [Suno Reference](src/skills/suno-agent-band-manager/references/SUNO-REFERENCE.md) for models, plans, and prompting, and the [Studio & Editor Reference](src/skills/suno-agent-band-manager/references/STUDIO-EDITOR-REFERENCE.md) for post-generation editing (Song Editor, Studio 2.0, stems, and more).
 
 ## File Structure
 
@@ -223,34 +226,79 @@ src/skills/
 │   ├── SKILL.md                    # Setup skill — config collection and registration
 │   ├── assets/
 │   │   ├── module.yaml             # Module metadata and config variables
-│   │   └── module-help.csv         # Capability registry (v1.4.0 format)
+│   │   └── module-help.csv         # Capability registry (drives Mac's menu)
+│   ├── references/
+│   │   ├── headless.md             # Headless setup
+│   │   └── pipeline-guard.md       # The pipeline-guard hook and standing order
 │   └── scripts/
-│       ├── merge-config.py         # Config file merge + init-compatible output
+│       ├── merge-config.py         # Merges module config into _bmad/config.yaml
 │       ├── merge-help-csv.py       # Help CSV merge
+│       ├── configure-guard.py      # Installs the pipeline-guard hook / standing order
 │       └── cleanup-legacy.py       # Legacy file cleanup
 ├── suno-agent-band-manager/   # Mac — orchestrating agent
-│   ├── SKILL.md                    # Agent persona, activation, orchestration
-│   ├── bmad-skill-manifest.yaml    # Skill type identifier
+│   ├── SKILL.md                    # Lean bootloader — identity seed, activation routing
+│   ├── customize.toml              # Agent customization surface
+│   ├── assets/                     # Sanctum templates seeded at First Breath
 │   ├── references/
-│   │   ├── create-song.md          # Main song creation workflow
-│   │   ├── refine-song.md          # Post-generation refinement loop
-│   │   ├── browse-songbook.md      # Creative history browsing
-│   │   ├── save-memory.md          # Session persistence
-│   │   ├── init.md                 # First-run setup
+│   │   ├── activation.md           # Waking — sanctum load order, Pulse and headless routes
+│   │   ├── headless.md             # Headless capability runs
+│   │   ├── create-song.md          # CS — main song creation workflow
+│   │   ├── refine-song.md          # RS — bring back a take: diagnose, rebuild what changed
+│   │   ├── browse-songbook.md      # SB — creative history browsing
+│   │   ├── save-memory.md          # SM — consolidating save
+│   │   ├── reconcile.md            # Stale-reference reconciliation
+│   │   ├── capabilities.md         # External skills, catalog scripts, audio analysis
+│   │   ├── capability-authoring.md # Authoring a capability the owner teaches Mac
+│   │   ├── prompt-quality-canon.md # Outcome-driven prompt quality
+│   │   ├── creed.md / persona.md   # Sanctum seed source (not loaded on waking)
+│   │   ├── init.md                 # First Breath — first-run setup
+│   │   ├── upgrade-v1.md           # v1 memory store → v2 sanctum
 │   │   ├── memory-system.md        # Memory discipline and structure
 │   │   ├── SUNO-REFERENCE.md       # Suno platform reference
-│   │   ├── STUDIO-EDITOR-REFERENCE.md
+│   │   ├── STUDIO-EDITOR-REFERENCE.md # Studio 2.0 and Song Editor reference
 │   │   └── USAGE.md                # End-user guide (canonical location)
 │   └── scripts/
-│       ├── pre-activate.py         # First-run detection, scaffolding, menu rendering
-│       ├── validate-path.py        # Access boundary enforcement
-│       └── check-memory-health.py  # Memory file size monitoring
+│       ├── pre-activate.py         # The wake: config, sanctum state, menu (--wake, --pulse)
+│       ├── init-sanctum.py         # Scaffolds a fresh sanctum
+│       ├── upgrade-sanctum.py      # Updates an existing sanctum from the shipped templates
+│       ├── migrate-sidecar-to-v2.py # v1 → v2 migration
+│       ├── validate-sidecar.py     # Sanctum + catalog parity checks
+│       ├── find-stale-refs.py      # Old-value search for reconciliation
+│       ├── songbook-catalog.py     # Per-song catalog lookups
+│       ├── genre-coverage.py, scan-wip-status.py, reconcile-sidecar.py,
+│       │   regenerate-index-sections.py, check-memory-health.py, _sanctum_seed.py
+│       ├── pipeline-guard.py       # Stop hook: package pipeline + order guard
+│       └── validate-path.py        # Access boundary check
 ├── suno-band-profile-manager/ # Band profile CRUD and writer voice analysis
+│   ├── references/                 # create-profile, profile-schema, playlist-yaml, tier-features, headless
+│   └── scripts/                    # apply-profile, validate-profile, list-profiles, diff-profiles,
+│                                   # tier-features, scaffold-playlist, profile_paths, _shared/
 ├── suno-style-prompt-builder/ # Model-aware style prompt generation
+│   ├── references/                 # model-prompt-strategies, safety-tables, retired-model-strategies,
+│   │                               # research-sources, interactive-session, headless-contract
+│   └── scripts/                    # validate-prompt, _shared/
 ├── suno-lyric-transformer/    # Poem/text to Suno-ready lyrics
-├── suno-feedback-elicitor/    # Post-generation feedback refinement
-└── _shared/                        # Shared Python utilities
+│   ├── references/                 # metatag-reference, section-jobs, present-and-handoff, headless-contract
+│   └── scripts/                    # validate-lyrics, cliche-detector, syllable-counter, analyze-input,
+│                                   # section-length-checker, lyrics-diff, spacing-check,
+│                                   # validate-options, assemble-summary, _shared/
+├── suno-feedback-elicitor/    # Post-generation feedback refinement + audio analysis
+│   ├── references/                 # feedback-triage-guide, suno-parameter-map, model-controls,
+│   │                               # technical-resolution, audio-analysis-scripts, gemini-audio-analysis,
+│   │                               # output-template, durable-writes, headless-contract
+│   └── scripts/                    # parse-feedback, map-adjustments, feedback-log, analyze-audio,
+│                                   # audio-deep-analysis, chord-progression, tempo-detail, beat-grid,
+│                                   # vocal-placement, section-map, audio-files-manifest,
+│                                   # verify-audio-files, _shared/
+├── suno-playlist-sequencer/   # Album-craft playlist ordering
+│   ├── references/                 # playlist-sequencing-methodology, headless-contract
+│   └── scripts/                    # playlist-sequencing-data, batch-full-analysis, validate-sequence, _shared/
+└── _shared/                   # Canonical shared Python helpers (edit here only)
+dev-tools/sync-shared.py       # Copies _shared/ into each skill's scripts/_shared/ (--check reports drift)
+dev-docs/                      # Development records: decision-logs/ (frozen) and memlog/
 ```
+
+BMad installers copy each skill folder on its own, so every skill whose scripts need the shared helpers carries a vendored copy in `scripts/_shared/`. Edit `src/skills/_shared/` and run `uv run dev-tools/sync-shared.py`; a test fails if a copy drifts.
 
 ## License
 

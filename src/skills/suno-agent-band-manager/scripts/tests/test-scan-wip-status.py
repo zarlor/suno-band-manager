@@ -157,3 +157,39 @@ def test_marker_without_quotes_or_date_still_completed(tmp_path):
     assert f["status"] == "completed"
     assert f["completed_as"] is None
     assert f["published_date"] is None
+
+
+def test_source_wip_correlates_a_renamed_song(tmp_path):
+    """A WIP whose working title differs from the published title still
+    correlates when the songbook entry records it as source_wip."""
+    proj = _project(tmp_path)
+    sb = proj / "docs" / "songbook" / "paper-lanterns"
+    sb.mkdir(parents=True)
+    (sb / "harbor-lights.md").write_text(
+        PUBLISHED_SONG.replace(
+            "status: published\n",
+            "status: published\nsource_wip: docs/wip-dock-song-fragments.md\n",
+        )
+    )
+    (proj / "docs" / "wip-dock-song-fragments.md").write_text("# Dock Song\n\nlines\n")
+    f = mod.build_report(proj)["files"][0]
+    assert f["status"] == "active"
+    assert f["correlated_by"] == "source_wip"
+    assert f["songbook_ref"] == "docs/songbook/paper-lanterns/harbor-lights.md"
+    assert "source_wip" in f["correlation_warning"]
+
+
+def test_title_match_is_reported_as_fallback(tmp_path):
+    proj = _project(tmp_path)
+    sb = proj / "docs" / "songbook" / "paper-lanterns"
+    sb.mkdir(parents=True)
+    (sb / "harbor-lights.md").write_text(PUBLISHED_SONG)
+    (proj / "docs" / "wip-harbor-lights-fragments.md").write_text("# Harbor Lights\n\nx\n")
+    f = mod.build_report(proj)["files"][0]
+    assert f["correlated_by"] == "title"
+
+
+def test_uncorrelated_active_wip_has_null_correlated_by(tmp_path):
+    proj = _project(tmp_path)
+    (proj / "docs" / "wip-new.md").write_text("# New\n\nx\n")
+    assert mod.build_report(proj)["files"][0]["correlated_by"] is None

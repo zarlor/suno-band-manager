@@ -31,7 +31,7 @@ SCRIPT_NAME = "validate-options"
 VERSION = "1.0.0"
 
 # Canonical option codes and human-readable meanings.
-# SOURCE OF TRUTH: src/skills/suno-lyric-transformer/SKILL.md "Full menu" table
+# SOURCE OF TRUTH: src/skills/suno-lyric-transformer/SKILL.md menu table
 # (Step 2: Select Transformations). Keep this dict in lockstep with that table
 # and with the identical CODE_DESCRIPTIONS in assemble-summary.py.
 CODE_DESCRIPTIONS = {

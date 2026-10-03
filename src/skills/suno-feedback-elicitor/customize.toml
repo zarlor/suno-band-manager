@@ -1,10 +1,32 @@
-# Customization overrides for suno-feedback-elicitor.
-# Teams override via {project-root}/_bmad/custom/suno-feedback-elicitor.toml
-# Users override via {project-root}/_bmad/custom/suno-feedback-elicitor.user.toml
-# Merge order: base (this file) -> team -> user. Resolved at activation via
-# {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --key workflow
+# DO NOT EDIT -- overwritten on every update.
+#
+# Workflow customization surface for suno-feedback-elicitor.
+# Team overrides:     {project-root}/_bmad/custom/suno-feedback-elicitor.toml
+# Personal overrides: {project-root}/_bmad/custom/suno-feedback-elicitor.user.toml
 
 [workflow]
+
+# --- Configurable below. Overrides merge per BMad structural rules: ---
+#   scalars: override wins • arrays (persistent_facts, activation_steps_*): append
+#   arrays-of-tables with `code`/`id`: replace matching items, append new ones.
+
+# Steps to run before the standard activation (config load, greet).
+# Overrides append. Applied in headless runs too.
+
 activation_steps_prepend = []
+
+# Steps to run after greet but before Step 1 of the workflow.
+# Overrides append. Applied in headless runs too.
+
 activation_steps_append = []
-persistent_facts = ["file:{project-root}/**/project-context.md"]
+
+# Persistent facts the workflow keeps in mind for the whole run.
+# Each entry is a literal sentence, or `file:` plus a path (globs allowed).
+# Overrides append.
+
+persistent_facts = []
+
+# Items run at Step 7, after the recommendations and iteration log are
+# delivered (e.g. sync the log somewhere). Override wins. Empty = nothing.
+
+on_complete = []

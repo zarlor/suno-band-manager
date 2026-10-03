@@ -10,8 +10,11 @@ and loudness range) for all MP3s in a directory.
 
 Tempo comes from Beat This! (beat-grid.py) when the PyTorch audio tools are
 turned on in the module config (`pytorch_audio_tools`), otherwise from librosa.
-librosa's reading is always kept as `bpm_librosa`; `--tempo-source` overrides
-the choice for one run.
+librosa's reading is always kept as `bpm_librosa`, with a second librosa
+reading at a slow starting tempo (`bpm_librosa_slow_prior`, start_bpm=80) and
+how the two relate (`librosa_prior_relation`: agree / double / other). A
+`double` is a likely halftime ambiguity: both numbers are reported and the ear
+decides. `--tempo-source` overrides the tempo choice for one run.
 
 Usage:
     uv run analyze-audio.py [audio-directory] [options]
@@ -38,13 +41,13 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from audio_deps import require_audio_deps
 from companion_writer import update_companion, resolve_companion_path
 from json_archiver import resolve_archive_arg, write_archive
 from loudness import load_native, summarize as loudness_summary
-from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, resolve_tempo_source,
-                          source_summary, tempo_relation, usable)
+from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, halftime_note,
+                          librosa_tempo_pair, resolve_tempo_source, source_summary, tempo_relation, usable)
 
 SCRIPT_NAME = "analyze-audio"
 VERSION = "1.2.0"
@@ -91,9 +94,9 @@ def analyze_file(filepath, beat_reading=None):
         y, sr = librosa.load(filepath, sr=22050)
         duration = librosa.get_duration(y=y, sr=sr)
 
-        # BPM via librosa
-        tempo_librosa, _ = librosa.beat.beat_track(y=y, sr=sr)
-        bpm_librosa = round(float(tempo_librosa[0]) if hasattr(tempo_librosa, '__len__') else float(tempo_librosa), 1)
+        # BPM via librosa: the default reading plus a slow-prior one (start_bpm=80)
+        pair = librosa_tempo_pair(y, sr)
+        bpm_librosa = pair['bpm_librosa']
         tempo = {'bpm': bpm_librosa, 'tempo_source': 'librosa'}
         if usable(beat_reading):
             tempo = {
@@ -117,7 +120,7 @@ def analyze_file(filepath, beat_reading=None):
             'file': filename,
             'duration': f"{mins}:{secs:02d}",
             **tempo,
-            'bpm_librosa': bpm_librosa,
+            **pair,
             'loudness': loudness,
             'key': key,
             'key_confidence': round(confidence, 3),
@@ -138,6 +141,14 @@ def _bpm(result):
     return result.get('bpm', result.get('bpm_librosa'))
 
 
+def _slow(result):
+    """librosa's slow-prior BPM, marked (x2) when the default reading is about double it."""
+    slow = result.get('bpm_librosa_slow_prior')
+    if slow is None:
+        return "-"
+    return f"{slow} (x2)" if result.get('librosa_prior_relation') == 'double' else slow
+
+
 def _lufs_values(results):
     return [r['loudness']['integrated_lufs'] for r in results
             if (r.get('loudness') or {}).get('integrated_lufs') is not None]
@@ -147,8 +158,8 @@ def format_text_output(results, mp3_count):
     """Format results as human-readable text (original output format)."""
     lines = []
     lines.append(f"Analyzing {mp3_count} tracks...\n")
-    lines.append(f"{'Track':<50} {'Duration':>8} {'BPM':>9} {'LUFS':>7} {'LRA':>5} {'Key':<15} {'Conf':>5}")
-    lines.append("-" * 106)
+    lines.append(f"{'Track':<50} {'Duration':>8} {'BPM':>9} {'Slow80':>9} {'LUFS':>7} {'LRA':>5} {'Key':<15} {'Conf':>5}")
+    lines.append("-" * 116)
 
     for result in results:
         if 'error' in result:
@@ -156,7 +167,7 @@ def format_text_output(results, mp3_count):
         else:
             loud = result.get('loudness') or {}
             lines.append(
-                f"{result['file']:<50} {result['duration']:>8} {_bpm(result):>9} "
+                f"{result['file']:<50} {result['duration']:>8} {_bpm(result):>9} {_slow(result):>9} "
                 f"{_fmt(loud.get('integrated_lufs')):>7} {_fmt(loud.get('lra_lu')):>5} "
                 f"{result['key']:<15} {result['key_confidence']:>5}"
             )
@@ -168,6 +179,12 @@ def format_text_output(results, mp3_count):
         source = source_summary(valid)
         lines.append(f"\n{'='*100}")
         lines.append(f"BPM range ({SOURCE_LABELS[source]}): {min(bpms):.0f} - {max(bpms):.0f}")
+        doubles = [r for r in valid if r.get('librosa_prior_relation') == 'double']
+        if len(doubles) == 1:
+            lines.append(halftime_note(doubles[0]))
+        elif doubles:
+            lines.append(f"Likely halftime ambiguity on {len(doubles)} tracks (librosa default ~2x its slow-prior "
+                         "reading; both numbers in the table). The ear (or Beat This!) decides which is felt.")
         differ = [r for r in valid if r.get('tempo_relation') not in (None, 'agree')]
         if differ:
             lines.append(f"librosa reads a different pulse on {len(differ)} track(s) "
@@ -176,6 +193,9 @@ def format_text_output(results, mp3_count):
         if lufs:
             lines.append(f"Loudness range (integrated): {min(lufs):.1f} to {max(lufs):.1f} LUFS")
         lines.append(f"Tracks analyzed: {len(valid)}/{mp3_count}")
+        if any(r.get('bpm_librosa_slow_prior') is not None for r in valid):
+            lines.append("Slow80 = librosa read again with a slow starting tempo (start_bpm=80); "
+                         "(x2) = its default reading is about double that, a likely halftime ambiguity.")
 
     return "\n".join(lines)
 
@@ -216,6 +236,7 @@ def format_json_output(results, mp3_count):
                 "min": min(lib_bpms) if lib_bpms else None,
                 "max": max(lib_bpms) if lib_bpms else None,
             },
+            "librosa_prior_doubles": sum(1 for r in valid if r.get('librosa_prior_relation') == 'double'),
             "integrated_lufs_range": {
                 "min": min(lufs) if lufs else None,
                 "max": max(lufs) if lufs else None,
@@ -359,7 +380,7 @@ def main():
         title_block = (
             "# Audio Analysis Reference — Catalog Summary\n"
             f"_Generated by `{SCRIPT_NAME}` on {timestamp}_\n"
-            f"_Tempo: {SOURCE_LABELS[source_summary(results)]} (librosa's reading kept as bpm_librosa) "
+            f"_Tempo: {SOURCE_LABELS[source_summary(results)]} (librosa's reading kept as bpm_librosa, its slow-prior reading as bpm_librosa_slow_prior) "
             "| Key detection: Krumhansl-Kessler "
             "chroma correlation | Loudness: ITU-R BS.1770 via pyloudnorm (LUFS integrated; LRA in LU)_\n\n"
         )

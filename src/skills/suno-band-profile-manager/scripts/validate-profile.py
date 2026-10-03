@@ -39,7 +39,7 @@ except ImportError:
     }))
     sys.exit(2)
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 try:
     from suno_constants import (
         VALID_MODELS, VALID_TIERS, STYLE_PROMPT_LIMITS, STYLE_PROMPT_DEFAULT_MAX, FREE_TIER_MODEL,
@@ -75,15 +75,15 @@ def derive_filename(band_name: str) -> str:
     return f"{name}.yaml"
 
 
-def validate_profile(profile_path: Path, docs_dir: Path | None = None) -> dict:
+def validate_profile(profile_path: Path, docs_dir: Path | None = None,
+                     songbook_dir: Path | None = None) -> dict:
     """Validate a profile YAML file and return structured findings.
 
-    docs_dir: the project's docs/ directory, used to locate the per-band
-    songbook entries (`{docs_dir}/songbook/{slug}/`) and the canonical
-    playlist YAML (`{docs_dir}/{slug}-playlist.yaml`). Defaults to the
-    profile's grandparent dir (i.e. `{profile_path}/../..`), which for the
-    standard `{project-root}/docs/band-profiles/{slug}.yaml` layout resolves
-    to `{project-root}/docs` — identical to the prior hardcoded derivation.
+    docs_dir: the folder holding the canonical playlist YAML
+    (`{docs_dir}/{slug}-playlist.yaml`). Defaults to the profile's
+    grandparent, i.e. the parent of the band-profiles folder.
+    songbook_dir: the songbook root (`{songbook_dir}/{slug}/` holds the band's
+    entries). Defaults to `{docs_dir}/songbook`.
     """
     findings = []
     script_name = "validate-profile"
@@ -433,14 +433,10 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None) -> dict:
     # bands independent (see playlist-sequencing-methodology.md "Per-Band
     # Playlist YAML" section).
     band_slug = profile_path.stem  # e.g. docs/band-profiles/paper-lanterns.yaml -> paper-lanterns
-    # docs/ dir: explicit --docs-dir wins; else derive from the profile's
-    # grandparent (band-profiles -> docs) to preserve the prior behavior
-    # exactly for the standard {project-root}/docs/band-profiles layout.
-    if docs_dir is not None:
-        resolved_docs_dir = docs_dir
-    else:
-        resolved_docs_dir = profile_path.parent.parent  # band-profiles -> docs
-    songbook_dir = resolved_docs_dir / "songbook" / band_slug
+    # Playlist folder: explicit docs_dir, else the band-profiles folder's parent.
+    resolved_docs_dir = docs_dir if docs_dir is not None else profile_path.parent.parent
+    songbook_root = songbook_dir if songbook_dir is not None else resolved_docs_dir / "songbook"
+    songbook_dir = songbook_root / band_slug
     playlist_yaml = resolved_docs_dir / f"{band_slug}-playlist.yaml"
     if songbook_dir.is_dir() and any(songbook_dir.glob("*.md")):
         if not playlist_yaml.exists():
@@ -454,9 +450,9 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None) -> dict:
                     f"single source of truth for sequencing."
                 ),
                 "fix": (
-                    f"Run `uv run src/skills/suno-band-profile-manager/scripts/scaffold-playlist.py "
+                    f"Run the suno-band-profile-manager skill's `scripts/scaffold-playlist.py "
                     f"{band_slug} --from-songbook` to bootstrap from songbook entries, then fill in "
-                    f"audio file names and order. See profile-schema.md 'Per-Band Playlist YAML' section."
+                    f"audio file names and order. See its references/playlist-yaml.md."
                 ),
             })
 
@@ -524,11 +520,17 @@ def main():
     )
     parser.add_argument(
         "--docs-dir",
-        help=(
-            "Project docs/ directory used to locate the band's songbook entries "
-            "and canonical playlist YAML (default: the profile's grandparent dir, "
-            "i.e. {project-root}/docs for the standard layout)."
-        ),
+        help=("Folder holding the band's {slug}-playlist.yaml "
+              "(default: the parent of the profile's folder)."),
+    )
+    parser.add_argument(
+        "--songbook-dir",
+        help=("Songbook root holding {slug}/ entries (default: songbook_folder from "
+              "--project-root's _bmad/config.yaml, else {docs-dir}/songbook)."),
+    )
+    parser.add_argument(
+        "--project-root",
+        help="Project root; when given, songbook_folder is read from its module config.",
     )
     args = parser.parse_args()
 
@@ -549,13 +551,19 @@ def main():
 
     profile_path = Path(args.profile_path)
     docs_dir = Path(args.docs_dir) if args.docs_dir else None
+    songbook_dir = Path(args.songbook_dir) if args.songbook_dir else None
+    if songbook_dir is None and args.project_root:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from profile_paths import read_module_config
+        configured = read_module_config(args.project_root).get("songbook_folder")
+        songbook_dir = Path(configured) if configured else None
 
     if args.verbose:
         print(f"Validating profile: {profile_path}", file=sys.stderr)
         if docs_dir is not None:
             print(f"Using docs dir: {docs_dir}", file=sys.stderr)
 
-    result = validate_profile(profile_path, docs_dir=docs_dir)
+    result = validate_profile(profile_path, docs_dir=docs_dir, songbook_dir=songbook_dir)
     output = json.dumps(result, indent=2)
 
     if args.output:

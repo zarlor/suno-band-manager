@@ -6,7 +6,7 @@
 """Smoke test for batch-full-analysis.py.
 
 The catalog-wide deeper-analysis layer of the suno-playlist-sequencer workflow
-(extracted from suno-feedback-elicitor; see ../../../.decision-log.md). This
+(extracted from suno-feedback-elicitor; see dev-docs/decision-logs/suno-playlist-sequencer.md). This
 minimal smoke test pins the exit-code contract — a missing audio dir yields a
 non-zero exit, not a crash. Invoked via `uv run` to provision librosa; skips
 without uv.
@@ -45,6 +45,29 @@ def test_find_mp3s_recurses_and_labels_band_folders(tmp_path):
         (tmp_path / rel).write_bytes(b"x")
     found = m.find_mp3s(str(tmp_path))
     assert [m.rel_label(p, str(tmp_path)) for p in found] == ["Loose.mp3", "band-a/Song.mp3"]
+
+
+def _result(name, bpm, **extra):
+    return {"file": f"{name}.mp3", "duration": 200.0, "bpm": bpm, "bpm_stability": "steady", "bpm_range": (bpm, bpm),
+            "tempo_source": "librosa", "key": "A minor", "key_conf": 0.8, "dynamic_character": "MODERATE",
+            "energy_min": 20, "energy_max": 60, "energy_range": 40, "energy_shifts": [], "energy_profile": [20, 60],
+            "spectral_low": 30, "spectral_mid": 50, "spectral_high": 20, "sections": [], **extra}
+
+
+def test_slow_prior_reading_in_json_and_summary_table():
+    import json
+    spec = importlib.util.spec_from_file_location("batch_full_analysis_fmt", SCRIPT)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    slow = _result("Slow", 117.5, bpm_librosa_slow_prior=60.1, librosa_prior_relation="double")
+    plain = _result("Plain", 96.0)
+    tracks = json.loads(m.format_json([slow, plain]))["tracks"]
+    assert tracks[0]["bpm"] == 117.5 and tracks[0]["bpm_librosa_slow_prior"] == 60.1
+    assert tracks[0]["librosa_prior_relation"] == "double" and "librosa_prior_relation" not in tracks[1]
+    text = m.format_text([slow, plain])
+    assert "| Slow | 3:20 | 117.5 / 60.1 (halftime?) |" in text and "| Plain | 3:20 | 96.0 |" in text
+    assert "start_bpm=80" in text and "start_bpm=80" not in m.format_text([plain])
+
 
 if __name__ == "__main__":
     if UV is None:

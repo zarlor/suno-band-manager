@@ -1,6 +1,6 @@
 # Band Profile Manager
 
-The Band Profile Manager handles CRUD operations for band identity profiles — the sonic equivalent of a brand book for your musical projects. It captures genre, vocal character, production style, creative boundaries, language, and songwriter voice into persistent YAML profiles stored at `docs/band-profiles/`. These profiles serve as the foundation that the Style Prompt Builder, Lyric Transformer, and Feedback Elicitor draw from to maintain consistency across songs.
+The Band Profile Manager handles CRUD operations for band identity profiles — the sonic equivalent of a brand book for your musical projects. It captures genre, vocal character, production style, creative boundaries, language, and songwriter voice into persistent YAML profiles stored in the module's `band_profiles_folder` (`docs/band-profiles/` by default). These profiles serve as the foundation that the Style Prompt Builder, Lyric Transformer, and Feedback Elicitor draw from to maintain consistency across songs.
 
 ## When to Use Directly vs. Through Mac
 
@@ -20,25 +20,22 @@ Use this skill directly when you need to manage profiles independently — creat
 | **Duplicate** | Clone a profile as a starting point for versioning or forks |
 | **Analyze Voice** | Extract writer voice patterns from 3-5 writing samples |
 | **Health Check** | Assess profile completeness and quality with friendly recommendations |
+| **Manage Playlist** | Scaffold the band's playlist YAML and make simple track edits (ordering belongs to the Playlist Sequencer) |
+
+Edits keep your YAML comments, key order and quoting. Adding a learning or a history snapshot appends to the list rather than replacing it. Deleting a band archives the profile, its decision log and its playlist YAML together, after you confirm.
 
 ### Headless Mode (`--headless` or `-H`)
 
-- `--headless:create` — Validate provided YAML, save, scaffold the per-band playlist YAML, and write a decision log — all in one write batch
-- `--headless:validate` — Validate an existing profile against schema
-- `--headless:load <name>` — Return profile as structured JSON
-- `--headless:edit <name>` — Apply YAML field overrides to an existing profile
-- `--headless:delete <name>` — Delete without confirmation
-- `--headless:duplicate <source> <new_name>` — Copy profile to new name
-- `--headless` (no subcommand) — List all profiles as JSON array
+Subcommands: `create`, `edit`, `append`, `duplicate`, `validate`, `load`, `delete`, and bare `--headless` (list). The full contract (inputs, return JSON, list append vs. replace, archive-on-delete) is in `references/headless.md`.
 
 ## Scripts
 
 | Script | Description |
 |--------|-------------|
 | `validate-profile.py` | Validates band profile YAML against schema; supports `--derive-filename` for kebab-case naming |
-| `apply-profile.py` | Deterministic save / field-merge / duplicate of profile YAML; owns the headless write path (`--set`, `--duplicate`) |
+| `apply-profile.py` | The one write path for profiles: save, field merge, list append (with caps), duplicate, load as JSON, archive/delete; keeps comments |
 | `scaffold-playlist.py` | Scaffolds the canonical per-band playlist YAML at `docs/{band-slug}-playlist.yaml`; `--from-songbook` pre-populates from songbook entries |
-| `list-profiles.py` | Scans `docs/band-profiles/` and returns profile summaries; supports `--check` to verify a specific profile |
+| `list-profiles.py` | Scans the profiles folder and returns profile summaries; supports `--check` to verify a specific profile |
 | `tier-features.py` | Returns available/unavailable Suno features for a given tier |
 | `diff-profiles.py` | Compares two profile YAML files and returns a structured JSON diff |
 
@@ -52,13 +49,14 @@ Use this skill directly when you need to manage profiles independently — creat
 
 # Headless
 --headless:create < profile.yaml
---headless:validate --profile midnight-echoes
---headless:edit midnight-echoes --field tier=pro
+--headless:validate midnight-echoes
+--headless:edit midnight-echoes < overrides.yaml      # e.g. "tier: pro"
+--headless:append midnight-echoes generation_learnings < entry.json
 ```
 
 ## Profiles Storage
 
-Profiles are stored as YAML files at `docs/band-profiles/{profile-name}.yaml`. The schema is defined in `references/profile-schema.md`.
+Profiles are stored as YAML files at `{band_profiles_folder}/{profile-name}.yaml` (default `docs/band-profiles/`). The schema is defined in `references/profile-schema.md`.
 
 ## Part of the Suno Band Manager Module
 

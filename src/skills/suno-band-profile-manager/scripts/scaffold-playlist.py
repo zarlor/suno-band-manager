@@ -26,6 +26,7 @@ runs in two modes:
 
 Usage:
     scaffold-playlist.py <band-slug> [--from-songbook] [--project-root PATH]
+                         [--profiles-dir DIR] [--docs-dir DIR] [--songbook-dir DIR]
 
 Exit codes:
   0 = playlist YAML written (or already existed and --force not passed)
@@ -85,15 +86,17 @@ def _is_published(md_path: Path) -> bool:
 
 
 def discover_songbook_tracks(
-    project_root: Path, band_slug: str, docs_dir: Path | None = None
+    project_root: Path, band_slug: str, docs_dir: Path | None = None,
+    songbook_dir: Path | None = None,
 ) -> list[dict]:
     """Find published songbook entries for the band and return their titles.
 
-    docs_dir: the project's docs/ directory holding `songbook/{band_slug}/`.
-    Defaults to `{project_root}/docs`, preserving the prior derivation exactly.
+    songbook_dir: the songbook root holding `{band_slug}/`. Defaults to
+    `{docs_dir}/songbook`, and docs_dir to `{project_root}/docs`.
     """
     base_docs = docs_dir if docs_dir is not None else project_root / "docs"
-    band_dir = base_docs / "songbook" / band_slug
+    root = songbook_dir if songbook_dir is not None else base_docs / "songbook"
+    band_dir = root / band_slug
     if not band_dir.is_dir():
         return []
     tracks = []
@@ -129,6 +132,10 @@ def render_playlist_yaml(
     lines.append("# When a song is published, add it to this file in the same write batch as")
     lines.append("# the songbook entry. When the order changes, update this file first; the")
     lines.append("# sequencing script's per-album companion .md is auto-refreshed from this.")
+    lines.append("#")
+    lines.append("# Optional: a track's `felt_bpm: 72` records the tempo you hear when the measured")
+    lines.append("# BPM reads half/double time; a top-level `locked_arcs:` list (each item a list of")
+    lines.append('# track names, or a "A > B > C" string) keeps those runs together and in order.')
     lines.append(f'album: "{album_name}"')
     if band_slug:
         lines.append(f'audio_dir: "docs/audio/{band_slug}"  # this band\'s audio folder; each file: is relative to it')
@@ -171,12 +178,19 @@ def main():
         help="Project root (default: current directory).",
     )
     parser.add_argument(
+        "--profiles-dir",
+        help=("Band profiles folder (default: band_profiles_folder from "
+              "{project-root}/_bmad/config.yaml, else {project-root}/docs/band-profiles). "
+              "The playlist YAML is written to its parent folder."),
+    )
+    parser.add_argument(
         "--docs-dir",
-        help=(
-            "Project docs/ directory where the playlist YAML is written "
-            "({docs-dir}/{slug}-playlist.yaml) and songbook entries are read "
-            "from ({docs-dir}/songbook/{slug}/). Default: {project-root}/docs."
-        ),
+        help="Folder for {slug}-playlist.yaml (default: the profiles folder's parent).",
+    )
+    parser.add_argument(
+        "--songbook-dir",
+        help=("Songbook root read by --from-songbook (default: songbook_folder from "
+              "config, else {docs-dir}/songbook)."),
     )
     parser.add_argument(
         "--album-name",
@@ -194,8 +208,12 @@ def main():
         print(json.dumps({"status": "error", "message": f"Project root not found: {project_root}"}))
         sys.exit(1)
 
-    # docs/ dir: explicit --docs-dir wins; else {project-root}/docs (prior default).
-    docs_dir = Path(args.docs_dir).resolve() if args.docs_dir else project_root / "docs"
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from profile_paths import resolve_dirs
+    dirs = resolve_dirs(project_root, profiles_dir=args.profiles_dir,
+                        docs_dir=args.docs_dir, songbook_dir=args.songbook_dir)
+    docs_dir = dirs["docs_dir"].resolve()
+    songbook_dir = dirs["songbook_dir"].resolve()
 
     def _report_path(p: Path) -> str:
         """Path relative to project_root when possible; absolute otherwise
@@ -228,7 +246,8 @@ def main():
     album_name = args.album_name or _band_name_from_slug(slug)
     tracks: list[dict] = []
     if args.from_songbook:
-        tracks = discover_songbook_tracks(project_root, slug, docs_dir=docs_dir)
+        tracks = discover_songbook_tracks(project_root, slug, docs_dir=docs_dir,
+                                          songbook_dir=songbook_dir)
 
     body = render_playlist_yaml(album_name, tracks, from_songbook=args.from_songbook, band_slug=slug)
     target.parent.mkdir(parents=True, exist_ok=True)

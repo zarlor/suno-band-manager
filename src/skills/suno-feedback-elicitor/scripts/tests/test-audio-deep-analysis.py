@@ -40,8 +40,8 @@ def test_band_folder_for_detects_per_band_layout(tmp_path):
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     audio = tmp_path / "docs" / "audio"
-    assert m.band_folder_for(audio / "solitary-fire" / "For Now.mp3") == "solitary-fire"
-    assert m.band_folder_for(audio / "For Now.mp3") is None          # legacy flat layout
+    assert m.band_folder_for(audio / "band-a" / "Night Shift.mp3") == "band-a"
+    assert m.band_folder_for(audio / "Night Shift.mp3") is None          # legacy flat layout
     assert m.band_folder_for(tmp_path / "Downloads" / "x.mp3") is None  # not an audio folder
 
 if __name__ == "__main__":

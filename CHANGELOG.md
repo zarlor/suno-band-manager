@@ -4,9 +4,106 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [3.0.0] - 2026-10-03
+
+A major release. The whole module was reviewed against **BMad Builder v2.2.2** — every skill through the builder's own Analyze lenses, the agent through all seven agent lenses, and the module through Validate Module — and every critical and high finding was fixed. It also carries a full Suno v6 research sweep (the fifth since launch), a fix for the tempo tool that read slow songs at double speed, and the v6 prompting guidelines from two sweeps.
+
+The headline fixes are about **not losing your work**: the setup skill's update step could delete BMad's own installer files, the band-profile writer stripped YAML comments and could wipe whole lists, and marketplace installs were missing the helper files 16 scripts import. All three are fixed.
+
+### Upgrade at a glance (existing installs)
+
+1. **`git pull`, then run `/suno-setup`.** It records the new module version, rewrites the help CSV's column names (`after,before` → `preceded-by,followed-by`, the header BMad v6.12 itself uses), and adds the new menu rows. **Use the 3.0.0 setup for this** — see the setup fix below.
+2. **Bring Mac's memory up to date (optional, recommended).** Run `uv run src/skills/suno-agent-band-manager/scripts/upgrade-sanctum.py --project-root .` — it's a dry run that lists every change it would make to your sanctum, with ids. Apply what you want with `--apply safe,<ids>`; every file it touches is backed up first, and it never overwrites your own sections (Mission, Evolution Log, memory sections, learned capabilities). Changes marked *review* replace text — read the diff first; skip shard replacements that would drop lessons you've added.
+3. **If you call the scripts directly or read their JSON,** see *Breaking changes* below.
+4. **Requires BMad Method v6.12+** when used with BMad (the module now loads config through v6.12's `resolve_config.py` and uses its help-CSV columns). Standalone use is unchanged. The BMad v7 preview isn't supported yet.
+5. **Nothing in your `docs/` changes.** Songbooks, profiles, playlists and audio stay as they are.
+
+### Breaking changes
+
+- **Help CSV column names:** `after,before` → `preceded-by,followed-by`. `/suno-setup` migrates an existing file's header.
+- **Mac's menu:** Refine Song (RS) and Feedback Loop (FL) are one entry now. RS brings back a take: it diagnoses what's off (running the feedback skill inside it) and rebuilds the changed parts through the pipeline. Typing FL still routes to RS. The Feedback Loop skill still works on its own outside Mac.
+- **Playlist sequencing JSON:** the key rating `key_quality` (PERFECT / GOOD / OK / JARRING) is replaced by `key_relation` (names the move, including parallel keys) and `key_compat` (compatible / near / distant). Both describe the key relationship only — tempo, loudness and energy are graded separately. Old archives still read (legacy mapping kept).
+- **`apply-profile.py`:** `--set` refuses to replace a non-empty list unless you say `--lists append` or `--lists replace`. `--delete` lists what it will touch and needs `--confirm`; it archives the profile, its decision log and its playlist together (`--purge` to delete).
+- **Style Prompt Builder headless:** the wild card is on by default; the four headless flags are one headless mode (old flags kept as aliases); the return matches Mac's package order (see the skill's `references/headless-contract.md`).
+- **Lyric Transformer headless:** `--headless:transform` is an alias of `--headless`; intentional keeps are returned, or written beside the songbook entry when `song_path` is given.
+- **Feedback Elicitor headless** writes the same records as interactive runs (`--no-write` turns that off); its `generation_history` write goes through `apply-profile.py --append`, capped at 10.
+- **Removed:** `bmad-init` config loading (it no longer exists in BMad v6.12), the skills' `bmad-skill-manifest.yaml` files (nothing in v6.12 reads them), the stale `src/skills/reports/` folder, and `research-discipline.md` (folded into Mac's creed). The skills' process logs no longer ship — see *Repository layout*.
+
+### Fixes that protect your work
+
+- **`suno-setup` no longer deletes BMad's files (critical).** In testing on a copy of a real v6.12 project, a normal *update* deleted `_bmad/_config/` (the installer manifest and the help catalog `bmad-help` reads), `core/v6-shims/` and `core/module-help.csv`, and rewrote `core/config.yaml`. Cleanup now removes only stale copies of this module's own skill folders, only in migration mode, after a `--dry-run` preview, and setup never writes another module's or the installer's files. Tests run every script against a realistic v6.12 tree and check those paths survive.
+- **The update preview tells the truth.** It said nothing would change, then the merge reset hand-edited `output_folder` / `user_name`. Preview and merge now share one value rule, and your existing values win.
+- **Profile writes keep your YAML comments.** `apply-profile.py` used `yaml.safe_dump`, which dropped every comment — craft notes kept as comments would vanish on the first scripted edit. Writes are now comment-, order- and quoting-preserving (untouched sections are copied byte for byte; changed keys re-render through ruamel.yaml).
+- **No more wiped lists.** A headless edit that added one `generation_learnings` or `generation_history` entry used to replace the whole list. There's an explicit `--append FIELD --append-json '<entry>' [--max N]`, trimmed to the schema cap.
+- **Marketplace installs get their helpers.** BMad installers copy each skill folder on its own, so the shared helpers in `src/skills/_shared/` never arrived and 16 scripts would fail on import. Each skill now carries a copy in `scripts/_shared/`; `src/skills/_shared/` stays the single place to edit them, `dev-tools/sync-shared.py` copies them out, and a test fails on drift.
+- **The writer's spacing is protected.** The Lyric Transformer now carries indentation, internal spacing, line breaks and blank lines through verbatim; it only adds tags and the edits it reports. A flat copy is only ever a labelled paste aid. New `scripts/spacing-check.py` verifies it character-exact.
+- **Playlist re-evaluation compares against the old archive** instead of overwriting it first (it always reported "nothing moved"), and a new `validate-sequence.py` checks locked arcs and previews moves, rewriting the playlist YAML only with `--write` after you confirm.
+
+### Mac — BMB v2.2.2 agent
+
+- **Waking:** a four-step spine (wake → become yourself → bind standing rules → execute the mode). `pre-activate.py` reads config itself through BMad's `resolve_config.py`, still wakes when the help CSV is missing, detects the sanctum format case-sensitively, and `--wake` prints the whole sanctum in load order in one pass; `--pulse` runs the maintenance wake.
+- **Continuity of self:** the Sacred Truth now uses BMad's v2 wording — Mac is born once, at First Breath, and is one continuous self; a context reset is sleep, not death. **Stay in Character** and **Persistent Memory** (capture as you go) join the bootloader; the end-of-session ritual is gone.
+- **The Package Assembly Rule wins over any fallback:** if the style or lyric skill is unavailable, Mac says so and doesn't present a package. The core's settings order now names Suno's **Controls** panel.
+- **Downloads:** Mac's memory tracks downloads used this cycle, the reset date and the tier's cap, mentions what's left when a keeper is picked, and keeps the "listen in the browser, download only the keeper" guidance.
+- **Memory is budgeted in tokens, not lines.** `check-memory-health.py` measures MEMORY.md, the always-loaded spine and the owner's companion files, and offers compaction when they grow.
+- **The sanctum seeds and grows properly:** standing orders (surprise-and-delight, get better at this owner, author to the standard), the Mission discovered at First Breath, a First Breath wrap-up, a light PERSONA/BOND evolution step at save time, a capability roster generated from the help CSV, generic templates, and the model lineup moved out of PERSONA into `SUNO-REFERENCE.md`.
+- **`upgrade-sanctum.py`** brings an existing sanctum up to date with the shipped templates (dry run first, backups, owner sections never touched).
+- **Catalog checks are scripts now, not hand work:** `pipeline-guard.py` no longer blocks Suno auto-lyrics or instrumental packages, checks only the current turn, and checks package order; `validate-sidecar.py` gains the parity checks the prompts used to re-derive; new `find-stale-refs.py` and `songbook-catalog.py`; publishes record `source_wip:`; `genre-coverage.py` extracts fields instead of guessing meaning from prose, with a `--check` staleness mode.
+- **One home per fact:** load order, the write rule, model facts and package rules each live in one place; dead pointers (the missing post-publish pipeline, deleted Camelot/felt-BPM sections) now point at real content; the headless create-song output is defined.
+
+### The other skills
+
+- **Every skill:** config loads the v6.12 way; customization resolves with `--project-root` and applies in headless runs too; `persistent_facts` ships empty; bare skill-root paths; SKILL.md files under BMB's 3,000-token budget (Style Prompt Builder 6,485 → 2,809; Lyric Transformer 6,593 → 2,969; Feedback Elicitor 6,738 → 2,960; Band Profile Manager 4,836 → 2,213; Setup 4,119 → ~2,000; Playlist Sequencer 3,539 → 2,359) by moving branch-only material into references.
+- **Style Prompt Builder:** the validator no longer lets "metal, no screaming" pass as safe, flags "no X" / "without X" negatives, the "live" word family and crowd/audience words, checks the wild card too, and catches a Persona/Voice Audio Influence range mix-up. The safety tables are a small file reread before every build instead of the whole 28k-token strategies reference. Mid-build ideas are handed on (`handoff_notes` or the song's workshop file); the version ledger is one file per song.
+- **Lyric Transformer:** `analyze-input.py` really detects script type; `[End]` placement and narrative section labels are checked by script; the summary assembles from the script's output.
+- **Feedback Elicitor:** the parameter map is split into `suno-parameter-map.md`, `model-controls.md` and `technical-resolution.md`; `parse-feedback.py` reads headless flags itself; the final prompt goes through the style validator plus `map-adjustments.py --check-final`; new `feedback-log.py`.
+- **Band Profile Manager:** scripts read `band_profiles_folder` / `songbook_folder` from config; Manage Playlist hands order changes to the Playlist Sequencer; playlist-YAML conventions live in `references/playlist-yaml.md` (now documenting the optional `felt_bpm:` and `locked_arcs:`).
+- **Playlist Sequencer:** the Camelot-move rules and "what Camelot can't see" are restored to the methodology; the script outputs dropped tracks, key relations, pulse pairs, a felt-BPM check and run history.
+- **Setup:** also writes `_bmad/suno/module-help.csv`, so the next BMad installer run adds the module to `bmad-help`; module.yaml carries Mac's agent roster entry; new menu rows Analyze Audio (AA) and Manage Playlist (MP); the unresolved-`{project-root}` guard from the BMB template.
+
+### Tempo: slow songs no longer read at double speed by default
+
+librosa's tempo tracker starts from a 120 BPM guess, and every librosa call in the audio scripts used it. On a 34-track reference catalog with known felt tempos, that default matched the felt tempo 10 times and doubled it 14 times; starting from 80 matched 17 times and doubled once (but halved four fast songs). So the scripts keep the default reading and **add a second reading at 80**: when the two land about 2× apart, the output says it's a likely halftime ambiguity and gives both numbers, without picking one. Your felt tempo (and Beat This!, when the PyTorch tools are on) still decides. In the playlist scripts a doubled pair also sets the felt-BPM check.
+
+### Suno v6 — research and guidelines
+
+- **The fifth v6 sweep (2026-10-03).** Suno hasn't changed the model since launch. New: **Speech (beta, 2026-10-01)** — a separate spoken-word model that makes voice and music together from plain paragraphs (no section tags), up to about 8 minutes; untested here, noted in `SUNO-REFERENCE.md` as a possible route for spoken pieces. Suno's Voices page says a Persona and a Voice can be used together (unverified in the UI). The Exclude field caps at 1,000 characters. A measured outside series found Style Influence 100 no better than 85, the vocal about 2 dB further under the band than on v5.5, and Exclude surviving Variety's rewrite.
+- **v6 prompt guidelines from production testing and the 2026-09 / 2026-10 sweeps** (in `model-prompt-strategies.md`, each with its scope and evidence grade — guidelines, not laws): describe the band's job instead of gravity words; pick the era anchor for its production; a heavy chorus gets its job, not its feeling; band-side vocal-space wording where the vocal must get in front; endings written as the singer's action plus the band leaving, where the song calls for it; "unresolved" as harmony rather than a mood tag (a thing to try); `key change` in Exclude when a song must hold its key; with a Voice attached, don't add vocal character the Voice doesn't have (reinforcing character it does have can help).
+- **Reading results:** what plays isn't always what was asked for — trust the audio over the song page's style text; a big tempo miss is a cue to listen for a dropped instrument job; one-change tests read better across more takes (a suggestion — how many takes is the user's call); a repair ladder of things to try on a near-keeper before a full re-roll.
+- **Earlier v6 reference updates in this release:** Suno's reworked Create sidebar (Controls panel, the "Describe your song" box left empty for custom packages, **Save to…** below the Title) in the package order; September Studio release notes (Premier-only, unverified here); how Fade Out works on v6 (Crop first, then Fade Out the cropped version); the "line-ending commas stutter" claim marked unconfirmed.
+
+### `section-map.py` 1.2.0 (since 2.4.1)
+
+- **`section-map.py` 1.2.0 fixes an invented-speech miss.** Whisper reads audio in 30-second windows, and after a long instrumental intro a mostly-band window can make it invent speech — plausible-sounding spoken filler that isn't in the take at all. Two takes in testing produced "I'm going to sing a little bit of the song" and "a song I wrote when I was a kid" over their intros; both are pure invention, and both show the shape to watch for, which is *narration about a song* rather than any of its words. The invented speech then hid a correctly sung first verse, so all three passes reported Verse 1 as not heard.
+
+  Passes now alternate:
+  - **Sung stretches only.** The stretches the map already finds, padded 0.75 s and merged. This pass can't be fooled by an intro.
+  - **The whole vocal stem.** This pass still hears quiet lines the singing detector misses.
+
+  A line either kind of pass hears counts as sung, and added words need most passes to agree. So invented speech from a whole-stem pass stays "possible" at most.
+- **Words tacked onto a section's first or last line are caught.** A take was pulled for singing two extra words onto the end of a chorus — the lyric line ended "find the universe" and the take sang "find the universe… of cracks", borrowing the phrase from elsewhere in the song. Whisper did hear it, mangled and low-confidence (as "of Christ"), sitting just past the chorus's last lyric word. But the added-words check only looked *between* a section's first and last lyric words, and the outside-vocals check skipped anything under 3 s, so an addition that short and that close to the boundary fell through both. The check now also scans 4 s after a section's last lyric word and before its first, up to the neighbouring section's words. Replaying the pulled take's saved words now lists the extra run as a possible addition after the chorus's last line.
+- **A section any pass places counts as sung.** With alternating passes, one pass can place a verse while the other misses it (for instance to invented speech over an intro). Requiring most passes to agree left sections unplaced and stretched the intro and tail around them. Placement now follows the rule lines already use.
+- **The edge scan no longer takes the next section's misheard opening for an addition.** The new edge scan introduced its own false positive: where a chorus opened "Look into the cracks" and Whisper transcribed it "Looking to the cracks", that near-homophone landed in the gap after the previous verse and was flagged as words added to *that* verse. Edge runs are now weighed against the neighbouring section's unmatched opening or closing lyric words too, so a mishearing of the next line reads as the next line.
+- **Repeats of a phrase spread over several lines, or of a one-word hit, are recognized.** Repeats were only ever matched against a single lyric line, so a repeat spanning several lines looked like new material. Two shapes it missed: a staccato breakdown written one word per line — "NOT / BUILT / THAT / WAY" — sung a second time as one continuous phrase; and a one-word line doubled on delivery, a lyric "CHOMP!" sung "CHOMP! CHOMP!". Both were flagged as added words. Extra runs are now also matched against runs of 2–4 consecutive lines in a section, and a run made entirely of a one-word line's own word counts as a repeat of that line.
+- **Riffs on a lyric line are labelled as repeats.** An outro that riffs on one line — the lyric "and another one after that" delivered as "and another one after that, after that, after that, and another one after that…" — ran far longer than the line it repeats, so the single-line match failed and it went unlabelled. A run built entirely from one line's own words now counts as a partial repeat of that line. Words that aren't in the line at all still count as added: against a lyric "one more spin, one more spin", a sung "get more spin" is an addition, not a repeat.
+
+### Repository layout
+
+- **Process logs moved out of the shipped skills.** Each skill's `.decision-log.md` is frozen in `dev-docs/decision-logs/`; new decisions go to `dev-docs/memlog/<skill>.memlog.md` (BMB v2's append-only memlog). Installs no longer carry them.
+- **The Studio & Editor reference lives in Mac's skill** (`references/STUDIO-EDITOR-REFERENCE.md`); other skills point at it by name.
+- **`dev-tools/sync-shared.py`** keeps the vendored `scripts/_shared/` helpers identical to `src/skills/_shared/`.
+
+### Validation at release
+
+- BMB v2.2.2 review: per-skill and agent reports, then a fix pass on every critical and high finding and a verification pass against the final files.
+- Structural module validation: **pass, zero findings.** Path-standards lint: clean across all seven skills. Script lint: only the three known false positives (a fallback message that mentions `pip install`).
+- Full module test suite: **TESTCOUNT tests passing** (1,256 at the start of this release's work).
+
+---
+
 ## [2.4.1] - 2026-09-14
 
-A **section-map** patch. The section map now catches words Suno adds to a set line, not just lyric words that go missing. It confirmed, 3 passes out of 3, the added words the owner heard in a Solitary Fire - Redux keeper, which got that take pulled.
+A **section-map** patch. The section map now catches words Suno adds to a set line, not just lyric words that go missing. It confirmed, 3 passes out of 3, added words a user had caught by ear in a keeper take — which got that take pulled.
 
 ### Upgrade at a glance (existing installs)
 
@@ -15,9 +112,9 @@ A **section-map** patch. The section map now catches words Suno adds to a set li
 
 ### Changes
 
-- **`section-map.py` 1.1.0 flags words added to the lyrics.** v6 sometimes pads a set line: One More Spin's first chorus sang "one more spin, one more spin, **get more spin**, gettin' lost for a while". v2.4.0 only looked for lyric words that went missing, so the added words passed unflagged. Now:
+- **`section-map.py` 1.1.0 flags words added to the lyrics.** v6 sometimes pads a set line, typically by repeating a hook and slipping a new word into the repeat: against the lyric "one more spin, one more spin, gettin' lost for a while", a take sang "one more spin, one more spin, **get more spin**, gettin' lost for a while". v2.4.0 only looked for lyric words that went *missing*, so an addition like that passed unflagged. Now:
   - **Added words:** a run of transcribed words inside a section that isn't in the lyric is flagged, with where it sits.
-    - It's weighed against the lyric words it sits in place of, so a mishearing like "runnin'" heard as "run at" isn't mistaken for an addition.
+    - It's weighed against the lyric words it sits in place of, so a mishearing isn't mistaken for an addition — one lyric word transcribed as several similar-sounding ones, such as "gettin'" coming back as "get it in", reads as a mishearing rather than three new words.
     - It needs to add at least 2 words and about 6 letters. Fillers (oh, yeah, whoa) are ignored.
     - Confirmed flags need most passes to agree and Whisper to be reasonably sure of the words. The rest are listed as possible.
   - **Repeats:** whole-line repeats are listed separately, since they're often fine, and fragments of a line are marked as partial repeats.
@@ -199,7 +296,7 @@ Audio files can now live in one folder per band — `docs/audio/{band-slug}/` �
 ### Sidecar validator
 
 - **Songbook `published:` date.** An entry that keeps the day work started in `date:` can record the publish day in `published:`. `validate-sidecar.py` checks the body's "Published" marker against `published:` when it's present, and `regenerate-index-sections.py` uses it as the publish-date fallback.
-- **Playlist parity** checks only a band's own playlist (a thematic playlist without a matching band profile is skipped) and counts a versioned reprise ("The Grey (Version 1)" / "(Version 2)") once.
+- **Playlist parity** checks only a band's own playlist (a thematic playlist without a matching band profile is skipped) and counts a versioned reprise ("<title> (Version 1)" / "(Version 2)") once.
 - **Cross-reference scan** resolves bare and partial references to files that exist elsewhere in the project (`creed.md`, `references/USAGE.md`). It also skips `{placeholder}` templates and honors an optional `validate-ignore.txt` in the sanctum for documents another agent owns.
 
 ### Requirements

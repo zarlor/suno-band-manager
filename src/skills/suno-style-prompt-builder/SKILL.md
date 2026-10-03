@@ -7,254 +7,100 @@ description: Generates model-aware Suno style prompts. Use when user says 'build
 
 ## Overview
 
-This skill generates Suno-ready style prompts optimized for the user's chosen model tier, blending band profile baselines with per-song creative direction. Act as a producer's sound engineer who thinks in sonic textures, frequency ranges, and production approaches. Through guided conversation (or headless structured input), it produces a complete prompt package: style prompt, exclusion prompt, slider recommendations, and an optional experimental wild card variant.
+This skill builds Suno-ready style prompts for the user's model and tier, blending a band profile's baseline with per-song direction. Act as a producer's sound engineer who thinks in sonic textures, frequency ranges and production approaches. Interactive or headless, it produces a complete package: style prompt, Exclude Styles, Controls settings, title, and a wild card.
 
-**Domain context:** Suno's current **v6 family** (v6, v6-wild, v6-mini -- every earlier model was retired 2026-09-09) is reported to want **ordered production direction** -- each instrument's job per section, the vocal placed rather than praised, both edges stated, positive text only -- rather than the v5-era film-brief list (see `references/model-prompt-strategies.md` -> "Suno v6 Family", PREVIEW guidance). The retired families' styles (v4.5 conversational, v5/v5.5 film-brief) stay documented for older records and `:migrate`; never mix approaches within one prompt. Style prompts are hard-capped at 1,000 characters (200 for v4 Pro) and silently truncated -- figures community-attested and validated by use, not documented by Suno. Real-world testing suggests v4.5-all may only effectively use ~200 characters. Front-load all essential genre, mood, and vocal descriptors in the first ~200 characters (the "critical zone") -- everything after is supplementary. The "Exclude Styles" field is separate and follows its own rules.
+**Domain context:** Suno's current **v6 family** (v6, v6-wild, v6-mini; every earlier model was retired 2026-09-09) is reported to want **ordered production direction** (each instrument's job per section, the vocal placed rather than praised, both edges stated, positive text only) rather than the v5-era descriptor list. Style prompts are capped at 1,000 characters and silently truncated (community-attested, not documented by Suno). Front-load genre, mood and vocal descriptors in the first ~200 characters, the critical zone. The settings panel is called **Controls** (formerly More Options).
 
-**Design rationale (load-bearing constraints):**
+**Design rationale:**
 
-- **Decompose, never name-drop.** Never put artist names in style prompts -- Suno will not reliably replicate them. Decompose references into concrete sonic descriptors. When you are not confident you know an artist's distinctive sound, web-search to verify *before* decomposing; never fabricate sonic details. A wrong decomposition produces a prompt that sounds nothing like intent, and the user won't know why.
-- **Frame positively.** Translate negatives ("no screaming") into positives ("raw melodic singing with grit on peaks"). Suno does not reliably process in-prompt negation; the Exclude Styles field carries the negatives.
-- **Less exclusion is more.** Prioritize the 2-3 most important exclusions; too many destabilize the arrangement.
-- **Always output the full package** (style + exclusion + sliders + wild card). Generating everything up front is cheaper than re-running per piece, and the wild card encourages creative exploration without risk.
-- **Capture-don't-interrupt.** When users volunteer lyric ideas, structure preferences, or mix notes mid-build, acknowledge and store them for handoff to the appropriate sibling skill rather than redirecting.
+- **Decompose, never name-drop.** Suno strips artist names, so decompose references into concrete sonic descriptors. When you aren't confident you know an artist's sound, web-search before decomposing; a wrong decomposition produces a prompt that sounds nothing like the intent, and the user won't know why.
+- **Frame positively.** Suno reads "no screaming" as "screaming". Say what you want ("raw melodic singing") and put the negative in Exclude Styles.
+- **Less exclusion is more.** 2–3 excludes; more destabilize the arrangement.
+- **Full package up front.** Generating everything at once is cheaper than re-running per piece, and the wild card invites exploration at no risk.
+- **Capture, don't interrupt.** When users volunteer lyric ideas, structure preferences or mix notes mid-build, acknowledge them and pass them on at Step 5 (headless: `handoff_notes`) rather than redirecting.
 
 ## Conventions
 
-- Bare paths (e.g. `references/model-prompt-strategies.md`) resolve from the skill root.
-- `{skill-root}` resolves to this skill's installed directory (where `customize.toml` lives).
-- `{project-root}`-prefixed paths resolve from the project working directory.
-- `{skill-name}` resolves to the skill directory's basename.
-
-## Activation Mode Detection
-
-**Check activation context immediately:**
-
-1. **Headless mode**: If user passes `--headless` or `-H` flags, or intent clearly indicates non-interactive execution:
-   - `--headless:from-profile` -- generate using only profile baseline
-   - `--headless:custom` -- generate from provided parameters without profile
-   - `--headless:refine` -- accept an existing prompt + structured adjustments and apply deltas. Accepts the sibling Feedback Elicitor's `adjustment_recommendations` shape so its output can be piped in directly:
-     ```json
-     {
-       "prompt": "string", "model": "string",
-       "style_prompt": {"add": [], "remove": [], "reorder_notes": ""},
-       "exclusions": {"add": [], "remove": []},
-       "sliders": {"weirdness": "", "style_influence": ""},
-       "model_suggestion": ""
-     }
-     ```
-     `reorder_notes` is free-text reordering guidance (the producer shape); apply it as a re-front-loading instruction. A legacy `adjustments.reorder: string[]` / `adjustments.replace[]` shape is still accepted for backward compatibility.
-   - `--headless:migrate` -- accept existing prompt + original model + target model, reformat using target model's strategy from `references/model-prompt-strategies.md`
-   - `--headless` with profile name -- hybrid mode (profile baseline + overrides)
-   - Bare `--headless` with no sub-mode and no profile -- require at minimum `genre_mood`; apply defaults
-   - Reload `references/model-prompt-strategies.md` before generating (see Compaction Survival), then output the complete prompt package as the success JSON below. No interaction; headless **skips the decomposition-confirmation step** and records that skip in `decisions[]`.
-   - **Validate before emitting (all sub-modes, including `:refine` and `:migrate`):** run `uv run scripts/validate-prompt.py --style "{style_prompt}" --exclude "{exclusion_prompt}" --model "{target_model}"` on the reformatted/adjusted prompt -- the migrate/refine paths produce a new prompt against a (possibly new) model's char + critical-zone budget, so the same fail-fast check Step 5 runs interactively applies here. Fix anything flagged, re-run, and fold the script's report into the `validation` field of the success JSON (or note it if the script can't execute).
-   - **Sliders obey the per-song anti-anchoring rule even headless:** choose Weirdness/Style Influence fresh from the Slider Guidelines table by reasoning from song type + what each slider does -- never default to a profile's stored `sliders:` (the bare-Demo fallback is the only exception). Log each chosen value with its behavioral reasoning in `decisions[]`. User-supplied slider values are authoritative -- pass them through, don't re-derive.
-
-   **Headless defaults** (when optional parameters omitted): Creativity=Balanced, Model=profile `model_preference` if it names a current model, else v6 (v6-mini on Free), Wild card=disabled (unless `include_wild_card=true`)
-
-   **Headless success contract**: On completion, emit the package as JSON. `decisions[]` logs every non-obvious call the user would have weighed in interactively -- dangerous-word substitutions, genre demotions, slider choices, the skipped decomposition confirmation -- each with a one-line `reason`:
-   ```json
-   {
-     "status": "complete",
-     "model": "v6",
-     "style_prompt": "string",
-     "exclusion_prompt": "string",
-     "sliders": {"weirdness": 55, "style_influence": 75, "audio_influence": null},
-     "v6_options": {"variety": "Exact style", "max_mode": false, "duration": "Auto", "personalize": false},
-     "wild_card": {"style_prompt": "string", "reasoning": "string"},
-     "validation": { "...": "validate-prompt.py report (or note if unavailable)" },
-     "decisions": [
-       {"call": "substituted 'progressive heavy groove' for 'metal'", "reason": "profile excludes screaming; 'metal' triggers harsh vocals"},
-       {"call": "skipped decomposition confirmation", "reason": "headless mode -- no interactive turn available"}
-     ]
-   }
-   ```
-   `wild_card` is `null` when disabled. `status` is `complete` or `blocked`.
-
-   **Headless blocked/error contract**: When required inputs are missing, return `status: "blocked"` with the missing fields and a one-line reason; still include any `decisions[]` recorded so far:
-   ```json
-   {"status": "blocked", "missing": ["genre_mood"], "reason": "Required input 'genre_mood' not provided for --headless:custom mode.", "decisions": []}
-   ```
-
-2. **Interactive mode** (default): Proceed to On Activation
+- Bare paths (`references/...`, `scripts/...`) resolve from the skill root (`{skill-root}`, where `customize.toml` lives); `{project-root}` paths from the project working directory. A sibling skill's file is named by skill and resolves from that skill's directory.
+- Run every script with `uv run`; `--help` documents its flags.
 
 ## On Activation
 
-1. **Resolve customization** -- run `python3 {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --key workflow`. This reads the merged `[workflow]` block (base `customize.toml` -> team `{project-root}/_bmad/custom/{skill-name}.toml` -> user `{project-root}/_bmad/custom/{skill-name}.user.toml`) and supplies `activation_steps_prepend`, `activation_steps_append`, and `persistent_facts`. Apply `activation_steps_prepend` before the steps below and `activation_steps_append` after greeting; load `persistent_facts` (durable project context). If the resolver is unavailable, read those three files directly in that order and merge by hand; if none exist, proceed with defaults.
-2. **Load config via bmad-init skill** -- use `{user_name}` for greeting, `{communication_language}` for all communications. Fallback: greet generically, default to English. Do not block on missing config.
-3. **Greet user** and proceed to Step 1
+These steps run in every mode, headless included.
 
-## Compaction Survival (HARD RULE)
+1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. It supplies `activation_steps_prepend`, `activation_steps_append`, `persistent_facts` and `on_complete` (if it's unavailable, merge `customize.toml` with the overrides in `{project-root}/_bmad/custom/` by hand). Run any `activation_steps_prepend` and load `persistent_facts`.
+2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key core` for `{user_name}` and `{communication_language}`. Module settings (`suno_tier`, `band_profiles_folder`) are in the `suno:` section of `{project-root}/_bmad/config.yaml`. If either is missing, greet generically, default to English and `{project-root}/docs/band-profiles`, and carry on.
+3. **Headless** (`--headless` / `-H`, any `--headless:` variant, or clearly non-interactive intent): load `references/headless-contract.md`, run any `activation_steps_append`, and follow the steps below without greeting or asking.
+4. **Interactive:** greet `{user_name}` in `{communication_language}`, run any `activation_steps_append`, then go to Step 1.
 
-All load-bearing safety knowledge -- scream/harsh-vocal triggers, the Dangerous Words / keyboard-pull list, the Genre Term Behavior Table, and the **Slider Guidelines table + per-song anti-anchoring rule** (choose Weirdness/Style Influence fresh each song reasoning from what each slider DOES; never anchor to a profile's stored `sliders:` defaults or to "what similar catalog songs used" -- a profile's stored sliders are a weak fallback for a bare Demo *only*, the single exception) -- lives in `references/model-prompt-strategies.md`. A long interactive session or an open-ended Step 5 refine loop can compact that reference out of context, and a prompt built without it can silently ship "metal", "cinematic", an unpaired heavy genre that triggers screaming or pulls keyboards, or a slider value lazily anchored to a profile default instead of chosen for the song.
+## References: Load What Each Step Needs
 
-**Therefore: before EVERY build and EVERY refine generation, (re)load `references/model-prompt-strategies.md` and treat its gotcha tables as non-negotiable inputs.** Do not generate or revise a style prompt from memory of these tables -- reload them. `validate-prompt.py` is the deterministic backstop (it flags enumerable triggers), but the substitution decision and any term not in its table still require the live reference.
+- `references/safety-tables.md` (~3k tokens): the trigger tables, the exclude rule and the song-type slider table. **Reread it before every build and every refine generation:** a long session can compact it away, and a prompt built from memory can ship "metal" unpaired or an anchored slider.
+- `references/model-prompt-strategies.md` (~23k tokens): read only the sections each step names (its "How to Use This File" table maps them).
+- `references/retired-model-strategies.md`: only for `:migrate` involving a retired model, or a question about an older record.
+- `references/interactive-session.md`: interactive Step 5 (presentation, refine loop, version ledger).
+
+## Gotchas
+
+- **Scream triggers:** `metal`, `sludge`, `doom`, `death`, `thrash` and `black` (as genre modifiers) pull harsh vocals unless paired with a positive vocal instruction ("raw melodic singing", "gritty male vocals"). For heavy without the word, use "progressive heavy groove" or "heavy groove".
+- **Keyboard pulls:** `baroque`, `orchestral`, `cinematic` and `rock opera` pull theatrical, keyboard-heavy or cinematic-light arrangements when guitars should lead. Rewrites are in the safety tables.
+- **Crowd noise:** the "live" word family (`live recording`, `live-band drums`, `live energy`) and crowd/audience words (`crowd`, `audience`, `stadium`, `festival`, `anthemic`) pull audience texture. Say the quality instead: "unpolished room sound", "single-take band performance".
+- **No inline negatives** ("no X", "without X"): they read as inclusion. `!` pushes delivery toward shouting.
+- **One tempo per song.** Suno doesn't shift BPM within a song; "tempo change" prompts produce arrangement-density changes. Use rhythm nouns ("halftime", "double-time", "shuffle") over "slow"/"fast".
+- **The instrument palette is global.** Instruments named anywhere bleed into every section; section tags can only emphasize what the prompt already names.
+- **Excludes defend only against drift from the current prompt's own descriptors.** Suno is stateless: prior takes, other bands' versions and the catalog don't exist for it.
 
 ## Workflow Steps
 
 ### Step 1: Gather Inputs
 
-**Open the floor first.** Invite the user to share everything they have in one go -- genre, mood, vibe, "sounds like X meets Y", a band profile name, reference tracks, target model, exclusions, paths to anything relevant. The dump replaces most of the question script; then ask only for what's still missing. Adapt the invitation to the input: a vague "build me a prompt" gets "tell me what you're going for"; a profile name or reference already in hand gets "what do you want this song to do differently from the baseline?".
+**Open the floor first.** Invite everything in one go: genre, mood, "sounds like X meets Y", a band profile, reference tracks, target model, exclusions. Then ask only for what's missing. With a profile in hand, ask what this song should do differently from the baseline. If the opening already gives model, direction and creativity intent, skip ahead to Step 2 and confirm only genuine ambiguities.
 
-**Signpost build vs. refine at the front door.** If the user's intent is to *adjust output they already generated and listened to* ("the vocals came out too harsh", "make it less busy", "this generation drifted"), that is post-generation feedback -- hand it toward the **Feedback Elicitor** rather than building a fresh prompt here. This skill builds and migrates prompts; the Elicitor maps listening feedback into adjustments. A new build from a fresh creative direction stays here.
+**Build or refine?** If the user brings listening feedback on a song they already generated, route it to the Feedback Elicitor when it's installed; otherwise refine here (apply the deltas, re-front-load, re-validate). An existing prompt plus a target model is a migrate, which you also do here.
 
-**Standalone (no agent/Mac orchestration):** When this skill is invoked directly rather than through the Band Manager agent, the in-skill `:refine` and `:migrate` machinery is still available to the user -- they don't need the Feedback Elicitor or the agent to refine or model-migrate an existing prompt. If a standalone user hands you an existing prompt plus listening feedback, do the refine here (apply deltas, re-front-load, re-validate via Step 5 / the headless validate clause); if they hand you a prompt + a target model, do the migrate here (reformat to the target model's strategy, re-validate against its char budget). Only route to the Feedback Elicitor when it's actually present in the user's setup.
+**Required:** at least one source of musical direction. Without a profile, you need genre, mood and vocal direction (offer the Profile Manager).
 
-**Expert quick-win short-circuit.** If the opening dump already yields model + musical direction + creativity intent (an experienced user who handed you everything), skip the rest of the gather and proceed straight to Step 2 -- confirm only genuine ambiguities. Don't re-ask for things already provided. **If the user supplied explicit slider values, treat them as authoritative** -- pass them through to Step 3 and do not re-derive them from the table or a profile default.
+**Optional:**
+- **Band profile:** `{band_profiles_folder}/{profile-name}.yaml`, including its `reference_tracks`. If not found, list the folder's profiles; fill missing fields from conversation.
+- **Model:** the profile's `model_preference` if it names a current model, else v6 on a paid tier (v6-mini on Free). v6-wild is the exploratory option. A profile naming a retired model gets built for v6; say so.
+- **Tier:** the profile's `tier`, else `{suno_tier}`, else ask. Sliders and Exclude Styles are Pro/Premier only.
+- **Creativity mode:** Conservative (genre-pure), Balanced (default), Experimental (unexpected fusions).
+- **Reference tracks:** decompose per strategies "Reference Track Translation Guide"; show the decomposition for confirmation before building.
+- **Voice, Persona or Custom Model**, and **instrumental** (`instrumental: true` or a no-vocals ask, which makes vocal direction optional): note them for Steps 2–3.
 
-**Required:** At least one source of musical direction -- genre, mood, vibe, "sounds like X meets Y", or modifications to a loaded band profile baseline.
+### Step 2: Build Style and Exclude Styles
 
-**Optional but valuable:**
-- **Band profile** -- read from `docs/band-profiles/{profile-name}.yaml`. Use `reference_tracks` if present. If not found, list available profiles. If fields are missing, warn and fill from conversation.
-- **Model** -- default to profile's `model_preference` if it names a current model. Options: v6 (Pro/Premier default), v6-wild (Pro/Premier, exploratory), v6-mini (Free). Every earlier model (v4.5-all, v4 Pro, v4.5 Pro, v4.5+ Pro, v5 Pro, v5.5 Pro) was retired 2026-09-09 and can no longer generate -- when a profile still names one, build for v6 and say so (headless: log it in `decisions[]`).
-- **Creativity mode** -- Conservative (genre-pure, Weirdness 20-35), Balanced (default, 40-60), Experimental (unexpected fusions, 65-85)
-- **Specific requests** -- instrument preferences, mood descriptions, exclusions
-- **Reference tracks** -- decompose into concrete style descriptors (see `references/model-prompt-strategies.md` for confidence check and decomposition framework)
-- **Inspo playlists (Pro/Premier; availability on v6 unverified)** -- suggest as alternative to manual reference decomposition when user has successful generations or real reference tracks
+Read the safety tables, plus strategies "Suno v6 Family" and "Genre Keyword Ordering" (and "Counter-Genre Prompting", "Dynamic Control via Style Prompt" or the Voices/Persona sections when the song calls for them).
 
-**No profile loaded:** Need genre, mood, and vocal direction at minimum. Offer to proceed without profile or hand off to Profile Manager.
+**Outcome:** a style prompt in the model's format (v6: ordered production direction; retired formats only for `:migrate`) with genre/mood/vocals in the critical zone, genre-safe words and the selected creativity mode, within the limit. With a profile, start from its baseline.
 
-**Instrumental detection:** If the profile sets `instrumental: true` (or the user asks for an instrumental / no-vocals track), flag it now and carry it into Steps 2-3 -- vocal direction is not a required input for instrumental songs, and the build branches accordingly (see Step 2's instrumental branch).
+- **Voice active:** drop gender and timbre descriptors (keep delivery). **Persona:** keep added style simple (1–2 genres, 1 mood, 2–4 instruments); it builds on the Persona's own Styles text. **Custom Model:** drop the production descriptors it already encodes.
+- **Instrumental:** drop vocal direction and skip the scream-trigger pairing (no vocal to protect); spend the critical zone on lead-instrument character, interplay, the build/decay arc and production space.
 
-**Tier detection:** Determine from profile `tier` field or ask. Affects slider and Exclude Styles field availability (Weirdness/Style Influence are Pro/Premier only).
+**Exclude Styles (Pro/Premier):** a comma-separated list under ~200 characters, 2–3 items, drawn from the profile's `exclusion_defaults`, the user's "no X" asks, and genre-inferred risks, each kept only if something in this prompt could pull toward it. Pair each with a positive in the prompt. **Free tier:** no field; carry the exclusions as positive phrasing.
 
-**Efficiency:** When model is known during Step 1, load `references/model-prompt-strategies.md` alongside the profile read.
+### Step 3: Controls
 
-### Step 2: Build Style & Exclusion Prompts
+Read strategies "Suno v6 Family" → "The Controls panel" and "Slider Guidelines".
 
-(Re)load `references/model-prompt-strategies.md` for model-specific construction rules, genre term behavior, and dangerous word lists -- per the Compaction Survival rule, this reload happens before every build, not just the first.
+- **Weirdness and Style Influence (Pro/Premier):** choose from the song's type, its counter-genre needs and what each slider does (Weirdness adds unpredictability; Style Influence sets how tightly Suno follows the prompt). They are the deliberate per-song differentiator: never start from a profile's stored values or "what similar songs used" (the documented failure: 55, nudged "above the profile's 45", for a song that wanted ~75). Log the reasoning.
+- **Audio Influence** (only with audio attached): Persona 15–25%, Voice 35–95%. A value from the other slot's range is an error.
+- **Variety:** Exact style (any higher notch rewrites the validated prompt before generating). **Max Mode:** on for any take the user might keep (2× credits; it can't be added to a finished take). **Personalize:** off. **Duration:** Auto unless length is a real requirement. Style Influence reportedly defaults to 50 on v6.
+- **Vocal Gender:** leave empty with a Voice or an instrumental. **Lyrics Mode:** Manual, Auto or Instrumental. Suggest a title.
 
-**Instrumental branch (when instrumental was flagged in Step 1):** Drop all vocal direction from the style prompt and skip the Vocal-Gender recommendation in Step 3 -- there are no vocals to describe. Skip the scream-trigger *pairing* prompts too: an unpaired heavy genre term (`metal`, `sludge`) needs no positive vocal instruction here because there are no vocals to protect (the validator's `trigger` finding for an unpaired heavy term is a non-issue for instrumentals -- note it as handled rather than "fixing" it with a vocal phrase). Note `[Instrumental]` handling for the package. **Redirect the critical-zone budget that vocals would have used into arrangement, texture, and dynamics** -- lead instrument character, interplay, build/decay arc, production space -- since those now carry the song's identity.
+### Step 4: Wild Card
 
-**Strategy:** From profile baseline, from scratch, or hybrid (default when profile exists).
+Generate one experimental variant (skip only when the user asked for conservative only, or headless `include_wild_card: false`).
 
-**Key limitation:** The style prompt sets ONE overall sonic mood. Suno does NOT actually shift tempo within a song — "tempo change" or "tempo shift" prompts produce arrangement-density variation (instrumentation pullback / compression), not actual BPM movement. Set baseline feel here; use lyric density and rhythm-noun metatags (`[Heavy: halftime]`, `[Double Time]`) for section-level perceived-tempo changes.
+- **Stay inside the band's core sound with a genre or subgenre shift.** For a metal band, the shift stays anchored by strong metal/hard-rock influence. Never jump to a different genre family (light rock, pop, jazz, ambient for a heavy band). Read the profile's genres and reference tracks as the bounds.
+- **Keep the song's DNA:** its subject, mood arc and hook.
+- **Same model and sliders as the primary:** v6 on a paid tier, never v6-wild by default. Suggest different sliders only with a stated, compelling reason.
+- Pick the twist yourself; list the others (adjacent-lane lean, era/production shift, mood inversion, instrumentation flip within the lane's own instruments) as refine options at presentation, with the unchanged primary on v6-wild as the alternative wild card. Label it experimental, with a one-line pitch.
 
-**Outcome:** A model-formatted style prompt that front-loads genre/mood/vocals in the critical zone, uses genre-safe terminology, and respects character limits. The prompt should:
+### Step 5: Validate and Present
 
-- Follow the model's formatting style (v6 family: ordered production direction per the v6 section of the strategies reference; retired models, for `:migrate` only -- v4.5: conversational sentences; v5/v5.5: crisp 5-8 descriptor film-brief; v4 Pro: simple descriptors within 200 chars)
-- Translate reference tracks into concrete descriptors (show decomposition to user for confirmation before building)
-- Apply the selected creativity mode
-- Use genre-safe word choices per the Genre Term Behavior Table and Dangerous Words list in the strategies reference
+**Validate (fail-fast).** Pipe the package as JSON (`style_prompt`, `exclusion_prompt`, `model`, `instrumental`, `wild_card.style_prompt`, `vocal_gender`, `sliders`) to `uv run scripts/validate-prompt.py --stdin`. It checks limits, structure and the gotcha words in both prompts, plus the excludes and the Audio Influence range; a scream trigger with a positive pairing is still reported, at low severity, for you to judge. Fix what it flags and re-run. If it can't run, check by hand: the model's character limit, essentials in the first 200 characters, no section tags or asterisks, and the gotcha words above.
 
-**Genre word triggers** -- words that override other instructions:
-- **"Metal"** triggers screaming/harsh vocals. For heavy without screaming: "progressive heavy groove", "heavy groove"
-- **"Sludge"** triggers harsh vocals. Use "heavy", "thick", "dense"
-- **"Death"**, **"thrash"**, **"black"** (as genre modifiers) trigger extreme vocal styles
-- When a profile specifies these genres but excludes screaming, automatically substitute safe alternatives
+**Then judge what the script can't:** the right substitution for a flagged term, word meaning in context, decomposition fidelity, and fit with the user's intent.
 
-**Keyboard-pull dangerous words** -- **"baroque"**, **"orchestral"**, **"cinematic"**, and **"rock opera"** pull theatrical/keyboard/synth-heavy or cinematic-light arrangements when guitars/bass should lead. These are texture modifiers, not genres. Replace per the Dangerous Words and Keyboard Triggers table in the strategies reference (e.g. "rock opera" -> "power ballad, dynamic shifts, building from gentle to crushing"). `validate-prompt.py` flags them; the reference carries the per-word rewrite.
-
-**The "live" word family pulls crowd noise** -- `live recording`, `live-band drums`, `live energy`, any form. Production testing has hit this repeatedly on v5.5: the word carries "live album" as its dominant association and brings audience texture with it, even when the intent is band-in-a-room performance energy. Say the quality instead: `unpolished room sound`, `natural room ambience`, `single-take band performance`.
-
-**Rhythm nouns over tempo adjectives:** "halftime", "double-time", "four-on-the-floor", "shuffle", "breakbeat" lock feel more effectively than "slow", "fast", "upbeat"
-
-**Instrument bleed-through:** The style prompt sets a GLOBAL instrument palette; instruments bleed into ALL sections regardless of section-level tags. Warn users requiring section-specific instrumentation. See strategies reference for mitigation (accents suffix, end-placement, stems workflow).
-
-**Exclusion prompt** (Exclude Styles content):
-
-- **Pro/Premier:** Output as comma-separated list for Suno's dedicated Exclude Styles field. With exclusions handled separately, heavier genre language is safe in the style prompt.
-- **Free tier:** No Exclude Styles field. Translate exclusion intentions into positive style prompt language.
-- Sources: profile `exclusion_defaults`, user "no X" requests, genre-inferred exclusions
-- Rules: keep concise (under ~200 characters for the exclusion field), be specific, prioritize 2-3 most important, add positive reinforcement alongside negatives
-- **Belt-and-suspenders:** Translate negative phrases to positive style prompt language AND put originals in Exclude Styles
-
-### Step 3: Slider & Parameter Recommendations
-
-**Pro/Premier sliders -- choose fresh per song (anti-anchoring rule):** Pull Weirdness and Style Influence from the **Slider Guidelines table** in `references/model-prompt-strategies.md` (reloaded per Compaction Survival) by reasoning from the song's type + counter-genre needs + what each slider actually DOES -- Weirdness adds unpredictability/non-obvious choices, Style Influence governs how tightly Suno follows the prompt. **The sliders are the deliberate per-song differentiator.** Do NOT anchor to a band profile's stored `sliders:` defaults, nor nudge up/down from "what similar catalog songs used" -- that is the documented failure mode (recommending 55 by anchoring "above the 45 default" for a song that wanted ~75). **The one exception:** a bare Demo ("just make me something") may fall back to the profile's stored `sliders:` if present. Audio Influence is the slider commonly left at a standard value (~25% for Personas; see the Voices table for Voice cases). Log the chosen values + the behavioral reasoning (headless: in `decisions[]`).
-
-**Free tier:** Note sliders unavailable. Recommend Vocal Gender selection and Lyrics Mode.
-
-**Instrumental songs:** Skip the Vocal-Gender recommendation entirely and set Lyrics Mode to Instrumental -- there is no vocal to gender.
-
-**v6 More Options (Pro/Premier):** recommend **Variety: Exact style** for the package (any higher notch rewrites the style prompt before generating, so the validated prompt would not be what runs), **Max Mode** on for any generation the user might keep (it's applied at generation and can't be added to a finished take; off only for throwaway style-feel sketches) (2× credits), **Personalize** off, and **Duration** Auto unless the length is a real requirement. When explaining the Style Influence choice, note its reported v6 default of 50. Headless: return these in `v6_options`.
-
-**Additional parameters (all tiers):**
-- Lyrics Mode (Manual/Auto), Song title suggestion
-- Persona reference from profile if available (Pro/Premier). When Persona active: keep additional style simple (1-2 genres, 1 mood, 2-4 instruments), Persona auto-populates Style of Music field -- build on it, don't replace
-- Persona sourcing: use clear, stable lead vocals; dual Personas unreliable
-- Voices: drop gender **and timbre** descriptors (the Voice defines both; delivery descriptors still matter), start Audio Influence around 50% and iterate in 5-10% increments, profiling per voice -- the community ceiling is general guidance, not a limit, and Suno's own escalation for a clone that doesn't sound right is to RAISE Audio Influence first, then rebuild the profile from a clean acapella
-- Custom Models (upgraded to v6 automatically): drop generic production descriptors the model already knows
-
-**Exclude Styles output:** Always comma-separated list for direct copy-paste: `screaming vocals, steel guitar, autotune, heavy distortion`
-
-### Step 4: Wild Card Variant
-
-Generate an experimental alternative that explores *within* the band's core sound.
-
-**Twist dial** -- offer before generating: (a) adjacent-lane lean, (b) era/production shift, (c) mood inversion, (d) instrumentation flip, (e) surprise me. Default to (e).
-- An adjacent-lane lean stays next door — a metal band leaning toward hard rock or mainstream prog, for example.
-- An instrumentation flip uses the lane's own instruments.
-- Every option stays inside the band's genre family.
-
-Rules:
-- **Stay recognizably the same band.** Twist one or two elements (arrangement, era/production flavor, an instrument's job, mood), but never jump to a different genre family — light rock, pop, jazz or jazz-fusion, "spacey"/ambient for a heavy band, or anything that sounds like a different band. Read the band profile's genre and reference tracks as the bounds.
-- **Same model and sliders as the primary.** The wild card is a prompt variation, not a model or slider change. Suggest different sliders only with a stated, compelling reason.
-- Keep it musically coherent, generate a complete style prompt, and label it clearly as experimental.
-
-**Quick alternative wild card (offer it as an option):** run the *primary prompt unchanged* on **v6-wild**. v6-wild adds its own, less predictable variation, so a rewritten prompt on v6-wild stacks two sources of drift. Either route counts as the wild card, and the user picks.
-
-**Skip when:** user explicitly asked for conservative only, or headless mode (unless `include_wild_card=true`).
-
-### Step 5: Validate & Present
-
-**Validate first (fail-fast).** Run `uv run scripts/validate-prompt.py --style "{style_prompt}" --exclude "{exclusion_prompt}" --model "{model_name}"` on the generated prompts and read the JSON back. The script deterministically handles char/critical-zone budgets, section-tag contamination, asterisks, genre front-loading, and enumerable dangerous-word / scream-trigger / `!` detection (the `trigger` category). Fix anything it flags, then re-run. If the script cannot execute (no Python/uv), perform the equivalent checks by hand from its `--help` and the strategies reference.
-
-**Then self-review only what the script cannot judge** (with the strategies reference reloaded): genre-term *appropriateness* for the intended sound (the script flags a flagged term but cannot decide the right substitution), dangerous-word *semantics* in context, reference-decomposition fidelity, and alignment with the user's stated intent. Do not re-scan for things the validator already computed -- that is the validator's job. Fix silently.
-
-**Present** with version numbers (v1, v2, v3...) and a one-line formatting rationale:
-
-```
-## Style Prompt v{N} ({model_name}) -- {formatting_rationale}
-{character_count}/{limit} characters
-
-{style_prompt}
-
-## Exclude Styles
-{character_count}/~200 characters (target for Exclude Styles field)
-
-{exclusion_prompt}
-
-## Parameter Recommendations
-- Weirdness: {value} -- {reasoning}
-- Style Influence: {value} -- {reasoning}
-- Vocal Gender: {value}
-- Variety: Exact style -- keeps this prompt as written (v6)
-- Max Mode: {On for any generation you might keep | Off only for throwaway style-feel sketches} -- 2× credits; applied at generation, so it can't be added to a finished take (v6)
-{persona_note_if_applicable}
-
-## Wild Card Variant
-{wild_card_prompt}
-{wild_card_reasoning}
-```
-
-**Copy-ready output** after the formatted presentation:
-
-```
-### Copy-Ready: Style Prompt (paste into Suno's "Style of Music" field)
-{style_prompt}
-
-### Copy-Ready: Exclude Styles (paste into Suno's "Exclude Styles" field -- Pro/Premier only)
-{exclusion_prompt}
-```
-
-**Refinement:** Invite adjustments. **Before each refine generation, reload `references/model-prompt-strategies.md`** (Compaction Survival rule) -- a long refine loop is exactly where the safety tables get compacted away. Only regenerate affected outputs (creativity change = style + wild card; model change = style formatting; exclusion change = exclusion only). Re-run `validate-prompt.py` on anything regenerated. When switching models mid-refinement, preview impact first.
-
-**Model default:** If the user has no model preference, build for v6 on a paid tier (v6-mini on Free). The wild card runs on the same model and sliders; running the unchanged primary prompt on v6-wild is an optional alternative wild card.
-
-**Iteration guidance:** Generate 3-5 versions on Suno before modifying the prompt. Change only 1-2 variables per iteration. Structural problems are often better edited than re-prompted -- Replace Section and stems at Pro and Premier, Suno Studio 2.0 at Premier only (Studio has never been available on Pro). At session end, offer collected summary of all versions with deltas.
-
-**Version ledger (compaction-proof).** A multi-version refine loop is exactly long enough to compact away the version history before you can offer the end-of-session summary. As each version is presented, append a one-line entry -- `vN | {one-line prompt or its key change} | {changed variable}` -- to a `.style-prompt-ledger.md` scratch file in the working directory (create on v1). The end-of-session summary reads from this ledger, so it survives compaction regardless of how long the refine loop ran. This is a lightweight scratch log, not a Decision-Log Workspace -- one appended line per version, nothing more.
-
-**Pro tier tip:** The Song Editor (Legacy Editor) can replace/regenerate individual sections, rearrange via drag-and-drop, and preview alternatives. Recommend for dramatic section contrasts -- noting that production testing found audible seams at the replacement boundary even on small targets, so it trades one problem for another when the join matters.
-
-**Scope note:** Cover/remix prompt building not supported. Use Suno's built-in Cover feature (see strategies reference).
-
-**Complete** when user accepts prompt package, ends session, or hands off to another skill.
-
-## Scripts
-
-**Invoke via `uv run scripts/<name>.py`** — uv reads the PEP 723 inline metadata and provisions any dependencies automatically. `validate-prompt.py` is dependency-free (stdlib only), so if `uv` is unavailable you can install it (`pip install uv`) or run it directly with `python3`.
-
-`validate-prompt.py` -- Deterministically validates a prompt package: style prompt character count (1,000 for the v6 family; 200 for the retired v4 Pro), critical zone, section-tag/asterisk contamination, genre front-loading, exclusion length/count, and enumerable dangerous-word / scream-trigger / `!` detection (`trigger` category, sourced from `_shared/suno_constants.py`). Run `uv run scripts/validate-prompt.py --style "..." --exclude "..." --model "{model_name}"`. The script flags triggers; the LLM still decides the substitution. Run `--help` for details.
+**Interactive:** load `references/interactive-session.md` to present and refine. **Headless:** emit the success JSON from `references/headless-contract.md`, then run `{workflow.on_complete}` if it's set.

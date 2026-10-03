@@ -193,6 +193,65 @@ def test_fillers_are_ignored():
     assert e["added_words"] == [] and e["repeats"] == []
 
 
+def test_words_tacked_onto_the_last_line_are_caught():
+    sections, _ = sm.parse_sections("[Chorus]\nLook into the cracks\nfind the universe\n[Verse]\nthe needle drops again tonight")
+    words = words_for("Look into the cracks find the universe", 100.0)
+    tail = words_for("of Christ", words[-1]["end"] + 1.5)
+    for w in tail:
+        w["probability"] = 0.27
+    rest = words_for("the needle drops again tonight", tail[-1]["end"] + 6.0)
+    e = next(x for x in sm.locate_consensus(sections, [words + tail + rest], 200.0) if x["name"] == "Chorus")
+    assert e["added_words"] == []  # Whisper wasn't sure of the words...
+    assert [(a["text"], a["position"]) for a in e["added_words_possible"]] == [("of Christ", "after the last line")]
+    for w in tail:
+        w["probability"] = 0.9
+    e = next(x for x in sm.locate_consensus(sections, [words + tail + rest], 200.0) if x["name"] == "Chorus")
+    assert [a["text"] for a in e["added_words"]] == ["of Christ"]  # ...and it is when it's sure
+
+
+def test_misheard_opening_of_the_next_section_is_not_an_addition():
+    sections, _ = sm.parse_sections("[Verse]\nrocks thrown they fight have the need\n[Chorus]\nLook into the cracks\nfind the universe")
+    words = (words_for("rocks thrown they fight have the need", 90.0)
+             + words_for("Looking to the cracks find the universe", 94.0))
+    verse = next(x for x in sm.locate_consensus(sections, [words], 200.0) if x["name"] == "Verse")
+    assert verse["added_words"] == [] and verse["added_words_possible"] == []
+
+
+def test_any_pass_that_places_a_section_places_it():
+    sections, _ = sm.parse_sections("[Verse]\nForged in fire lived in life\n[Chorus]\nLook into the cracks find the universe")
+    found = words_for("Forged in fire lived in life", 20.0) + words_for("Look into the cracks find the universe", 40.0)
+    lost = words_for("I'm going to sing a little bit", 20.0) + words_for("Look into the cracks find the universe", 40.0)
+    verse = next(x for x in sm.locate_consensus(sections, [found, lost], 60.0) if x["name"] == "Verse")
+    assert verse["status"] == "sung" and verse["start_s"] == 20.0 and verse["located_passes"] == "1/2"
+
+
+def test_edge_scan_stops_at_the_next_section_and_the_window():
+    sections, _ = sm.parse_sections("[Chorus]\nLook into the cracks\nfind the universe\n[Verse]\nthe needle drops again tonight")
+    words = words_for("Look into the cracks find the universe", 100.0)
+    late = words_for("something much later", words[-1]["end"] + 9.0)  # beyond EDGE_ADD_S
+    rest = words_for("the needle drops again tonight", late[-1]["end"] + 1.0)
+    e = next(x for x in sm.locate_consensus(sections, [words + late + rest], 200.0) if x["name"] == "Chorus")
+    assert e["added_words"] == [] and e["added_words_possible"] == []
+
+
+def test_repeat_of_a_phrase_spread_over_one_word_lines():
+    sections, _ = sm.parse_sections("[Breakdown]\nNOT\nBUILT\nTHAT\nWAY\n[Outro]\nChomp the glass again tonight")
+    words = (words_for("NOT BUILT THAT WAY", 140.0) + words_for("not built that way", 143.0)
+             + words_for("Chomp the glass again tonight", 146.0))
+    e = next(x for x in sm.locate_consensus(sections, [words], 200.0) if x["name"] == "Breakdown")
+    assert e["added_words"] == [] and e["added_words_possible"] == []
+    assert [a["repeat_of"] for a in e["repeats"]] == ["NOT / BUILT / THAT / WAY"]
+
+
+def test_near_spelled_repeat_is_still_a_repeat():
+    # Whisper writes "doing" where the lyric has "doin'".
+    assert sm._classify_added(sm.tokenize("What am I doing?"), ["What am I doin'?"]) == ("repeat", "What am I doin'?")
+
+
+def test_repeated_one_word_hit_is_a_repeat():
+    assert sm._classify_added(["chomp", "chomp", "chomp"], ["CHOMP!", "Here it comes again"]) == ("partial repeat", "CHOMP!")
+
+
 def test_mishearing_is_not_an_addition():
     # "gettin" heard as "get it in": one lyric word replaced by three similar-sounding ones.
     e = added("one more spin one more spin get it in lost for a while")
@@ -233,6 +292,19 @@ def test_format_text_lists_added_words():
     assert 'Words added to the lyrics' in text and '"get more spin"  between lines' in text
 
 
+def test_format_text_reports_the_slow_prior_reading():
+    e = added("one more spin one more spin get more spin gettin lost for a while")
+    note = "Likely halftime ambiguity: librosa reads 117.5 BPM at its default and 60.1 with a slow prior."
+    metrics = {"file": "x.mp3", "lyrics_source": "pkg.md", "whisper_model": "medium", "whisper_device": "cpu",
+               "tempo_source": "librosa", "overall_bpm": 117.5, "bpm_librosa_slow_prior": 60.1,
+               "librosa_prior_relation": "double", "tempo_note": note, "sections": [e],
+               "vocals_outside_sections": []}
+    text = sm.format_text(metrics)
+    assert "librosa 117.5 BPM (slow-prior reading 60.1, double)" in text and note in text
+    del metrics["bpm_librosa_slow_prior"], metrics["tempo_note"]
+    assert "slow-prior" not in sm.format_text(metrics)
+
+
 def test_single_pass_matches_locate_sections():
     sections, _ = sm.parse_sections(sm.extract_lyrics(PACKAGE))
     words = words_for("I stand where the water breaks I hold what the thunder takes", 10.0)
@@ -249,8 +321,49 @@ def test_outside_vocals_that_repeat_a_lyric_are_labeled():
     assert sm.label_outside("Slammed in the dark", lines) == {"kind": "partial repeat",
                                                             "line": "I'm the slide that's violently slammed in the dark"}
     assert sm.label_outside("check and another one after that.", lines)["line"] == "and another one after that"
+    riff = "And another one after that After that, after that, and another one after that."
+    assert sm.label_outside(riff, lines) == {"kind": "partial repeat", "line": "and another one after that"}
+    # Riffing needs the run's words to come from the line: "get" isn't in "one more spin, one more spin".
+    assert sm._classify_added(sm.tokenize("get more spin"), ["one more spin, one more spin"]) == ("added", None)
+
     assert sm.label_outside("Screamer! Screamer!", lines) is None
     assert sm.label_outside("oh yeah", lines) is None
+
+
+COMMON = "[Chorus]\nyou don't know if I will stay\ngettin lost for a while\n[Verse]\nthe needle drops again tonight"
+
+
+def test_common_word_addition_stays_added_with_a_riff_hint():
+    # "I know you" uses only words from the first line but doesn't repeat itself: new words, not a riff.
+    line = "you don't know if I will stay"
+    assert sm._classify_added(sm.tokenize("I know you"), [line]) == ("added", None)
+    assert sm.riff_of(sm.tokenize("I know you"), [line]) == line
+    sections, _ = sm.parse_sections(COMMON)
+    words = words_for("you don't know if I will stay I know you gettin lost for a while the needle drops again tonight",
+                      5.0)
+    e = next(x for x in sm.locate_consensus(sections, [words], 60.0) if x["name"] == "Chorus")
+    assert e["repeats"] == [] and [a["text"] for a in e["added_words"]] == ["I know you"]
+    a = e["added_words"][0]
+    assert a["kind"] == "added" and a["looks_like_riff_of"] == line
+    metrics = {"file": "x.mp3", "lyrics_source": "pkg.md", "whisper_model": "medium", "whisper_device": "cpu",
+               "tempo_source": "librosa", "overall_bpm": 120.0, "sections": [e], "vocals_outside_sections": []}
+    assert f'(may riff on "{line}")' in sm.format_text(metrics)
+
+
+def test_outside_common_word_run_gets_a_hint_not_a_repeat_label():
+    line = "you don't know if I will stay"
+    assert sm.label_outside("I know you", [line]) == {"kind": "added", "line": None, "looks_like_riff_of": line}
+
+
+def test_genuine_addition_has_no_riff_hint():
+    e = added("one more spin one more spin get more spin gettin lost for a while")
+    assert "looks_like_riff_of" not in e["added_words"][0]
+
+
+def test_clip_ranges_pad_merge_and_clamp():
+    assert sm.clip_ranges([(20.0, 61.5), (92.0, 150.0)], 168.0) == [19.25, 62.25, 91.25, 150.75]
+    assert sm.clip_ranges([(0.2, 10.0), (10.5, 20.0)], 20.3) == [0.0, 20.3]  # touching blocks merge
+    assert sm.clip_ranges([], 60.0) == []
 
 
 def test_outside_spans():

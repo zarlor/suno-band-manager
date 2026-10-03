@@ -37,7 +37,7 @@
 - "It's close but not there yet"
 - "The vibe is off"
 
-**Action:** Three-phase guided elicitation (binary narrowing → comparative anchoring → emotional vocabulary bridge).
+**Action:** Guided elicitation — narrow from broad dimensions to a concrete anchor with the techniques below, starting wherever the user's awareness already is.
 
 ### Contradictory Feedback
 **Signals:** Opposing descriptors in same feedback ("more X but also more Y" where X and Y conflict), sequential reversals ("actually no, I want..."), wanting everything changed but nothing changed.
@@ -48,7 +48,7 @@
 - "The vocals should be more prominent but also blend in more"
 - "It needs to be simpler but also more interesting"
 
-**Action:** First Principles reset — find the one anchor, rebuild from there. Reframe contradictions as potential structural insights (verse vs. chorus contrast). When the contradiction spans multiple dimensions (arrangement + lyrics + delivery), use **three-pass layered prompting** to isolate changes: adjust concept/mood first, then lyrics/structure, then performance cues — never all at once. See suno-parameter-map.md "Three-Pass Layered Prompting" for the workflow.
+**Action:** First Principles reset — find the one anchor, rebuild from there. Reframe contradictions as potential structural insights (verse vs. chorus contrast). When the contradiction spans multiple dimensions (arrangement + lyrics + delivery), use **three-pass layered prompting** to isolate changes: adjust concept/mood first, then lyrics/structure, then performance cues — never all at once. See `references/suno-parameter-map.md` → "Three-Pass Layered Prompting" for the workflow.
 
 **When feedback touches both vocal identity and style:** If the user wants to change the singing voice AND the musical direction simultaneously, apply the **one-variable-at-a-time rule** — adjust either the Persona/vocal identity OR the style prompt, not both in the same generation. Changing both creates compounding unpredictability. Persona controls artist identity (vocals, character); style prompt controls the producer brief (genre, mood, arrangement).
 
@@ -62,9 +62,9 @@
 - "It mispronounces the word 'ethereal'"
 - "There's clipping in the chorus"
 
-**Action:** Route to post-generation tools — Replace Section at Pro or Premier, Studio 2.0 at Premier — or to regeneration. (Name outcomes rather than Studio 1.x tools: Warp Markers and Remove FX are archived and no longer appear in official Studio 2.0 copy.) These issues are typically generation-specific, not prompt-specific — try regenerating 3-5 times before modifying the prompt. See suno-parameter-map.md "Audio Quality & Artifacts" and "Editor and Studio Resolution Paths" sections.
+**Action:** Route to post-generation tools — Replace Section at Pro or Premier, Studio 2.0 at Premier — or to regeneration. (Name outcomes rather than Studio 1.x tools: Warp Markers and Remove FX are archived and no longer appear in official Studio 2.0 copy.) These issues are typically generation-specific, not prompt-specific — try regenerating 3-5 times before modifying the prompt. See `references/technical-resolution.md` → "Audio Quality & Artifacts" and "Editor and Studio Resolution Paths".
 
-**Recommended approach (v5.5 onward, including v6):** Use the **generate -> inspect -> refine** workflow rather than regenerating from scratch. If the structure and melody are good, use section replacement for the problem area instead of full regeneration. Only regenerate fully when the structure or emotional direction is fundamentally wrong. See suno-parameter-map.md "Generate → Inspect → Refine Workflow" for the full decision framework.
+**Recommended approach (v5.5 onward, including v6):** Use the **generate -> inspect -> refine** workflow rather than regenerating from scratch. If the structure and melody are good, use section replacement for the problem area instead of full regeneration. Only regenerate fully when the structure or emotional direction is fundamentally wrong. See `references/technical-resolution.md` → "Generate → Inspect → Refine Workflow" for the full decision framework.
 
 #### Voice & Custom Model Feedback Patterns
 
@@ -72,7 +72,7 @@ When the user has a Voice or Custom Model active, technical feedback often maps 
 
 | Feedback | Root Cause | Resolution Path |
 |----------|-----------|----------------|
-| "Vocals don't sound like me" (Voice active) | Audio Influence too low, poor source recording quality, or style prompt overriding Voice identity | 1. Increase Audio Influence — raising it first is also Suno's official escalation for this exact complaint. The sweet spot is per-voice, so iterate in 5-10% increments rather than jumping to a fixed number; canonical ranges live in `suno-style-prompt-builder/references/model-prompt-strategies.md` → "Voices". If raising it doesn't recover identity, Suno's next official step is rebuilding the voice profile from a clean acapella. 2. Re-record a cleaner voice sample (less background noise, consistent mic distance). 3. Use delivery metatags (`[Whispered]`, `[Belted]`) instead of style prompt vocal descriptors — the Voice provides identity, metatags shape performance. |
+| "Vocals don't sound like me" (Voice active) | Audio Influence too low, poor source recording quality, or style prompt overriding Voice identity | 1. Increase Audio Influence — raising it first is also Suno's official escalation for this exact complaint. The sweet spot is per-voice, so iterate in 5-10% increments rather than jumping to a fixed number; canonical ranges live in the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "Voices". If raising it doesn't recover identity, Suno's next official step is rebuilding the voice profile from a clean acapella. 2. Re-record a cleaner voice sample (less background noise, consistent mic distance). 3. Use delivery metatags (`[Whispered]`, `[Belted]`) instead of style prompt vocal descriptors — the Voice provides identity, metatags shape performance. |
 | "Production doesn't match my style" (Custom Model active) | Generic prompt descriptors being absorbed by the model's trained defaults | 1. Use more specific prompt overrides — name the exact elements to change rather than broad descriptors. 2. If the model consistently misses the target, retrain with a better-curated catalog that more accurately represents the desired production style. |
 | "Voice sounds right but delivery is wrong" (Voice active) | Style prompt vocal descriptors conflicting with Voice identity | Remove vocal descriptors from the style prompt. Use delivery metatags in the lyrics field instead: `[Whispered]`, `[Belted]`, `[Tender]`, `[Aggressive]`. The Voice handles identity; metatags handle performance. |
 | "Changed multiple things and now it's worse" (Voice + Custom Model) | Multiple simultaneous changes making it impossible to isolate the cause | Apply the one-variable-at-a-time rule: adjust delivery metatags first, then Audio Influence, then style prompt. Regenerate after each single change. |
@@ -91,7 +91,9 @@ Common feedback patterns with non-obvious root causes. When you hear these, chec
 | "Song loops / too much instrumental" | Source text length (under 15 lines?) + style prompt for `instrumental breaks` | Short lyrics cause looping and filler instrumentals. Suggest: double the delivery (repeat verses with variation), extract and repeat chorus, or place a hard `[End]` tag. |
 | "Sound is too theatrical / too many keyboards" | Style prompt for `baroque`, `rock opera`, `cinematic`, or `orchestral` | These keywords trigger keyboard-heavy theatrical arrangements. Fix: describe desired qualities without those words; specify heavy orchestral instruments by name (cello, heavy strings, kettle drums); use "power ballad" instead of "rock opera" for dynamic range. |
 | "Song doesn't come back down / ending stays loud" | Whether the dynamic arc is stated TWICE in the style prompt | A single mention of descent isn't enough — Suno latches onto the loudest directive. Both `building from gentle to crushing then returning to gentle` AND `dynamic arc quiet to massive to quiet` are needed to reliably produce a full arc. |
-| "One section sounds wrong but the rest is fine" | Whether the issue is section-specific or global | Use **parameterized section tags** for per-section fixes: `[Verse: whispered vocals, acoustic guitar only]`, `[Chorus: full band, powerful vocals]`. This targets the problem section without changing the overall style prompt. See suno-parameter-map.md "Parameterized Section Tags". |
+| "The song page says X, but it doesn't sound like X" | What actually plays | **What plays isn't always what was asked for.** The style text on a song page shows the input, or Variety's rewrite, not what landed. In one outside series, every take's page said "99 bpm", including takes that ran at 117 (ANECDOTAL-controlled, n=24). Trust the audio, and the user's ear, over the displayed text. |
+| "It's way off the tempo I asked for" | First rule out a halftime double-read (`references/audio-analysis-scripts.md` → "The slow-prior reading") | After that check, a big stated-vs-measured tempo miss is a cue to **listen for a dropped instrument job**. Suggest it when you find one. In one outside series, every off-tempo take had also dropped a requested instrument; the misses ran 13–24% fast, not double (ANECDOTAL-controlled, n=24, one song). |
+| "One section sounds wrong but the rest is fine" | Whether the issue is section-specific or global | Use **parameterized section tags** for per-section fixes: `[Verse: whispered vocals, acoustic guitar only]`, `[Chorus: full band, powerful vocals]`. This targets the problem section without changing the overall style prompt. See `references/suno-parameter-map.md` → "Parameterized Section Tags". |
 
 ---
 
@@ -112,7 +114,7 @@ For an instrumental track, drop items 1 (vocals half), 4 (lyrics), and any vocal
 **Rules:**
 - Ask one question at a time
 - Accept partial answers — "kind of both" is useful signal
-- If they narrow to a single dimension in 2 questions, skip ahead to Phase 2
+- If they narrow to a single dimension in 2 questions, move on to anchoring
 
 ### Comparative Anchoring
 Use reference points the user knows to triangulate what they want.

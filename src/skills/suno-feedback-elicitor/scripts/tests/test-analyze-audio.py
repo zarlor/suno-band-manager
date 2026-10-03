@@ -90,6 +90,26 @@ def test_beat_this_tempo_preferred_with_librosa_kept():
     assert metrics["bpm_range_librosa"] == {"min": 95.7, "max": 152.0}
 
 
+def test_slow_prior_reading_and_halftime_note():
+    spec = importlib.util.spec_from_file_location("analyze_audio_slow", SCRIPT)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    loud = {"integrated_lufs": -15.9, "lra_lu": 5.5, "thirds_lufs": [-17, -16, -15], "build_lu": 2.0}
+    slow = {"file": "slow.mp3", "duration": "3:59", "bpm": 117.5, "tempo_source": "librosa", "bpm_librosa": 117.5,
+            "bpm_librosa_slow_prior": 60.1, "librosa_prior_relation": "double", "key": "G# major",
+            "key_confidence": 0.85, "loudness": loud}
+    agree = {**slow, "file": "agree.mp3", "bpm": 95.7, "bpm_librosa": 95.7, "bpm_librosa_slow_prior": 95.7,
+             "librosa_prior_relation": "agree"}
+    text = m.format_text_output([slow, agree], 2)
+    assert "Slow80" in text and "60.1 (x2)" in text and "     95.7      95.7 " in text
+    assert "Likely halftime ambiguity: librosa reads 117.5 BPM at its default and 60.1" in text
+    two = m.format_text_output([slow, {**slow, "file": "slow2.mp3"}], 2)
+    assert "Likely halftime ambiguity on 2 tracks" in two
+    metrics = m.format_json_output([slow, agree], 2)["metrics"]
+    assert metrics["librosa_prior_doubles"] == 1 and metrics["bpm_range_librosa"] == {"min": 95.7, "max": 117.5}
+    assert metrics["tracks"][0]["bpm_librosa"] == 117.5  # the default reading keeps its field and value
+
+
 if __name__ == "__main__":
     if UV is None:
         print("SKIP: uv not available")

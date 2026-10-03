@@ -1,20 +1,32 @@
 code: suno
 name: "Suno Band Manager"
 description: "AI-powered music production assistant for creating Suno-ready song packages with style prompts, lyrics, and band identity management"
-module_version: 2.4.1
+module_version: 3.0.0
 default_selected: false
 module_greeting: >
   Mac is tuned up and ready to jam! Your Suno Band Manager module is installed.
   Run this setup again any time to reconfigure settings.
 
   Get started by talking to Mac (your Band Manager) or jump straight into any skill:
-  Create a song, manage band profiles, build style prompts, transform lyrics, or refine your Suno output.
+  Create a song, manage band profiles, build style prompts, transform lyrics, refine your Suno output,
+  or sequence a playlist.
 
   **Multi-machine workflow?** Once you have a full repo checkout (with the
   top-level `scripts/` folder), this module can move your songbook, voice files,
   and WIP between machines without git. See INSTALLATION.md "Multi-Machine Sync"
   for setup — including how to get those scripts if a marketplace install left
   only the skills.
+
+# Agent roster. The BMad v6.12 installer builds config.toml's agent list (party
+# mode, agent manifest) from this block. Keep it in step with the [agent] block
+# in suno-agent-band-manager/customize.toml.
+agents:
+  - code: suno-agent-band-manager
+    name: Mac
+    title: Band Manager
+    icon: "🎺"
+    team: suno
+    description: "Orchestrates Suno song package creation."
 
 # Variables from Core Config inserted:
 ## user_name

@@ -1,65 +1,48 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.10"
-# dependencies = []
+# dependencies = ["pyyaml>=6.0"]
 # ///
-"""Genre coverage index (v2) — COMPREHENSIVE: genre anchors AND artist / reference territory.
+"""Genre coverage index (v3): what a band has actually used, extracted, not inferred.
 
-The point: Mac must KNOW what a band has actually used so it never again claims
-"X is fresh / never done" when it isn't. v1 was an abject failure — it only read
-songbook style-prompt anchors plus explicitly-labeled "Reference territory:" lines,
-so inline artist references (e.g. a song's "(artist A / artist B
-/ Magnolia Electric Co territory)") — which live in the BAND PROFILE catalog's
-genre_applied / reference_tracks / voice_profiles use_case — slipped right through.
+The point: Mac must not claim "X is fresh / never done" when the band has done
+it. Earlier versions guessed which prose phrases were artist references (Title
+Case regexes, stop lists, a noise filter) and treated a style prompt's first
+clause as its genre. Both guesses failed silently: references with digits
+("Blink-182") vanished, and a v6 prompt's first clause is often not a genre.
 
-v2 scans, per band:
-  - every songbook entry's published style-prompt genre anchor
-  - artist / reference-territory CLAUSES from BOTH the songbook entries AND the
-    band-profile YAML (reference_tracks, genre_applied, voice use_case, notes):
-      * parenthetical clauses naming a territory/direction/lineage/era/adjacent/signature
-      * slash-separated proper-name lists (Counting Crows / Wallflowers / Wilco ...)
-      * "X territory|direction|lineage|era" inline phrases
-      * reference_tracks artists (the "Artist — description" list)
-      * explicit "Reference territory:" lines
+v3 only extracts. Per band it writes `docs/<band>-genre-coverage.md` with:
+  - the profile's curated fields: genre, reference_tracks, style_alternatives,
+    each voice profile's use_case, and each catalog entry's genre_applied
+  - explicitly labeled "Reference territory:" lines from songbook entries
+  - every songbook entry's style prompt, verbatim, with its status
+
+The model judges coverage by reading that compact set. Absence from the index
+never proves a direction is fresh on its own — grep the songbook and profile
+before any never-done claim.
+
+Each index records a fingerprint of its sources (songbook entries + profile),
+so `--check` can say deterministically whether it is stale.
 
 Usage:
-    uv run genre-coverage.py <project-root> [--band <slug>] [--timestamp <iso>]
-Writes docs/<band>-genre-coverage.md (AUTOGEN section preserved-around).
+    uv run scripts/genre-coverage.py <project-root> [--band <slug>]
+    uv run scripts/genre-coverage.py <project-root> --check [--band <slug>]
+Writes docs/<band>-genre-coverage.md (text outside the AUTOGEN markers is kept).
+`--check` writes nothing and exits 1 when any band's index is stale or missing.
 """
+import argparse
+import datetime
+import hashlib
+import json
 import os
 import re
 import sys
-import json
-import argparse
+
+import yaml
 
 AUTOGEN_START = "<!-- AUTOGEN-START: genre-coverage -->"
 AUTOGEN_END = "<!-- AUTOGEN-END: genre-coverage -->"
-
-# Capitalized terms that are NOT artist/territory references (reduce noise).
-# Band-specific names are NOT hardcoded here — band_stopwords() derives them
-# from the band being scanned, so this list stays portable across projects.
-STOP = {
-    "new orleans", "nola", "crescent city", "gulf coast", "camelot", "aeolian",
-    "mac", "suno", "gemini", "bpm",
-    "wip", "professional", "create", "creates", "voice", "intro", "verse",
-    "chorus", "bridge", "outro", "breakdown", "fade out", "the room",
-}
-
-
-def band_stopwords(band, profile_text=""):
-    """Terms to ignore for THIS band: its slug, its slug de-hyphenated, and the
-    `name:` from its profile (plus an apostrophe-stripped variant, so a name like
-    "Someone's Voice" also filters as "someones voice"). A band's own name is not
-    an artist reference, and hardcoding any project's band names here would make
-    the script non-portable."""
-    words = {band.lower(), band.replace("-", " ").lower()}
-    m = re.search(r'^name:\s*["\']?(.+?)["\']?\s*$', profile_text, re.M)
-    if m:
-        nm = m.group(1).strip().lower()
-        words |= {nm, nm.replace("'", "").replace("\u2019", "")}
-    return {w for w in words if w}
-
-NAME = r"[A-Z][\w.'’&:!?+-]*(?:\s+[A-Z0-9][\w.'’&:!?+-]*){0,4}"
+FINGERPRINT_RE = re.compile(r"<!-- sources-sha256: ([0-9a-f]{64}) -->")
 
 
 def read(p):
@@ -88,146 +71,134 @@ def first_style_prompt(text):
     return cb.group(1).strip() if cb else None
 
 
-def anchors(prompt):
-    parts = [p.strip() for p in prompt.replace("\n", " ").split(",") if p.strip()]
-    return (parts[0] if parts else ""), (parts[1] if len(parts) > 1 else "")
+def _one_line(s):
+    return re.sub(r"\s+", " ", str(s)).strip()
 
 
-def _clean(s):
-    return re.sub(r'\s+', ' ', re.sub(r'\*+', '', s)).strip().strip('.,;')
-
-# Free-text clauses are noise if they carry digits / stats / production-log words.
-# (Does NOT apply to curated fields — reference_tracks / genre_applied — which may
-# legitimately contain a year like "Round Here (1993)".)
-NOISE_RE = re.compile(
-    r'(\d|%|\bBPM\b|\bCamelot\b|\bvoice\b|\bgen\b|\bCreate|\bcredit|window|felt|'
-    r'\bsession\b|\bHz\b|\bV\d|spectral|low-freq|chars?\b)', re.I)
-# Title-Case proper-name token (no embedded digits) — for artist-list / territory matching.
-TITLE = r"[A-Z][A-Za-z.'’&:+-]+(?:\s+[A-Z][A-Za-z.'’&:+-]+){0,3}"
-# Suno section tags — reject slash-lists made of these (they're structure, not artists).
-SECTION_WORDS = re.compile(
-    r'\b(Intro|Verse|Pre-Chorus|Chorus|Post-Chorus|Bridge|Breakdown|Outro|'
-    r'Final Chorus|Hook|Interlude|Drop|Build|Solo)\b', re.I)
+def labeled_territory(text):
+    """Explicitly labeled `Reference territory:` lines (a curated label)."""
+    return [_one_line(m.group(1)).strip("*").strip()
+            for m in re.finditer(r'Reference territory\**\s*:\**\s*([^\n]+)', text, re.I)]
 
 
-def _noise(c, extra=frozenset()):
-    lc = (c or "").lower()
-    return (not c) or len(c) < 3 or lc in STOP or lc in extra or bool(NOISE_RE.search(c))
+def profile_fields(profile):
+    """Curated fields from a parsed band profile, verbatim."""
+    if not isinstance(profile, dict):
+        return {}
+    out = {}
+    if profile.get("genre"):
+        out["genre"] = _one_line(profile["genre"])
+    refs = profile.get("reference_tracks") or []
+    if isinstance(refs, list):
+        out["reference_tracks"] = [_one_line(r) for r in refs if str(r).strip()]
+    alts = profile.get("style_alternatives") or {}
+    if isinstance(alts, dict):
+        out["style_alternatives"] = [(str(k), _one_line(v)) for k, v in alts.items() if str(v).strip()]
+    elif isinstance(alts, list):
+        out["style_alternatives"] = [("", _one_line(v)) for v in alts if str(v).strip()]
+    voices = profile.get("voice_profiles") or []
+    if isinstance(voices, list):
+        out["voice_use_cases"] = [
+            (str(v.get("name", "")), _one_line(v["use_case"]))
+            for v in voices if isinstance(v, dict) and v.get("use_case")
+        ]
+    catalog = profile.get("catalog") or []
+    if isinstance(catalog, list):
+        out["genre_applied"] = [
+            (str(c.get("title", "")), _one_line(c["genre_applied"]))
+            for c in catalog if isinstance(c, dict) and c.get("genre_applied")
+        ]
+    return {k: v for k, v in out.items() if v}
 
 
-def free_text_clauses(text):
-    """Artist/territory mentions from prose — TIGHT filters so no stats/lyrics leak."""
-    out = set()
-    # slash-separated Title-Case proper-name lists (Counting Crows / Wallflowers / Wilco)
-    for m in re.finditer(rf'({TITLE}(?:\s*/\s*{TITLE}){{1,}})', text):
-        frag = _clean(m.group(1))
-        if '/' in frag and not _noise(frag) and not SECTION_WORDS.search(frag):
-            out.add(frag)
-    # "ProperName ['song'] territory|direction|lineage|era|revival"
-    for m in re.finditer(rf'({TITLE}(?:\s+["\'][^"\']{{1,40}}["\'])?)\s+(territory|direction|lineage|era|revival)\b', text):
-        phrase = _clean(f"{m.group(1)} {m.group(2)}")
-        if not _noise(phrase) and not SECTION_WORDS.search(phrase):
-            out.add(phrase)
-    # explicit "Reference territory:" labeled lines (curated; keep even with a year)
-    for m in re.finditer(r'Reference territory[:\s]+([^\n]+)', text, re.I):
-        out.add(_clean(m.group(1)))
-    return out
+def band_sources(project_root, band, songbook_dir):
+    """The files a band's index is built from, as (relpath, abspath) pairs."""
+    files = [(os.path.join("docs", "songbook", band, fn), os.path.join(songbook_dir, fn))
+             for fn in sorted(os.listdir(songbook_dir)) if fn.endswith(".md")]
+    profile = os.path.join(project_root, "docs", "band-profiles", f"{band}.yaml")
+    if os.path.exists(profile):
+        files.append((os.path.join("docs", "band-profiles", f"{band}.yaml"), profile))
+    return files
 
 
-def reference_tracks_block(profile_text):
-    """Core influences — artist names from the profile reference_tracks list."""
-    out = set()
-    m = re.search(r'^reference_tracks:\s*\n(.*?)(?=^\S)', profile_text, re.M | re.S)
-    if not m:
-        return out
-    for line in re.finditer(r'^\s*-\s*"([^"]+)"', m.group(1), re.M):
-        artist = re.split(r'\s*[—(]\s*|\s+[-–]\s+', line.group(1), 1)[0]
-        out.add(_clean(artist))
-    return out
-
-
-def genre_applied_map(profile_text):
-    """Curated per-song genre+artist descriptions from the profile catalog (clean)."""
-    out = []
-    for m in re.finditer(r'-\s*title:\s*"?(.+?)"?\s*\n(.*?)(?=^\s*-\s*title:|\Z)',
-                         profile_text, re.M | re.S):
-        title = _clean(m.group(1))
-        block = m.group(2)
-        g = re.search(r'genre_applied:\s*(?:>\s*\n((?:[ \t]{5,}.*\n)+)|"?([^\n]+?)"?\s*$)',
-                      block, re.M)
-        if g:
-            val = _clean(g.group(1) or g.group(2) or "")
-            if val:
-                out.append((title, val))
-    return out
+def fingerprint(sources):
+    h = hashlib.sha256()
+    for rel, path in sources:
+        h.update(rel.replace(os.sep, "/").encode("utf-8"))
+        with open(path, "rb") as f:
+            h.update(hashlib.sha256(f.read()).digest())
+    return h.hexdigest()
 
 
 def collect_band(project_root, band, songbook_dir):
-    rows, clauses = [], set()
+    songs, territory = [], []
     for fn in sorted(os.listdir(songbook_dir)):
         if not fn.endswith(".md"):
             continue
         text = read(os.path.join(songbook_dir, fn))
-        clauses |= free_text_clauses(text)
-        prompt = first_style_prompt(text)
-        if prompt is None:
-            continue
-        a1, a2 = anchors(prompt)
-        rows.append({"title": title_of(text, fn[:-3]), "status": status_of(text),
-                     "anchor": a1, "anchor2": a2})
-    influences, applied, profile_scanned = set(), [], False
-    ptext = ""
+        title = title_of(text, fn[:-3])
+        for t in labeled_territory(text):
+            territory.append((title, t))
+        songs.append({"title": title, "status": status_of(text),
+                      "style_prompt": first_style_prompt(text)})
+    fields, profile_scanned = {}, False
     profile = os.path.join(project_root, "docs", "band-profiles", f"{band}.yaml")
     if os.path.exists(profile):
-        ptext = read(profile)
         profile_scanned = True
-        applied = genre_applied_map(ptext)
-        clauses |= free_text_clauses(ptext)
-    own = band_stopwords(band, ptext)
-    if profile_scanned:
-        influences = {c for c in reference_tracks_block(ptext)
-                      if c and c.lower() not in STOP and c.lower() not in own}
-    clauses = {c for c in clauses if not _noise(c, own)}
-    return (rows, sorted(influences, key=str.lower), applied,
-            sorted(clauses, key=str.lower), profile_scanned)
+        try:
+            fields = profile_fields(yaml.safe_load(read(profile)))
+        except yaml.YAMLError:
+            fields = {}
+    return songs, territory, fields, profile_scanned
 
 
-def render(band, rows, influences, applied, clauses, profile_scanned, ts):
-    L = [AUTOGEN_START, f"# {band} — Genre Coverage",
-         f"_Generated by `genre-coverage.py` on {ts}. From published style prompts AND the "
-         f"band-profile catalog (reference_tracks + per-song genre_applied) + filtered prose. "
-         f"The source of truth for 'what has this band used' — consult BEFORE any "
-         f"fresh/never-done/variety claim._", "",
-         f"**{len(rows)} songbook entries · band profile {'scanned' if profile_scanned else 'NOT FOUND'}.**", ""]
-    L += ["## Genre anchors used (style-prompt position 1, deduped)", ""]
-    L += [f"- {a}" for a in sorted({r['anchor'].lower() for r in rows if r['anchor']})]
-    if influences:
-        L += ["", "## Core influences (band-profile reference_tracks)", ""]
-        L += [f"- {c}" for c in influences]
-    if applied:
-        L += ["", "## Per-song applied genre + artist territory (profile catalog — curated)", ""]
-        for title, val in applied:
-            L.append(f"- **{title}:** {val}")
-    L += ["", "## Other artist / reference territory cited (filtered prose)", "",
-          "_A genre is often COVERED under an artist label — '90s alt' = Counting Crows / "
-          "Wilco; sadcore = Songs:Ohia / Red House Painters. Check here too._", ""]
-    L += [f"- {c}" for c in clauses]
-    L += ["", "## Per-song genre anchor", "",
-          "| Song | Status | Genre anchor | + 2nd descriptor |",
-          "|------|--------|--------------|------------------|"]
-    for r in sorted(rows, key=lambda x: x["title"].lower()):
-        L.append(f"| {r['title']} | {r['status']} | {r['anchor']} | {r['anchor2']} |")
+def render(band, songs, territory, fields, profile_scanned, ts, digest):
+    with_prompt = [s for s in songs if s["style_prompt"]]
+    L = [AUTOGEN_START, f"<!-- sources-sha256: {digest} -->", f"# {band} — Genre Coverage",
+         f"_Generated by `genre-coverage.py` on {ts}. Extracted fields only — curated "
+         f"band-profile fields, labeled reference-territory lines, and every style prompt "
+         f"verbatim. Nothing here is inferred from prose. Read it before any fresh / "
+         f"never-done / variety claim, and judge coverage from what is written: a genre is "
+         f"often covered under an artist name. Absence here does not prove a direction is "
+         f"fresh — grep the songbook and profile before saying it was never done._", "",
+         f"**{len(songs)} songbook entries ({len(with_prompt)} with a style prompt) · "
+         f"band profile {'scanned' if profile_scanned else 'NOT FOUND'}.**", ""]
+    if fields.get("genre"):
+        L += ["## Band genre (profile)", "", fields["genre"], ""]
+    if fields.get("reference_tracks"):
+        L += ["## Core influences (profile reference_tracks)", ""]
+        L += [f"- {r}" for r in fields["reference_tracks"]] + [""]
+    if fields.get("style_alternatives"):
+        L += ["## Style alternatives (profile)", ""]
+        L += [f"- **{k}:** {v}" if k else f"- {v}" for k, v in fields["style_alternatives"]] + [""]
+    if fields.get("voice_use_cases"):
+        L += ["## Voice use cases (profile voice_profiles)", ""]
+        L += [f"- **{n}:** {u}" for n, u in fields["voice_use_cases"]] + [""]
+    if fields.get("genre_applied"):
+        L += ["## Per-song applied genre (profile catalog)", ""]
+        L += [f"- **{t}:** {g}" for t, g in fields["genre_applied"]] + [""]
+    if territory:
+        L += ["## Labeled reference territory (songbook)", ""]
+        L += [f"- **{t}:** {v}" for t, v in territory] + [""]
+    L += ["## Style prompts (verbatim)", ""]
+    for s in sorted(songs, key=lambda x: x["title"].lower()):
+        prompt = _one_line(s["style_prompt"]) if s["style_prompt"] else "_(no style prompt block)_"
+        L.append(f"- **{s['title']}** ({s['status']}): {prompt}")
     L.append(AUTOGEN_END)
     return "\n".join(L) + "\n"
 
 
+def doc_path(project_root, band):
+    return os.path.join(project_root, "docs", f"{band}-genre-coverage.md")
+
+
 def write_doc(project_root, band, body):
-    out = os.path.join(project_root, "docs", f"{band}-genre-coverage.md")
+    out = doc_path(project_root, band)
     if os.path.exists(out):
         ex = read(out)
         if AUTOGEN_START in ex and AUTOGEN_END in ex:
             new = re.sub(re.escape(AUTOGEN_START) + r".*?" + re.escape(AUTOGEN_END),
-                         body.strip(), ex, flags=re.DOTALL)
+                         lambda _m: body.strip(), ex, flags=re.DOTALL)
             with open(out, "w", encoding="utf-8") as f:
                 f.write(new)
             return out
@@ -236,25 +207,36 @@ def write_doc(project_root, band, body):
     return out
 
 
+def check_band(project_root, band, songbook_dir):
+    """'current' | 'stale' | 'missing' for one band's index."""
+    out = doc_path(project_root, band)
+    if not os.path.exists(out):
+        return "missing"
+    m = FINGERPRINT_RE.search(read(out))
+    digest = fingerprint(band_sources(project_root, band, songbook_dir))
+    return "current" if m and m.group(1) == digest else "stale"
+
+
 def main():
     ap = argparse.ArgumentParser(
-        description="Build the genre-coverage index per band (anchors + artist/"
-        "reference territory) so Mac never claims a direction is 'fresh' when it "
-        "isn't. Writes docs/<band>-genre-coverage.md (AUTOGEN section preserved).")
+        description="Build the per-band genre-coverage index from extracted fields "
+        "(profile genre, reference_tracks, style_alternatives, voice use_case, catalog "
+        "genre_applied, labeled reference-territory lines, verbatim style prompts). "
+        "Writes docs/<band>-genre-coverage.md (AUTOGEN section preserved-around). "
+        "--check reports stale or missing indexes without writing.")
     ap.add_argument("project_root", help="Project root directory")
     ap.add_argument("--band", help="Limit to a single band slug (default: all bands)")
-    ap.add_argument("--timestamp", default="(unspecified)",
-                    help="ISO timestamp stamped into the generated doc header")
+    ap.add_argument("--timestamp", default=None,
+                    help="Timestamp for the doc header (default: now, ISO 8601 UTC)")
+    ap.add_argument("--check", action="store_true",
+                    help="Write nothing; exit 1 when any band's index is stale or missing")
     ap.add_argument("--format", choices=["text", "json"], default="text",
                     help="Output format for the run summary (default: text)")
     args = ap.parse_args()
     songbook = os.path.join(args.project_root, "docs", "songbook")
     if not os.path.isdir(songbook):
-        # Empty catalog (no songbook yet — fresh project, first session) is a
-        # NORMAL no-op, not an error. A Pulse wake or a first save calls this
-        # before any song exists; a hard exit-2 here would look like a failure
-        # to the user (or log a scary error in a cron context) when there is
-        # simply nothing to index. Exit clean with a zeroed result.
+        # Empty catalog (fresh project, first session) is a normal no-op, not an
+        # error: a Pulse wake or a first save calls this before any song exists.
         if args.format == "json":
             print(json.dumps({"bands": [], "band_count": 0}, indent=2))
         else:
@@ -262,29 +244,40 @@ def main():
         return 0
     bands = [args.band] if args.band else sorted(
         d for d in os.listdir(songbook) if os.path.isdir(os.path.join(songbook, d)))
+    ts = args.timestamp or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     results = []
     for band in bands:
         bd = os.path.join(songbook, band)
         if not os.path.isdir(bd):
             continue
-        rows, influences, applied, clauses, scanned = collect_band(args.project_root, band, bd)
+        if args.check:
+            state = check_band(args.project_root, band, bd)
+            results.append({"band": band, "index": state, "output": doc_path(args.project_root, band)})
+            if args.format == "text":
+                print(f"{band}: {state}")
+            continue
+        songs, territory, fields, scanned = collect_band(args.project_root, band, bd)
+        digest = fingerprint(band_sources(args.project_root, band, bd))
         out = write_doc(args.project_root, band,
-                        render(band, rows, influences, applied, clauses, scanned, args.timestamp))
+                        render(band, songs, territory, fields, scanned, ts, digest))
         results.append({
             "band": band,
-            "entries": len(rows),
+            "entries": len(songs),
+            "style_prompts": sum(1 for s in songs if s["style_prompt"]),
             "profile_scanned": scanned,
-            "influences": len(influences),
-            "applied": len(applied),
-            "prose_refs": len(clauses),
+            "influences": len(fields.get("reference_tracks", [])),
+            "applied": len(fields.get("genre_applied", [])),
+            "labeled_territory": len(territory),
             "output": out,
         })
         if args.format == "text":
-            print(f"{band}: {len(rows)} entries, profile={'yes' if scanned else 'NO'}, "
-                  f"{len(influences)} influences, {len(applied)} applied, "
-                  f"{len(clauses)} prose refs -> {out}")
+            print(f"{band}: {len(songs)} entries, profile={'yes' if scanned else 'NO'}, "
+                  f"{results[-1]['influences']} influences, {results[-1]['applied']} applied, "
+                  f"{len(territory)} labeled territory -> {out}")
     if args.format == "json":
         print(json.dumps({"bands": results, "band_count": len(results)}, indent=2))
+    if args.check and any(r["index"] != "current" for r in results):
+        return 1
     return 0
 
 

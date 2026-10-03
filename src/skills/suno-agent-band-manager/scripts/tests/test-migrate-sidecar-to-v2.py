@@ -252,9 +252,10 @@ def test_sidecar_state_classification(synthetic_project, tmp_path):
     tmp_path2, sanctum = synthetic_project
     # v1: index.md present, no v2 markers.
     assert mod.sidecar_state(sanctum) == "v1"
-    # v2: MEMORY.md present.
+    # A partial v2 spine (MEMORY.md beside the old index.md) is damaged:
+    # never migrated over, never loaded as if whole.
     (sanctum / "MEMORY.md").write_text("# memory\n")
-    assert mod.sidecar_state(sanctum) == "v2"
+    assert mod.sidecar_state(sanctum) == "damaged"
     # absent: dir doesn't exist.
     assert mod.sidecar_state(tmp_path / "nope" / "band-manager-sidecar") == "absent"
     # damaged: dir exists, neither marker.
@@ -374,3 +375,46 @@ def test_in_place_staging_mode_still_works(synthetic_project):
     assert (sanctum / "index.md").is_file()
     assert mod.sidecar_state(sanctum) == "v1"
     assert (out_dir / "MEMORY.md").is_file()
+
+
+def test_migration_index_lists_preserved_files_and_persona_marks_migration(synthetic_project):
+    tmp_path, sanctum = synthetic_project
+    out_dir, result = run_migrate(tmp_path, sanctum)
+    index = (out_dir / "INDEX.md").read_text(encoding="utf-8")
+    assert "`patterns.md`" in index
+    assert "`chronology.md`" in index
+    assert "`_collection_*.txt`" in index
+    persona = (out_dir / "PERSONA.md").read_text(encoding="utf-8")
+    assert "Woke into the v2 sanctum" in persona
+    assert "First Breath." not in persona
+
+
+def test_migration_seeds_access_boundaries_when_old_store_had_none(synthetic_project):
+    tmp_path, sanctum = synthetic_project
+    (sanctum / "access-boundaries.md").unlink()
+    out_dir, result = run_migrate(tmp_path, sanctum)
+    text = (out_dir / "access-boundaries.md").read_text(encoding="utf-8")
+    assert "Access Boundaries for Mac" in text
+    # The full spine exists, so the migrated sanctum classifies as v2.
+    assert mod.sidecar_state(out_dir) == "v2"
+
+
+def test_migration_capabilities_has_builtin_roster(synthetic_project):
+    tmp_path, sanctum = synthetic_project
+    out_dir, _ = run_migrate(tmp_path, sanctum)
+    caps = (out_dir / "CAPABILITIES.md").read_text(encoding="utf-8")
+    assert "| [CS] | Create Song |" in caps
+
+
+def test_v1_detected_on_case_insensitive_filesystem(synthetic_project, monkeypatch):
+    """A lowercase index.md must not read as the v2 INDEX.md on APFS/NTFS."""
+    tmp_path, sanctum = synthetic_project
+    real_is_file = Path.is_file
+
+    def insensitive_is_file(self):
+        if self.parent == sanctum:
+            return any(p.name.lower() == self.name.lower() for p in sanctum.iterdir())
+        return real_is_file(self)
+
+    monkeypatch.setattr(Path, "is_file", insensitive_is_file)
+    assert mod.sidecar_state(sanctum) == "v1"

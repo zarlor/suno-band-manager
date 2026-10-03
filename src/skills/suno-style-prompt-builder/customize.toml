@@ -1,9 +1,32 @@
-# Customization surface for suno-style-prompt-builder.
-# Teams override via {project-root}/_bmad/custom/suno-style-prompt-builder.toml
-# Users override via {project-root}/_bmad/custom/suno-style-prompt-builder.user.toml
-# Merge order: this base -> team -> user. Scalars override; plain arrays append.
+# DO NOT EDIT -- overwritten on every update.
+#
+# Workflow customization surface for suno-style-prompt-builder.
+# Team overrides:     {project-root}/_bmad/custom/suno-style-prompt-builder.toml
+# Personal overrides: {project-root}/_bmad/custom/suno-style-prompt-builder.user.toml
 
 [workflow]
+
+# --- Configurable below. Overrides merge per BMad structural rules: ---
+#   scalars: override wins • arrays (persistent_facts, activation_steps_*): append
+#   arrays-of-tables with `code`/`id`: replace matching items, append new ones.
+
+# Steps to run before the standard activation (config load, greet).
+# Overrides append. Applied in headless runs too.
+
 activation_steps_prepend = []
+
+# Steps to run after greet (headless: after config load) but before Step 1.
+# Overrides append. Applied in headless runs too.
+
 activation_steps_append = []
-persistent_facts = ["file:{project-root}/**/project-context.md"]
+
+# Persistent facts the workflow keeps in mind for the whole run.
+# Each entry is a literal sentence, or `file:` plus a path (globs allowed).
+# Overrides append.
+
+persistent_facts = []
+
+# Items run when the package is accepted (interactive) or emitted (headless).
+# Override wins. Empty = nothing.
+
+on_complete = []

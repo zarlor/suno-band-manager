@@ -13,7 +13,7 @@ from pathlib import Path
 
 SCRIPT = str(Path(__file__).parent.parent / "assemble-summary.py")
 
-# Canonical code -> meaning, mirrored from SKILL.md "Full menu" table
+# Canonical code -> meaning, mirrored from SKILL.md menu table
 # (Step 2: Select Transformations). This is the source of truth; both
 # assemble-summary.py and validate-options.py must agree with it.
 CANONICAL_CODE_DESCRIPTIONS = {
@@ -132,9 +132,16 @@ class TestAssembleSummary:
 
     def test_code_descriptions_match_canonical(self):
         # Guard against silent drift: assemble-summary.py CODE_DESCRIPTIONS must
-        # match the canonical SKILL.md "Full menu" mapping exactly.
+        # match the canonical SKILL.md menu-table mapping exactly.
         module = _load_module()
         assert module.CODE_DESCRIPTIONS == CANONICAL_CODE_DESCRIPTIONS
+
+    def test_skill_menu_table_matches_canonical(self):
+        # The SKILL.md Step 2 menu table is the human-facing source of truth.
+        import re
+        skill = (Path(__file__).parent.parent.parent / "SKILL.md").read_text()
+        rows = dict(re.findall(r"^\| ([A-Z]{2}) \| ([^|]+?) \|", skill, re.MULTILINE))
+        assert rows == CANONICAL_CODE_DESCRIPTIONS
 
     def test_json_output(self, tmp_path):
         val, syl, cli = create_test_files(tmp_path)
@@ -181,6 +188,33 @@ class TestAssembleSummary:
         assert code == 0
         # 4 sections * 15 sec = 60 sec = 1:00
         assert "1:00" in output
+
+    def test_character_budget_from_validation_metrics(self, tmp_path):
+        val, syl, cli = create_test_files(tmp_path)
+        data = json.loads(Path(val).read_text())
+        data["metrics"].update({"character_count": 1850, "lyric_character_count": 1640,
+                                "metatag_character_count": 210})
+        Path(val).write_text(json.dumps(data))
+        out_file = tmp_path / "out.json"
+        _, code = run_script("--validation", val, "--syllables", syl, "--cliches", cli, "-o", str(out_file))
+        assert code == 0
+        report = json.loads(out_file.read_text())
+        m = report["metrics"]
+        assert m["character_budget"] == "1850/3000 (62%)"
+        assert m["lyric_character_count"] == 1640
+        assert m["metatag_character_count"] == 210
+        assert m["over_quality_budget"] is False
+        assert "Lyrics 1640 + Metatags 210 = 1850/3000 (62%)" in report["markdown"]
+
+    def test_duration_prefers_syllable_counter_range(self, tmp_path):
+        val, syl, cli = create_test_files(tmp_path)
+        data = json.loads(Path(syl).read_text())
+        data["metrics"]["estimated_duration"] = {"min_seconds": 165, "max_seconds": 210,
+                                                 "formatted": "2:45-3:30"}
+        Path(syl).write_text(json.dumps(data))
+        output, code = run_script("--validation", val, "--syllables", syl, "--cliches", cli)
+        assert code == 0
+        assert "2:45-3:30" in output
 
     def test_missing_files_handled(self, tmp_path):
         missing = str(tmp_path / "nonexistent.json")

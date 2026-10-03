@@ -87,11 +87,11 @@ def test_verify_size_tolerance_absorbs_id3_variance():
 
 
 def test_verify_filename_variant_matches():
-    """A -Redux variant of the canonical name still matches by normalized identity."""
+    """A -v2 variant of the canonical name still matches by normalized identity."""
     root = make_project({"Song A.mp3": 100000})
     run(MANIFEST_SCRIPT, [str(root)])
     audio = root / "docs" / "audio"
-    (audio / "Song A.mp3").rename(audio / "Song A-Redux.mp3")
+    (audio / "Song A.mp3").rename(audio / "Song A-v2.mp3")
     code, out = run(VERIFY_SCRIPT, [str(root)])
     assert code == 0
     assert out["summary"]["matched"] == 1

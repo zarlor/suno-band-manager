@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # ///
 """Tests for configure-guard.py — Claude hook merge, AGENTS.md standing order,
 idempotency, malformed-settings handling, and exit codes."""
@@ -107,8 +107,20 @@ def test_agents_md_appends_preserving_content():
         assert "Suno Pipeline Rule" in content
 
 
+def test_unresolved_project_root_rejected():
+    with tempfile.TemporaryDirectory() as tmp:
+        code, data = run(["--agents-md-path", "{project-root}/AGENTS.md"])
+        assert code == 1, (code, data)
+        assert statuses(data) == ["error"]
+        assert not Path("{project-root}").exists()
+        code, data = run(["--settings-path", str(Path(tmp) / "s.json"),
+                          "--guard-script-path", "{project-root}/x/pipeline-guard.py"])
+        assert code == 1, (code, data)
+
+
 if __name__ == "__main__":
     tests = [
+        test_unresolved_project_root_rejected,
         test_no_targets_exit_1,
         test_claude_hook_configured_then_idempotent,
         test_claude_hook_preserves_other_settings,

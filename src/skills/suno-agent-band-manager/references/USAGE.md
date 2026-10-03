@@ -1,6 +1,6 @@
 # Suno Band Manager -- Usage Guide
 
-This guide covers everything you need to know about working with Mac, the Suno Band Manager agent. Mac works with any LLM CLI that supports the [Agent Skills](https://agentskills.io) standard — see [INSTALLATION.md](INSTALLATION.md) for setup.
+This guide covers everything you need to know about working with Mac, the Suno Band Manager agent. Mac works with any LLM CLI that supports the [Agent Skills](https://agentskills.io) standard — see `INSTALLATION.md` at the repository root for setup.
 
 ---
 
@@ -10,7 +10,7 @@ This guide covers everything you need to know about working with Mac, the Suno B
 2. [Interaction Modes](#2-interaction-modes)
 3. [Creating Songs](#3-creating-songs-the-main-workflow)
 4. [Band Profiles](#4-band-profiles)
-5. [Refining Songs](#5-refining-songs-the-feedback-loop)
+5. [Refining Songs](#5-refining-songs-bring-back-a-take)
 6. [Direct Skill Access](#6-direct-skill-access)
 7. [Songbook & Memory](#7-songbook--memory)
 8. [Headless/Automation](#8-headlessautomation)
@@ -28,16 +28,16 @@ The very first time you invoke Mac, he runs through a setup flow to learn how yo
 2. If it does not exist, Mac runs `scripts/pre-activate.py` to scaffold the directory.
 3. Mac loads `init.md` and walks you through the first-run setup.
 
-### The 4 Setup Questions
+### Setup: One Question, Then Learning as You Go
 
-Mac asks these conversationally -- not as a form:
+Mac doesn't open with a form. He asks one thing -- "What kind of music are you looking to make today?" -- and gets you into a song. The rest he picks up as you work and saves to memory the moment he learns it:
 
-| # | Question | Why It Matters |
-|---|----------|----------------|
-| 1 | **What's your Suno setup?** (Free, Pro, Premier) | Determines which models, sliders, and features Mac can recommend. Free users get v6-mini; Pro/Premier unlock v6 and v6-wild, the Weirdness/Style Influence sliders, the v6 Variety and Max Mode controls, Voices, Custom Models, and more. Suno Studio is Premier-only. It also sets your **download budget** -- from 2026-09-03 Suno caps downloads (Free 7 lifetime, Pro 20/month, Premier 60/month, with Studio exports exempt), and commercial rights attach to a permitted download rather than to the plan itself, so Mac will steer you toward picking a keeper before you download rather than downloading every take. If you upgrade later, just tell Mac. |
-| 2 | **How do you like to work?** (Demo, Studio, Jam) | Sets your default interaction mode. You can switch modes anytime -- even mid-song. Try Demo first and explore from there. You can change your default anytime by telling Mac. |
-| 3 | **Do you have a band or project?** | If yes, Mac offers to create a band profile right away. If not, you can work one-off. |
-| 4 | **Anything you always want or never want?** | Captures your baseline exclusions ("no autotune, ever"), preferred genres, and vocal preferences. These are just starting points -- you can change any of this anytime. |
+| What Mac learns | How | Why It Matters |
+|---|---|---|
+| **Your Suno plan** (Free, Pro, Premier) | Until you say, Mac builds for Free and tells you so on your first package: "Building this for Free (v6-mini, no Exclude Styles). On Pro or Premier? Say so and I'll build for v6." | Determines which models, sliders, and features Mac can recommend. Free users get v6-mini; Pro/Premier unlock v6 and v6-wild, the Weirdness/Style Influence sliders, the v6 Variety and Max Mode controls, Voices, Custom Models, and more. Suno Studio is Premier-only. It also sets your **download budget** -- from 2026-09-03 Suno caps downloads (Free 7 lifetime, Pro 20/month, Premier 60/month, with Studio exports exempt), and commercial rights attach to a permitted download rather than to the plan itself. Mac keeps count of the downloads you've used this cycle (tell him when you download), says what's left when you pick a keeper, and steers you to listen in the browser and download only the keeper. |
+| **How you like to work** (Demo, Studio, Jam) | Starts in Demo; notices if you're hands-on and suggests Studio after the first song | Sets your default interaction mode. You can switch anytime -- even mid-song. |
+| **Your band or project** | When you mention one, Mac offers to create a band profile after the song | Profiles keep every song's sound consistent. |
+| **What you always or never want** | "I hate autotune" becomes a default exclusion | Your baseline exclusions, genres, and vocal preferences -- starting points you can change anytime. |
 
 All of these preferences are changeable through conversation at any time -- no need to edit config files or re-run the installer.
 
@@ -310,22 +310,21 @@ For a field-by-field mapping of where each component goes in Suno's UI, see [Sun
 
 ### Tips for Using the Output in Suno
 
-Mac includes this guidance on your first song or in Demo mode:
+Mac walks you through this on your first song (and any time you ask). Work top to bottom in the package's order -- it matches Suno's Create screen:
 
-1. Switch to **Custom Mode** in Suno
-2. Pick the **model** — v6 (v6-mini on Free). For a quick wild card, run the same prompt on v6-wild; the package's own wild-card prompt runs on v6 with the same sliders.
-3. Select your **Voice** or **Persona** (Pro/Premier) if recommended
-4. Select your **Custom Model** (Pro/Premier) if recommended
-5. Set **Inspo** playlist if recommended (Pro/Premier; availability on v6 unverified)
-6. Paste **Lyrics** into the Lyrics field (set Lyrics Mode to Manual)
-7. Paste the **Style Prompt** into the "Style of Music" field
-8. Add **Exclude Styles** as a comma-separated list (Pro/Premier)
-9. Under **More Options**, set Vocal Gender and the sliders, plus the v6 controls: **Variety at Exact style** (any higher notch rewrites your style prompt), **Max Mode** on for any take you might keep (2× credits; it's applied at generation and can't be added to a finished take), **Duration**, and **Personalize** off
-10. Add your **Song Title**
-11. Hit **Create** and generate **3-5 versions** -- Suno interprets the same inputs differently each time
-12. **Inspect results** -- listen through all versions before deciding. If a version is mostly right but one section is weak, try **section replacement** in the Song Editor to fix the targeted area rather than regenerating the whole song
+1. Pick the **model** at the top right -- v6 (v6-mini on Free). For a quick wild card, run the same prompt on v6-wild; the package's own wild-card prompt runs on v6 with the same sliders.
+2. Leave **"Describe your song"** empty -- the Lyrics and Styles fields carry everything.
+3. Add your **Voice** or **Persona** (Pro/Premier), **Audio**, or **Inspo** from the chips if the package names one (Inspo availability on v6 unverified)
+4. Paste **Lyrics** into the Lyrics field (Lyrics Mode Manual)
+5. Paste the **Style Prompt** into **Styles**
+6. In the **Controls panel**, top to bottom: **Exclude Styles** as a comma-separated list (Pro/Premier), then Vocal Gender, Duration, **Max Mode** (on for any take you might keep -- 2× credits; it's applied at generation and can't be added to a finished take), Weirdness, Style Influence, Audio Influence, **Variety at Exact style** (any higher notch rewrites your style prompt), and **Personalize** off
+7. Add your **Song Title** and pick the **Save to** folder for the band
+8. Hit **Create** and generate **3-5 versions** -- Suno interprets the same inputs differently each time. When you're comparing one change against another, about 4 takes per version reads more reliably than 2 (the spread between takes can be bigger than the change). That's a suggestion; how many you run is up to you
+9. **Listen in the browser before downloading.** Downloads are capped, so download only the keeper (or a take Mac needs to measure). If a version is mostly right but one section is weak, try **section replacement** in the Song Editor rather than regenerating the whole song
 
 **A note on tempo control:** BPM tags in lyrics (e.g., `[Verse: 65 BPM]`) have no detectable effect on Suno's output -- confirmed by librosa analysis across multiple songs. Perceived tempo is actually controlled through how lyrics are written: short fragmented lines feel slow, packed lines feel fast, and line breaks control where the singer breathes. For drum feel changes, use metatags like `[Heavy: halftime]` rather than BPM values. Mac handles this automatically when building your lyrics package.
+
+**Spoken pieces:** Suno's separate Speech model (beta, 2026-10-01) makes spoken word over music from plain paragraphs. It's a possible route for a poem you want spoken rather than sung, but it's untested here, and Mac will say so.
 
 ---
 
@@ -441,9 +440,14 @@ Presented as friendly recommendations, not failures: "Your profile is valid and 
 
 ---
 
-## 5. Refining Songs (the Feedback Loop)
+## 5. Refining Songs (bring back a take)
 
-The refinement loop (menu code: **RS**) is where songs get great. After generating a package and trying it on Suno, come back to Mac with feedback.
+Refine Song (menu code: **RS**) is where songs get great, and it's the one place to bring a take back. Try the package on Suno, listen, then tell Mac what you hear. He works in two parts:
+
+1. **Diagnose.** Mac runs the Feedback Elicitor behind the scenes to work out what's actually off -- even when all you can say is "it doesn't feel right."
+2. **Rebuild only what changed.** The style prompt, the lyrics, or both go back through the same skills that built the package, and Mac shows you just the changed parts under a "What Changed" list. A settings-only change comes back as a short note.
+
+Saying "feedback loop" or "FL" to Mac lands here too. (The Feedback Elicitor still runs on its own as a standalone skill -- see [Direct Skill Access](#6-direct-skill-access) -- but on its own it diagnoses without rebuilding the package.)
 
 ### How to Start a Refinement
 
@@ -451,10 +455,12 @@ The refinement loop (menu code: **RS**) is where songs get great. After generati
 ```
 You: The vocals sound too polished -- I wanted something rawer
 ```
-Mac handles light adjustments directly for clear, simple tweaks. For deeper feedback, he routes to the Feedback Elicitor.
+Mac handles a slider tweak or a word swap on the spot. Anything that changes the style prompt, the exclusions, or the lyrics' tags and structure goes back through the matching skill, and deeper feedback goes through the full diagnose-and-rebuild.
 
 **If you are starting fresh:**
-Select **RS** from the menu or say "I want to refine a song." Mac asks what you generated, what prompts you used, and what you were going for.
+Select **RS** from the menu or say "I want to refine a song." Mac looks the song up in your songbook first and asks only what he can't find. You don't need to download the take to refine it -- only when a measurement would settle the question, and Mac will say it costs a download.
+
+**What plays isn't always what was asked for.** The style text on a Suno song page shows what you typed (or Suno's rewrite of it), not what actually landed. Mac goes by the audio and your ear. If a take is nearly right but its ending, final chorus or vocal level lets it down, Mac can suggest repairs to try before a full re-roll: Extend from before the last section, Fade Out, and a few others.
 
 ### The Five Feedback Types
 
@@ -508,9 +514,9 @@ You: It's way too polished -- I want it about 70% toward raw.
 
 **Non-convergence fallback:** If elicitation still does not converge, Mac suggests generating 2-3 variants with different parameter profiles and letting you compare. This turns an elicitation problem into a selection problem.
 
-### What the Adjustment Recommendations Look Like
+### What the Diagnosis Looks Like
 
-After elicitation, Mac presents a structured recommendation package:
+After elicitation, the diagnosis comes back as structured recommendations, and Mac tells you what it found before rebuilding. In the Feedback Elicitor's standalone form it looks like this:
 
 ```
 ## Feedback Summary
@@ -550,7 +556,7 @@ Mac: You've mentioned wanting rawer vocals twice now -- want me to update your
 
 ### The Iteration Loop
 
-You can keep refining. Each time you return with feedback, Mac loops back through the Feedback Elicitor for fresh triage. Adjustments compound, and the song converges on your vision.
+You can keep refining. Each time you return with a take, Mac diagnoses it fresh and rebuilds what changed. Adjustments compound, and the song converges on your vision.
 
 ```
 Round 1: "Too polished" → Raw up the production
@@ -562,7 +568,7 @@ Round 3: "That's it." → Save successful elements to profile
 
 ## 6. Direct Skill Access
 
-Mac orchestrates four specialized skills. You can use them directly through Mac's menu or invoke them independently.
+Mac orchestrates five specialized skills. You can use them directly through Mac's menu or invoke them independently.
 
 **Claude Code (slash commands):**
 - `/suno-setup` -- Install or reconfigure the module
@@ -570,7 +576,7 @@ Mac orchestrates four specialized skills. You can use them directly through Mac'
 - `/suno-band-profile-manager` -- Manage band profiles directly
 - `/suno-style-prompt-builder` -- Build style prompts directly
 - `/suno-lyric-transformer` -- Transform lyrics directly
-- `/suno-feedback-elicitor` -- Feedback loop directly
+- `/suno-feedback-elicitor` -- Diagnose a take directly (adjustment recommendations, no rebuild)
 
 **Other LLM CLIs:** Skills in `.agents/skills/` are auto-discovered. Use your tool's native skill activation (e.g., `@skill-name` in Windsurf, `$skill-name` in Codex, or by description match in Gemini CLI).
 
@@ -587,13 +593,14 @@ Mac orchestrates four specialized skills. You can use them directly through Mac'
 
 | Menu Code | Skill | Standalone Use Case |
 |-----------|-------|-------------------|
-| **SP** | [Style Prompt Builder](src/skills/suno-style-prompt-builder/references/README.md) | You already have lyrics and just need the sound description |
-| **TL** | [Lyric Transformer](src/skills/suno-lyric-transformer/references/README.md) | You have text to convert and don't need a style prompt |
-| **FL** | [Feedback Elicitor](src/skills/suno-feedback-elicitor/references/README.md) | You want structured feedback handling without Mac's full orchestration |
-| **MB** | [Band Profile Manager](src/skills/suno-band-profile-manager/references/README.md) | You want to create, edit, list, duplicate, or delete profiles directly |
-| **WV** | [Band Profile Manager](src/skills/suno-band-profile-manager/references/README.md) | You want to analyze writer voice patterns from writing samples |
-| **HC** | [Band Profile Manager](src/skills/suno-band-profile-manager/references/README.md) | You want to assess a profile's completeness and quality |
-| **AL** | [Lyric Transformer](src/skills/suno-lyric-transformer/references/README.md) | You want to analyze text for song structure potential without transforming it |
+| **SP** | Style Prompt Builder (the suno-style-prompt-builder skill) | You already have lyrics and just need the sound description |
+| **TL** | Lyric Transformer (the suno-lyric-transformer skill) | You have text to convert and don't need a style prompt |
+| **FL** | Feedback Elicitor (the suno-feedback-elicitor skill) | You want a take diagnosed into adjustment recommendations without the rebuild (through Mac, use RS) |
+| **AA** | Feedback Elicitor (the suno-feedback-elicitor skill) | You want a render's tempo, key, loudness (and a section map with the PyTorch tools on) measured |
+| **MB** | Band Profile Manager (the suno-band-profile-manager skill) | You want to create, edit, list, duplicate, or delete profiles directly |
+| **WV** | Band Profile Manager (the suno-band-profile-manager skill) | You want to analyze writer voice patterns from writing samples |
+| **HC** | Band Profile Manager (the suno-band-profile-manager skill) | You want to assess a profile's completeness and quality |
+| **AL** | Lyric Transformer (the suno-lyric-transformer skill) | You want to analyze text for song structure potential without transforming it |
 
 ### Lyric Transformer Options
 
@@ -635,13 +642,13 @@ This replaces gut-feel prompt tweaking with systematic iteration. Mac can sugges
 
 Mac routes playlist/album ordering to the dedicated `suno-playlist-sequencer` skill, which combines data and creative judgment:
 
-- **librosa scripts** — `playlist-sequencing-data.py` generates BPM, key (with Camelot wheel codes), energy levels, loudness, and transition quality ratings between adjacent tracks (key, BPM, and the loudness step across the seam); `batch-full-analysis.py` adds catalog-wide energy/section/spectral analysis. (`chord-progression.py`, for key centers over time within individual tracks, stays in the Feedback Elicitor.)
-- **Camelot wheel harmonic mixing** — key compatibility scoring based on DJ harmonic mixing principles (+/-1 number = safe, relative major/minor = mood shift, beyond +2 = intentional contrast)
+- **librosa scripts** — `playlist-sequencing-data.py` generates BPM, key (with Camelot wheel codes), energy levels, loudness, and per-seam readings between adjacent tracks: the key move (`key_compat`: compatible / near / distant, which rates the key relationship only), the BPM change, and the loudness step. Each is read separately; none is the seam's verdict; `batch-full-analysis.py` adds catalog-wide energy/section/spectral analysis. (`chord-progression.py`, for key centers over time within individual tracks, stays in the Feedback Elicitor.)
+- **Camelot wheel harmonic mixing** — key-relationship readings based on DJ harmonic mixing principles (+/-1 number = a compatible key move, relative major/minor = mood shift, beyond +2 = a distant key move, for intentional contrast). They rate the key relationship only; tempo, loudness and energy are separate
 - **Narrative sequencing** — the skill considers thematic arcs, emotional progression, and lyrical connections between songs alongside the sonic data
 
 Tell Mac "help me order my playlist" or "sequence these songs for an album" and provide the audio files or sequencing data. Mac hands the work to `suno-playlist-sequencer`, which balances sonic flow (BPM transitions, key compatibility, timbral variety) with narrative progression (thematic arc, emotional journey) to suggest an ordering.
 
-See the `suno-playlist-sequencer` skill's `references/playlist-sequencing-methodology.md` for the full sequencing methodology, and the Feedback Elicitor's `gemini-audio-analysis.md` for the Camelot wheel / felt-BPM foundation it builds on.
+See the suno-playlist-sequencer skill's `references/playlist-sequencing-methodology.md` for the full sequencing methodology (its Transition Discipline section covers key and tempo moves at the seam), and the suno-feedback-elicitor skill's `references/audio-analysis-scripts.md` → "Reading librosa numbers" for felt BPM versus measured BPM.
 
 ---
 
@@ -651,10 +658,7 @@ See the `suno-playlist-sequencer` skill's `references/playlist-sequencing-method
 
 The songbook is your creative portfolio -- past songs, successful prompts, iteration history, and creative evolution.
 
-Mac scans these locations:
-- `docs/songbook/` -- Saved lyrics from the Lyric Transformer
-- `docs/feedback-history/` -- Iteration logs from the Feedback Elicitor
-- `{project-root}/_bmad/_memory/band-manager-sidecar/chronology.md` -- Session timeline
+Mac reads the songbook through a catalog script (every song's band, title, status, dates, model, settings, and style prompt), plus the Feedback Elicitor's iteration logs in `docs/feedback-history/` and his session timeline.
 
 Songbook entries should include a **Listening Notes** section — 2-3 lines capturing what the generation actually sounds like (how the intro opens, overall feel, standout sonic moments). Style prompts describe intent; listening notes describe reality. These diverge frequently and are critical for playlist ordering.
 
@@ -707,38 +711,40 @@ All skills support headless (non-interactive) operation for scripting, batch pro
 
 ```json
 {
-  "source_text": "optional -- poem or text to transform",
   "genre_mood": "required -- genre, mood, vibe description",
-  "model": "optional -- default v6 on Pro/Premier, v6-mini on Free (also: v6-wild)",
+  "source_text": "optional -- poem or text to transform",
+  "lyrics": "optional -- finished lyrics to use as-is (with lyrics_ready: true)",
+  "lyrics_ready": "optional -- true skips the Lyric Transformer",
   "band_profile": "optional -- profile name to load",
+  "tier": "optional -- free|pro|premier (else Mac's memory)",
+  "model": "optional -- default v6 on Pro/Premier, v6-mini on Free (also: v6-wild)",
+  "exclusions": "optional -- list (else Mac's default exclusions + the profile's)",
+  "voice": "optional", "persona": "optional", "custom_model": "optional",
   "creativity_mode": "optional -- conservative|balanced|experimental, default balanced",
   "instrumental": "optional -- true for instrumental-only",
   "language": "optional -- default English",
-  "include_wild_card": "optional -- default false"
+  "include_wild_card": "optional -- default true",
+  "save_to_songbook": "optional -- default false"
 }
 ```
 
-**Output:** Complete Suno package as structured JSON with no interaction. The Lyric Transformer runs if `source_text` is provided and `instrumental` is not true; the Style Prompt Builder runs with defaults; the package is assembled and returned.
+**Output:** the standard result envelope (`status`, `capability`, `artifact_path`, `summary`, `warnings`) plus a `package` object in Suno's Create-screen order: `voice`, `lyrics`, `style_prompt`, `char_count`, `exclude_styles`, `settings` (`model`, `vocal_gender`, `duration`, `max_mode`, `weirdness`, `style_influence`, `audio_influence`, `variety`, `personalize`), `title`, `save_to`, `wild_card`. Anything the input leaves out (tier, exclusions) comes from Mac's memory; if the tier can't be resolved, the package is built for Free with a warning. `artifact_path` is null unless `save_to_songbook` is true. Headless Refine Song takes `feedback` plus the song (`song_ref`, or the original prompt and lyrics) and returns only what changed, with the same envelope.
 
 ### Headless Modes for Each Skill
 
-**Style Prompt Builder:**
-- `--headless` with profile name -- hybrid mode (profile baseline + overrides)
-- `--headless:from-profile` -- generate from profile baseline only
-- `--headless:custom` -- generate from provided parameters without profile
-- `--headless:refine` -- accept existing prompt + adjustment deltas from Feedback Elicitor
+**Style Prompt Builder** (contract: the skill's `references/headless-contract.md`):
+- `--headless` -- build a package. A named band profile supplies the baseline and other inputs override it; without a profile, `genre_mood` is required. The wild card is on by default (`include_wild_card: true`). The older `--headless:from-profile`, `--headless:custom`, and "`--headless` with a profile name" forms are aliases of this one mode
+- `--headless:refine` -- accept an existing prompt + the Feedback Elicitor's adjustment recommendations
 - `--headless:migrate` -- reformat a prompt from one model to another
 
 **Lyric Transformer:**
-- `--headless` with text -- analyze + transform with balanced defaults
+- `--headless` with text -- analyze + transform with balanced defaults (`--headless:transform` is an alias); the writer's spacing comes back verbatim
 - `--headless:analyze` -- analyze input only, return analysis JSON
-- `--headless:transform` -- full transformation with default options
 - `--headless:refine` -- accept adjustment spec, apply targeted changes
 
 **Feedback Elicitor:**
-- `--headless` -- analyze + generate adjustments with balanced defaults
+- `--headless` -- triage + return full adjustment recommendations (`--headless:adjustments` is an alias)
 - `--headless:analyze` -- triage and categorize feedback only
-- `--headless:adjustments` -- accept feedback + original prompts, return full adjustment recommendations
 
 **Band Profile Manager:**
 - `--headless` -- list all profiles as JSON array
@@ -751,19 +757,15 @@ All skills support headless (non-interactive) operation for scripting, batch pro
 
 ### Headless Error Contract
 
-When required inputs are missing, headless mode returns structured JSON errors:
+When required inputs are missing, a headless call returns `status: "blocked"` with a one-line reason (and, where the skill has one, the missing fields and its decisions so far). The Style Prompt Builder's shape:
 
 ```json
-{
-  "error": true,
-  "missing": ["genre_mood"],
-  "message": "Required input 'genre_mood' not provided for --headless:custom mode."
-}
+{"status": "blocked", "missing": ["genre_mood"], "reason": "No band profile and no genre_mood given.", "decisions": []}
 ```
 
 ### Batch Processing Concept
 
-Headless modes enable batch workflows. Example: generate style prompts for multiple genre/mood combinations using a script that calls the Style Prompt Builder with `--headless:custom` for each entry, collecting the results.
+Headless modes enable batch workflows. Example: generate style prompts for multiple genre/mood combinations using a script that calls the Style Prompt Builder with `--headless` and a `genre_mood` for each entry, collecting the results.
 
 ---
 
@@ -778,21 +780,22 @@ Headless modes enable batch workflows. Example: generate style prompts for multi
 | Lyrics exceed Suno's limit | Over 5,000 characters (hard limit) or over 3,000 (quality degrades) | Ask Mac to condense. The Lyric Transformer tracks character budgets — warns at 3,000 (quality), errors at 5,000 (hard limit). |
 | Mac asks too many questions | You are in Studio mode | Say "let's switch to Demo mode" for a faster experience. |
 | Mac does not ask enough questions | You are in Demo mode | Say "let's go Studio mode" for the full songwriter's workshop. |
-| Mac forgot my preferences | Session was not saved | Select SM (Save Memory) before ending your session. |
+| Mac forgot my preferences | It wasn't written to memory | Mac saves preferences as he learns them. If one slipped, tell him again; SM (Save Memory) runs a full consolidating save any time. |
 | Profile says wrong tier | Your Suno plan changed | Tell Mac "I upgraded to Pro" -- he updates memory and offers to update your profiles. Mac also detects tier drift when loading profiles. |
 | Profile references Personas but I'm on v6 | Personas moved inside the Voices menu -- they were relocated, not removed, and still work | Nothing is broken. Tell Mac your model version if you want him to suggest a Voice instead; a Voice locks vocal identity more tightly than a Persona does. |
 | Mutually exclusive transformation error | Selected FR + WF or other conflicts | Full Rewrite and Word Fidelity cannot be used together. Chorus Extraction is skipped if Full Rewrite is selected. |
 
 ### What to Do When Skills Are Unavailable
 
-If an external skill fails to load, Mac informs you and offers a degraded path:
+If an external skill fails to load, Mac tells you which one. Without the Style Prompt Builder or the Lyric Transformer he won't hand you a Suno package -- those skills carry the checks (artist names, character budgets, section tags) that keep a package from failing in Suno -- but he can keep shaping the direction and drafting with you until it's back:
 
 ```
-Mac: I can't reach my style prompt specialist right now, so I'll do my best --
-     but you'll get better results once it's back.
+Mac: I can't reach my style prompt specialist right now, so no package yet --
+     but let's keep working the direction and the lyrics, and I'll build the
+     moment it's back.
 ```
 
-Mac handles the work inline (e.g., generates a basic style prompt without model-specific optimization). He never silently fails or fabricates skill output.
+He never silently fails or fabricates skill output.
 
 ### Suno-Specific Issues
 
@@ -803,7 +806,7 @@ For detailed troubleshooting of Suno platform issues (prompt formatting, audio q
 If you are not sure what to do:
 - Say "help" or describe what you are trying to accomplish -- Mac redirects gracefully
 - If Mac seems confused about your intent, try stating it differently: "I want to make a new song" vs. "I want to refine an existing one"
-- Check the menu -- select a capability by its code (CS, RS, MB, SP, TL, FL, SB, SM)
+- Check the menu -- select a capability by its code (CS, RS, SB, SM, MB, SP, TL, ...)
 - For Suno-specific questions Mac cannot answer, consult [Suno's help center](https://help.suno.com)
 
 ---
@@ -814,13 +817,16 @@ If you are not sure what to do:
 |------|-----------|-------|-------------|
 | **SU** | Setup Module | Setup | Install or reconfigure the Suno module |
 | **CS** | Create Song | Band Manager (Mac) | Full song creation workflow |
-| **RS** | Refine Song | Band Manager (Mac) | Post-generation refinement via Mac |
+| **RS** | Refine Song | Band Manager (Mac) | Bring back a take: diagnose it and rebuild the changed parts ("FL" / "feedback loop" also land here) |
 | **SB** | Browse Songbook | Band Manager (Mac) | Browse past songs and creative history |
 | **SM** | Save Memory | Band Manager (Mac) | Save session context |
 | **MB** | Manage Bands | Profile Manager | Band profile CRUD |
 | **WV** | Analyze Writer Voice | Profile Manager | Extract writing voice patterns from samples |
 | **HC** | Profile Health Check | Profile Manager | Assess profile completeness and quality |
+| **MP** | Manage Playlist | Profile Manager | Scaffold or edit a band's canonical playlist YAML |
 | **SP** | Build Style Prompt | Style Prompt Builder | Model-aware style prompt generation |
 | **TL** | Transform Lyrics | Lyric Transformer | Poem/text to Suno-ready lyrics |
 | **AL** | Analyze Lyrics | Lyric Transformer | Analyze text for song structure potential |
-| **FL** | Feedback Loop | Feedback Elicitor | Guided feedback refinement |
+| **FL** | Feedback Loop | Feedback Elicitor | Standalone diagnosis only (not on Mac's menu -- through Mac, use RS) |
+| **AA** | Analyze Audio | Feedback Elicitor | Measure a render's tempo, key, loudness (and section map with the PyTorch tools on) |
+| **PS** | Sequence Playlist | Playlist Sequencer | Album-craft track ordering with per-move rationale |

@@ -33,9 +33,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "_shared"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from audio_deps import require_audio_deps
-from tempo_source import SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, resolve_tempo_source, usable
+from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, slow_prior_fields,
+                          resolve_tempo_source, usable)
 
 SCRIPT_NAME = "chord-progression"
 VERSION = "1.1.0"
@@ -134,7 +135,14 @@ def analyze_chords_text(filepath, chord_templates, tempo_source="librosa"):
 
     # Measure-synchronous chroma for cleaner chord detection
     tempo, spans, source_used, basis = measure_spans(y, sr, filepath, tempo_source)
-    print(f"Measures: {basis} ({SOURCE_LABELS[source_used]})\n")
+    print(f"Measures: {basis} ({SOURCE_LABELS[source_used]})")
+    slow = slow_prior_fields(y, sr, tempo) if source_used == "librosa" else {}
+    if slow:
+        print(f"Tempo: {tempo:.1f} BPM; slow-prior reading (start_bpm=80): {slow['bpm_librosa_slow_prior']} "
+              f"({slow['librosa_prior_relation']})")
+        if slow.get("tempo_note"):
+            print(slow["tempo_note"])
+    print()
 
     # Use CQT chroma (better for music)
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
@@ -313,6 +321,7 @@ def analyze_chords_json(filepath, chord_templates, tempo_source="librosa"):
             "duration_seconds": round(duration, 2),
             "bpm": round(tempo_val, 1),
             "tempo_source": source_used,
+            **(slow_prior_fields(y, sr, tempo_val) if source_used == "librosa" else {}),
             "measure_basis": basis,
             "total_measures_analyzed": len(measures),
             "chord_changes": len(transitions),

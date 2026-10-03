@@ -1,15 +1,38 @@
-# Customization overrides for suno-band-profile-manager.
-# Teams override at {project-root}/_bmad/custom/suno-band-profile-manager.toml;
-# users at the matching .user.toml. Merge order: base -> team -> user.
-# Persona/tone variance belongs in persistent_facts (project-context.md),
-# not in workflow scalars — this skill is a workflow, not an agent.
+# DO NOT EDIT -- overwritten on every update.
+#
+# Workflow customization surface for suno-band-profile-manager.
+# Team overrides:     {project-root}/_bmad/custom/suno-band-profile-manager.toml
+# Personal overrides: {project-root}/_bmad/custom/suno-band-profile-manager.user.toml
 
 [workflow]
+
+# --- Configurable below. Overrides merge per BMad structural rules: ---
+#   scalars: override wins • arrays (persistent_facts, activation_steps_*): append
+#   arrays-of-tables with `code`/`id`: replace matching items, append new ones.
+
+# Steps to run before the standard activation (config load, greet).
+# Overrides append. Use for pre-flight loads, compliance checks, etc.
+
 activation_steps_prepend = []
+
+# Steps to run after greet but before routing to an operation.
+# Overrides append.
+
 activation_steps_append = []
-# Output paths are NOT scalars here — they come from module config:
-# override `band_profiles_folder` / `songbook_folder` in {project-root}/_bmad/config.yaml
-# to relocate where profiles and songbook entries land.
-persistent_facts = ["file:{project-root}/**/project-context.md"]
-# persistent_facts loads durable creative context on activation (project-context.md
-# is BMad's convention; append a profile/voice-context file: glob here to preload it).
+
+# Persistent facts the workflow keeps in mind for the whole run.
+# Each entry is a literal sentence or a `file:` path/glob whose contents load
+# as facts (e.g. "file:{project-root}/docs/voice-context-*.md" to preload a
+# writer's voice context). Overrides append.
+
+persistent_facts = []
+
+# Run after Create, Edit, Duplicate or Delete has written the profile, e.g.
+# "commit the changed profile files" or "sync docs/band-profiles". Override wins.
+
+on_complete = ""
+
+# Output paths are not set here: profiles and songbook entries land where the
+# module config says (`band_profiles_folder` / `songbook_folder` in the suno:
+# section of {project-root}/_bmad/config.yaml). The per-band playlist path is a
+# module-wide contract the playlist sequencer reads, so it is not overridable.

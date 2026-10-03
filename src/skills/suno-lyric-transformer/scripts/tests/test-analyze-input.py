@@ -59,12 +59,13 @@ class TestAnalyzeInput:
         phrases = [p["phrase"] for p in m["repeated_phrases"]]
         assert any("come back to me" in p for p in phrases)
 
-    def test_rhyme_pairs(self):
+    def test_suffix_matches(self):
         text = "Walking down the street\nFeeling the beat\nLooking for the light\nShining in the night"
         report, code = run_script("--text", text)
         assert report is not None
         m = report["metrics"]
-        rhymes = m["potential_rhyme_pairs"]
+        assert "potential_rhyme_pairs" not in m  # renamed: spelling is not rhyme
+        rhymes = m["suffix_matches"]
         rhyme_words = [set(r["words"]) for r in rhymes]
         assert any({"street", "beat"} == w for w in rhyme_words) or any({"light", "night"} == w for w in rhyme_words)
 
@@ -105,6 +106,63 @@ class TestAnalyzeInput:
         a, _ = run_script("--text", "first draft of the words")
         b, _ = run_script("--text", "second draft of the words")
         assert a["metrics"]["source_hash"] != b["metrics"]["source_hash"]
+
+    def test_latin_only_script(self):
+        report, _ = run_script("--text", "plain english line\nanother one")
+        m = report["metrics"]
+        assert m["script_type"] == "latin"
+        assert m["mixed_script"] is False
+        assert m["script_lines"]["latin"] == [1, 2]
+
+    def test_non_latin_script(self):
+        report, _ = run_script("--text", "夜の空に\n星が光る")
+        m = report["metrics"]
+        assert m["script_type"] == "non_latin"
+        assert m["script_lines"]["non_latin"] == [1, 2]
+
+    def test_mixed_script_flags_lines(self):
+        text = "[Verse]\nwalking home tonight\n夜の空に\ncity 東京 lights"
+        report, _ = run_script("--text", text)
+        m = report["metrics"]
+        assert m["mixed_script"] is True
+        assert m["script_type"] == "mixed"
+        assert m["script_lines"] == {"latin": [2], "non_latin": [3], "mixed": [4]}
+
+    def test_accented_latin_is_latin(self):
+        report, _ = run_script("--text", "canción del corazón\nça va très bien")
+        assert report["metrics"]["script_type"] == "latin"
+
+    def test_cyrillic_is_non_latin(self):
+        report, _ = run_script("--text", "Тихая ночь")
+        assert report["metrics"]["script_type"] == "non_latin"
+
+    def test_unbroken_prose_flag(self):
+        prose = ("I walked down to the river this morning and the water was higher than "
+                 "I remembered it being when we were kids and nobody had told me why it rose")
+        report, _ = run_script("--text", prose)
+        assert report["metrics"]["unbroken_prose"] is True
+        poem, _ = run_script("--text", "short line\nanother short line\nand one more")
+        assert poem["metrics"]["unbroken_prose"] is False
+
+    def test_spatial_layout_recorded(self):
+        text = "Day   by   Day\n    the porch light hums\n\n\nand I wait\n\nstill"
+        report, _ = run_script("--text", text)
+        s = report["metrics"]["spatial_layout"]
+        assert s["has_spatial_layout"] is True
+        assert s["indented_lines"] == [2]
+        assert s["internal_space_run_lines"] == [1]
+        assert s["blank_line_gaps"] == [
+            {"after_line": 2, "blank_lines": 2},
+            {"after_line": 5, "blank_lines": 1},
+        ]
+        assert s["irregular_gaps"] is True
+
+    def test_plain_stanzas_have_no_spatial_layout(self):
+        text = "one line\ntwo line\n\nthree line\nfour line"
+        report, _ = run_script("--text", text)
+        s = report["metrics"]["spatial_layout"]
+        assert s["has_spatial_layout"] is False
+        assert s["irregular_gaps"] is False
 
     def test_report_structure(self):
         report, code = run_script("--text", "Some text")

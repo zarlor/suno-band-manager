@@ -337,3 +337,32 @@ if __name__ == "__main__":
 
     print(f"\n{passed} passed, {failed} failed out of {len(tests)} tests")
     sys.exit(1 if failed else 0)
+
+
+def run_check_final(style: str, exclude: str = "") -> tuple[int, dict]:
+    result = subprocess.run([sys.executable, SCRIPT, "--check-final", "--style-prompt", style, "--exclude", exclude],
+                            capture_output=True, text=True)
+    return result.returncode, json.loads(result.stdout)
+
+
+def test_check_final_flags_descriptor_cancelled_by_exclusion():
+    code, out = run_check_final("raw indie rock, spacious reverb, dry vocal", "no reverb, no autotune")
+    assert code == 0
+    assert out["mode"] == "check-final" and out["status"] == "warning"
+    assert [w["type"] for w in out["consistency_warnings"]] == ["add_exclude_conflict"]
+    assert "spacious reverb" in out["consistency_warnings"][0]["detail"]
+
+
+def test_check_final_clean_package_passes():
+    code, out = run_check_final("raw indie rock, dry vocal, close mic", "no autotune, no synth pads")
+    assert code == 0 and out["status"] == "pass" and out["consistency_warnings"] == []
+
+
+def test_check_final_ignores_empty_items():
+    code, out = run_check_final("raw indie rock, , dry vocal", "no autotune,,")
+    assert out["status"] == "pass"
+
+
+def test_check_final_requires_style_prompt():
+    result = subprocess.run([sys.executable, SCRIPT, "--check-final"], capture_output=True, text=True)
+    assert result.returncode == 2 and "needs --style-prompt" in result.stderr

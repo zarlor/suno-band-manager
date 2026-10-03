@@ -13,12 +13,12 @@ from json_archiver import archive_path, ARCHIVE_ROOT
 
 
 def test_song_archive_flat():
-    assert archive_path("songs", "For Now", "/r") == os.path.join("/r", ARCHIVE_ROOT, "songs", "for-now.json")
+    assert archive_path("songs", "Night Shift", "/r") == os.path.join("/r", ARCHIVE_ROOT, "songs", "night-shift.json")
 
 
 def test_song_archive_band_subfolder():
-    assert archive_path("songs", "solitary-fire/For Now-Lenny", "/r") == os.path.join(
-        "/r", ARCHIVE_ROOT, "songs", "solitary-fire", "for-now-lenny.json"
+    assert archive_path("songs", "band-a/Night Shift-Duo", "/r") == os.path.join(
+        "/r", ARCHIVE_ROOT, "songs", "band-a", "night-shift-duo.json"
     )
 
 

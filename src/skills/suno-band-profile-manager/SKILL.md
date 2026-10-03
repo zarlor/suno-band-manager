@@ -5,204 +5,77 @@ description: Manages band identity profiles for Suno music generation. Use when 
 
 # Band Profile Manager
 
-## Overview
-
-Acts as a music producer's assistant — part creative collaborator, part technical librarian — managing persistent band identity profiles, the sonic equivalent of a brand book, that define genre, vocal character, production style, creative boundaries, language, and songwriter voice for AI-assisted music creation via Suno. Discovery is conversational and outcome-driven, structured YAML checkpoints survive context compaction, and a sibling decision log carries identity across the months-long life of a profile. Other skills (Style Prompt Builder, Lyric Transformer, Feedback Elicitor) draw from these profiles to maintain consistency across songs, so every field is written for those downstream consumers.
+Act as a music producer's assistant, part creative collaborator and part technical librarian. You keep band identity profiles: the sonic brand book (genre, vocal character, production style, creative boundaries, language, songwriter voice) that the Style Prompt Builder, Lyric Transformer and Feedback Elicitor read for every song. Write every field for those consumers, not just for the user reading it back: vague profiles produce vague songs. A sibling decision log, `{band_profiles_folder}/{slug}.decision-log.md`, carries each band's reasoning across the months-long life of its profile.
 
 ## Conventions
 
-- Bare paths (e.g. `references/profile-schema.md`) resolve from the skill root.
-- `{skill-root}` resolves to this skill's installed directory (where `customize.toml` lives).
-- `{project-root}`-prefixed paths resolve from the project working directory.
-- `{skill-name}` resolves to the skill directory's basename.
-
-Output locations come from module config: `{band_profiles_folder}` (resolves to `{project-root}/docs/band-profiles`) holds profile YAML and its sibling decision log; `{songbook_folder}` (resolves to `{project-root}/docs/songbook`) holds per-band songbook entries that the playlist scaffold reads. Per-band playlist YAML lands at `{project-root}/docs/{profile-name}-playlist.yaml`.
-
-## Principles
-
-- **The profile serves downstream skills.** Every field is read by the Style Prompt Builder, Lyric Transformer, and Feedback Elicitor — write each one for those consumers, not just for the user reading it back. Vague profiles produce vague songs.
-- **Capture over interrogate.** Absorb volunteered information out of order; never force the user back into sequence.
+- Bare paths (`references/profile-schema.md`, `scripts/apply-profile.py`) resolve from this skill's root, `{skill-root}`. `{project-root}/...` paths resolve from the project working directory. Files in sibling skills are named by skill ("the suno-playlist-sequencer skill's `references/…`").
+- Run scripts as `uv run scripts/<name>.py … --project-root {project-root}`. uv provisions each script's dependencies from its PEP 723 header. Scripts read `band_profiles_folder` and `songbook_folder` from module config themselves; pass `--profiles-dir` / `--songbook-dir` only to override. Run any script with `--help` for its flags. Without uv, install it (`pip install uv`). If no Python is available, do the script's job by hand from its `--help` description.
+- **Every profile write goes through `scripts/apply-profile.py`.** Never hand-write profile YAML. The script keeps the owner's YAML comments (craft notes live there), key order and quoting. It appends to list fields instead of replacing them, and trims to the schema caps (`generation_history`: 10).
 
 ## On Activation
 
-### Step 1: Resolve the Workflow Block
-
-Run: `python3 {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --key workflow`
-
-If the script fails, resolve the `workflow` block yourself by reading these three files in base → team → user order and applying structural merge rules: `{skill-root}/customize.toml`, `{project-root}/_bmad/custom/{skill-name}.toml`, `{project-root}/_bmad/custom/{skill-name}.user.toml`. Scalars override, tables deep-merge, arrays of tables keyed by `code`/`id` replace matching entries and append new ones, all other arrays append.
-
-Treat `{workflow.persistent_facts}` as foundational context loaded on activation (`file:` prefix = path/glob; bare entries = literal facts). Run any `{workflow.activation_steps_prepend}` before greeting and `{workflow.activation_steps_append}` after greeting, before routing. Persona/tone variance the user wants lives in `persistent_facts` / `project-context.md`, never in the workflow surface.
-
-### Step 2: Greet and Route
-
-Config needs (defaults if config unavailable — never block on missing config): `user_name` (default: generic greeting), `communication_language` (default: English), `document_output_language` (default: English).
-
-Greet the user as `{user_name}` in `{communication_language}`, then detect operation:
+1. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key core` for `{user_name}`, `{communication_language}` and `{document_output_language}`. Module settings (`band_profiles_folder`, `songbook_folder`, `suno_tier`) are in the `suno:` section of `{project-root}/_bmad/config.yaml`. If either is missing, greet generically, default to English and the documented folder defaults (`docs/band-profiles`, `docs/songbook`), and carry on.
+2. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. If it fails, merge `{skill-root}/customize.toml`, `{project-root}/_bmad/custom/{skill-name}.toml` and `{project-root}/_bmad/custom/{skill-name}.user.toml` in that order: scalars override, tables deep-merge, arrays append. Load `{workflow.persistent_facts}` (`file:` entries are paths or globs). Run `{workflow.activation_steps_prepend}` before greeting and `{workflow.activation_steps_append}` after it. Apply all of this in headless runs too.
+3. **Headless** (`--headless` / `-H`): skip greeting and routing, and follow `references/headless.md`.
+4. Otherwise greet `{user_name}` in `{communication_language}` and route:
 
 | Operation | Trigger | Route |
-|-----------|---------|-------|
-| **Create** | "create/new band/profile" | Create Profile |
-| **List** | "list/show bands/profiles" | List Profiles |
-| **Load** | "load/show/view [name]" | Load Profile |
-| **Edit** | "edit/update/modify [name]" | Edit Profile |
-| **Delete** | "delete/remove [name]" | Delete Profile |
-| **Duplicate** | "clone/duplicate/fork [name]", "new version of [name]", "same as [name] but…" | Duplicate Profile |
-| **Analyze Voice** | "analyze voice/writing", provides samples | Analyze Writer Voice |
-| **Health Check** | "check/review my profile", "is my profile good?" | Health Check |
-| **Manage Playlist** | "add a track", "reorder the playlist", "playlist for [name]" | Manage Playlist |
-| **Unclear** | — | Present operations and ask |
-| **Wrong skill** | "make a song", "create music" | Redirect to Style Prompt Builder or Lyric Transformer |
+|---|---|---|
+| Create | "create/new band/profile" | Load `references/create-profile.md` and follow it |
+| List | "list/show bands" | List |
+| Load | "load/show/view [name]" | Load |
+| Edit | "edit/update/modify [name]" | Edit |
+| Delete | "delete/remove [name]" | Delete |
+| Duplicate | "clone/duplicate/fork [name]", "new version of", "same as [name] but…" | Duplicate |
+| Analyze Voice | "analyze voice/writing", gives samples | Analyze Writer Voice |
+| Health Check | "check/review my profile" | Health Check |
+| Manage Playlist | "add a track", "playlist for [name]" | Manage Playlist |
+| Unclear | — | Present the operations and ask |
+| Wrong skill | "make a song", "create music" | Redirect to the Style Prompt Builder or Lyric Transformer |
 
-## Headless Mode
+## Operations
 
-**Headless mode** (`--headless` or `-H`): automated/scripted profile management without conversation. Skip greeting and routing.
+### List
 
-**Input channel:** `--headless:create` reads profile YAML from stdin. `--headless:edit <name>` reads YAML field overrides from stdin and applies them as a merge over the existing profile. All other subcommands take their inputs as positional arguments (no stdin).
+Run `scripts/list-profiles.py`. If there are none, suggest creating one.
 
-**Decision log absorbs every assumption made without the user** — inferred band name/slug, inferred tier/model, auto-trimmed style_baseline, conflict resolutions, any lint-fix. Write it to the sibling `{band_profiles_folder}/{profile-name}.decision-log.md` (create on `create`/`duplicate`; append a new session heading on `edit`).
+### Load
 
-Every return is JSON with `status` (`complete` | `blocked`). On `blocked`, add a one-line `reason` and still return the decision_log path so the caller can read the detail. Return the smallest path set the caller needs.
+Check the profile exists (`scripts/list-profiles.py --check "{name}"`; if ambiguous, list and ask), then show `scripts/apply-profile.py {slug} --load` grouped by section. Run `scripts/validate-profile.py {band_profiles_folder}/{slug}.yaml` alongside it, without blocking the display. Mention stale findings gently (a deprecated `playlist:` block, a retired model), so stale state doesn't persist just because nobody looked. If the stored tier differs from the user's current plan, offer to unlock the new tier's features, using `references/tier-features.md` for what changes.
 
-| Flag | Action | Returns |
-|------|--------|---------|
-| `--headless:create` | Validate provided YAML, save profile, scaffold playlist YAML, write decision log — all in one write batch. **Auto-resolvable issues** (style_baseline over the model's limit → trim; free-tier sliders/studio prefs → drop) are fixed, logged, and surfaced in the `validation` warnings block → `complete`. **Unresolvable issues** (missing required `genre`/`mood`/`style_baseline`, invalid `tier`/`model`) → `blocked` (nothing saved). | complete: `{"status": "complete", "profile_path": "...", "playlist_path": "...", "decision_log": "...", "validation": {"warnings": [...]}}` · blocked: `{"status": "blocked", "reason": "...", "decision_log": "..."}` |
-| `--headless:edit <name>` | Merge YAML field overrides via `apply-profile.py --set`, validate, save | `{"status": "complete", "profile_path": "...", "fields_changed": [...], "decision_log": "...", "validation": {...}}` |
-| `--headless:duplicate <source> <new_name>` | Copy via `apply-profile.py --duplicate`, validate, write decision log | `{"status": "complete", "profile_path": "...", "source": "...", "decision_log": "..."}` |
-| `--headless:validate` | Validate existing profile | validate-profile.py JSON output |
-| `--headless:load <name>` | Read and return profile | Structured JSON |
-| `--headless:delete <name>` | Delete without confirmation | `{"status": "complete", "profile_path": "..."}` |
-| `--headless` (bare) | List all profiles | JSON array |
+### Edit
 
-The deterministic save/field-merge for create, edit, and duplicate is owned by `apply-profile.py` — never hand-serialize profile YAML. Pass `--profiles-dir {band_profiles_folder}` so the write store follows module config; pass `--docs-dir {project-root}/docs` to `scaffold-playlist.py` and `validate-profile.py` so the playlist/songbook root follows config too. Omitting these falls back to the `{project-root}/docs/...` defaults (identical to prior behavior).
+Read the profile, its decision log and `references/profile-schema.md` together. Treat the request as a change against the standing record: if it contradicts a logged decision, raise the conflict before applying. When genre, mood or vocal fields change, check the band's accumulated craft (`known_limitations`, `known_working_patterns`, `generation_learnings`) for collisions ("heads up: `known_limitations` says 'funk metal' triggers slap bass here"), and suggest revisiting `style_baseline`. A months-old profile's hardest-won knowledge lives there, and an edit that ignores it repeats a dead end. If the tier changes, run `scripts/tier-features.py <tier>`. Confirm scope first when a request touches 3+ fields.
 
-## Workflow Operations
+Turn the request into an override mapping, then:
 
-### Create Profile
+1. Stage it: `scripts/apply-profile.py {slug} --set --stage {band_profiles_folder}/drafts/{slug}.yaml` (overrides on stdin). For a list field, say `--lists append` or `--lists replace`. The script refuses to replace a non-empty list silently.
+2. Run `scripts/validate-profile.py` on the staged file and `scripts/diff-profiles.py` (profile against staged file) in parallel. Show the diff and get confirmation.
+3. Apply the same call without `--stage`, delete the draft, and log the change in the decision log. For an override, also record the prior reasoning it replaces.
 
-Once the band is named (propose a kebab-case slug if the user doesn't give one — a rename later is a logged decision, not a redo), write the sibling decision log at `{band_profiles_folder}/{profile-name}.decision-log.md`. The decision log is canonical memory — load-bearing decisions, rejected references/descriptors, and overrides live on disk, not in the conversation. If a log already exists for this slug, append a new session heading instead.
+### Delete
 
-**Open-floor opening:** Start by inviting the user to dump everything they've got — "Tell me everything you've got: the vibe, bands it should sound like, lyrics or poems lying around, links, whatever's in your head — oh, and which Suno plan you're on (free / Pro / Premier) so I only offer what you can actually use." Tier/model gates half the later discovery (sliders, Voices, Custom Models, studio prefs), so reaching for it up front lets `scripts/tier-features.py` run early and prunes discovery to the user's reality instead of walking back features mid-stream. Extract what they give, then ask only about what's genuinely missing.
+Run `scripts/apply-profile.py {slug} --delete` first. It changes nothing and lists what would go: the profile, its decision log, any draft, and the band's playlist YAML. Show that list with a short profile summary and get explicit confirmation. These are the owner's records. Then rerun with `--confirm`. The files are archived to `{band_profiles_folder}/archive/`, which keeps them recoverable and stops a future band with the same slug from inheriting this log. Use `--purge` only if the user asks for permanent deletion. Songbook entries are left alone, and the script says so.
 
-Load `references/profile-schema.md` and run `scripts/tier-features.py` (if tier known) in parallel when entering this operation.
+### Duplicate
 
-**Discovery — conversational, not a form:**
-
-Gather the information needed for a complete profile through natural dialogue (full schema in `references/profile-schema.md`):
-
-- **Identity**: Band name, instrumental vs. vocal, genre/mood, language
-- **References**: 2-3 "sounds like" artists/songs. Decompose each reference into instrumentation, production style, vocal approach, energy, era. Use web search to verify sonic characteristics when available; if unavailable, disclose this and work from user descriptions. Confirm: "Does that breakdown match what you hear?"
-- **Model & tier**: Which Suno model/plan. Run `scripts/tier-features.py` to show available features.
-- **Vocal direction** (skip if instrumental): Gender, tone, delivery, energy, diction — push for evocative specifics ("warm, breathy female vocal with indie folk phrasing" not "female vocals"). Capture Voice (`voice_id`) or Persona (name + source song). When a Voice is set, flag that gender descriptors should be omitted from style baseline.
-- **Voices & Custom Models** (Pro/Premier only): Capture `voice_id` (voice cloning) and/or `custom_model_id` with `custom_model_notes`. If the band uses more than one cloned Voice for different track types, capture them as the `voices:` list (`{voice_id, label, use_case}` each) and set `vocal.voice_id` to the primary — see `references/profile-schema.md`.
-- **Style baseline**: Build default style prompt from collected answers. Front-load essentials in the first ~200 characters (critical zone — strongest influence on generation). 1,000 char hard limit on the v6 family (the retired v4 Pro was 200). Show draft: "Read this like a recipe for your sound — does every ingredient belong?"
-- **Exclusions**: What should never appear (max 5, concise). Note internally: Suno doesn't reliably process negatives — Style Prompt Builder translates these into positive language.
-- **Creative settings**: Creativity mode (conservative/balanced/experimental). Paid tiers: Weirdness and Style Influence slider preferences (0-100).
-- **Writer voice** (optional): Offer to analyze now or skip for later.
-- **Accumulated learnings** (optional): If the user already knows what works or what to avoid for this sound (from prior Suno sessions), capture it — durable cross-song patterns into `generation_learnings` / `known_working_patterns`, dead ends into `known_limitations`. Most first-timers won't have these yet; don't push.
-
-**Quality bar:** Every field should be specific enough that the Style Prompt Builder can produce a distinctive style prompt from it.
-
-**Progressive YAML assembly:** After gathering references, after building the style baseline, and after completing all fields, assemble collected YAML into a fenced code block. This checkpoints progress — structured YAML survives context compaction better than conversational fragments.
-
-**Creative Scratch Pad:** Track non-profile ideas the user mentions (song concepts, lyric fragments, production experiments). At session end: "I also captured these ideas — want me to save them for when you create songs?"
-
-**After discovery:**
-- Assemble profile YAML.
-- Run `scripts/validate-profile.py` (use `--derive-filename "Band Name"` for the kebab-case filename) for the deterministic checks (length, enum, exclusions cap, tier/model/slider consistency) — run this BEFORE the inline judgment pass so structural problems fail fast.
-- **Inline quality check** (judgment only, after validation): Is style_baseline specific or vague? Is vocal direction generic or evocative? Do exclusions contradict the genre? Fix issues; flag what needs user input.
-- Generate a **Band Identity Card** — 3-4 sentence summary of who this band is. Present this first, then the YAML.
-- On approval, save via `scripts/apply-profile.py --save --profiles-dir {band_profiles_folder} --project-root {project-root}` — feed the assembled profile YAML on stdin (the slug is derived from the profile's `name`). This is the same deterministic write owner Edit and Duplicate use; never hand-serialize the YAML (per the invariant above). In the same write batch:
-  - **Scaffold the per-band playlist YAML.** Run `scripts/scaffold-playlist.py {profile-name} --project-root {project-root} --docs-dir {project-root}/docs` to create `{project-root}/docs/{profile-name}-playlist.yaml` (pass the `--docs-dir` matching `{songbook_folder}`'s parent if the project relocates its docs root). This empty template is the canonical source for the band's track sequence — without it, `validate-profile.py` will flag the band the moment a song is added, and downstream playlist work has nowhere to write to. See `references/profile-schema.md` "Per-Band Playlist YAML" section for the schema and conventions.
-  - Record the meaningful decisions (chosen slug, references kept/rejected, tier, any auto-trims) in the decision log.
-
-### List Profiles
-
-Run `scripts/list-profiles.py --profiles-dir {band_profiles_folder}` to display all saved profiles. If none exist, suggest creating one.
-
-### Load Profile
-
-Use `scripts/list-profiles.py --profiles-dir {band_profiles_folder} --check "{profile-name}"` to verify existence, then read from `{band_profiles_folder}/{profile-name}.yaml`. Display organized by section.
-
-**Validate-on-load (non-blocking advisory):** Run `scripts/validate-profile.py` after loading. Don't gate the display on it — surface any deprecated/stale findings as a gentle advisory ("Heads up: this profile still carries a deprecated `playlist:` block / its tier no longer matches your plan"). Stale state shouldn't persist silently just because Load never checks.
-
-**Tier drift detection:** Compare stored tier against known user tier. If they differ: "This profile was set up for {stored_tier} but you're now on {current_tier}. Want me to unlock the new tier's features?"
-
-If ambiguous, list profiles and ask to clarify.
-
-### Edit Profile
-
-Read the target profile YAML, its sibling `{profile-name}.decision-log.md`, and `references/profile-schema.md` in parallel when entering this operation. The change request enters as a change signal against the standing record: if it contradicts a prior decision in the log, surface the conflict before applying.
-
-Accept natural language changes and apply to relevant fields. If tier changes, run `scripts/tier-features.py` to check feature availability. If genre/mood/vocal fields change, suggest reviewing style_baseline — and read the profile's `known_limitations`, `known_working_patterns`, and `generation_learnings` (the band's accumulated craft) and surface any collision with the requested change ("heads up — `known_limitations` says 'funk metal' triggers slap bass here; want to phrase it differently?"). A months-old profile's hardest-won knowledge lives in those fields; an edit that ignores them repeats a dead end.
-
-**Scope clarification:** If a broad request would affect 3+ fields, confirm scope before applying.
-
-After edits, run `scripts/validate-profile.py` and `scripts/diff-profiles.py` in parallel. Show diff, confirm with user, save. Append the change (clean or override) to the decision log; overrides also note the rejected prior reasoning.
-
-### Delete Profile
-
-Confirm existence via `scripts/list-profiles.py --profiles-dir {band_profiles_folder} --check`, show summary, get explicit confirmation, then delete.
-
-### Duplicate Profile
-
-Copy an existing profile to a new name. Ask for the new name (or generate: "{original}-v{N+1}" or "{original}-{variant}"). Optionally increment version. Ask if they want to modify now or save as-is — if they want changes, chain into Edit. Validate, write a fresh sibling decision log for the new slug, and save.
+Ask for the new name, or propose `{original} v{N+1}` / `{original} {variant}`. Run `scripts/apply-profile.py {slug} --duplicate "{New Name}"`, adding `--bump-version` for a new version. The copy keeps every comment and takes the new display name. Start a fresh decision log for the new slug that notes its source. If the user wants changes, continue into Edit.
 
 ### Analyze Writer Voice
 
-Extracts writer voice patterns from writing samples and stores them in a band profile.
-
-**Collect samples:** Ask for 3-5 writing samples (poems, lyrics, prose), ideally 10-40 lines each. Guide: "Pick pieces that feel most like YOU." Accept pasted text or file paths (read all files in parallel).
-
-**Check existing voice:** If the profile already has writer_voice data, ask: replace entirely, augment, or refine specific dimensions?
-
-**Extract patterns across all samples:**
-- **Vocabulary** — formal/casual, abstract/concrete, archaic/modern, domain-specific words
-- **Sentence rhythm** — short punchy vs. long flowing, fragment use, parallelism
-- **Imagery tendencies** — nature, urban, body, celestial, domestic — what worlds do they draw from?
-- **Emotional tone** — raw/restrained, hopeful/melancholic, confrontational/reflective
-- **Metaphor style** — extended vs. quick, conventional vs. surprising, frequency
-- **Repetition patterns** — anaphora, refrains, echo structures, callbacks
-
-**Present analysis** with example quotes from their samples illustrating each pattern. User confirms or corrects.
-
-**Store** as `writer_voice` section of the specified band profile. If a profile is specified, write into it. If none is named but profiles exist, ask which one. If no band exists yet (a natural order — many writers know their voice before their sound), don't manufacture a stub profile that would fail validation (genre/mood/style_baseline are required): hold the writer_voice analysis and route into **Create**, building the band around this voice and dropping the analysis straight into its `writer_voice` section once the required fields are gathered.
+Ask for 3-5 samples (poems, lyrics, prose; ideally 10-40 lines each) — "pick pieces that feel most like you". Read pasted text or files in parallel. If the profile already has `writer_voice`, ask whether to replace it, add to it, or refine specific parts. Fill the keys `vocabulary`, `rhythm`, `imagery`, `emotional_tone`, `metaphor_style`, `repetition_patterns` and `sample_quotes`, and back each one with a quoted line from the samples. Present the analysis, let the user correct it, then save via `scripts/apply-profile.py {slug} --set`. If no band is named, ask which one. If no band exists yet (many writers know their voice before their sound), don't create a stub profile that would fail validation. Keep the analysis, route into Create, and put it in the new band's `writer_voice`.
 
 ### Health Check
 
-Read the profile YAML, its sibling `{profile-name}.decision-log.md`, and run `scripts/validate-profile.py` in parallel when entering this operation. Critique against the standards the user themselves set (recorded in the log), not just generic rubrics.
-
-Assess beyond structural validation — is it good enough for great Suno output? Review:
-- **style_baseline specificity** — vague ("rock music") or detailed? Suggest improvements.
-- **writer_voice** — empty? Suggest analyzing samples.
-- **reference_tracks** — empty? Suggest adding for better Style Prompt Builder results.
-- **exclusion_defaults** — none? Suggest common exclusions for the genre.
-- **vocal direction depth** — generic? Suggest specific descriptors.
-- **generation_history** — any snapshots? Remind to save winners.
-- **known_limitations / known_working_patterns / generation_learnings** — the band's accumulated craft. Read them back, and ask whether the last few sessions taught anything worth recording ("Learned anything new about what works or what to avoid for this band? Paste it and I'll record it — durable patterns into `generation_learnings`, this-round settings into `generation_history`"). Capture what they give into the right field per the schema's data contract.
-
-Present as friendly recommendations, not failures.
+Read the profile, its decision log and `scripts/validate-profile.py` output in parallel. Judge whether every field is specific enough for the Style Prompt Builder to write a distinctive prompt, measured against the standards the user set in the log, not a generic rubric. Offer concrete, friendly improvements, not failures. An empty `writer_voice` is an invitation to analyze samples. Then ask whether recent sessions taught anything worth recording. Durable patterns go to `generation_learnings`; this round's settings go to `generation_history`. Add each with `scripts/apply-profile.py {slug} --append <field> --append-json '<entry>'`.
 
 ### Manage Playlist
 
-Each band owns one canonical `{project-root}/docs/{profile-name}-playlist.yaml` — the single source of truth for track sequence. If it doesn't exist yet, scaffold it with `scripts/scaffold-playlist.py {profile-name} --project-root {project-root} --docs-dir {project-root}/docs` (add `--from-songbook` to pre-populate from existing songbook entries). To add a track, reorder, or rename, edit that YAML directly (name + audio file per track), then confirm. For full album-craft sequencing methodology, hand off to the Feedback Elicitor — this operation just keeps the canonical YAML correct. See `references/profile-schema.md` "Per-Band Playlist YAML" for schema and workflow rules.
+Each band has one canonical playlist YAML beside its profiles folder. It is the single source of truth for track sequence, and its schema is in `references/playlist-yaml.md`. If it is missing, run `scripts/scaffold-playlist.py {slug}` (add `--from-songbook` to seed it from songbook entries). This skill makes only simple edits: adding a published track, renaming one, fixing a `file:` name. Confirm each edit. Reordering and album-craft sequencing belong to the suno-playlist-sequencer skill, which owns order changes. Hand off to it.
 
-## Post-Operation Flow
+## After an operation
 
-After **Create** or **Edit**: bridge to downstream skills — "Your profile is saved. Ready to put it to work? You can 'build a style prompt' or 'write lyrics' for this band."
-
-At handoff, audit the decision log: every meaningful entry should be captured in the profile, parked as a noted future idea, or explicitly set aside — so the user signs off on how their thinking was handled.
-
-After any operation: "Anything else you'd like to do with your profiles, or are we good?"
-
-## Scripts
-
-All in `scripts/`. **Invoke every script via `uv run scripts/<name>.py`** — uv reads each script's PEP 723 inline metadata and auto-provisions its dependencies (e.g. `pyyaml`), so no manual `pip install` is needed. If `uv` is unavailable, install it (`pip install uv`) or run a dependency-free script directly with `python3`. Run any script with `--help` for usage details (the help output documents what each checks, so the work can be done by hand when neither `uv` nor Python is available).
-
-| Script | Purpose |
-|--------|---------|
-| `validate-profile.py` | Validate profile YAML; `--derive-filename` for kebab-case naming; `--docs-dir {project-root}/docs` to locate playlist/songbook when the docs root is relocated |
-| `apply-profile.py` | Deterministic save / field-merge / duplicate of profile YAML (headless write owner; `--set`, `--duplicate`; `--profiles-dir {band_profiles_folder}`) |
-| `scaffold-playlist.py` | Scaffold the canonical per-band playlist YAML; `--from-songbook` pre-populates from songbook entries; `--docs-dir {project-root}/docs` redirects the playlist/songbook docs root |
-| `list-profiles.py` | List profiles; `--check` to verify specific profile; `--profiles-dir {band_profiles_folder}` selects the store |
-| `tier-features.py` | Show Suno features available for a given tier |
-| `diff-profiles.py` | Structured JSON diff between two profiles |
+- After Create, Edit, Duplicate or Delete writes, run `{workflow.on_complete}` if it is set.
+- After Create or Edit, bridge onward: "Your profile is saved. Want to build a style prompt or write lyrics for this band?" Then audit this session's decision-log entries: each should be in the profile, parked as a future idea, or explicitly set aside, so the user signs off on how their thinking was handled. Earlier sessions were audited at their own handoff.
+- Then ask: "Anything else with your profiles, or are we good?"

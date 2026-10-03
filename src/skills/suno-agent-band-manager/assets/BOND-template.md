@@ -1,9 +1,9 @@
 # Bond — {user_name}
 
-> **Thin orienting file.** Mac's owner-model is RICHER than a single BOND file can hold —
-> it is deliberately split across several durable, portable sources. This file does NOT
-> collapse that split. It points to the richer sources and carries a short owner summary
-> so a freshly-reborn Mac knows where to look. Do not migrate the rich content into here.
+> **Thin orienting file.** Mac's owner-model is richer than a single BOND file can hold —
+> it is deliberately split across durable, portable sources in `docs/`. This file does
+> not collapse that split. It points to the richer sources and carries a short owner
+> summary and Mac's own notes on the partnership.
 
 ## Owner Summary
 
@@ -13,16 +13,17 @@
 
 ## The Richer Owner-Model — Load These
 
-The owner-model lives where it belongs, close to {user_name}'s other artifacts and traveling via portable sync. Load on demand by question:
+The owner-model lives close to {user_name}'s other artifacts and travels via portable sync.
 
 | Source | Question it answers | When to load |
 |--------|--------------------|-------------|
-| `docs/voice-context-{user_name}.md` | **Who is {user_name} creatively?** Personal history, how they write (form, themes, emotional drivers, evolution, influences), creative catalog, Suno preferences, current creative state. This is the durable creative-identity file — the "slow memory." | On activation, before greeting. Always. |
-| `docs/mac-preferences.md` | **How does {user_name} want Mac to talk with them?** Durable behavioral corrections — communication style, pacing, framing, workflow boundaries. Travels via portable sync. | On activation, after the voice file. Always. |
-| `patterns.md` (this sanctum) | **What musical/creative patterns has Mac learned?** Genre tendencies, vocal direction, production preferences, feedback patterns. (Note: this file is currently a SUPERSEDED audit trail — its live content migrated to the traveling homes above. Read its banner.) | When recalling learned musical preferences. |
-| `docs/voice-context-{user_name}.md` "Companion Files" table | Satellite documents (exemplar banks, deep-dives, dossiers) | When the topic calls for the depth a companion file holds. |
+| `docs/voice-context-{user_slug}.md` | **Who is {user_name} creatively?** Personal history, how they write, creative catalog, Suno preferences, current creative state — the "slow memory." | Every waking, in full, before greeting. |
+| `docs/mac-preferences.md` | **How does {user_name} want Mac to talk with them?** Durable behavioral corrections — communication style, pacing, framing, workflow boundaries. | Every waking, in full, after the voice file. |
+| The voice file's "Companion Files" table | Satellite documents (exemplar banks, deep-dives, dossiers) | When the topic calls for that depth. |
 
-**Why the split is preserved (not collapsed):** Behavioral preferences must travel across machines, so they live in `docs/` and ride the portable sync — the per-machine sanctum never travels. Creative identity and musical patterns answer different questions and have different update cadences. Folding them into one BOND file would re-create the drift the split was built to prevent.
+Both always-loaded files are measured by `scripts/check-memory-health.py`. When one grows past its budget, offer {user_name} a compaction pass (summarize older history, merge duplicates, keep personal sections whole) — never split or digest them on your own.
+
+**Why the split is preserved:** behavioral preferences must travel across machines, so they live in `docs/` and ride the portable sync — the per-machine sanctum never travels. Creative identity and behavioral preferences answer different questions and change at different speeds. Folding them into one BOND file would re-create the drift the split was built to prevent.
 
 ## Boundaries Observed
 
@@ -32,4 +33,4 @@ _Things {user_name} protects, deflects, or has asked Mac not to do. Spaces someo
 
 ## Notes Toward the Bond
 
-_Mac's own running notes on the partnership — what lands, what doesn't, the texture of working together. Keep tight; promote durable creative-identity material to the voice file and durable behavioral rules to mac-preferences.md._
+_Mac's own running notes on the partnership — what lands, what doesn't, the texture of working together. Add a line when something shifts; keep it tight. Durable creative-identity material goes to the voice file and durable behavioral rules to mac-preferences.md._

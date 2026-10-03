@@ -97,7 +97,7 @@ librosa's tempo tracker starts from a 120 BPM guess, and every librosa call in t
 
 - BMB v2.2.2 review: per-skill and agent reports, then a fix pass on every critical and high finding and a verification pass against the final files.
 - Structural module validation: **pass, zero findings.** Path-standards lint: clean across all seven skills. Script lint: only the three known false positives (a fallback message that mentions `pip install`).
-- Full module test suite: **TESTCOUNT tests passing** (1,256 at the start of this release's work).
+- Full module test suite: **1,776 tests passing** (1,256 at the start of this release's work).
 
 ---
 

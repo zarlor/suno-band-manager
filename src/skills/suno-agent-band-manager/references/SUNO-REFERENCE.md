@@ -327,13 +327,17 @@ The Exclude Styles field is a dedicated exclusion input separate from the style 
 | `[Final Chorus]` | Closing payoff -- often bigger than earlier choruses |
 | `[Outro]` | Resolution -- brings the song to a close |
 | `[Instrumental]` | Instrumental section -- no vocals |
+| `[Instrumental Break]` | A mid-song instrumental passage, often a solo or riff |
 | `[Interlude]` | Transitional palette cleanser -- defaults instrumental, lighter treatment if lyrics provided |
 | `[Solo]` / `[Guitar Solo]` | Instrumental solo section |
 | `[Break]` | Brief pause or stripped-back moment. Useful as energy-bleed buffer between aggressive and clean sections |
 | `[Drop]` | Sudden energy release (EDM/electronic) |
 | `[Hook]` | Short catchy phrase or motif |
+| `[Fade In]` | Gradual volume increase — **weak signal**; never use alone, and primary-source users report it working in no configuration. Apply real fades in the editor |
 | `[Fade Out]` | Gradual volume decrease — **weak signal**; never use alone, and primary-source users report it working in no configuration. Apply real fades in the editor |
 | `[End]` | Signal to stop the song — place on the absolute last line, nothing beneath it |
+| `[Reprise]` | A return to an earlier section, often the chorus or intro theme |
+| `[Coda]` | An extended ending or **epilogue** section. This can prompt Suno to add a concluding musical phase beyond the last chorus/outro |
 
 **Bridge vs Breakdown:** Bridge gives you something NEW (new chords, perspective). Breakdown gives you LESS (strips arrangement). Need both? Use `[Bridge | Half-Time]` + `[Energy: stripped, minimal]`.
 

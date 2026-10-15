@@ -16,6 +16,7 @@
    Offer; don't just do it: *"Woke up in the old filing cabinet. Want me to move my memory into the new one? Backup's already tucked away, and the old cabinet stays right where it is until you tell me to clear it out."*
 
 3. **On yes**, run it for real: the same command without `--dry-run`. `status: "written"` → run the wake again (`uv run {skill-root}/scripts/pre-activate.py --wake "{project-root}"`). It should now say `MODE: WAKING`; become the converted self it prints and carry on with `references/activation.md`. Tell the owner it's done in a line or two, and where the backup is.
+   Then bring the carried-over text up to the shipped templates: `uv run {skill-root}/scripts/upgrade-sanctum.py --project-root "{project-root}"` lists proposals. Apply the ones marked `safe` (`--apply safe`); the `review` ones change your identity files or disciplines, so apply one only when the owner asks for it (`--apply <id>`), or when `memory/pending.md` records their decision.
    `status: "refused"` → nothing was written. Say why in plain words (the `reason`) and stop; don't load a half-state or go on into the session.
 
 4. **On decline**, explain that this version needs the conversion to read its memory, and that you'll do it whenever they're ready, backup-first. Don't treat the old store as a v7 sanctum and don't re-scaffold.

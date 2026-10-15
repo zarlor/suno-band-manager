@@ -3,7 +3,15 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Migration of Mac's legacy (v1) sidecar into a v2 sanctum.
+"""Migration of Mac's legacy (v1) sidecar into a v2 sanctum: the first hop to v7.
+
+A v1 store (an `index.md` content store at the legacy
+`{project-root}/_bmad/_memory/band-manager-sidecar/`) reaches the BMad v7 layout
+in two hops: this script turns it into a v2 store at the same legacy path, and
+migrate-sanctum-to-v7.py then converts that v2 store into the v7 sanctum at
+`{project-root}/_bmad/memory/suno-agent-band-manager/`. The v2 files written
+here (access-boundaries.md, INDEX.md, MEMORY.md, sessions/, creed-*.md shards)
+are that converter's input, never a live sanctum: v2 is not woken any more.
 
 Two modes:
 
@@ -13,8 +21,8 @@ Two modes:
    {project-root}/_bmad/_memory/.sidecar-v2-staging). Nothing is cut over — a
    human reviews the staging dir and promotes it.
 
-2. IN-PLACE mode (`--in-place`) — the scripted, safe automatic upgrade an
-   existing user hits the first time they activate the v2 version. It backs the
+2. IN-PLACE mode (`--in-place`) — the scripted, safe upgrade a v1 store's
+   owner hits at waking (MODE: UPGRADE_V1, references/upgrade-v1.md). It backs the
    live sidecar up FIRST (dir + tarball), migrates to a temp staging dir, runs
    verify(), and ONLY swaps the live location into place if verify passes with
    all source content present. If verify fails it ABORTS and leaves the original
@@ -33,17 +41,20 @@ What it does
    regenerate-index-sections.py keeps working against the new file.
 3. Each SESSION block -> staging `sessions/YYYY-MM-DD.md`, keyed by the first
    date token in the heading. Same-date blocks append to one file.
-4. Seed PERSONA.md / CREED.md (+ shards + incident log) / BOND.md /
-   CAPABILITIES.md / PULSE.md from the skill's assets/ templates, with config
-   values substituted.
-5. Build INDEX.md from the template, plus rows for the preserved organic
-   files; mark the PERSONA Evolution Log with a migration line.
+4. Seed PERSONA.md / CREED.md (its Dominion rendered from the access-boundaries
+   template) / BOND.md / PULSE.md from the skill's assets/ templates with config
+   values substituted, the creed shards + incident log from references/creed.md,
+   and CAPABILITIES.md from assets/menu.csv. HOW-I-REMEMBER.md is NOT written:
+   it marks a v7 sanctum, and migrate-sanctum-to-v7.py adds it.
+5. Write the v2 INDEX.md (a thin map, built in; the v7 templates have none),
+   plus rows for the preserved organic files; mark the PERSONA Evolution Log
+   with a migration line.
 6. Copy (preserve) the bespoke organic files: patterns.md, chronology.md,
    access-boundaries.md, _collection_*.txt. If the old store had no
    access-boundaries.md, seed it from the template so the spine is complete.
 
-This tool moves a v1 store to v2. To bring an existing v2 sanctum up to date
-with newer templates, use upgrade-sanctum.py instead.
+The output carries the whole v2 spine (`_sanctum_seed.V2_SPINE`), so it
+classifies as v2 and the next waking routes it to migrate-sanctum-to-v7.py.
 
 Usage
 -----
@@ -83,9 +94,9 @@ def _load_sanctum_seed():
 _seed = _load_sanctum_seed()
 shard_creed = _seed.shard_creed  # single source of the creed-sharding logic
 
-SKILL_NAME = "suno-agent-band-manager"
-SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
-DEFAULT_OUT_REL = ("_bmad", "_memory", ".sidecar-v2-staging")
+SKILL_NAME = _seed.AGENT_SKILL_NAME
+SANCTUM_REL = _seed.LEGACY_SANCTUM_REL  # v1 in, v2 out: both at the legacy path
+DEFAULT_OUT_REL = (*SANCTUM_REL[:-1], ".sidecar-v2-staging")
 
 # Bespoke organic files preserved verbatim (copied, never rewritten).
 PRESERVED_FILES = [
@@ -97,15 +108,52 @@ PRESERVED_FILES = [
     "_collection_reflow.txt",
 ]
 
-# Templates → output filenames in the staging sanctum.
+# Templates → output filenames in the staging sanctum. MEMORY.md is woven
+# (see build_memory) and INDEX.md is built in (V2_INDEX): the v7 templates have
+# neither. HOW-I-REMEMBER-template.md is left out on purpose (it marks v7).
 TEMPLATE_MAP = {
-    "INDEX-template.md": "INDEX.md",
     "PERSONA-template.md": "PERSONA.md",
     "CREED-template.md": "CREED.md",
     "BOND-template.md": "BOND.md",
-    "MEMORY-template.md": "MEMORY.md",  # MEMORY is woven, not copied — see below.
     "PULSE-template.md": "PULSE.md",
 }
+
+# The v2 thin map. Only migrate-sanctum-to-v7.py reads this store, and it drops
+# INDEX.md (the v7 waking map replaces it), so the map just names the files.
+V2_INDEX = """# Mac's Sanctum — Index
+
+> v2 map written by migrate-sidecar-to-v2.py. This store converts to the v7 layout
+> with migrate-sanctum-to-v7.py, which replaces this file with the waking map.
+>
+> **Sanctum root:** `{project-root}/_bmad/_memory/band-manager-sidecar/`
+> **Owner:** {user_name} · **Born:** {birth_date}
+
+## Loaded on Waking (always)
+
+| File | Holds |
+|------|-------|
+| `access-boundaries.md` | Dominion contract — read/write/deny zones and the write rule. |
+| `INDEX.md` | This map. |
+| `MEMORY.md` | Curated memory: preferences, current work, parked threads, derived catalog sections. |
+| `CREED.md` | Creed core. |
+| `PERSONA.md` | Mac's living self. |
+| `BOND.md` | Thin owner-model orienting file. |
+| `CAPABILITIES.md` | Built-in and learned capabilities. |
+
+## Not Loaded on Waking (raw layers / references)
+
+| File / Dir | Holds | Why not loaded |
+|------------|-------|----------------|
+| `sessions/YYYY-MM-DD.md` | Raw per-date session logs. | Raw material; MEMORY.md carries the distilled version. |
+| `creed-*.md` | Creed shards and the incident log. | Loaded on demand. |
+"""
+
+# The v2 MEMORY.md banner (the source sections follow it verbatim).
+V2_MEMORY_BANNER = """# Mac — Curated Memory
+
+> Migrated from the v1 index.md by migrate-sidecar-to-v2.py. migrate-sanctum-to-v7.py
+> splits these sections into the v7 standing files under memory/.
+"""
 
 DERIVED_MARKERS = ["recently-published", "catalog-status"]
 
@@ -219,9 +267,10 @@ def build_memory(
     current_work_pointer: str | None,
     variables: dict,
 ) -> str:
-    """Weave MEMORY.md from the template header + the source non-session content.
+    """Weave MEMORY.md from a banner + the source non-session content.
 
-    The template supplies the curated header (owner/born banner). We then append
+    `template_text` supplies the banner (its text before the first `## `;
+    V2_MEMORY_BANNER by default). We then append
     the source's non-session sections VERBATIM (preferences, derived catalog
     sections with their markers, module state, pending/parked, session history).
     This preserves the derived-section marker pairs exactly as the source had
@@ -282,6 +331,7 @@ def migrate(project_root: Path, sanctum_path: Path, out_dir: Path, skill_path: P
     assets_dir = skill_path / "assets"
     references_dir = skill_path / "references"
     variables = build_variables(project_root)
+    variables["dominion"] = _seed.render_dominion(assets_dir, variables)
 
     index_text = index_path.read_text(encoding="utf-8")
     preamble, sections = split_sections(index_text)
@@ -307,10 +357,9 @@ def migrate(project_root: Path, sanctum_path: Path, out_dir: Path, skill_path: P
     produced: list[str] = []
 
     # --- MEMORY.md (woven, with derived markers preserved) ---
-    memory_template = (assets_dir / "MEMORY-template.md").read_text(encoding="utf-8")
     pointer = current_work_pointer_block(current_work_section)
     memory_text = build_memory(
-        memory_template, non_session_sections, pointer, variables
+        V2_MEMORY_BANNER, non_session_sections, pointer, variables
     )
     (out_dir / "MEMORY.md").write_text(memory_text, encoding="utf-8")
     produced.append("MEMORY.md")
@@ -331,17 +380,18 @@ def migrate(project_root: Path, sanctum_path: Path, out_dir: Path, skill_path: P
 
     preserved_present = [n for n in PRESERVED_FILES if (sanctum_path / n).exists()]
 
-    # --- Template-seeded sanctum files (skip MEMORY — already woven) ---
+    # --- INDEX.md (the built-in v2 map + rows for the preserved files) ---
+    index_out = migration_index(substitute_vars(V2_INDEX, variables), preserved_present)
+    (out_dir / "INDEX.md").write_text(index_out, encoding="utf-8")
+    produced.append("INDEX.md")
+
+    # --- Template-seeded sanctum files ---
     for template_name, out_name in TEMPLATE_MAP.items():
-        if out_name == "MEMORY.md":
-            continue
         template_path = assets_dir / template_name
         if not template_path.exists():
             continue
         content = substitute_vars(template_path.read_text(encoding="utf-8"), variables)
-        if out_name == "INDEX.md":
-            content = migration_index(content, preserved_present)
-        elif out_name == "PERSONA.md":
+        if out_name == "PERSONA.md":
             content = migration_persona(content)
         (out_dir / out_name).write_text(content, encoding="utf-8")
         produced.append(out_name)
@@ -468,6 +518,11 @@ def verify(sanctum_path: Path, out_dir: Path) -> dict:
             f"output: {dropped_sections}"
         )
 
+    # The whole v2 spine, so the store classifies as v2 and converts to v7.
+    missing_spine = [n for n in _seed.V2_SPINE if not (out_dir / n).is_file()]
+    if missing_spine:
+        findings.append(f"v2 spine incomplete: {missing_spine}")
+
     # Preserved-file integrity (byte-identical copies).
     preserved_ok: dict[str, bool] = {}
     for name in PRESERVED_FILES:
@@ -496,6 +551,7 @@ def verify(sanctum_path: Path, out_dir: Path) -> dict:
             "all_sections_present": not dropped_sections,
         },
         "preserved_files_byte_identical": preserved_ok,
+        "missing_spine": missing_spine,
         "files_produced": files_produced,
         "findings": findings,
     }
@@ -507,7 +563,7 @@ def verify(sanctum_path: Path, out_dir: Path) -> dict:
 
 
 def sidecar_state(sanctum_path: Path) -> str:
-    """Classify the live sidecar: 'absent' | 'v2' | 'v1' | 'damaged'.
+    """Classify the live sidecar: 'absent' | 'v1' | 'v2' | 'v7' | 'damaged'.
 
     The same case-sensitive classification pre-activate.py uses
     (`_sanctum_seed.classify_sanctum`), so the router and this driver agree.
@@ -563,8 +619,8 @@ def migrate_in_place(
     Idempotent and safe to re-run: a second run sees a v2 sidecar and no-ops.
     """
     state = sidecar_state(sanctum_path)
-    if state == "v2":
-        return {"status": "already-v2", "sanctum_path": str(sanctum_path)}
+    if state in ("v2", "v7"):
+        return {"status": f"already-{state}", "sanctum_path": str(sanctum_path)}
     if state == "absent":
         return {"status": "no-sidecar", "sanctum_path": str(sanctum_path)}
     if state == "damaged":
@@ -572,8 +628,8 @@ def migrate_in_place(
             "status": "blocked",
             "reason": (
                 "not a v1 store (no index.md content store, or a partial v2 "
-                "spine) — nothing to migrate. Restore missing spine files with "
-                "upgrade-sanctum.py, or re-scaffold if nothing is left"
+                "spine) — nothing to migrate. Restore the missing files from a "
+                "backup, or re-scaffold (First Breath) if nothing is left"
             ),
             "sanctum_path": str(sanctum_path),
         }
@@ -720,7 +776,7 @@ def main() -> int:
         print(f"ERROR: project root not found: {project_root}", file=sys.stderr)
         return 2
 
-    sanctum_path = project_root.joinpath(*SANCTUM_REL)
+    sanctum_path = _seed.legacy_sanctum_dir(project_root)
     out_dir = (
         Path(args.out).resolve()
         if args.out
@@ -747,21 +803,22 @@ def main() -> int:
             status = result["status"]
             if status == "migrated":
                 print(
-                    f"Upgraded sidecar to v2 in place.\n"
+                    f"Upgraded sidecar to v2 in place (next: migrate-sanctum-to-v7.py).\n"
                     f"  backup dir:     {result['backup_path']}\n"
                     f"  backup tarball: {result['backup_tarball']}\n"
                     f"  sanctum:        {result['sanctum_path']}\n"
                     f"  session files:  {len(result['session_files'])}\n"
                     f"  files:          {len(result['files'])}"
                 )
-            elif status == "already-v2":
-                print("Sidecar is already v2 — nothing to upgrade.")
+            elif status in ("already-v2", "already-v7"):
+                print(f"Sidecar is already {status[len('already-'):]} — nothing to do here "
+                      "(a v2 store converts with migrate-sanctum-to-v7.py).")
             elif status == "no-sidecar":
                 print("No sidecar present — nothing to upgrade.")
             else:  # blocked
                 print(f"BLOCKED: {result.get('reason', 'unknown')}")
         # migrated / already-v2 / no-sidecar are success exits; blocked is non-zero.
-        return 0 if result["status"] in ("migrated", "already-v2", "no-sidecar") else 1
+        return 0 if result["status"] in ("migrated", "already-v2", "already-v7", "no-sidecar") else 1
 
     if not args.verify_only:
         result = migrate(project_root, sanctum_path, out_dir, skill_path)

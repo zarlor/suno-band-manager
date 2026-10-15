@@ -25,9 +25,9 @@ If invoked with `--headless` or structured JSON input, skip all interactive step
   "lyrics": "optional — finished lyrics to use as-is (with lyrics_ready: true)",
   "lyrics_ready": "optional — true skips the Lyric Transformer and uses `lyrics` unchanged",
   "band_profile": "optional — profile name to load",
-  "tier": "optional — free|pro|premier (else MEMORY.md User Preferences)",
+  "tier": "optional — free|pro|premier (else memory/owner/preferences.md)",
   "model": "optional — default v6 on Pro/Premier, v6-mini on Free (also: v6-wild)",
-  "exclusions": "optional — list (else MEMORY.md Default Exclusions + the profile's)",
+  "exclusions": "optional — list (else memory/work/default-exclusions.md + the profile's)",
   "voice": "optional — Voice name attached in Suno",
   "persona": "optional — Persona name",
   "custom_model": "optional — Custom Model name",
@@ -39,7 +39,7 @@ If invoked with `--headless` or structured JSON input, skip all interactive step
 }
 ```
 
-**Process (no interaction):** Read `MEMORY.md` User Preferences and Default Exclusions for anything the input leaves out (tier, exclusions, the active band). If the tier still can't be resolved, build for Free and say so in `warnings`. Run the Lyric Transformer (when there's source text, it isn't instrumental and `lyrics_ready` isn't set) and the Style Prompt Builder exactly as Steps 3–4 describe — the Package Assembly Rule binds headless too. Assemble and return.
+**Process (no interaction):** Read `memory/owner/preferences.md`, `memory/work/default-exclusions.md` and `memory/bands/active.md` for anything the input leaves out (tier, exclusions, the active band). If the tier still can't be resolved, build for Free and say so in `warnings`. Run the Lyric Transformer (when there's source text, it isn't instrumental and `lyrics_ready` isn't set) and the Style Prompt Builder exactly as Steps 3–4 describe — the Package Assembly Rule binds headless too. Assemble and return.
 
 **Output:** the standard headless result envelope (`status`, `capability`, `artifact_path`, `summary`, `warnings`) plus a `package` object in Step 5 order:
 
@@ -85,7 +85,7 @@ Sliders are `null` on Free. `wild_card` is `null` when `include_wild_card` is fa
 
 ## Step 2: Gather Direction
 
-> **Load the relevant creed shards as the work calls for them.** When you start drafting or processing any creative material inline (a lyric swing, a structural sketch, pasted external text), load `{project-root}/_bmad/_memory/band-manager-sidecar/creed-workshop-capture.md` and capture the verbatim material to its WIP file BEFORE discussing it. When you build a song-direction candidates list or make any "this is fresh/new territory for the band" claim, load `{project-root}/_bmad/_memory/band-manager-sidecar/creed-disciplines.md` (Catalog Verification + Thematic Discipline). Run `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --check --band {band-slug}` first; if it exits 1, regenerate the index (drop `--check`), then read `docs/{band-slug}-genre-coverage.md` before asserting. Absence from the index isn't proof of freshness — grep the songbook and profile before any never-done claim.
+> **Load the relevant disciplines as the work calls for them** (the sanctum's `memory/disciplines/`). When you start drafting or processing any creative material inline (a lyric swing, a structural sketch, pasted external text), load `memory/disciplines/workshop-capture.md` and capture the verbatim material to its WIP file BEFORE discussing it. When you build a song-direction candidates list or make any "this is fresh/new territory for the band" claim, load `memory/disciplines/catalog-verification-discipline.md` and `memory/disciplines/thematic-discipline.md`. Run `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --check --band {band-slug}` first; if it exits 1, regenerate the index (drop `--check`), then read `docs/{band-slug}-genre-coverage.md` before asserting. Absence from the index isn't proof of freshness — grep the songbook and profile before any never-done claim.
 
 Collect what you need for the mode. Not everything is required.
 
@@ -124,13 +124,13 @@ Before Steps 3 and 4, surface the confirmed direction:
 
 Wait for confirmation and update if corrected. Demo mode: one sentence. Studio/Jam: more thorough.
 
-**Tier not on record yet:** add one plain line — "Building this for Free (v6-mini, no Exclude Styles or sliders). On Pro or Premier? Say so and I'll build for v6." Write the answer into `MEMORY.md` User Preferences the moment it lands.
+**Tier not on record yet:** add one plain line — "Building this for Free (v6-mini, no Exclude Styles or sliders). On Pro or Premier? Say so and I'll build for v6." Write the answer into `memory/owner/preferences.md` the moment it lands.
 
 After Steps 3 and 4 return, apply **Transparency**: compare skill output against the confirmed direction. If either skill added elements not discussed (new imagery, genre modifiers, unexpected metatags), surface them — "The style prompt builder added X — keep or cut?" — before assembling.
 
 ## Steps 3 & 4: Run Skills in Parallel (Headless Mode)
 
-> **Load the Package Assembly shard** `{project-root}/_bmad/_memory/band-manager-sidecar/creed-package-assembly.md` before assembling. The always-loaded `CREED.md` core carries the Package Assembly Rule core; the shard carries the rest (Violation Tells, Agent-vs-Skill tool choice, highest-risk contexts, refinement presentation scope).
+> **Load the Package Assembly discipline** `{project-root}/_bmad/memory/suno-agent-band-manager/memory/disciplines/package-assembly.md` before assembling. The always-loaded `CREED.md` core carries the Package Assembly Rule core; the discipline file carries the rest (Violation Tells, Agent-vs-Skill tool choice, highest-risk contexts, refinement presentation scope).
 >
 > **Reference:** for metatag behavior, section tag selection and structure, consult the suno-lyric-transformer skill's `references/metatag-reference.md` and `references/section-jobs.md`. Key: only use recognized section tags (custom tags get sung as lyrics), and Bridge (something new) vs Breakdown (something less).
 
@@ -253,7 +253,7 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 {One-line pitch for why this twist could work, staying inside the band's core sound: "What if we took this country ballad into a stripped 1970s outlaw arrangement? Same song, same lane — rawer production, and the fiddle carries the hook instead of the band."}
 ```
 
-**First-use Suno walkthrough (the first song only, or when asked):** show it once, then note `Suno panel walkthrough: shown` in `MEMORY.md` User Preferences so it doesn't repeat. A returning user can ask for it again.
+**First-use Suno walkthrough (the first song only, or when asked):** show it once, then note `Suno panel walkthrough: shown` in `memory/owner/preferences.md` so it doesn't repeat. A returning user can ask for it again.
 
 "**How to use this in Suno:** Work top to bottom, in the package's order. Pick the model at the top right (v6 unless the package says otherwise). Leave 'Describe your song' empty — the Lyrics and Styles fields carry everything. Add your Voice, Audio or Inspo from the chips if the package names one. Paste the Lyrics, then the Style Prompt into Styles. Open the Controls panel: Exclude Styles first, then Vocal Gender, Duration, Max Mode, Weirdness, Style Influence, Audio Influence, Variety and Personalize as listed. Add the Song Title, pick the Save to folder, and hit Create. Generate a few takes — Suno reads the same inputs differently each time — and listen in the browser before you download anything."
 
@@ -266,7 +266,7 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 **After presenting:**
 
 1. **Generate → inspect → refine:** "Go try this on Suno — generate 3-5 versions and listen through them. Suno interprets the same inputs differently each time, so casting a wider net gives you more to work with. When you've heard the results, come back and tell me what you think — that's where songs really come together." To find a style's feel cheaply, a couple of Max Mode–off sketches can come first; the takes you might keep run with Max Mode on. When the owner is testing one change against another, offer about 4 takes (two Creates) per version as a suggestion, with the reason: on v6 the spread between takes can be bigger than the change being tested, and a measured outside series saw the ranking flip between 2 and 4 takes. How many takes they run is their call.
-2. **Listen in the browser; download only the keeper** (or a take that needs measuring). Suno caps downloads on every tier (see `SUNO-REFERENCE.md`). On a paid tier, say how many downloads are left this cycle when `MEMORY.md`'s Downloads section has the number, and update that count the moment the owner says they downloaded.
+2. **Listen in the browser; download only the keeper** (or a take that needs measuring). Suno caps downloads on every tier (see `SUNO-REFERENCE.md`). On a paid tier, say how many downloads are left this cycle when `memory/work/downloads.md` has the number, and update that count the moment the owner says they downloaded.
 3. **Section replacement over full regeneration:** if a version is mostly right but has a weak section, suggest section replacement (the Song Editor; v6 also takes plain-language section edits, which launch-week users report as uneven). "If the verse is perfect but the chorus needs work, try replacing just the chorus section instead of rolling the dice on a whole new generation."
 4. **Route captured items** from Capture-Don't-Interrupt.
 5. If working with a band profile, offer to save successful elements to the profile.
@@ -298,7 +298,7 @@ Scripts are the source of truth for numbers. External LLM listening notes (Gemin
 
 ### Post-Publish Reconciliation
 
-Sync happens at the point of change (the sanctum `CREED.md` Principles): each publish write carries its cross-file updates in the same batch — songbook entry, the band's playlist YAML, the voice file's catalog count and Companion Files row, the sidecar's Current Work and Pending / Parked Work. Then one deterministic backstop:
+Sync happens at the point of change (the sanctum `CREED.md` Principles): each publish write carries its cross-file updates in the same batch — songbook entry, the band's playlist YAML, the voice file's catalog count and Companion Files row, the sanctum's `memory/work/current.md` and `memory/work/parked.md`. Then one deterministic backstop:
 
 - **Run `uv run {skill-root}/scripts/validate-sidecar.py "{project-root}" --format json`** and act on `playlist_drift` (the playlist and songbook name different songs), `voice_catalog_drift` (a stale published count), `pending_drift` (a COMPLETED WIP still listed, or an active one missing) and `companion_missing` findings.
 - **Title changed from the working title:** load `references/reconcile.md` and run it with the old and new titles.

@@ -25,13 +25,13 @@ If invoked with `--headless` or structured JSON input, skip all interactive step
   "original_lyrics": "optional — the lyrics being refined",
   "feedback": "required — the listener reaction / adjustment request to act on",
   "model": "optional — model the song used (inferred from tier/profile if absent)",
-  "tier": "optional — free|pro|premier (else MEMORY.md User Preferences)",
+  "tier": "optional — free|pro|premier (else memory/owner/preferences.md)",
   "band_profile": "optional — profile name for voice constraints",
   "creativity_mode": "optional — conservative|balanced|experimental, default balanced"
 }
 ```
 
-**Process (no interaction):** Read `MEMORY.md` User Preferences for a missing tier (warn and assume Free if unresolved). Run the Feedback Elicitor headless on the feedback and context, then route its `adjustment_recommendations` back through the Style Prompt Builder and/or Lyric Transformer headless exactly as Step 3 does. The Package Assembly Rule still binds — load `creed-package-assembly.md`. Assemble and return.
+**Process (no interaction):** Read `memory/owner/preferences.md` for a missing tier (warn and assume Free if unresolved). Run the Feedback Elicitor headless on the feedback and context, then route its `adjustment_recommendations` back through the Style Prompt Builder and/or Lyric Transformer headless exactly as Step 3 does. The Package Assembly Rule still binds — load the sanctum's `memory/disciplines/package-assembly.md`. Assemble and return.
 
 **Output:** the refined package delta as structured JSON (only what changed — style prompt, exclusions, lyrics, settings — in the create-song `package` field names), plus the standard headless result envelope (`status`, `capability`, `artifact_path`, `summary`, `warnings`). A refinement that would overwrite a *published* songbook entry is a Law-3-gated write — stage it and report it as a warning rather than applying it. Any other durable write first passes `uv run {skill-root}/scripts/validate-path.py "<target path>" write`; a denied path is skipped and reported in `warnings`. If `feedback` is missing or no original prompt/lyrics can be resolved, return `status: blocked` with the reason.
 
@@ -39,11 +39,11 @@ If invoked with `--headless` or structured JSON input, skip all interactive step
 
 **From this session** (create-song ran earlier): the package, model, settings, band profile and intent are already in context.
 
-**Starting fresh:** look the song up before asking for technical details. `MEMORY.md`'s Recently Published section is already loaded; for anything else run `uv run {skill-root}/scripts/songbook-catalog.py "{project-root}" --title "<words they used>"` (or `--band <slug> --since <date>` for "the one from last week"). Confirm: "Is this the one you're refining? {title / style prompt preview}". If nothing matches, ask what they generated and with which prompts.
+**Starting fresh:** look the song up before asking for technical details. `memory/catalog/recently-published.md` lists the latest; for anything else run `uv run {skill-root}/scripts/songbook-catalog.py "{project-root}" --title "<words they used>"` (or `--band <slug> --since <date>` for "the one from last week"). Confirm: "Is this the one you're refining? {title / style prompt preview}". If nothing matches, ask what they generated and with which prompts.
 
 **Minimal context path:** If the user can't give details ("I just hit Create"), work with what they have: infer the model from tier (Free = v6-mini; paid = v6 unless the package ran on v6-wild), don't ask about sliders on Free, and accept a plain reaction — "I pasted X and got Y, but it sounds too Z" is enough. The Feedback Elicitor handles vague feedback.
 
-**Downloads:** the take is heard in the browser; refinement doesn't need it downloaded. Measuring it does — when a script reading would settle the question (tempo, loudness, a section that ran together), say that downloading it uses one of the cycle's downloads (the count is in `MEMORY.md`'s Downloads section) and update the count if they download.
+**Downloads:** the take is heard in the browser; refinement doesn't need it downloaded. Measuring it does — when a script reading would settle the question (tempo, loudness, a section that ran together), say that downloading it uses one of the cycle's downloads (the count is in `memory/work/downloads.md`) and update the count if they download.
 
 **Reading the take** (2026-10-03): what plays isn't always what was asked for. Trust the audio and the owner's ear over the song page's displayed style text, which shows the input or Variety's rewrite, not what landed. For a near-keeper that only needs a better ending, a fuller final chorus or a louder vocal, the suno-feedback-elicitor skill's `references/technical-resolution.md` → "Repair Ladder for a Near-Keeper" lists things to try before a full re-roll. They apply only before the take is handed over.
 
@@ -61,7 +61,7 @@ Then apply **Transparency**: tell the owner what the diagnosis found and which c
 
 ## Step 3: Rebuild Only What Changed
 
-> **Load the Package Assembly shard** `{project-root}/_bmad/_memory/band-manager-sidecar/creed-package-assembly.md`. Re-running the pipeline is a package-assembly path; the shard's **Refinement presentation scope** and **Tool Choice** sections govern this step and Step 4.
+> **Load the Package Assembly discipline** `{project-root}/_bmad/memory/suno-agent-band-manager/memory/disciplines/package-assembly.md`. Re-running the pipeline is a package-assembly path; the shard's **Refinement presentation scope** and **Tool Choice** sections govern this step and Step 4.
 
 Offer each rebuild the recommendations call for ("Want me to rebuild the style prompt with these changes?"):
 

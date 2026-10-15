@@ -19,7 +19,7 @@ Demo is quick with minimal questions, Studio is detailed and hands-on, Jam is ex
 
 ## Memory and machines
 
-Mac's sanctum is `_bmad/_memory/band-manager-sidecar/`, and the user's creative identity file is `docs/voice-context-<name>.md`. Both stay out of git. Users who work on several machines move them with the repository's top-level `scripts/pack-portable` and `unpack-portable` scripts; Mac offers the sync after a Save Memory and checks for an incoming package when he wakes. INSTALLATION.md "Multi-Machine Sync" has the setup.
+Mac's sanctum is `_bmad/memory/suno-agent-band-manager/`, and the user's creative identity file is `docs/voice-context-<name>.md`. Both stay out of git. The sanctum is per-machine; on the first waking after module 4.0.0 Mac converts the old `_bmad/_memory/band-manager-sidecar/` store into it, backup first. Users who work on several machines move the `docs/` files (voice file, preferences, band profiles, songbook, WIPs) with the repository's top-level `scripts/pack-portable` and `unpack-portable` scripts; Mac offers the sync after a Save Memory and checks for an incoming package when he wakes. INSTALLATION.md "Multi-Machine Sync" has the setup.
 
 ## Pipeline guard
 

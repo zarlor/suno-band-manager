@@ -24,9 +24,11 @@ This guide covers everything you need to know about working with Mac, the Suno B
 
 The very first time you invoke Mac, he runs through a setup flow to learn how you work. Here is what happens under the hood:
 
-1. Mac checks whether `{project-root}/_bmad/_memory/band-manager-sidecar/` exists.
-2. If it does not exist, Mac runs `scripts/pre-activate.py` to scaffold the directory.
+1. Mac checks whether his sanctum, `{project-root}/_bmad/memory/suno-agent-band-manager/`, exists.
+2. If it does not exist, Mac runs `scripts/pre-activate.py --scaffold` to create it from the templates.
 3. Mac loads `init.md` and walks you through the first-run setup.
+
+If you used Mac before module 4.0.0, his memory sits in the old place (`_bmad/_memory/band-manager-sidecar/`). On the first waking after the upgrade he offers to convert it: he backs it up to `_bmad/backups/`, shows you what goes where, and converts on your yes. The old folder stays until you tell him to remove it.
 
 ### Setup: One Question, Then Learning as You Go
 
@@ -43,22 +45,22 @@ All of these preferences are changeable through conversation at any time -- no n
 
 ### What Gets Created
 
-After setup, Mac scaffolds the sanctum (memory) directory. The files you'll care
+After setup, Mac scaffolds the sanctum (memory) directory. The parts you'll care
 about most:
 
-| File | Purpose |
+| File or folder | Purpose |
 |------|---------|
-| `MEMORY.md` | Your preferences, active work, essential context (curated; loaded every session) |
-| `INDEX.md` | A thin map of the sanctum — what every file holds |
-| `sessions/YYYY-MM-DD.md` | Raw per-day session notes (the full play-by-play) |
-| `patterns.md` | Musical preferences Mac learns over time |
-| `chronology.md` | Session timeline |
+| `PERSONA.md`, `CREED.md`, `BOND.md`, `HOW-I-REMEMBER.md`, `CAPABILITIES.md` | Who Mac is, his rules, what he knows about working with you, how he keeps his memory, what he can do. Loaded every session. |
+| `memory/work/` | The song in progress, your download budget, default exclusions, parked threads |
+| `memory/owner/`, `memory/bands/` | Your preferences (tier, default mode) and the band profiles in play |
+| `memory/catalog/` | Recently published songs and catalog counts, generated from your songbook |
+| `memory/sessions/`, `memory/chronology/` | A short note per session, and the milestones |
+| `memory/pending.md` | Anything Mac wants to raise next time (including a Pulse report) |
+| `raw/` | Material kept as given: transcripts, your writings |
 
-Mac also creates `access-boundaries.md`, which defines where the agent can read and write:
+Only the five identity files load at the start of a session; Mac opens the rest when a conversation needs it. The sanctum stays on this machine; what travels between machines lives in `docs/`.
 
-- **Read access:** `docs/band-profiles/` and the sidecar memory folder
-- **Write access:** Sidecar memory folder only
-- **Deny zones:** Everything else
+The Dominion section of `CREED.md` defines where Mac can read and write: his sanctum, plus the `docs/` files he works with (voice file, preferences, band profiles, songbook, WIPs, playlists). Everything else is off limits.
 
 ---
 
@@ -674,7 +676,7 @@ If your songbook is empty, Mac lets you know and offers to start your first song
 
 ### How Mac Remembers Your Preferences
 
-Mac stores learned preferences in `patterns.md` within the sidecar memory. Over time, this captures:
+Mac keeps what he learns about your sound in his memory and, once you agree a pattern holds, in `docs/suno-production-patterns.md`. Over time, this captures:
 - Genre tendencies
 - Vocal preferences
 - Exclusions you consistently use
@@ -689,7 +691,7 @@ During a session, Mac tracks:
 - Your interaction mode
 - Creative context you have shared
 
-The `MEMORY.md` file stores active work and essential context between sessions (the raw day-by-day detail lives in `sessions/`).
+Between sessions, `memory/work/current.md` holds the song in progress and where to pick up, and each session leaves a short note in `memory/sessions/`.
 
 ### Saving and Resuming Sessions
 
@@ -782,7 +784,7 @@ Headless modes enable batch workflows. Example: generate style prompts for multi
 | Lyrics exceed Suno's limit | Over 5,000 characters (hard limit) or over 3,000 (quality degrades) | Ask Mac to condense. The Lyric Transformer tracks character budgets — warns at 3,000 (quality), errors at 5,000 (hard limit). |
 | Mac asks too many questions | You are in Studio mode | Say "let's switch to Demo mode" for a faster experience. |
 | Mac does not ask enough questions | You are in Demo mode | Say "let's go Studio mode" for the full songwriter's workshop. |
-| Mac forgot my preferences | It wasn't written to memory | Mac saves preferences as he learns them. If one slipped, tell him again; SM (Save Memory) runs a full consolidating save any time. |
+| Mac forgot my preferences | It wasn't written to memory | Mac saves preferences as he learns them. If one slipped, tell him again; SM (Save Memory) tends his memory and saves the session any time. |
 | Profile says wrong tier | Your Suno plan changed | Tell Mac "I upgraded to Pro" -- he updates memory and offers to update your profiles. Mac also detects tier drift when loading profiles. |
 | Profile references Personas but I'm on v6 | Personas moved inside the Voices menu -- they were relocated, not removed, and still work | Nothing is broken. Tell Mac your model version if you want him to suggest a Voice instead; a Voice locks vocal identity more tightly than a Persona does. |
 | Mutually exclusive transformation error | Selected FR + WF or other conflicts | Full Rewrite and Word Fidelity cannot be used together. Chorus Extraction is skipped if Full Rewrite is selected. |

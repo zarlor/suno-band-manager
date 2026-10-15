@@ -21,8 +21,8 @@ mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 
-def test_parse_boundaries(tmp_path):
-    """Parse access-boundaries.md correctly."""
+def test_parse_legacy_access_boundaries(tmp_path):
+    """A legacy standalone access-boundaries.md (top-level ## sections) still parses."""
     boundaries_file = tmp_path / "access-boundaries.md"
     boundaries_file.write_text(
         "# Access Boundaries\n\n"
@@ -87,7 +87,8 @@ def test_template_parses_backticked_entries(tmp_path):
 def test_template_write_rules(tmp_path):
     b = _template_boundaries(tmp_path)
     ok = lambda p, op: mod.validate_path(p, op, b, project_root="/proj", skill_root="/proj/src/skills/mac")["allowed"]
-    assert ok("/proj/_bmad/_memory/band-manager-sidecar/MEMORY.md", "write")
+    assert ok("/proj/_bmad/memory/suno-agent-band-manager/memory/work/current.md", "write")
+    assert not ok("/proj/_bmad/_memory/band-manager-sidecar/MEMORY.md", "write")  # the legacy store
     assert ok("docs/wip-new-song-fragments.md", "write")
     assert ok("docs/voice-context-sam.md", "write")
     assert not ok("docs/band-profiles/x.yaml", "write")      # via the profile skill only
@@ -103,3 +104,75 @@ def test_template_bundle_carve_out_allows_reads(tmp_path):
     assert ok("src/skills/mac/references/create-song.md", "read")
     assert not ok("src/other/thing.py", "read")
     assert ok("docs/band-profiles/x.yaml", "read")
+
+
+# --- v7: the Dominion inside the sanctum's CREED.md ---
+
+
+def test_parse_creed_dominion_subsections(v7_project):
+    root, sanctum = v7_project
+    b = mod.parse_boundaries(sanctum / "CREED.md")
+    assert b["read"] == ["_bmad/memory/suno-agent-band-manager/", "docs/band-profiles/"]
+    assert b["write"] == ["_bmad/memory/suno-agent-band-manager/", "docs/wip-*.md"]
+    assert b["deny"] == ["src/"]
+    # Write Rule prose and the sections outside the Dominion are not rules.
+    everything = b["read"] + b["write"] + b["deny"]
+    assert "docs/not-a-rule.md" not in everything
+    assert "docs/also-not-a-rule.md" not in everything
+
+
+def test_creed_dominion_decisions(v7_project):
+    root, sanctum = v7_project
+    b = mod.parse_boundaries(sanctum / "CREED.md")
+    ok = lambda p, op: mod.validate_path(p, op, b, project_root=str(root))["allowed"]
+    assert ok(str(sanctum / "memory" / "work" / "current.md"), "write")
+    assert ok("docs/wip-dock.md", "write")
+    assert ok("docs/band-profiles/x.yaml", "read")
+    assert not ok("docs/band-profiles/x.yaml", "write")
+    assert not ok("src/skills/x.py", "write")
+    assert not ok("docs/not-a-rule.md", "write")
+
+
+def test_scaffolded_creed_carries_the_template_dominion(tmp_path):
+    """init-sanctum renders the access-boundaries template into CREED.md; it parses
+    the same as the template itself."""
+    init_spec = spec_from_file_location("init_sanctum", Path(__file__).parent.parent / "init-sanctum.py")
+    init = module_from_spec(init_spec)
+    init_spec.loader.exec_module(init)
+    init.scaffold(tmp_path, Path(__file__).parent.parent.parent)
+    creed = tmp_path / "_bmad" / "memory" / "suno-agent-band-manager" / "CREED.md"
+    from_creed = mod.parse_boundaries(creed)
+    template_text = TEMPLATE.read_text(encoding="utf-8").replace("{project-root}", str(tmp_path))
+    legacy = tmp_path / "access-boundaries.md"
+    legacy.write_text(template_text, encoding="utf-8")
+    from_template = mod.parse_boundaries(legacy)
+    assert from_creed == from_template
+    assert "docs/wip-*.md" in from_creed["write"]
+
+
+def _cli(monkeypatch, capsys, *argv):
+    import json
+    monkeypatch.setattr(sys, "argv", ["validate-path.py", *argv])
+    code = 0
+    try:
+        mod.main()
+    except SystemExit as exc:
+        code = exc.code or 0
+    return code, json.loads(capsys.readouterr().out)
+
+
+def test_cli_defaults_to_the_sanctum_creed(v7_project, monkeypatch, capsys):
+    root, _ = v7_project
+    code, out = _cli(monkeypatch, capsys, "docs/wip-dock.md", "write", "--project-root", str(root))
+    assert code == 0 and out["allowed"] is True
+    code, out = _cli(monkeypatch, capsys, "src/x.py", "write", "--project-root", str(root))
+    assert code == 1 and out["reason"] == "deny zone"
+
+
+def test_cli_explicit_boundaries_and_missing_file(v7_project, monkeypatch, capsys):
+    root, sanctum = v7_project
+    code, out = _cli(monkeypatch, capsys, "docs/band-profiles/a.yaml", "read",
+                     "--boundaries", str(sanctum / "CREED.md"), "--project-root", str(root))
+    assert code == 0 and out["allowed"] is True
+    code, out = _cli(monkeypatch, capsys, "docs/a.md", "read", "--project-root", str(root / "nowhere"))
+    assert code == 1 and out["error"] is True and "CREED.md" in out["message"]

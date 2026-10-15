@@ -106,42 +106,43 @@ suno-agent-band-manager/
 ├── customize.toml              # Agent customization surface
 ├── assets/                     # Sanctum templates seeded at First Breath; menu.csv (Mac's menu)
 ├── references/
-│   ├── activation.md           # Waking — reads the wake script's state block and sanctum (loaded in order, access boundaries first), then greets; Pulse and headless routes
+│   ├── activation.md           # Waking — reads the wake script's state block, identity files and memory map, then greets; damaged-sanctum route; the companion files
 │   ├── headless.md             # Headless capability runs (--headless:{capability} / -H) — what's skipped, the result envelope
 │   ├── create-song.md          # CS — main song creation workflow
 │   ├── refine-song.md          # RS — bring back a take: diagnose, rebuild what changed
 │   ├── browse-songbook.md      # SB — creative history browsing
-│   ├── save-memory.md          # SM — consolidating save
+│   ├── save-memory.md          # SM — tending pass and session note
 │   ├── reconcile.md            # Stale-reference reconciliation (shared sub-protocol)
 │   ├── capabilities.md         # External skills, catalog scripts, audio analysis, availability
 │   ├── capability-authoring.md # How Mac authors and registers a capability the owner teaches him
 │   ├── prompt-quality-canon.md # Outcome-driven prompt quality — the bar for anything Mac writes for a model
 │   ├── creed.md / persona.md   # Seed source for the sanctum (not loaded on waking)
 │   ├── init.md                 # First Breath — first-run setup
-│   ├── upgrade-v1.md           # Migrating an old v1 memory store to the v2 sanctum (backup first)
-│   ├── memory-system.md        # Memory discipline and structure
+│   ├── upgrade-v1.md           # Migrating an old v1 memory store to v2 (backup first); the next wake converts it to v7
+│   ├── upgrade-v2.md           # Converting the v2 sanctum to the v7 layout (backup first, old store kept as the rollback)
 │   ├── pipeline-guard.md       # Setting up the pipeline guard (standing order + Claude Code Stop hook)
 │   ├── SUNO-REFERENCE.md       # Suno platform reference
 │   ├── STUDIO-EDITOR-REFERENCE.md # Studio 2.0 and Song Editor reference (cited by the other module skills)
 │   ├── USAGE.md                # End-user guide
 │   └── README.md               # This file
 └── scripts/
-    ├── pre-activate.py         # The wake: resolves config, detects the sanctum state, renders the menu; --wake prints MODE + state + sanctum in load order in one pass, --pulse the Pulse set
-    ├── init-sanctum.py         # Scaffolds a fresh v2 sanctum (First Breath)
+    ├── pre-activate.py         # The wake: resolves config, detects the sanctum state, renders the menu; --wake prints MODE + state + identity files + memory map in one pass, --pulse the Pulse set
+    ├── init-sanctum.py         # Scaffolds a fresh v7 sanctum (First Breath)
     ├── upgrade-sanctum.py      # Brings an existing sanctum up to date with the shipped templates (dry run by default, backups first)
     ├── migrate-sidecar-to-v2.py # v1 memory store → v2 sanctum migration
+    ├── migrate-sanctum-to-v7.py # v2 sanctum → v7 sanctum conversion (never modifies the source)
     ├── validate-sidecar.py     # Sanctum + catalog parity checks
     ├── reconcile-sidecar.py    # Post-unpack punch list: files newer than the memory store + validator findings (read-only)
     ├── find-stale-refs.py      # Old-value search for reconciliation
     ├── songbook-catalog.py     # Per-song catalog extract (title / band / date lookups)
     ├── scan-wip-status.py      # WIP COMPLETED markers + source_wip correlation
     ├── genre-coverage.py       # Per-band genre-coverage index (--check for staleness)
-    ├── check-memory-health.py  # Token-size check of what Mac loads on waking, with maintenance advice
-    ├── regenerate-index-sections.py # Regenerates MEMORY.md's derived sections (Recently Published, Catalog Status)
+    ├── check-memory-health.py  # Size check of the identity and companion files, and standing files being appended to
+    ├── regenerate-index-sections.py # Regenerates memory/catalog/ (Recently Published, Catalog Status) from the songbook
     ├── pipeline-guard.py       # Stop hook: package pipeline + order guard (runs on bare python3)
     ├── configure-guard.py      # Installs the guard: AGENTS.md standing order + Claude Code Stop hook
     ├── validate-path.py        # Access boundary check
-    ├── _sanctum_seed.py        # Shared sanctum logic (load order, config, menu roster, creed shards); CLI re-seeds a missing shard
+    ├── _sanctum_seed.py        # Shared sanctum logic (layout, load order, config, menu roster, creed disciplines, memory map); CLI re-seeds a missing shard
     └── tests/
 ```
 

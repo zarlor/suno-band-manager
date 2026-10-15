@@ -2,46 +2,44 @@
 
 > **Narrow maintenance wake.** Pulse runs only when Mac is invoked with `--pulse` (a
 > scheduled run, no one at the keyboard) and only if {user_name} has turned it on below.
-> The wake prints access-boundaries, CREED, PERSONA and this file — Mac keeps his laws
-> and character even here. Pulse reads, measures and stages findings for the next live
-> session. It never edits creative content — that is a Law 3 (Protect the work) hard line.
+> The wake prints the identity files, the memory map and this file — Mac keeps his laws
+> and character even here. Pulse tends memory, measures, and stages findings for the next
+> live session. It never edits creative content — that is a Law 3 (Protect the work) hard line.
 >
 > **Owner:** {user_name} · **Born:** {birth_date}
 > **Project root:** `{project-root}`
-> **Sanctum:** `{project-root}/_bmad/_memory/band-manager-sidecar/`
+> **Sanctum:** `{project-root}/_bmad/memory/suno-agent-band-manager/`
 
 ## Default Wake Behavior
 
-If Owner Preferences below says Pulse is not enabled, stop here. Otherwise run these in
-order (all read-only against creative content) and collect the results into one report:
+If Owner Preferences below says Pulse is not enabled, stop here. Otherwise:
 
-1. **Curate memory first (proposal only)**
-   `uv run {skill-root}/scripts/check-memory-health.py "{project-root}/_bmad/_memory/band-manager-sidecar"`
-   If MEMORY.md is over budget or has packed lines, read it and the recent `sessions/`
-   logs and draft the distilled version: what stays, what moves down to `sessions/`.
-   Put the draft in the report — do not edit MEMORY.md in place. Note any companion
-   file over budget and any unlisted INDEX.md file.
+1. **Tend memory first**, as `HOW-I-REMEMBER.md` says, when the map shows session notes
+   since the last tending or undistilled raw files: distill, merge, refresh standing files,
+   then write today's date to `memory/.tended`. Tending touches only `memory/` and `raw/`.
 
-2. **Validate the sanctum against catalog ground truth**
+2. **Measure memory health**
+   `uv run {skill-root}/scripts/check-memory-health.py "{project-root}" --format json`
+   Note oversized identity or companion files and standing files that are being appended to.
+
+3. **Validate the sanctum against catalog ground truth**
    `uv run {skill-root}/scripts/validate-sidecar.py "{project-root}" --format json`
-   Flags songbook/index drift, audio-file gaps, broken cross-references.
+   Flags songbook drift, audio-file gaps, broken cross-references.
 
-3. **Check derived-section freshness (dry run — do NOT write)**
-   `uv run {skill-root}/scripts/regenerate-index-sections.py "{project-root}" --dry-run --format json`
-   Surfaces whether `Recently Published` / `Catalog Status` would change.
+4. **Regenerate the catalog files**
+   `uv run {skill-root}/scripts/regenerate-index-sections.py "{project-root}"`
+   `memory/catalog/` is derived from the songbook; refreshing it is safe.
 
-4. **Refresh stale genre-coverage indices**
+5. **Refresh stale genre-coverage indices**
    `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --check` exits 1 when an index is
    stale or missing; then run `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --timestamp "<today's date>"`.
    A derived, regenerable artifact — safe to refresh. Note any band whose index changed.
 
 ## Report-and-Stage Protocol
 
-Write the report to MEMORY.md's `## Pulse Report` section (replace what is there),
-dated with today's date: validator findings (errors first), whether derived sections are
-stale, the proposed MEMORY.md distillation, oversized companion files, and any
-refreshed coverage indices. Put long detail in `sessions/<today>.md` and point to it.
-The next live session opens with this report, then clears the section once shown.
+Write the report to `memory/pending.md`, dated: what tending changed, validator findings
+(errors first), oversized files, and refreshed indices. The next live session opens with it,
+then clears the file once shown.
 
 Then STOP. Do not act on the findings autonomously.
 
@@ -51,13 +49,13 @@ Pulse does not, under any circumstances:
 
 - Edit, rewrite, prune, or "clean up" any song, lyric, WIP, songbook entry, or workshop file.
 - Edit the voice file, mac-preferences, band profiles, or playlists.
-- Write the regenerated derived sections or the curated version into `MEMORY.md` (it stages them).
-- Overwrite anything without a human in the loop.
+- Change the identity files (PERSONA, CREED, BOND, HOW-I-REMEMBER, CAPABILITIES).
+- Overwrite anything outside the sanctum without a human in the loop.
 
-The only writes Pulse may make are: (a) the `## Pulse Report` section and its sessions/
-detail, and (b) refreshing the purely derived genre-coverage indices. Before each write,
-check the path: `uv run {skill-root}/scripts/validate-path.py <path> write --boundaries
-"{project-root}/_bmad/_memory/band-manager-sidecar/access-boundaries.md" --project-root "{project-root}"`.
+The only writes Pulse may make are tending writes under `memory/` and `raw/` frontmatter,
+`memory/pending.md`, the derived `memory/catalog/` files, and the genre-coverage indices.
+Before each write, check the path: `uv run {skill-root}/scripts/validate-path.py <path> write
+--boundaries "{project-root}/_bmad/memory/suno-agent-band-manager/CREED.md" --project-root "{project-root}"`.
 
 ## Owner Preferences
 

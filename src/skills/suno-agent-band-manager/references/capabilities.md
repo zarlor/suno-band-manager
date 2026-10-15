@@ -2,7 +2,7 @@
 
 ## Creed Shards
 
-The heavy creed disciplines live in sanctum shards loaded on demand. Which shard loads when is mapped in the sanctum's always-loaded `CREED.md` (its shard map); the full loaded / on-demand / not-loaded picture is in the sanctum's `INDEX.md`. Load the shard from the sanctum, never the skill's authored `references/creed.md` (seed source, not loaded on waking).
+The heavy creed disciplines live in the sanctum's `memory/disciplines/`, one file each, loaded on demand; the stories behind them are in `memory/incidents/`. Which discipline loads when is mapped in the sanctum's always-loaded `CREED.md` (its shard table). Load the discipline from the sanctum, never the skill's authored `references/creed.md` (seed source, not loaded on waking).
 
 ## External Skills
 
@@ -18,7 +18,7 @@ When invoking these skills, pass relevant context (band profile data, model sele
 
 **Creative riff (Studio/Jam only):** During direction-gathering, Mac is a producer — not just a listener. Offer one proactive creative suggestion per song: an unexpected genre fusion, an instrumentation choice, a structural twist. Frame it as an idea, not a directive.
 
-**Access note:** Band profile writes happen through `suno-band-profile-manager`, not directly by Mac. Mac's access boundaries restrict direct writes to the sidecar memory only.
+**Access note:** Band profile writes happen through `suno-band-profile-manager`, not directly by Mac. Mac's access boundaries (the Dominion section of his sanctum CREED.md) limit his direct writes to the sanctum and the `docs/` zones listed there.
 
 ## Skill Availability
 
@@ -28,7 +28,7 @@ If the style or lyric skill is missing when a package is needed, say which one p
 
 Run these instead of reading and comparing catalog files by hand (`uv run {skill-root}/scripts/<name>.py --help` for flags):
 
-- `validate-sidecar.py` — MEMORY.md derived sections vs the songbook, playlist-vs-songbook title sets, voice-file catalog counts, Pending / Parked Work vs WIP markers, Companion Files table vs disk (`--since DATE` adds files the table doesn't list), broken `docs/` cross-references
+- `validate-sidecar.py` — the `memory/catalog/` files vs the songbook, playlist-vs-songbook title sets, voice-file catalog counts, `memory/work/parked.md` vs WIP markers, Companion Files table vs disk (`--since DATE` adds files the table doesn't list), broken `docs/` cross-references
 - `find-stale-refs.py` — every reference to an old value across the catalog docs and sanctum, with match kind and a replacement preview
 - `songbook-catalog.py` — per-song extract (status, dates, model, settings, style prompt) with per-band tallies, for browsing and lookup
 - `scan-wip-status.py` — WIP COMPLETED markers, correlated to published songs by `source_wip` then title
@@ -38,7 +38,7 @@ Run these instead of reading and comparing catalog files by hand (`uv run {skill
 
 The Feedback Elicitor's scripts measure BPM, key, loudness, energy arcs, section boundaries, chord progressions and playlist seam readings (key move, tempo change, loudness step) from audio files. Its `references/audio-analysis-scripts.md` covers which script does what and how to read the numbers.
 
-**When to offer:** when a downloaded file is at hand — the user provides one, asks about tempo/key/energy, or wants playlist analysis. Downloads are capped, so analyse files the owner already has; before asking for a new download, say it uses one of the cycle's downloads (the count is in `MEMORY.md`'s Downloads section). After a publish, the order is create-song Step 7.
+**When to offer:** when a downloaded file is at hand — the user provides one, asks about tempo/key/energy, or wants playlist analysis. Downloads are capped, so analyse files the owner already has; before asking for a new download, say it uses one of the cycle's downloads (the count is in `memory/work/downloads.md`). After a publish, the order is create-song Step 7.
 
 **How to check:** run any audio script — if dependencies are missing, it returns structured JSON with install instructions (exit code 2).
 

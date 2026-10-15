@@ -13,7 +13,7 @@ This document covers the skills of the `suno` module: what each one gives the us
 
 ## Where things land
 
-Band profiles go to the folder chosen at setup as `modules.suno.band_profiles_folder` (default `docs/band-profiles`), and a band's playlist file sits beside that folder in `docs/`. Saved songs and lyrics go to `modules.suno.songbook_folder` (default `docs/songbook`). Audio analysis lands in `docs/audio-analysis/`. Mac's memory lives in `_bmad/_memory/band-manager-sidecar/`. The other answers are `modules.suno.suno_tier` (which models Mac recommends), `modules.suno.default_mode` (demo, studio or jam) and `modules.suno.pytorch_audio_tools` (on or off). `bmad setup suno` shows and changes the answers.
+Band profiles go to the folder chosen at setup as `modules.suno.band_profiles_folder` (default `docs/band-profiles`), and a band's playlist file sits beside that folder in `docs/`. Saved songs and lyrics go to `modules.suno.songbook_folder` (default `docs/songbook`). Audio analysis lands in `docs/audio-analysis/`. Mac's memory lives in `_bmad/memory/suno-agent-band-manager/` (from module 4.0.0; on his first waking after the upgrade he converts the old `_bmad/_memory/band-manager-sidecar/` store, backup first). The other answers are `modules.suno.suno_tier` (which models Mac recommends), `modules.suno.default_mode` (demo, studio or jam) and `modules.suno.pytorch_audio_tools` (on or off). `bmad setup suno` shows and changes the answers.
 
 ## More detail
 

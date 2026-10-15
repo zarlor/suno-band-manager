@@ -205,7 +205,7 @@ Keep `uv` current too (`uv self update`). After an update that raises an audio d
 
 ### Upgrading from module 3.x (BMad v6)
 
-Module 4.0.0 drops BMad v6 support. Install the `bmad` skill (`npx skills add bmad-code-org/BMAD-METHOD --skill bmad`), pull the module, rerun `./link-skills.sh` (it drops the old `suno-setup` link), and run `bmad setup suno`. The old `_bmad/config.yaml` answers are not read any more, so answer the five questions again. `bmad` offers to remove the retired `suno-setup` skill and other v6 leftovers. Mac's memory in `_bmad/_memory/band-manager-sidecar/` stays where it is.
+Module 4.0.0 drops BMad v6 support. Install the `bmad` skill (`npx skills add bmad-code-org/BMAD-METHOD --skill bmad`), pull the module, rerun `./link-skills.sh` (it drops the old `suno-setup` link), and run `bmad setup suno`. The old `_bmad/config.yaml` answers are not read any more, so answer the five questions again. `bmad` offers to remove the retired `suno-setup` skill and other v6 leftovers. On his first waking after the upgrade, Mac converts his memory from `_bmad/_memory/band-manager-sidecar/` to the BMad v7 sanctum at `_bmad/memory/suno-agent-band-manager/`: backup first, the plan shown before anything is written, and the old folder kept until you say to remove it.
 
 ## Multi-LLM Compatibility
 
@@ -243,20 +243,20 @@ src/skills/
 │   ├── customize.toml              # Agent customization surface
 │   ├── assets/                     # Sanctum templates seeded at First Breath; menu.csv (Mac's menu)
 │   ├── references/
-│   │   ├── activation.md           # Waking — sanctum load order, Pulse and headless routes
+│   │   ├── activation.md           # Waking — identity files, memory map, greeting, menu
 │   │   ├── headless.md             # Headless capability runs
 │   │   ├── create-song.md          # CS — main song creation workflow
 │   │   ├── refine-song.md          # RS — bring back a take: diagnose, rebuild what changed
 │   │   ├── browse-songbook.md      # SB — creative history browsing
-│   │   ├── save-memory.md          # SM — consolidating save
+│   │   ├── save-memory.md          # SM — tending pass and session note
 │   │   ├── reconcile.md            # Stale-reference reconciliation
 │   │   ├── capabilities.md         # External skills, catalog scripts, audio analysis
 │   │   ├── capability-authoring.md # Authoring a capability the owner teaches Mac
 │   │   ├── prompt-quality-canon.md # Outcome-driven prompt quality
 │   │   ├── creed.md / persona.md   # Sanctum seed source (not loaded on waking)
 │   │   ├── init.md                 # First Breath — first-run setup
-│   │   ├── upgrade-v1.md           # v1 memory store → v2 sanctum
-│   │   ├── memory-system.md        # Memory discipline and structure
+│   │   ├── upgrade-v1.md           # v1 memory store → v2 (then v7 on the next wake)
+│   │   ├── upgrade-v2.md           # v2 sanctum → v7 sanctum
 │   │   ├── pipeline-guard.md       # Setting up the pipeline guard
 │   │   ├── SUNO-REFERENCE.md       # Suno platform reference
 │   │   ├── STUDIO-EDITOR-REFERENCE.md # Studio 2.0 and Song Editor reference
@@ -266,6 +266,7 @@ src/skills/
 │       ├── init-sanctum.py         # Scaffolds a fresh sanctum
 │       ├── upgrade-sanctum.py      # Updates an existing sanctum from the shipped templates
 │       ├── migrate-sidecar-to-v2.py # v1 → v2 migration
+│       ├── migrate-sanctum-to-v7.py # v2 → v7 conversion
 │       ├── validate-sidecar.py     # Sanctum + catalog parity checks
 │       ├── find-stale-refs.py      # Old-value search for reconciliation
 │       ├── songbook-catalog.py     # Per-song catalog lookups

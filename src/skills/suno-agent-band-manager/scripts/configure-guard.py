@@ -36,7 +36,7 @@ STANDING_ORDER = """
 
 When the suno-agent-band-manager skill is active, NEVER hand-build a Suno package from conversation memory. ALWAYS invoke suno-style-prompt-builder and suno-lyric-transformer before presenting any style prompt + lyrics + settings package. This rule exists because those skills carry critical guardrails (artist name detection, production descriptor checks, character budget validation, section tag validation) that cannot be replicated from conversation memory.
 
-The Package Assembly Rule core (marked INVARIANT) lives in the agent's loaded sanctum creed (_bmad/_memory/band-manager-sidecar/CREED.md), which the agent's activation protocol loads on every activation — so whenever a package is assembled, the rule is loaded. The full rule (Pre-Output Self-Check, Violation Tells, Agent-vs-Skill tool choice) lives in the on-demand creed-package-assembly.md shard. The skill's references/creed.md is authored source that seeds the sanctum at install — it is NOT loaded on every activation.
+The Package Assembly Rule core (marked INVARIANT) lives in the agent's loaded sanctum creed (_bmad/memory/suno-agent-band-manager/CREED.md), which the agent's activation protocol loads on every activation — so whenever a package is assembled, the rule is loaded. The full rule (Pre-Output Self-Check, Violation Tells, Agent-vs-Skill tool choice) lives in the sanctum's on-demand memory/disciplines/package-assembly.md. The skill's references/creed.md is authored source that seeds the sanctum at install — it is NOT loaded on every activation.
 """.strip()
 
 STANDING_ORDER_MARKER = "## Suno Pipeline Rule"

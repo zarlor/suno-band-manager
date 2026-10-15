@@ -3,9 +3,16 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Checks a path against Mac's access-boundaries.md.
+"""Checks a path against Mac's Dominion (access boundaries).
 
 Run before a durable write where no human reviews it (headless runs, Pulse).
+The boundaries live in the sanctum's CREED.md
+(`{project-root}/_bmad/memory/suno-agent-band-manager/CREED.md`), in the
+`## Dominion (Access Boundaries)` section: its `### Read Access`,
+`### Write Access` and `### Deny Zones` subsections are read; `### The Write
+Rule` and `### Notes` are prose. A legacy standalone access-boundaries.md (with
+`## Read Access` etc. at the top level) is still accepted.
+
 Deny Zones win over everything; then a path is allowed if a Write Access entry
 (for writes) or a Read or Write Access entry (for reads) matches it. Entries are
 the backticked paths at the start of each bullet: directories end with `/`,
@@ -13,8 +20,11 @@ globs (`*`) and placeholders (`{username}`) match any run of characters, and
 `{project-root}` / `{skill-root}` resolve from the flags.
 
 Usage:
-    uv run scripts/validate-path.py <path> <read|write> --boundaries FILE
+    uv run scripts/validate-path.py <path> <read|write> [--boundaries FILE]
                                     [--project-root DIR] [--skill-root DIR]
+
+Without --boundaries, the sanctum's CREED.md under --project-root (default: the
+current directory) is used.
 
 Exit status: 0 when allowed, 1 when not (or on a usage error).
 """
@@ -30,13 +40,44 @@ from pathlib import Path
 
 ENTRY_RE = re.compile(r"^\s*[-*]\s+`([^`]+)`")
 SECTIONS = {"read access": "read", "write access": "write", "deny zones": "deny"}
+DOMINION_RE = re.compile(r"^##\s+Dominion\b", re.IGNORECASE)
+
+
+def _load_sanctum_seed():
+    from importlib.util import module_from_spec, spec_from_file_location
+
+    spec = spec_from_file_location("_sanctum_seed", Path(__file__).resolve().parent / "_sanctum_seed.py")
+    mod = module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def default_boundaries(project_root: str | None) -> Path:
+    """The sanctum's CREED.md, which carries the Dominion."""
+    return _load_sanctum_seed().sanctum_dir(Path(project_root or ".")) / "CREED.md"
+
+
+def boundary_lines(text: str) -> list[str]:
+    """The lines to parse: the CREED.md Dominion section when there is one
+    (up to the next `# `/`## ` heading), else the whole file (legacy
+    access-boundaries.md)."""
+    lines = text.splitlines()
+    start = next((i for i, line in enumerate(lines) if DOMINION_RE.match(line)), None)
+    if start is None:
+        return lines
+    out = []
+    for line in lines[start + 1:]:
+        if re.match(r"^#{1,2}\s", line):
+            break
+        out.append(line)
+    return out
 
 
 def parse_boundaries(boundaries_path: Path) -> dict:
     """{read, write, deny}: the path patterns listed under each heading."""
     boundaries: dict[str, list[str]] = {"read": [], "write": [], "deny": []}
     current = None
-    for line in boundaries_path.read_text(encoding="utf-8").splitlines():
+    for line in boundary_lines(boundaries_path.read_text(encoding="utf-8")):
         stripped = line.strip()
         if stripped.startswith("#"):
             title = stripped.lstrip("#").strip().lower()
@@ -114,18 +155,21 @@ def validate_path(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Validate a path against access boundaries")
+    parser = argparse.ArgumentParser(description="Validate a path against Mac's Dominion (access boundaries in CREED.md)")
     parser.add_argument("path", help="File path to validate")
     parser.add_argument("operation", choices=["read", "write"], help="Operation type")
-    parser.add_argument("--boundaries", help="Path to access-boundaries.md")
+    parser.add_argument(
+        "--boundaries",
+        help=(
+            "The sanctum's CREED.md (its Dominion section) or a legacy access-boundaries.md. "
+            "Default: <project-root>/_bmad/memory/suno-agent-band-manager/CREED.md"
+        ),
+    )
     parser.add_argument("--project-root", default=None, help="Resolves {project-root} and absolute paths")
     parser.add_argument("--skill-root", default=None, help="Resolves {skill-root}")
     args = parser.parse_args()
 
-    if not args.boundaries:
-        print(json.dumps({"error": True, "message": "No --boundaries file specified"}))
-        sys.exit(1)
-    boundaries_path = Path(args.boundaries)
+    boundaries_path = Path(args.boundaries) if args.boundaries else default_boundaries(args.project_root)
     if not boundaries_path.exists():
         print(json.dumps({"error": True, "message": f"Boundaries file not found: {boundaries_path}"}))
         sys.exit(1)

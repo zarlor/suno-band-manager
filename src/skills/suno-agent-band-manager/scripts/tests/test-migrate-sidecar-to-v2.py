@@ -192,6 +192,13 @@ def test_template_seeded_files_present(synthetic_project):
     out_dir, _ = run_migrate(tmp_path, sanctum)
     for name in ("INDEX.md", "PERSONA.md", "CREED.md", "BOND.md", "PULSE.md", "CAPABILITIES.md"):
         assert (out_dir / name).exists(), f"missing {name}"
+    # The whole v2 spine and no v7 marker: the output classifies as v2.
+    assert all((out_dir / n).is_file() for n in mod._seed.V2_SPINE)
+    assert not (out_dir / "HOW-I-REMEMBER.md").exists()
+    assert mod.sidecar_state(out_dir) == "v2"
+    # The CREED template's Dominion placeholder is filled.
+    creed = (out_dir / "CREED.md").read_text()
+    assert "{dominion}" not in creed and "### Read Access" in creed
     # Variables substituted in seeded files.
     assert "{user_name}" not in (out_dir / "PERSONA.md").read_text()
     assert "Fixtureville" in (out_dir / "PERSONA.md").read_text()
@@ -258,9 +265,14 @@ def test_sidecar_state_classification(synthetic_project, tmp_path):
     assert mod.sidecar_state(sanctum) == "damaged"
     # absent: dir doesn't exist.
     assert mod.sidecar_state(tmp_path / "nope" / "band-manager-sidecar") == "absent"
-    # damaged: dir exists, neither marker.
+    # An empty dir counts as absent (nothing to migrate, nothing lost).
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert mod.sidecar_state(empty) == "absent"
+    # damaged: dir has content, neither marker.
     damaged = tmp_path / "damaged"
     damaged.mkdir()
+    (damaged / "stray.txt").write_text("junk\n")
     assert mod.sidecar_state(damaged) == "damaged"
 
 
@@ -418,3 +430,61 @@ def test_v1_detected_on_case_insensitive_filesystem(synthetic_project, monkeypat
 
     monkeypatch.setattr(Path, "is_file", insensitive_is_file)
     assert mod.sidecar_state(sanctum) == "v1"
+
+
+def test_verify_flags_an_incomplete_v2_spine(synthetic_project):
+    tmp_path, sanctum = synthetic_project
+    out_dir, _ = run_migrate(tmp_path, sanctum)
+    (out_dir / "INDEX.md").unlink()
+    report = mod.verify(sanctum, out_dir)
+    assert report["status"] == "fail"
+    assert report["missing_spine"] == ["INDEX.md"]
+
+
+def test_in_place_already_v7_is_noop(tmp_path):
+    sanctum = tmp_path / "store"
+    for name in mod._seed.IDENTITY_FILES:
+        (sanctum / name).parent.mkdir(parents=True, exist_ok=True)
+        (sanctum / name).write_text("x\n")
+    result = mod.migrate_in_place(tmp_path, sanctum, SKILL_DIR)
+    assert result["status"] == "already-v7"
+
+
+def test_default_paths_are_the_legacy_store(synthetic_project, monkeypatch, capsys):
+    """The CLI reads the v1 store at the legacy path and stages beside it."""
+    import json
+    tmp_path, sanctum = synthetic_project
+    assert sanctum == mod._seed.legacy_sanctum_dir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["migrate-sidecar-to-v2.py", "--project-root", str(tmp_path), "--format", "json"])
+    assert mod.main() == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "migrated"
+    assert Path(out["out_dir"]) == tmp_path / "_bmad" / "_memory" / ".sidecar-v2-staging"
+
+
+def test_v1_reaches_v7_through_both_hops(synthetic_project):
+    """v1 -> v2 here, then migrate-sanctum-to-v7.py converts the result to a v7 sanctum."""
+    tmp_path, sanctum = synthetic_project
+    (sanctum / "access-boundaries.md").write_text(
+        "# Access Boundaries\n\n## Read Access\n\n- `docs/synthetic/` — fixture\n\n"
+        "## Write Access\n\n- `docs/wip-*.md` — fragments\n\n## Deny Zones\n\n- `src/`\n"
+    )
+    assert mod.migrate_in_place(tmp_path, sanctum, SKILL_DIR)["status"] == "migrated"
+
+    v7_spec = spec_from_file_location("migrate_to_v7", SCRIPTS_DIR / "migrate-sanctum-to-v7.py")
+    v7 = module_from_spec(v7_spec)
+    v7_spec.loader.exec_module(v7)
+    plan = v7.build_plan(sanctum, SKILL_DIR, "2026-10-15")
+    target = mod._seed.sanctum_dir(tmp_path)
+    v7.write(plan, target)
+
+    assert mod._seed.classify_sanctum(target)["sidecar_format"] == "v7"
+    located, state = mod._seed.locate_sanctum(tmp_path)
+    assert located == target and state["sidecar_format"] == "v7"
+    parked = (target / "memory" / "work" / "parked.md").read_text()
+    assert "Synthetic parked idea" in parked
+    assert "Fixture Band" in (target / "memory" / "catalog" / "status.md").read_text()
+    assert (target / "raw" / "2026-06-10-session-log.md").is_file()
+    creed = (target / "CREED.md").read_text()
+    # The preserved access-boundaries.md became the CREED Dominion.
+    assert "## Dominion" in creed and "### Read Access" in creed and "`docs/synthetic/`" in creed

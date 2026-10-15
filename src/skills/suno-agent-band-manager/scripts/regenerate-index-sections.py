@@ -3,35 +3,31 @@
 # requires-python = ">=3.10"
 # dependencies = ["pyyaml>=6.0"]
 # ///
-"""Regenerate the derivable sections of the Mac sanctum MEMORY.md.
+"""Regenerate Mac's derived catalog files from the songbook (BMad v7 sanctum).
 
-Replaces the Recently Published and Catalog Status sections in the v2 sanctum's
-_bmad/_memory/band-manager-sidecar/MEMORY.md with content derived from
-songbook frontmatter + body Status markers + playlist YAMLs.
+Writes the two files under `memory/catalog/` of the sanctum
+(`{project-root}/_bmad/memory/suno-agent-band-manager/`):
 
-(In the pre-v2 layout these sections lived in `index.md`; the v2 sanctum carries
-the same derived-section marker pairs in the curated `MEMORY.md` instead.)
+    memory/catalog/recently-published.md   <!-- derived:recently-published:start/end -->
+    memory/catalog/status.md               <!-- derived:catalog-status:start/end -->
 
-The narrative sections (Current Work, Pending / Parked Work, Session History)
-are preserved unchanged — only the derivable sections are rewritten.
+Their content is derived from songbook frontmatter + body Status markers +
+playlist YAMLs, and only the text between each file's marker pair is rewritten.
+They are never hand-edited. A missing file is created with its heading and an
+empty marker pair, then filled.
 
-Section boundaries are HTML comment markers:
-    <!-- derived:recently-published:start -->
-    ...auto-generated content...
-    <!-- derived:recently-published:end -->
-
-If the markers are missing from MEMORY.md, the script reports what to add and
-exits non-zero without modifying the file. Pass --migrate to wrap existing
-"## Recently Published" and "## Catalog Status" sections with the markers
-in-place, then continue with regeneration.
+If a catalog file exists but has no marker pair, the script reports it and
+exits non-zero without modifying it. Pass --migrate to wrap the file's existing
+body (everything under its `# ` heading) with the markers, then regenerate.
 
 Cross-platform: pure Python stdlib + PyYAML.
 
 Usage:
     uv run scripts/regenerate-index-sections.py [project_root]
-    uv run scripts/regenerate-index-sections.py --dry-run  # print diff only
+    uv run scripts/regenerate-index-sections.py --dry-run  # print the content only
     uv run scripts/regenerate-index-sections.py --migrate  # add missing markers
     uv run scripts/regenerate-index-sections.py --sanctum-dir PATH  # override sanctum
+    uv run scripts/regenerate-index-sections.py --format json
 """
 
 from __future__ import annotations
@@ -65,22 +61,35 @@ STATUS_MARKER_RE = re.compile(
 # How many entries to include in Recently Published
 RECENT_LIMIT = 7
 
-# Default sanctum location (preserved bespoke divergence: double-underscore parent,
-# fixed dir name). The derived sections live in MEMORY.md in the v2 sanctum.
-DEFAULT_SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
-MEMORY_FILENAME = "MEMORY.md"
+def _load_sanctum_seed():
+    from importlib.util import module_from_spec, spec_from_file_location
+
+    spec = spec_from_file_location("_sanctum_seed", Path(__file__).resolve().parent / "_sanctum_seed.py")
+    mod = module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_seed = _load_sanctum_seed()
+
+# The derived catalog files: (sanctum-relative path, marker name, heading).
+CATALOG_FILES = (
+    (_seed.MEMORY_SECTION_FILES["recently published"], "recently-published", "Recently Published"),
+    (_seed.MEMORY_SECTION_FILES["catalog status"], "catalog-status", "Catalog Status"),
+)
 
 
 def resolve_sanctum_dir(project_root: Path, sanctum_dir: str | None) -> Path:
-    """Resolve the sanctum directory, honoring a --sanctum-dir override.
+    """The v7 sanctum, or the --sanctum-dir override (a staging copy, tests)."""
+    return _seed.sanctum_dir(project_root, sanctum_dir).resolve()
 
-    Default is the real bespoke sanctum under the project root. The override
-    exists so the memory scripts can be tested against a staging copy without
-    touching live data.
-    """
-    if sanctum_dir:
-        return Path(sanctum_dir).resolve()
-    return project_root.joinpath(*DEFAULT_SANCTUM_REL)
+
+def new_catalog_file(heading: str, marker_name: str) -> str:
+    return (
+        f"# {heading}\n\n"
+        f"<!-- derived:{marker_name}:start -->\n\n"
+        f"<!-- derived:{marker_name}:end -->\n"
+    )
 
 
 def display_path(path: Path, project_root: Path) -> str:
@@ -338,7 +347,10 @@ def migrate_section(text: str, heading: str, marker_name: str) -> tuple[str, boo
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Regenerate derivable sections of Mac sanctum MEMORY.md."
+        description=(
+            "Regenerate Mac's derived catalog files (memory/catalog/recently-published.md "
+            "and memory/catalog/status.md) from the songbook."
+        )
     )
     parser.add_argument(
         "project_root",
@@ -349,15 +361,14 @@ def main() -> int:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Print the regenerated sections without writing",
+        help="Print the regenerated content without writing",
     )
     parser.add_argument(
         "--migrate",
         action="store_true",
         help=(
-            "If MEMORY.md is missing derived-section markers, wrap the existing "
-            "## Recently Published and ## Catalog Status sections with them "
-            "before regenerating. One-shot migration for pre-marker sanctums."
+            "If a catalog file has no derived-section markers, wrap its existing "
+            "body with them before regenerating."
         ),
     )
     parser.add_argument(
@@ -371,7 +382,7 @@ def main() -> int:
         default=None,
         help=(
             "Override the sanctum directory (default: "
-            "<project_root>/_bmad/_memory/band-manager-sidecar). Use to test "
+            "<project_root>/_bmad/memory/suno-agent-band-manager). Use to test "
             "against a staging copy without touching live data."
         ),
     )
@@ -390,130 +401,92 @@ def main() -> int:
         return 2
 
     sanctum_dir = resolve_sanctum_dir(project_root, args.sanctum_dir)
-    memory_path = sanctum_dir / MEMORY_FILENAME
-    if not memory_path.exists():
-        print(f"ERROR: sanctum MEMORY.md not found at {memory_path}", file=sys.stderr)
+    if not sanctum_dir.is_dir():
+        print(
+            f"ERROR: no sanctum at {sanctum_dir}. First Breath scaffolds one; an old "
+            "store converts with migrate-sanctum-to-v7.py.",
+            file=sys.stderr,
+        )
         return 2
 
     songs = load_all_songs(project_root)
-    recently_published = generate_recently_published(songs, project_root)
-    catalog_status = generate_catalog_status(songs, project_root)
+    content = {
+        "recently-published": generate_recently_published(songs, project_root),
+        "catalog-status": generate_catalog_status(songs, project_root),
+    }
 
     if args.dry_run:
         if args.format == "json":
             emit({
                 "status": "dry_run",
-                "recently_published": recently_published,
-                "catalog_status": catalog_status,
+                "recently_published": content["recently-published"],
+                "catalog_status": content["catalog-status"],
             })
         else:
             print("=== Recently Published ===\n")
-            print(recently_published)
+            print(content["recently-published"])
             print("\n=== Catalog Status ===\n")
-            print(catalog_status)
+            print(content["catalog-status"])
         return 0
 
-    text = memory_path.read_text(encoding="utf-8")
-
-    if args.migrate:
-        migrated_text = text
-        migrated_any = False
-        could_not_migrate = []
-        for heading, marker in (
-            ("## Recently Published", "recently-published"),
-            ("## Catalog Status", "catalog-status"),
-        ):
-            migrated_text, migrated = migrate_section(
-                migrated_text, heading, marker
-            )
+    # Plan every file first; write nothing unless every file can be regenerated.
+    planned: list[tuple[Path, str, str, str]] = []  # (path, old, new, action)
+    missing_markers: list[tuple[str, str]] = []
+    for rel, marker, heading in CATALOG_FILES:
+        path = sanctum_dir / rel
+        if path.is_file():
+            old = path.read_text(encoding="utf-8")
+            action = "regenerated"
+        else:
+            old = ""
+            action = "created"
+        text = old or new_catalog_file(heading, marker)
+        if args.migrate and old:
+            text, migrated = migrate_section(text, f"# {heading}", marker)
             if migrated:
-                migrated_any = True
-            elif not re.search(
-                rf"<!--\s*derived:{re.escape(marker)}:start\s*-->", migrated_text
-            ):
-                could_not_migrate.append((heading, marker))
-
-        if could_not_migrate:
-            print(
-                "ERROR: --migrate could not locate these sections to wrap:",
-                file=sys.stderr,
-            )
-            for heading, marker in could_not_migrate:
-                print(
-                    f"  '{heading}' heading not found — expected marker pair "
-                    f"<!-- derived:{marker}:start --> ... "
-                    f"<!-- derived:{marker}:end -->",
-                    file=sys.stderr,
-                )
-            print(
-                "\nAdd the heading and rerun, or hand-edit the markers in. "
-                "See the 'Migration' block in CHANGELOG.md under the 1.6.5 "
-                "release for the exact template.",
-                file=sys.stderr,
-            )
-            return 1
-
-        if migrated_any:
-            text = migrated_text
-            if not args.dry_run:
-                memory_path.write_text(text, encoding="utf-8")
-                emit({
-                    "status": "migrated",
-                    "message": (
-                        f"Migrated: wrapped existing sections with "
-                        f"derived-section markers in "
-                        f"{display_path(memory_path, project_root)}"
-                    ),
-                    "memory_path": display_path(memory_path, project_root),
-                })
-
-    new_text = text
-    missing_markers = []
-
-    new_text, ok = replace_section(
-        new_text, "recently-published", recently_published
-    )
-    if not ok:
-        missing_markers.append("recently-published")
-
-    new_text, ok = replace_section(new_text, "catalog-status", catalog_status)
-    if not ok:
-        missing_markers.append("catalog-status")
+                action = "migrated"
+        new, ok = replace_section(text, marker, content[marker])
+        if not ok:
+            missing_markers.append((display_path(path, project_root), marker))
+            continue
+        planned.append((path, old, new, action))
 
     if missing_markers:
-        print(
-            "ERROR: MEMORY.md is missing required section markers:", file=sys.stderr
-        )
-        for m in missing_markers:
+        print("ERROR: catalog file(s) missing their derived-section markers:", file=sys.stderr)
+        for shown, marker in missing_markers:
             print(
-                f"  <!-- derived:{m}:start --> ... <!-- derived:{m}:end -->",
+                f"  {shown}: <!-- derived:{marker}:start --> ... <!-- derived:{marker}:end -->",
                 file=sys.stderr,
             )
         print(
-            "\nTo fix automatically, rerun with --migrate — this wraps the "
-            "existing '## Recently Published' and '## Catalog Status' sections "
-            "with the required markers in-place. The exact marker template is "
-            "documented in CHANGELOG.md under the 1.6.5 release (see the "
-            "'Migration (one-time, per project)' block).",
+            "\nRerun with --migrate to wrap each file's existing body with the "
+            "markers (the file is derived; its body is replaced on regeneration).",
             file=sys.stderr,
         )
         return 1
 
-    if new_text == text:
+    files = []
+    for path, old, new, action in planned:
+        shown = display_path(path, project_root)
+        if new == old:
+            files.append({"path": shown, "status": "unchanged"})
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(new, encoding="utf-8")
+        files.append({"path": shown, "status": action})
+
+    changed = [f["path"] for f in files if f["status"] != "unchanged"]
+    if not changed:
         emit({
             "status": "unchanged",
-            "message": "No changes needed — derivable sections already up to date.",
+            "message": "No changes needed — the catalog files are already up to date.",
+            "files": files,
         })
         return 0
-
-    memory_path.write_text(new_text, encoding="utf-8")
     emit({
         "status": "regenerated",
-        "message": (
-            f"Regenerated derivable sections in "
-            f"{display_path(memory_path, project_root)}"
-        ),
-        "memory_path": display_path(memory_path, project_root),
+        "message": f"Regenerated {', '.join(changed)}",
+        "files": files,
     })
     return 0
 

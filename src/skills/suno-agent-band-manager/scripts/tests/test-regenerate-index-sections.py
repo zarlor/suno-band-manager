@@ -30,21 +30,6 @@ SONG_TEXT = (
 )
 
 
-def _scaffold(tmp_path, memory_body):
-    (tmp_path / "docs" / "band-profiles").mkdir(parents=True)
-    (tmp_path / "docs" / "band-profiles" / "paper-lanterns.yaml").write_text(
-        'name: "Paper Lanterns"\n', encoding="utf-8"
-    )
-    songbook = tmp_path / "docs" / "songbook" / "paper-lanterns"
-    songbook.mkdir(parents=True)
-    (songbook / "harbor-lights.md").write_text(SONG_TEXT, encoding="utf-8")
-    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
-    sanctum.mkdir(parents=True)
-    memory = sanctum / "MEMORY.md"
-    memory.write_text(memory_body, encoding="utf-8")
-    return memory
-
-
 def test_parse_song_reads_frontmatter_and_body(tmp_path):
     p = tmp_path / "song.md"
     p.write_text(SONG_TEXT, encoding="utf-8")
@@ -105,44 +90,22 @@ def test_migrate_section_wraps_existing_heading():
     assert "<!-- derived:catalog-status:end -->" in new
 
 
-MARKED_MEMORY_BODY = (
-    "# Mac — Curated Memory\n\n"
-    "## Recently Published\n\n"
+SANCTUM_REL = ("_bmad", "memory", "suno-agent-band-manager")
+RECENT = "memory/catalog/recently-published.md"
+STATUS = "memory/catalog/status.md"
+MARKED_RECENT = (
+    "# Recently Published\n\n"
     "<!-- derived:recently-published:start -->\n\nstub\n\n"
-    "<!-- derived:recently-published:end -->\n\n"
-    "## Catalog Status\n\n"
+    "<!-- derived:recently-published:end -->\n"
+)
+MARKED_STATUS = (
+    "# Catalog Status\n\n"
     "<!-- derived:catalog-status:start -->\n\nstub\n\n"
     "<!-- derived:catalog-status:end -->\n"
 )
 
 
-def test_main_regenerates_into_marked_memory(tmp_path, monkeypatch, capsys):
-    import json
-    memory = _scaffold(tmp_path, MARKED_MEMORY_BODY)
-    monkeypatch.setattr(
-        sys, "argv",
-        ["regenerate-index-sections.py", str(tmp_path), "--format", "json"],
-    )
-    rc = mod.main()
-    assert rc == 0
-    result = json.loads(capsys.readouterr().out)
-    assert result["status"] in ("regenerated", "unchanged")
-    assert "Harbor Lights" in memory.read_text(encoding="utf-8")
-
-
-def test_main_errors_when_markers_missing(tmp_path, monkeypatch):
-    _scaffold(tmp_path, "# Mac — Curated Memory\n\nno markers at all\n")
-    monkeypatch.setattr(
-        sys, "argv", ["regenerate-index-sections.py", str(tmp_path)]
-    )
-    rc = mod.main()
-    assert rc == 1
-
-
-def test_main_honors_sanctum_dir_override(tmp_path, monkeypatch, capsys):
-    """--sanctum-dir points the rewrite at a staging copy outside the default."""
-    import json
-    # Songbook/profiles live under tmp_path; the sanctum lives in a sibling dir.
+def _songbook(tmp_path):
     (tmp_path / "docs" / "band-profiles").mkdir(parents=True)
     (tmp_path / "docs" / "band-profiles" / "paper-lanterns.yaml").write_text(
         'name: "Paper Lanterns"\n', encoding="utf-8"
@@ -151,20 +114,98 @@ def test_main_honors_sanctum_dir_override(tmp_path, monkeypatch, capsys):
     songbook.mkdir(parents=True)
     (songbook / "harbor-lights.md").write_text(SONG_TEXT, encoding="utf-8")
 
-    staging = tmp_path / "staging-copy"
-    staging.mkdir()
-    (staging / "MEMORY.md").write_text(MARKED_MEMORY_BODY, encoding="utf-8")
-    # A default-location MEMORY.md must NOT be created — proving the override is used.
 
-    monkeypatch.setattr(
-        sys, "argv",
-        [
-            "regenerate-index-sections.py", str(tmp_path),
-            "--sanctum-dir", str(staging), "--format", "json",
-        ],
-    )
-    rc = mod.main()
-    assert rc == 0
+def _v7(tmp_path, recent=MARKED_RECENT, status=MARKED_STATUS):
+    """A v7 project; catalog files written when given (None = absent)."""
+    _songbook(tmp_path)
+    sanctum = tmp_path.joinpath(*SANCTUM_REL)
+    (sanctum / "memory" / "catalog").mkdir(parents=True)
+    if recent is not None:
+        (sanctum / RECENT).write_text(recent, encoding="utf-8")
+    if status is not None:
+        (sanctum / STATUS).write_text(status, encoding="utf-8")
+    return sanctum
+
+
+def _main(monkeypatch, *argv):
+    monkeypatch.setattr(sys, "argv", ["regenerate-index-sections.py", *argv])
+    return mod.main()
+
+
+def test_main_regenerates_catalog_files(tmp_path, monkeypatch, capsys):
+    import json
+    sanctum = _v7(tmp_path)
+    assert _main(monkeypatch, str(tmp_path), "--format", "json") == 0
     result = json.loads(capsys.readouterr().out)
-    assert result["status"] in ("regenerated", "unchanged")
-    assert "Harbor Lights" in (staging / "MEMORY.md").read_text(encoding="utf-8")
+    assert result["status"] == "regenerated"
+    recent = (sanctum / RECENT).read_text(encoding="utf-8")
+    status = (sanctum / STATUS).read_text(encoding="utf-8")
+    assert recent.startswith("# Recently Published\n")
+    assert "**Harbor Lights** (2026-01-15, PUBLISHED)" in recent and "stub" not in recent
+    assert "**Paper Lanterns:** **1 published tracks** — Harbor Lights." in status
+    # A second run changes nothing.
+    assert _main(monkeypatch, str(tmp_path), "--format", "json") == 0
+    assert json.loads(capsys.readouterr().out)["status"] == "unchanged"
+
+
+def test_main_never_touches_memory_or_index(tmp_path, monkeypatch):
+    sanctum = _v7(tmp_path)
+    assert _main(monkeypatch, str(tmp_path)) == 0
+    assert not (sanctum / "MEMORY.md").exists()
+    assert not (sanctum / "INDEX.md").exists()
+
+
+def test_main_creates_missing_catalog_files(tmp_path, monkeypatch):
+    sanctum = _v7(tmp_path, recent=None, status=None)
+    (sanctum / "memory" / "catalog").rmdir()
+    assert _main(monkeypatch, str(tmp_path)) == 0
+    recent = (sanctum / RECENT).read_text(encoding="utf-8")
+    assert recent.startswith("# Recently Published\n\n<!-- derived:recently-published:start -->")
+    assert recent.rstrip().endswith("<!-- derived:recently-published:end -->")
+    assert "Harbor Lights" in recent
+    assert "<!-- derived:catalog-status:start -->" in (sanctum / STATUS).read_text(encoding="utf-8")
+
+
+def test_main_errors_when_markers_missing_and_writes_nothing(tmp_path, monkeypatch):
+    sanctum = _v7(tmp_path, status="# Catalog Status\n\n- hand-written\n")
+    before = (sanctum / RECENT).read_text(encoding="utf-8")
+    assert _main(monkeypatch, str(tmp_path)) == 1
+    assert (sanctum / STATUS).read_text(encoding="utf-8") == "# Catalog Status\n\n- hand-written\n"
+    assert (sanctum / RECENT).read_text(encoding="utf-8") == before
+
+
+def test_main_migrate_wraps_unmarked_file(tmp_path, monkeypatch):
+    sanctum = _v7(tmp_path, status="# Catalog Status\n\n- hand-written\n")
+    assert _main(monkeypatch, str(tmp_path), "--migrate") == 0
+    text = (sanctum / STATUS).read_text(encoding="utf-8")
+    assert text.startswith("# Catalog Status\n")
+    assert "<!-- derived:catalog-status:start -->" in text and "hand-written" not in text
+    assert "Harbor Lights" in text
+
+
+def test_main_dry_run_writes_nothing(tmp_path, monkeypatch, capsys):
+    sanctum = _v7(tmp_path)
+    assert _main(monkeypatch, str(tmp_path), "--dry-run") == 0
+    assert "Harbor Lights" in capsys.readouterr().out
+    assert (sanctum / RECENT).read_text(encoding="utf-8") == MARKED_RECENT
+
+
+def test_main_errors_without_sanctum(tmp_path, monkeypatch, capsys):
+    _songbook(tmp_path)
+    assert _main(monkeypatch, str(tmp_path)) == 2
+    assert "migrate-sanctum-to-v7.py" in capsys.readouterr().err
+
+
+def test_main_honors_sanctum_dir_override(tmp_path, monkeypatch, capsys):
+    """--sanctum-dir points the rewrite at a staging copy outside the default."""
+    import json
+    _songbook(tmp_path)
+    staging = tmp_path / "staging-copy"
+    (staging / "memory" / "catalog").mkdir(parents=True)
+    (staging / RECENT).write_text(MARKED_RECENT, encoding="utf-8")
+    (staging / STATUS).write_text(MARKED_STATUS, encoding="utf-8")
+    assert _main(monkeypatch, str(tmp_path), "--sanctum-dir", str(staging), "--format", "json") == 0
+    assert json.loads(capsys.readouterr().out)["status"] == "regenerated"
+    assert "Harbor Lights" in (staging / RECENT).read_text(encoding="utf-8")
+    # The default location was never created.
+    assert not tmp_path.joinpath(*SANCTUM_REL).exists()

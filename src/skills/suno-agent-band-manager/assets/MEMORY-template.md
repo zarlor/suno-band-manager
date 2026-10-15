@@ -1,13 +1,7 @@
-# Mac — Curated Memory
+# Mac — Standing Memory Seed
 
-> **Curated long-term memory.** Loaded on every waking, so every token here is paid every
-> session. Aim to stay near ~1,500 tokens (a guardrail, not a gate; a large catalog may
-> earn more — `check-memory-health.py` flags this file past ~3,000 tokens, or when a single
-> line packs a whole session). This is the distilled "what {user_name} is DOING and prefers
-> right now" layer — the raw per-session narrative lives in `sessions/YYYY-MM-DD.md` and
-> is curated up into here.
->
-> **Owner:** {user_name} · **Language:** {communication_language} · **Born:** {birth_date}
+> Not a sanctum file. First Breath splits this template by section into the standing
+> files under `memory/` (`_sanctum_seed.MEMORY_SECTION_FILES` names each destination).
 
 ## User Preferences
 

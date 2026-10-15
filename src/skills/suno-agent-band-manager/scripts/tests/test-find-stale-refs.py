@@ -23,6 +23,9 @@ def _w(root, rel, text):
     return p
 
 
+SANCTUM = "_bmad/memory/suno-agent-band-manager"
+
+
 def _project(tmp_path):
     _w(tmp_path, "docs/songbook/paper-lanterns/harbor-lights.md",
        '---\ntitle: "Harbor Lights"\n---\n# Harbor Lights\nsee `docs/wip-dock.md`\n')
@@ -33,8 +36,14 @@ def _project(tmp_path):
        "| `docs/notes/extra.md` | extra |\n\n## Catalog\n\nHarbor Lights (Night Mix) is the opener.\n")
     _w(tmp_path, "docs/notes/extra.md", "Harbor Lights again\n")
     _w(tmp_path, "docs/unrelated.md", "Harbor Lights here is out of scope\n")
-    _w(tmp_path, "_bmad/_memory/band-manager-sidecar/MEMORY.md", "- **Harbor Lights** published\n")
-    _w(tmp_path, "_bmad/_memory/band-manager-sidecar/sessions/2026-01-01.md", "Harbor Lights log\n")
+    _w(tmp_path, f"{SANCTUM}/memory/work/current.md", "- **Harbor Lights** in progress\n")
+    _w(tmp_path, f"{SANCTUM}/memory/catalog/recently-published.md", "- **Harbor Lights** published\n")
+    _w(tmp_path, f"{SANCTUM}/memory/chronology/2026-01-01-first-light.md", "Harbor Lights milestone\n")
+    _w(tmp_path, f"{SANCTUM}/memory/sessions/2026-01-02-note.md", "Harbor Lights note\n")
+    _w(tmp_path, f"{SANCTUM}/raw/2026-01-01-session-log.md", "Harbor Lights log\n")
+    _w(tmp_path, f"{SANCTUM}/raw/2026-01-01-collection-of-writings-extracted.txt", "Harbor Lights poem\n")
+    # A legacy store is not searched.
+    _w(tmp_path, "_bmad/_memory/band-manager-sidecar/MEMORY.md", "- **Harbor Lights** old\n")
     return tmp_path
 
 
@@ -44,9 +53,13 @@ def test_hits_cover_the_defined_set_only(tmp_path):
     assert "docs/songbook/paper-lanterns/harbor-lights.md" in files
     assert "docs/paper-lanterns-playlist.yaml" in files  # casefold hit
     assert "docs/notes/extra.md" in files  # via the Companion Files table
-    assert "_bmad/_memory/band-manager-sidecar/MEMORY.md" in files
+    assert f"{SANCTUM}/memory/work/current.md" in files
+    assert f"{SANCTUM}/memory/catalog/recently-published.md" in files
+    assert f"{SANCTUM}/memory/chronology/2026-01-01-first-light.md" in files
+    assert f"{SANCTUM}/memory/sessions/2026-01-02-note.md" in files
     assert "docs/unrelated.md" not in files
-    assert not any("sessions/" in f for f in files)
+    assert not any("/raw/" in f for f in files)
+    assert not any("_bmad/_memory" in f for f in files)
 
 
 def test_match_kinds(tmp_path):
@@ -71,9 +84,32 @@ def test_partial_only_on_request(tmp_path):
     assert [h["file"] for h in partial] == ["docs/wip-dock.md"]
 
 
-def test_sessions_included_on_request(tmp_path):
-    report = mod.scan(_project(tmp_path), "Harbor Lights", include_sessions=True)
-    assert any("sessions/2026-01-01.md" in h["file"] for h in report["hits"])
+def test_raw_included_on_request(tmp_path):
+    report = mod.scan(_project(tmp_path), "Harbor Lights", include_raw=True)
+    files = {h["file"] for h in report["hits"]}
+    assert f"{SANCTUM}/raw/2026-01-01-session-log.md" in files
+    assert f"{SANCTUM}/raw/2026-01-01-collection-of-writings-extracted.txt" in files
+    assert report["raw_included"] is True
+
+
+def test_cli_include_sessions_is_an_alias_for_include_raw(tmp_path, monkeypatch, capsys):
+    root = _project(tmp_path)
+    for flag in ("--include-raw", "--include-sessions"):
+        monkeypatch.setattr(sys, "argv", ["find-stale-refs.py", str(root), "--old", "Harbor Lights", flag])
+        assert mod.main() == 0
+        out = json.loads(capsys.readouterr().out)
+        assert any("/raw/" in h["file"] for h in out["hits"])
+
+
+def test_cli_sanctum_dir_override(tmp_path, monkeypatch, capsys):
+    root = _project(tmp_path)
+    _w(root, "staging/memory/work/current.md", "Harbor Lights staged\n")
+    monkeypatch.setattr(sys, "argv", [
+        "find-stale-refs.py", str(root), "--old", "Harbor Lights", "--sanctum-dir", str(root / "staging")])
+    assert mod.main() == 0
+    files = {h["file"] for h in json.loads(capsys.readouterr().out)["hits"]}
+    assert "staging/memory/work/current.md" in files
+    assert not any(f.startswith(SANCTUM) for f in files)
 
 
 def test_new_value_adds_preview(tmp_path):

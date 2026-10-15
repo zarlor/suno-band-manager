@@ -8,21 +8,24 @@
 One home for everything the waking, birth, migration and upgrade scripts must
 agree on:
 
-  - the always-loaded spine (SANCTUM_LOAD_ORDER) and sanctum classification
-    (absent / v1 / v2 / damaged), matched case-sensitively
+  - the BMad v7 sanctum path, the identity files that load at waking
+    (SANCTUM_LOAD_ORDER) and the classification (absent / v7 / v2 / v1 /
+    damaged, the legacy path checked when the v7 one is empty), matched
+    case-sensitively
+  - the waking map of memory/ and raw/
   - config resolution (BMad v7 `modules.suno` answers; the owner from BOND.md)
   - the menu roster (assets/menu.csv) that drives Mac's menu and CAPABILITIES.md
-  - the loaded-first Dominion contract `access-boundaries.md`
-  - the on-demand creed shards sliced from `references/creed.md`
+  - the Dominion (access boundaries) rendered into CREED.md
+  - the disciplines and incidents sliced from `references/creed.md`
 
 Imported by pre-activate.py, init-sanctum.py, migrate-sidecar-to-v2.py and
 upgrade-sanctum.py. As a CLI it is the recovery path: re-seed a missing
-access-boundaries.md or creed shard into an existing sanctum. It writes only
+discipline or incident file into an existing sanctum. It writes only
 files that are missing unless `--force` is given, so shards that have grown new
 learnings are never overwritten by accident.
 
 Usage:
-    _sanctum_seed.py --out DIR [--skill-path DIR] [--project-root DIR] [--force]
+    _sanctum_seed.py --out DIR [--skill-path DIR] [--force]
     _sanctum_seed.py --help
 """
 
@@ -38,45 +41,62 @@ import warnings
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# The sanctum spine and its classification
+# The sanctum and its classification
 # ---------------------------------------------------------------------------
 
-# Preserved divergence: double-underscore parent, fixed dir name. Portable sync
-# and the reconcile tooling depend on this path.
-SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
+# BMad v7 memory-agent layout (Continuity of Self): the sanctum lives at the
+# standard path; five identity files load at waking, the memory itself is many
+# small files under memory/ and raw/ that the waking map summarizes.
+SANCTUM_REL = ("_bmad", "memory", "suno-agent-band-manager")
+# Where the v1/v2 stores lived. A store found here is converted, never woken.
+LEGACY_SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
 
 # The always-loaded set, in load order. This list is the single home of the
 # load order: docs point here (via pre-activate's output) instead of copying it.
-SANCTUM_LOAD_ORDER = [
-    "access-boundaries.md",  # Dominion contract: loads first, governs later writes
-    "INDEX.md",              # thin map of the sanctum
-    "MEMORY.md",             # curated long-term memory (carries derived sections)
-    "CREED.md",              # creed core (Package Assembly Rule core)
-    "PERSONA.md",            # Mac's living self
-    "BOND.md",               # thin owner-model orienting file
-    "CAPABILITIES.md",       # built-in + learned capability roster
+IDENTITY_FILES = [
+    "PERSONA.md",         # Mac's living self
+    "CREED.md",           # creed core: Constitution, Package Assembly core, Dominion
+    "BOND.md",            # thin owner-model orienting file
+    "HOW-I-REMEMBER.md",  # the memory layout and how it is written and tended
+    "CAPABILITIES.md",    # built-in + learned capability roster
 ]
+SANCTUM_LOAD_ORDER = IDENTITY_FILES
+# The Pulse wake loads the same self plus the routine.
+PULSE_LOAD_ORDER = [*IDENTITY_FILES, "PULSE.md"]
 
-# The Pulse wake loads only what maintenance needs: the contract, the creed
-# (Three Laws), the persona, and the routine itself.
-PULSE_LOAD_ORDER = ["access-boundaries.md", "CREED.md", "PERSONA.md", "PULSE.md"]
+# The memory kinds a fresh sanctum starts with (HOW-I-REMEMBER.md explains each).
+MEMORY_KINDS = ("work", "owner", "bands", "catalog", "module", "disciplines", "incidents", "chronology", "sessions")
 
+# v1 and v2 markers, for stores still at the legacy path.
 V1_MARKER = "index.md"
-# v1 stores already carried access-boundaries.md, so it is not a v2 marker.
-V2_MARKERS = [n for n in SANCTUM_LOAD_ORDER if n != "access-boundaries.md"]
+V2_SPINE = [
+    "access-boundaries.md",
+    "INDEX.md",
+    "MEMORY.md",
+    "CREED.md",
+    "PERSONA.md",
+    "BOND.md",
+    "CAPABILITIES.md",
+]
+V2_MARKERS = [n for n in V2_SPINE if n != "access-boundaries.md"]
 
 
 def sanctum_dir(project_root: Path, override: str | None = None) -> Path:
-    return Path(override) if override else project_root.joinpath(*SANCTUM_REL)
+    return Path(override) if override else Path(project_root).joinpath(*SANCTUM_REL)
+
+
+def legacy_sanctum_dir(project_root: Path) -> Path:
+    return Path(project_root).joinpath(*LEGACY_SANCTUM_REL)
 
 
 def classify_sanctum(sanctum: Path) -> dict:
     """Classify a sanctum dir. Names are compared exactly (case-sensitive).
 
-    - absent  : no directory -> First Breath
-    - v1      : `index.md` content store and no v2 spine file -> migrate
-    - v2      : every file of the spine present -> wake normally
-    - damaged : anything else, including a partial v2 spine -> recovery route
+    - absent  : no directory, or an empty one -> First Breath
+    - v7      : every identity file present -> wake normally
+    - v2      : the old seven-file spine (INDEX.md, MEMORY.md...) -> convert to v7
+    - v1      : an `index.md` content store and no v2 spine file -> migrate to v2, then v7
+    - damaged : anything else, including a partial v7 identity -> recovery route
 
     `os.listdir` returns the real directory entries, so on case-insensitive
     filesystems (macOS APFS, Windows NTFS) a v1 `index.md` is never mistaken
@@ -85,19 +105,119 @@ def classify_sanctum(sanctum: Path) -> dict:
     if not sanctum.exists():
         return {"sidecar_format": "absent", "needs_migration": False, "missing_spine": []}
     if not sanctum.is_dir():
-        return {
-            "sidecar_format": "damaged",
-            "needs_migration": False,
-            "missing_spine": list(SANCTUM_LOAD_ORDER),
-        }
+        return {"sidecar_format": "damaged", "needs_migration": False, "missing_spine": list(IDENTITY_FILES)}
     names = set(os.listdir(sanctum))
-    missing = [n for n in SANCTUM_LOAD_ORDER if n not in names]
-    has_v2 = any(n in names for n in V2_MARKERS)
-    if not has_v2 and V1_MARKER in names:
-        return {"sidecar_format": "v1", "needs_migration": True, "missing_spine": missing}
+    if not names:
+        return {"sidecar_format": "absent", "needs_migration": False, "missing_spine": []}
+    missing = [n for n in IDENTITY_FILES if n not in names]
     if not missing:
-        return {"sidecar_format": "v2", "needs_migration": False, "missing_spine": []}
+        return {"sidecar_format": "v7", "needs_migration": False, "missing_spine": []}
+    if "HOW-I-REMEMBER.md" not in names:
+        if not any(n in names for n in V2_MARKERS) and V1_MARKER in names:
+            return {"sidecar_format": "v1", "needs_migration": True, "missing_spine": missing}
+        if all(n in names for n in V2_SPINE):
+            return {"sidecar_format": "v2", "needs_migration": True, "missing_spine": []}
     return {"sidecar_format": "damaged", "needs_migration": False, "missing_spine": missing}
+
+
+def locate_sanctum(project_root: Path, override: str | None = None) -> tuple[Path, dict]:
+    """The sanctum to wake from and its classification.
+
+    The v7 path wins. Only when nothing lives there does a store at the legacy
+    path count: it is reported (v1/v2) so the waking routes to its conversion.
+    """
+    sanctum = sanctum_dir(project_root, override)
+    state = classify_sanctum(sanctum)
+    if override or state["sidecar_format"] != "absent":
+        return sanctum, state
+    legacy = legacy_sanctum_dir(project_root)
+    legacy_state = classify_sanctum(legacy)
+    if legacy_state["sidecar_format"] in ("v1", "v2"):
+        return legacy, legacy_state
+    return sanctum, state
+
+
+# ---------------------------------------------------------------------------
+# The waking map (memory/ and raw/ summarized, never printed)
+# ---------------------------------------------------------------------------
+
+RECENT_COUNT = 8
+DATED_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
+STATUS_RAW_RE = re.compile(r"^status:\s*raw\s*$", re.MULTILINE)
+
+
+def _folder_lines(root: Path, label: str) -> list[str]:
+    if not root.is_dir():
+        return []
+    lines = []
+    direct = [p for p in root.iterdir() if p.is_file() and not p.name.startswith(".")]
+    if direct:
+        lines.append(f"{label}/ ({len(direct)} files)")
+    for folder in sorted(p for p in root.rglob("*") if p.is_dir()):
+        count = sum(1 for p in folder.iterdir() if p.is_file() and not p.name.startswith("."))
+        lines.append(f"{folder.relative_to(root.parent).as_posix()}/ ({count} files)")
+    return lines
+
+
+def _recent_dated(root: Path) -> list[str]:
+    if not root.is_dir():
+        return []
+    dated = [p for p in root.rglob("*") if p.is_file() and DATED_RE.match(p.name)]
+    dated.sort(key=lambda p: (DATED_RE.match(p.name).group(1), p.name), reverse=True)
+    return [p.relative_to(root.parent).as_posix() for p in dated[:RECENT_COUNT]]
+
+
+def undistilled_raw(sanctum: Path) -> list[str]:
+    raw = sanctum / "raw"
+    if not raw.is_dir():
+        return []
+    out = []
+    for p in sorted(raw.iterdir()):
+        if not p.is_file():
+            continue
+        try:
+            head = p.read_text(encoding="utf-8", errors="replace")[:2000]
+        except OSError:
+            continue
+        if STATUS_RAW_RE.search(head):
+            out.append(p.name)
+    return out
+
+
+def tending_state(sanctum: Path) -> dict:
+    """When memory was last tended and the session notes written since."""
+    stamp = sanctum / "memory" / ".tended"
+    tended = stamp.read_text(encoding="utf-8").strip()[:10] if stamp.is_file() else ""
+    sessions = sanctum / "memory" / "sessions"
+    notes = [p.name for p in sessions.iterdir() if p.is_file() and DATED_RE.match(p.name)] if sessions.is_dir() else []
+    since = [n for n in notes if DATED_RE.match(n).group(1) > tended] if tended else notes
+    return {"tended": tended or None, "session_notes_since": len(since)}
+
+
+def memory_map(sanctum: Path) -> str:
+    """The generated map printed after the identity files at waking."""
+    lines = _folder_lines(sanctum / "memory", "memory") + _folder_lines(sanctum / "raw", "raw")
+    out = ["\n".join(lines) if lines else "(empty: nothing remembered yet)"]
+    recent = _recent_dated(sanctum / "memory")
+    if recent:
+        out.append("Newest:\n" + "\n".join(f"  {r}" for r in recent))
+    state = tending_state(sanctum)
+    out.append(
+        f"Tended: {state['tended']}; session notes since: {state['session_notes_since']}"
+        if state["tended"] else f"Never tended; session notes: {state['session_notes_since']}"
+    )
+    raw = undistilled_raw(sanctum)
+    if raw:
+        out.append(f"Undistilled raw ({len(raw)}):\n" + "\n".join(f"  raw/{r}" for r in raw))
+    return "\n\n".join(out)
+
+
+def pending_text(sanctum: Path) -> str | None:
+    pending = sanctum / "memory" / "pending.md"
+    if pending.is_file():
+        text = pending.read_text(encoding="utf-8").strip()
+        return text or None
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -512,6 +632,130 @@ def write_creed_shards(out_dir: Path, references_dir: Path, only_missing: bool =
 
 
 # ---------------------------------------------------------------------------
+# v7: disciplines and incidents as one file each, Dominion inside CREED.md
+# ---------------------------------------------------------------------------
+
+# Whole-shard headings that keep a fixed file name (the rest slug their heading).
+FIXED_DISCIPLINE_FILES = {
+    "Workshop Capture Discipline": "workshop-capture.md",
+    "Package Assembly Rule": "package-assembly.md",
+}
+
+
+def _slug(text: str, limit: int = 60) -> str:
+    text = re.sub(r"[`*_\[\]()\"'’“”]", "", text.lower())
+    text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+    if len(text) > limit:
+        text = text[:limit].rsplit("-", 1)[0]
+    return text or "untitled"
+
+
+# A v2 MEMORY.md section (lower-cased heading prefix) -> its v7 standing file.
+# The converter and First Breath (which seeds from assets/MEMORY-template.md) share it.
+MEMORY_SECTION_FILES = {
+    "current work": "memory/work/current.md",
+    "user preferences": "memory/owner/preferences.md",
+    "downloads": "memory/work/downloads.md",
+    "default exclusions": "memory/work/default-exclusions.md",
+    "active band profiles": "memory/bands/active.md",
+    "recently published": "memory/catalog/recently-published.md",
+    "catalog status": "memory/catalog/status.md",
+    "module state": "memory/module/state.md",
+    "pending / parked work": "memory/work/parked.md",
+    "pulse report": "memory/pending.md",
+    "session history": "memory/work/session-history.md",
+}
+
+
+def split_sections(text: str, level: int = 2) -> tuple[str, list[tuple[str, str]]]:
+    """(preamble, [(heading, body)]) split on headings of `level`; code fences respected."""
+    marker = "#" * level + " "
+    preamble: list[str] = []
+    sections: list[tuple[str, list[str]]] = []
+    fenced = False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        if not fenced and line.startswith(marker):
+            sections.append((line[len(marker):].strip(), []))
+            continue
+        (sections[-1][1] if sections else preamble).append(line)
+    return "\n".join(preamble).strip(), [(h, "\n".join(b).strip()) for h, b in sections]
+
+
+def memory_section_file(heading: str) -> str:
+    """The standing file for a MEMORY.md section; unknown ones go to memory/misc/."""
+    key = next((k for k in MEMORY_SECTION_FILES if heading.lower().startswith(k)), None)
+    return MEMORY_SECTION_FILES[key] if key else f"memory/misc/{_slug(heading)}.md"
+
+
+def discipline_file(heading: str) -> str:
+    """memory/disciplines/<file> for a creed heading (the converter uses the same names)."""
+    for prefix, name in FIXED_DISCIPLINE_FILES.items():
+        if heading.startswith(prefix):
+            return name
+    return _slug(heading.split("—")[0]) + ".md"
+
+
+def discipline_files(creed_text: str) -> dict[str, str]:
+    """{sanctum-relative path: content} for every routed creed section.
+
+    Each routed section becomes memory/disciplines/<file>; a section carrying a
+    "Recurring failure pattern" narrative also seeds memory/incidents/<slug>.md.
+    Unrouted headings warn, as shard_creed does.
+    """
+    for heading in unrouted_headings(creed_text):
+        warnings.warn(
+            f"creed.md heading not routed to any shard: '{heading}'. "
+            "Add it to SHARD_ROUTING in _sanctum_seed.py.",
+            UserWarning,
+            stacklevel=2,
+        )
+    out: dict[str, str] = {}
+    for section in SECTION_SPLIT_RE.split(creed_text):
+        if not section.strip().startswith("##"):
+            continue
+        heading = _heading_of(section).lstrip("#").strip()
+        if not any(heading.startswith(p) for prefixes in SHARD_ROUTING.values() for p in prefixes):
+            continue
+        body = section.split("\n", 1)[1].strip() if "\n" in section else ""
+        name = discipline_file(heading)
+        out[f"memory/disciplines/{name}"] = f"# {heading}\n\n{body}\n"
+        if "Recurring failure pattern" in section:
+            out[f"memory/incidents/{name}"] = f"# {heading}\n\n{body}\n"
+    return out
+
+
+def write_disciplines(sanctum: Path, references_dir: Path, only_missing: bool = False) -> list[str]:
+    """Seed memory/disciplines/ and memory/incidents/ from references/creed.md.
+
+    With `only_missing`, existing files are left alone: they may hold learnings
+    the source creed does not.
+    """
+    creed_src = references_dir / "creed.md"
+    if not creed_src.exists():
+        return []
+    written: list[str] = []
+    for rel, text in discipline_files(creed_src.read_text(encoding="utf-8")).items():
+        target = sanctum / rel
+        if only_missing and target.exists():
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+        written.append(rel)
+    return written
+
+
+def render_dominion(assets_dir: Path, variables: dict) -> str:
+    """The Dominion section body for CREED.md: the access-boundaries template's sections."""
+    body = render_access_boundaries(assets_dir, variables)
+    if body is None:
+        return "_The access-boundaries template is missing; reinstall the skill._"
+    parts = [p for p in SECTION_SPLIT_RE.split(body) if p.strip().startswith("##")]
+    return "\n\n".join("#" + p.strip() for p in parts)
+
+
+# ---------------------------------------------------------------------------
 # Recovery CLI
 # ---------------------------------------------------------------------------
 
@@ -519,20 +763,15 @@ def write_creed_shards(out_dir: Path, references_dir: Path, only_missing: bool =
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Re-seed Mac's access-boundaries.md and creed shards into a sanctum "
-            "directory. Writes only missing files unless --force is given."
+            "Re-seed Mac's disciplines and incident files (memory/disciplines/, "
+            "memory/incidents/) into a sanctum. Writes only missing files unless --force is given."
         )
     )
     parser.add_argument("--out", required=True, help="Target sanctum directory (or a test dir).")
     parser.add_argument(
         "--skill-path",
         default=None,
-        help="Skill dir (assets/ + references/). Default: this script's parent dir.",
-    )
-    parser.add_argument(
-        "--project-root",
-        default=".",
-        help="Project root, substituted for {project-root} placeholders.",
+        help="Skill dir (references/). Default: this script's parent dir.",
     )
     parser.add_argument(
         "--force",
@@ -547,26 +786,15 @@ def main() -> int:
         print(f"ERROR: --out dir not found: {out_dir}", file=sys.stderr)
         return 2
     skill_path = Path(args.skill_path).resolve() if args.skill_path else Path(__file__).resolve().parent.parent
-    project_root = Path(args.project_root).resolve()
-    variables = template_variables(project_root)
-
-    written: list[str] = []
-    skipped: list[str] = []
-    if args.force or not (out_dir / "access-boundaries.md").exists():
-        name = write_access_boundaries(out_dir, skill_path / "assets", variables)
-        if name:
-            written.append(name)
-    else:
-        skipped.append("access-boundaries.md")
-
     references_dir = skill_path / "references"
+
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        shard_names = list(shard_creed((references_dir / "creed.md").read_text(encoding="utf-8")).keys()) if (
+        planned = list(discipline_files((references_dir / "creed.md").read_text(encoding="utf-8"))) if (
             references_dir / "creed.md"
         ).exists() else []
-        written.extend(write_creed_shards(out_dir, references_dir, only_missing=not args.force))
-    skipped.extend(n for n in shard_names if n not in written)
+        written = write_disciplines(out_dir, references_dir, only_missing=not args.force)
+    skipped = [n for n in planned if n not in written]
 
     result = {
         "status": "seeded",

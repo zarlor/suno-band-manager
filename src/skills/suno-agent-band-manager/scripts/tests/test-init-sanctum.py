@@ -3,7 +3,7 @@
 # requires-python = ">=3.10"
 # dependencies = ["pytest>=7.0"]
 # ///
-"""Tests for init-sanctum.py — fresh v2 sanctum scaffolding for Mac."""
+"""Tests for init-sanctum.py — fresh BMad v7 sanctum scaffolding for Mac."""
 
 import sys
 from importlib.util import module_from_spec, spec_from_file_location
@@ -31,41 +31,50 @@ def project(tmp_path):
     return tmp_path
 
 
-def test_scaffold_creates_sanctum_at_bespoke_path(project):
+def sanctum_of(project):
+    return project / "_bmad" / "memory" / "suno-agent-band-manager"
+
+
+IDENTITY = ["PERSONA.md", "CREED.md", "BOND.md", "HOW-I-REMEMBER.md", "CAPABILITIES.md"]
+
+
+def test_scaffold_creates_sanctum_at_the_v7_path(project):
     result = mod.scaffold(project, SKILL_DIR)
     assert result["status"] == "created"
-    sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
-    assert sanctum.is_dir()
-    # Preserved divergence: double-underscore _memory, not _bmad/memory.
-    assert not (project / "_bmad" / "memory").exists()
+    assert sanctum_of(project).is_dir()
+    assert not (project / "_bmad" / "_memory").exists()
 
 
-def test_scaffold_creates_allcaps_files_and_dirs(project):
+def test_fresh_birth_has_identity_files_and_folders(project):
     mod.scaffold(project, SKILL_DIR)
-    sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
-    for name in ("INDEX.md", "PERSONA.md", "CREED.md", "BOND.md", "MEMORY.md", "PULSE.md"):
-        assert (sanctum / name).exists(), f"missing {name}"
-    assert (sanctum / "CAPABILITIES.md").exists()
-    assert (sanctum / "sessions").is_dir()
-    assert (sanctum / "capabilities").is_dir()
+    sanctum = sanctum_of(project)
+    for name in [*IDENTITY, "PULSE.md"]:
+        assert (sanctum / name).read_text(encoding="utf-8").strip(), f"missing or empty: {name}"
+    for folder in ("raw", "capabilities", "memory/work", "memory/catalog", "memory/disciplines", "memory/sessions"):
+        assert (sanctum / folder).is_dir(), folder
+    for old in ("INDEX.md", "MEMORY.md", "access-boundaries.md", "sessions"):
+        assert not (sanctum / old).exists(), f"v2 leftover: {old}"
 
 
 def test_scaffold_substitutes_variables(project):
     mod.scaffold(project, SKILL_DIR)
-    sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
-    persona = (sanctum / "PERSONA.md").read_text()
+    persona = (sanctum_of(project) / "PERSONA.md").read_text()
     assert "Testuser" in persona
     assert "{user_name}" not in persona
 
 
-def test_memory_template_carries_derived_markers(project):
+def test_standing_files_seeded_from_memory_template(project):
     mod.scaffold(project, SKILL_DIR)
-    sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
-    memory = (sanctum / "MEMORY.md").read_text()
-    assert "<!-- derived:recently-published:start -->" in memory
-    assert "<!-- derived:recently-published:end -->" in memory
-    assert "<!-- derived:catalog-status:start -->" in memory
-    assert "<!-- derived:catalog-status:end -->" in memory
+    sanctum = sanctum_of(project)
+    assert "## " not in (sanctum / "memory/work/downloads.md").read_text().split("\n", 1)[1]
+    assert (sanctum / "memory/work/downloads.md").read_text().startswith("# Downloads")
+    assert (sanctum / "memory/owner/preferences.md").is_file()
+    published = (sanctum / "memory/catalog/recently-published.md").read_text()
+    status = (sanctum / "memory/catalog/status.md").read_text()
+    assert "<!-- derived:recently-published:start -->" in published and "<!-- derived:recently-published:end -->" in published
+    assert "<!-- derived:catalog-status:start -->" in status and "<!-- derived:catalog-status:end -->" in status
+    assert not (sanctum / "memory/pending.md").exists()  # nothing to raise yet
+    assert "First Breath" in (sanctum / "memory/work/session-history.md").read_text()
 
 
 def test_scaffold_is_idempotent_no_clobber(project):
@@ -78,102 +87,52 @@ def test_default_user_name_when_no_config(tmp_path):
     (tmp_path / "_bmad").mkdir()
     result = mod.scaffold(tmp_path, SKILL_DIR)
     assert result["status"] == "created"
-    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
-    assert "friend" in (sanctum / "BOND.md").read_text()
+    assert "friend" in (sanctum_of(tmp_path) / "BOND.md").read_text()
 
 
-# ---------------------------------------------------------------------------
-# Fresh-birth ≠ migrated-birth ACCEPTANCE TEST (Theme 1)
-# A freshly-born sanctum must contain the SAME file set the migration produces:
-# all 7 always-loaded files + the 3 on-demand creed shards + the incident log.
-# ---------------------------------------------------------------------------
-
-ALWAYS_LOADED_SEVEN = [
-    "access-boundaries.md",
-    "INDEX.md",
-    "MEMORY.md",
-    "CREED.md",
-    "PERSONA.md",
-    "BOND.md",
-    "CAPABILITIES.md",
-]
-
-CREED_SHARDS = [
-    "creed-disciplines.md",
-    "creed-workshop-capture.md",
-    "creed-package-assembly.md",
-]
-
-
-def test_fresh_birth_has_all_seven_always_loaded_files(project):
-    """All 7 always-loaded files exist and are non-empty after a fresh birth."""
+def test_fresh_birth_has_disciplines_and_incidents(project):
     mod.scaffold(project, SKILL_DIR)
-    sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
-    for name in ALWAYS_LOADED_SEVEN:
-        path = sanctum / name
-        assert path.exists(), f"missing always-loaded file: {name}"
-        assert path.read_text(encoding="utf-8").strip(), f"empty always-loaded file: {name}"
+    sanctum = sanctum_of(project)
+    for name in ("package-assembly.md", "workshop-capture.md", "research-discipline.md",
+                 "catalog-verification-discipline.md", "hedge-preservation-discipline.md"):
+        assert (sanctum / "memory/disciplines" / name).read_text(encoding="utf-8").strip(), name
+    assert any((sanctum / "memory/incidents").iterdir())
 
 
-def test_fresh_birth_has_creed_shards_and_incident_log(project):
-    """The 3 on-demand creed shards + the non-loaded incident log exist, non-empty."""
+def test_creed_carries_the_dominion_with_substituted_paths(project):
     mod.scaffold(project, SKILL_DIR)
-    sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
-    for name in CREED_SHARDS + ["creed-incident-log.md"]:
-        path = sanctum / name
-        assert path.exists(), f"missing creed shard: {name}"
-        assert path.read_text(encoding="utf-8").strip(), f"empty creed shard: {name}"
-
-
-def test_fresh_birth_access_boundaries_loads_first_and_substitutes(project):
-    """access-boundaries.md is the loaded-first Dominion contract, no raw placeholders."""
-    mod.scaffold(project, SKILL_DIR)
-    sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
-    text = (sanctum / "access-boundaries.md").read_text(encoding="utf-8")
-    assert "Access Boundaries for Mac" in text
-    assert "Deny Zones" in text
-    # {project_root} placeholder must have been substituted.
-    assert "{project_root}" not in text
-    assert str(project) in text
+    creed = (sanctum_of(project) / "CREED.md").read_text(encoding="utf-8")
+    dominion = creed.split("## Dominion (Access Boundaries)", 1)[1].split("\n## ", 1)[0]
+    for sub in ("### Read Access", "### Write Access", "### The Write Rule", "### Deny Zones"):
+        assert sub in dominion
+    assert "{dominion}" not in creed and "{project_root}" not in creed
+    assert str(project) in dominion
+    assert "_bmad/memory/suno-agent-band-manager/" in dominion
+    assert "memory/disciplines/package-assembly.md" in creed
 
 
 def test_fresh_birth_history_is_honest_no_migration_fiction(project):
     """A fresh birth must NOT claim migrated memories (none existed)."""
     mod.scaffold(project, SKILL_DIR)
-    sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
-    memory = (sanctum / "MEMORY.md").read_text(encoding="utf-8")
+    sanctum = sanctum_of(project)
     persona = (sanctum / "PERSONA.md").read_text(encoding="utf-8")
-    # The seeded "sanctum migration" / "memories migrated" framing is removed.
-    assert "sanctum migration" not in memory
     assert "memories migrated" not in persona
     assert "Reborn into the v2 sanctum" not in persona
-    # The honest first-session markers are present instead.
-    assert "First Breath" in memory
     assert "First Breath" in persona
 
 
-def test_fresh_birth_matches_migration_file_set(project):
-    """The fresh-born file set is a superset of the migration's seeded sanctum files.
-
-    The migration tool produces the same always-loaded skeleton, access-boundaries,
-    creed shards, and incident log (plus migrated session/preserved files). A fresh
-    birth must produce that core seeded set so the activation contract — which is
-    written against the migrated shape — holds for a born sanctum too.
-    """
+def test_fresh_birth_matches_conversion_file_set(project):
+    """A fresh birth has the identity set and memory kinds a converted sanctum has."""
     mod.scaffold(project, SKILL_DIR)
-    sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
-    born = {p.name for p in sanctum.iterdir() if p.is_file()}
-    expected = set(ALWAYS_LOADED_SEVEN) | set(CREED_SHARDS) | {
-        "creed-incident-log.md", "INDEX.md", "PULSE.md",
-    }
-    missing = expected - born
-    assert not missing, f"fresh birth missing seeded files: {sorted(missing)}"
+    sanctum = sanctum_of(project)
+    born = {p.name for p in sanctum.iterdir()}
+    assert set(IDENTITY) | {"PULSE.md", "memory", "raw", "capabilities"} <= born
 
 
 def test_capabilities_md_carries_builtin_roster(project):
-    """CAPABILITIES.md lists Mac's real capabilities from module-help.csv."""
+    """CAPABILITIES.md lists Mac's real capabilities from assets/menu.csv."""
     mod.scaffold(project, SKILL_DIR)
-    caps = (project / "_bmad" / "_memory" / "band-manager-sidecar" / "CAPABILITIES.md").read_text()
+    caps = (sanctum_of(project) / "CAPABILITIES.md").read_text()
     assert "| [CS] | Create Song |" in caps
     assert "| [RS] | Refine Song |" in caps
     assert "| [FL] |" not in caps
@@ -181,13 +140,9 @@ def test_capabilities_md_carries_builtin_roster(project):
 
 
 def test_fresh_birth_templates_carry_no_install_history(project):
-    """A fresh sanctum lists only files that exist and no migration story."""
     mod.scaffold(project, SKILL_DIR)
-    sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
-    index = (sanctum / "INDEX.md").read_text()
+    sanctum = sanctum_of(project)
     bond = (sanctum / "BOND.md").read_text()
-    for stale in ("_collection_", "SUPERSEDED", "chronology.md"):
-        assert stale not in index
     assert "patterns.md" not in bond
     persona = (sanctum / "PERSONA.md").read_text()
     assert "v4.5" not in persona and "v5.5" not in persona
@@ -196,7 +151,7 @@ def test_fresh_birth_templates_carry_no_install_history(project):
 
 def test_fresh_birth_creed_has_standing_orders_and_mission_placeholder(project):
     mod.scaffold(project, SKILL_DIR)
-    creed = (project / "_bmad" / "_memory" / "band-manager-sidecar" / "CREED.md").read_text()
+    creed = (sanctum_of(project) / "CREED.md").read_text()
     assert "## Standing Orders" in creed
     assert "references/prompt-quality-canon.md" in creed
     assert "Discovered during First Breath" in creed
@@ -204,12 +159,14 @@ def test_fresh_birth_creed_has_standing_orders_and_mission_placeholder(project):
     assert "Settings in Controls panel order" in creed
 
 
-def test_fresh_birth_memory_has_downloads_and_pulse_report(project):
+def test_how_i_remember_and_pulse_describe_the_v7_layout(project):
     mod.scaffold(project, SKILL_DIR)
-    memory = (project / "_bmad" / "_memory" / "band-manager-sidecar" / "MEMORY.md").read_text()
-    assert "## Downloads" in memory
-    assert "## Pulse Report" in memory
-    assert "200 lines" not in memory
+    sanctum = sanctum_of(project)
+    how = (sanctum / "HOW-I-REMEMBER.md").read_text()
+    assert "memory/work/current.md" in how and "raw/" in how and "memory/.tended" in how
+    pulse = (sanctum / "PULSE.md").read_text()
+    assert "memory/pending.md" in pulse and "MEMORY.md" not in pulse
+    assert "_bmad/memory/suno-agent-band-manager/" in pulse
 
 
 def test_bundle_ships_what_the_canon_order_points_to():

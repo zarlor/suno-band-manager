@@ -6,24 +6,27 @@
 """Post-unpack reconciliation helper for the Mac sanctum.
 
 After `unpack-portable.sh/.ps1` extracts a sync archive on a receiving
-machine, the sanctum's curated MEMORY.md still reflects the receiving machine's
-prior local state — even though the freshly-arrived files (WIPs, songbook
-entries, band profiles, playlist docs, session-context) may contain updates the
-sanctum narrative should integrate.
+machine, the sanctum (`{project-root}/_bmad/memory/suno-agent-band-manager/`,
+per-machine; it never travels) still reflects this machine's prior local state,
+even though the freshly-arrived docs/ files (WIPs, songbook entries, band
+profiles, playlist docs, the voice file) may hold updates its memory should
+take in.
 
-(In the pre-v2 layout the reference file was `index.md`; the v2 sanctum's
-curated narrative lives in `MEMORY.md`, with `INDEX.md` as a thin map. The
-store-freshness reference is the newest mtime of MEMORY.md / INDEX.md.)
+The store-freshness reference is the newest file Mac wrote under `memory/`
+(standing files, session notes, chronology, `memory/.tended`). The generated
+`memory/catalog/` files are left out: regenerating them is not Mac having seen
+a doc.
 
 This script produces a punch list for the agent to walk through:
 
-  1. **Files modified more recently than the store** — candidates for
-     narrative integration (session history, current work, pending threads).
+  1. **Files modified more recently than the store** — candidates for the
+     standing files (memory/work/current.md, memory/work/parked.md...) or a
+     session note.
   2. **Validator findings** — calls `validate-sidecar.py` so drift between
-     the sanctum narrative and the unpacked file state surfaces immediately.
+     the sanctum and the unpacked file state surfaces immediately.
 
 The script does not edit files. The agent is responsible for reading each
-candidate and deciding whether the sanctum narrative should integrate its
+candidate and deciding whether the sanctum's memory should integrate its
 content, surfacing the decision to the user via the usual handoff
 checkpoint.
 
@@ -41,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -48,23 +52,42 @@ from pathlib import Path
 from typing import Any
 
 
-# Default sanctum location (preserved bespoke divergence: double-underscore parent,
-# fixed dir name). The curated narrative lives in MEMORY.md; INDEX.md is a thin map.
-DEFAULT_SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
-# Store-state files whose freshness defines "the store" for the newer-than punch list.
-STORE_FILES = ("MEMORY.md", "INDEX.md")
+def _load_sanctum_seed():
+    from importlib.util import module_from_spec, spec_from_file_location
+
+    spec = spec_from_file_location("_sanctum_seed", Path(__file__).resolve().parent / "_sanctum_seed.py")
+    mod = module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_seed = _load_sanctum_seed()
+
+# memory/ subfolders whose files do not count toward the store's freshness:
+# the catalog is generated from the songbook, not written from what Mac saw.
+DERIVED_DIRS = ("catalog",)
 
 
 def resolve_sanctum_dir(project_root: Path, sanctum_dir: str | None) -> Path:
-    """Resolve the sanctum directory, honoring a --sanctum-dir override.
+    """The v7 sanctum, or the --sanctum-dir override.
 
-    Default is the real bespoke sanctum under the project root. The override
-    exists so the memory scripts can be tested against a staging copy without
-    touching live data.
+    The override exists so the memory scripts can be tested against a staging
+    copy without touching live data.
     """
-    if sanctum_dir:
-        return Path(sanctum_dir).resolve()
-    return project_root.joinpath(*DEFAULT_SANCTUM_REL)
+    return _seed.sanctum_dir(project_root, sanctum_dir).resolve()
+
+
+def store_files(sanctum: Path) -> list[Path]:
+    """Files under memory/ that say what Mac has seen (everything but the catalog)."""
+    memory = sanctum / "memory"
+    if not memory.is_dir():
+        return []
+    out = []
+    for path in memory.rglob("*"):
+        rel = path.relative_to(memory)
+        if path.is_file() and not (len(rel.parts) > 1 and rel.parts[0] in DERIVED_DIRS):
+            out.append(path)
+    return out
 
 
 def _format_mtime(mtime: float) -> str:
@@ -76,7 +99,7 @@ def _format_mtime(mtime: float) -> str:
 def find_newer_docs(project_root: Path, store_mtime: float) -> list[dict[str, Any]]:
     """Return docs/*.md files whose mtime is newer than the sanctum store.
 
-    These are the most likely candidates for sanctum narrative integration —
+    These are the most likely candidates for the sanctum's memory —
     a freshly unpacked WIP update, session-context edit, or songbook
     addition that hasn't yet shown up in the sanctum's story.
     """
@@ -113,8 +136,12 @@ def run_validator(project_root: Path, sanctum_dir: str | None = None) -> dict[st
     if not validator.is_file():
         return {"status": "skipped", "reason": "validate-sidecar.py not found"}
 
+    # The validator needs PyYAML (PEP 723 header); `uv run` provisions it. Without
+    # uv, fall back to this interpreter (works when PyYAML is installed).
+    uv = shutil.which("uv")
+    launcher = [uv, "run", "-q", "--script"] if uv else [sys.executable]
     cmd = [
-        sys.executable,
+        *launcher,
         str(validator),
         str(project_root),
         "--format",
@@ -168,9 +195,9 @@ def format_text(payload: dict[str, Any]) -> str:
     if candidates:
         lines.append("")
         lines.append(
-            "These are candidates for narrative integration. Review each and "
-            "decide whether the sanctum's session history, current work, or "
-            "catalog status should be updated before continuing:"
+            "These are candidates for the sanctum's memory. Review each and "
+            "decide whether a standing file (current work, parked threads) or a "
+            "session note should take it in before continuing:"
         )
         lines.append("")
         for item in candidates:
@@ -197,7 +224,7 @@ def format_text(payload: dict[str, Any]) -> str:
     if payload.get("needs_reconciliation"):
         lines.append(
             "ACTION NEEDED: walk the punch list above with the user and "
-            "integrate changes into the sanctum narrative before packing "
+            "integrate changes into the sanctum's memory before packing "
             "a return sync."
         )
     else:
@@ -211,10 +238,9 @@ def build_report(
 ) -> dict[str, Any]:
     sanctum = resolve_sanctum_dir(project_root, sanctum_dir)
 
-    # The store-freshness reference is the newest mtime among MEMORY.md / INDEX.md.
-    # MEMORY.md is the curated narrative; INDEX.md is the thin map. Either being
-    # newer than a doc means the store has already seen that doc's state.
-    store_files = [sanctum / name for name in STORE_FILES if (sanctum / name).is_file()]
+    # The store-freshness reference is the newest file under memory/ (catalog
+    # aside): a memory write newer than a doc means the store has seen its state.
+    files = store_files(sanctum)
 
     def _display(path: Path) -> str:
         try:
@@ -222,23 +248,22 @@ def build_report(
         except ValueError:
             return str(path)
 
-    if not store_files:
-        # Nothing to reconcile against — report the would-be primary store path.
-        primary = sanctum / STORE_FILES[0]
+    if not files:
+        # Nothing to reconcile against — report the would-be store path.
         payload: dict[str, Any] = {
-            "store_path": _display(primary),
+            "store_path": _display(sanctum / "memory"),
             "status": "no_sidecar",
             "newer_files": [],
             "validator": {
                 "status": "skipped",
-                "reason": "no sanctum store (MEMORY.md / INDEX.md)",
+                "reason": "no sanctum memory (memory/ is empty or absent)",
             },
             "needs_reconciliation": False,
         }
         return payload
 
     # Use the freshest store file as the reference; report it as the store path.
-    reference_file = max(store_files, key=lambda p: p.stat().st_mtime)
+    reference_file = max(files, key=lambda p: p.stat().st_mtime)
     store_mtime = reference_file.stat().st_mtime
     payload = {"store_path": _display(reference_file)}
     payload["store_mtime"] = _format_mtime(store_mtime)
@@ -275,7 +300,7 @@ def main() -> int:
         default=None,
         help=(
             "Override the sanctum directory (default: "
-            "<project_root>/_bmad/_memory/band-manager-sidecar). Use to test "
+            "<project_root>/_bmad/memory/suno-agent-band-manager). Use to test "
             "against a staging copy without touching live data."
         ),
     )

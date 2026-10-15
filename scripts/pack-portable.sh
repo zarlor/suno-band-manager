@@ -23,9 +23,9 @@ ARCHIVE="$PROJECT_ROOT/docs/portable-sync.tar.gz"
 MANIFEST="$PROJECT_ROOT/portable-manifest.yaml"
 VALIDATOR="$PROJECT_ROOT/.claude/skills/suno-agent-band-manager/scripts/validate-sidecar.py"
 
-# Pre-sync validation gate. Stops stale sidecar state from propagating to
-# other machines. The validator reads songbook + band profiles + sidecar
-# index and reports drift. Exit code 1 from the validator blocks the pack.
+# Pre-sync validation gate. Stops stale catalog state from propagating to
+# other machines. The validator reads songbook + band profiles + the sanctum
+# catalog files and reports drift. Exit code 1 from the validator blocks the pack.
 # Warnings (pre-existing content gaps) do not block.
 #
 # Bypass: set BMAD_SKIP_VALIDATE=1 to skip (e.g., emergency syncs). Missing

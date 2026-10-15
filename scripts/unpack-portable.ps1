@@ -43,7 +43,7 @@ try {
 Write-Output ('{"status": "success", "files_unpacked": ' + $fileCount + '}')
 [Console]::Error.WriteLine("Unpacked $fileCount files from $Archive")
 
-# Post-unpack reconciliation — warn if the sidecar narrative may be stale
+# Post-unpack reconciliation — warn if the sanctum memory may be stale
 # relative to the unpacked files. Never blocks: reconciliation is the agent's
 # job, not the script's. Bypass with $env:BMAD_SKIP_RECONCILE=1.
 $reconcile = Join-Path $ProjectRoot '.claude/skills/suno-agent-band-manager/scripts/reconcile-sidecar.py'

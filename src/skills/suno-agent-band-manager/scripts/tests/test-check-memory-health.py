@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pytest>=7.0"]
 # ///
-"""Tests for check-memory-health.py"""
+"""Tests for check-memory-health.py (v7 sanctum)."""
 
+import json
 import sys
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
-
-import pytest
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from importlib.util import spec_from_file_location, module_from_spec
 
 spec = spec_from_file_location(
     "check_memory_health",
@@ -21,122 +18,177 @@ mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 
-def test_healthy_files(tmp_path):
-    """A curated store is GREEN: MEMORY.md under its token budget with no packed
-    lines; patterns/chronology large but under their ceilings."""
-    (tmp_path / "MEMORY.md").write_text("- a short curated line\n" * 120)
-    (tmp_path / "patterns.md").write_text("x" * 43000)
-    (tmp_path / "chronology.md").write_text("x" * 94000)
+def _w(path: Path, text: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
 
-    result = mod.check_health(tmp_path)
+
+def _run(monkeypatch, capsys, *argv):
+    monkeypatch.setattr(sys, "argv", ["check-memory-health.py", *argv])
+    rc = mod.main()
+    return rc, capsys.readouterr().out
+
+
+def test_healthy_sanctum(v7_project):
+    root, sanctum = v7_project
+    result = mod.check_health(sanctum, root)
     assert result["maintenance_recommended"] is False
-    assert result["needs_pruning"] == []
+    assert result["identity"]["over_threshold"] is False
+    assert result["standing_too_long"] == []
+    assert result["undistilled_raw"] == []
+    assert result["tending"]["tending_due"] is False
 
 
-def test_memory_over_token_budget_with_few_lines(tmp_path):
-    """Few lines, many tokens: a line count would pass this; the token budget flags it."""
-    (tmp_path / "MEMORY.md").write_text(("y" * 590 + "\n") * 30)  # ~4.4k tokens, 30 lines
-    result = mod.check_health(tmp_path)
-    assert "MEMORY.md" in result["needs_pruning"]
-    facts = result["files"]["MEMORY.md"]
-    assert facts["metric"] == "tokens"
-    assert facts["over_threshold"] is True
-    assert facts["size_lines"] == 30
+def test_no_memory_md_or_index_checks(v7_project):
+    """v7 has no MEMORY.md token budget and no INDEX.md coverage check."""
+    root, sanctum = v7_project
+    _w(sanctum / "liner-notes.md", "an unlisted organic file is fine now")
+    result = mod.check_health(sanctum, root)
+    assert "index_unlisted" not in result
+    assert "files" not in result
+    assert result["maintenance_recommended"] is False
 
 
-def test_packed_line_is_flagged(tmp_path):
-    """One line hiding a whole session narrative is flagged even under budget."""
-    (tmp_path / "MEMORY.md").write_text("- ok\n- " + "z" * 2000 + "\n- ok\n")
-    result = mod.check_health(tmp_path)
-    assert result["files"]["MEMORY.md"]["packed_lines"] == [{"line": 2, "chars": 2002}]
-    assert "MEMORY.md" in result["needs_pruning"]
+def test_identity_set_over_budget(v7_project):
+    root, sanctum = v7_project
+    _w(sanctum / "PERSONA.md", "p" * 30000)
+    _w(sanctum / "CREED.md", "c" * 30000)  # ~15k tokens together
+    result = mod.check_health(sanctum, root)
+    assert result["identity"]["total_tokens_est"] > 12000
+    assert result["identity"]["over_threshold"] is True
+    assert "identity set" in result["recommendation"]
 
 
-def test_companion_files_measured(tmp_path):
-    """The voice file and mac-preferences are measured; over budget → offer compaction."""
-    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
-    sanctum.mkdir(parents=True)
-    (sanctum / "MEMORY.md").write_text("- ok\n")
-    docs = tmp_path / "docs"
-    docs.mkdir()
-    (docs / "voice-context-sam.md").write_text("v" * 1000)
-    (docs / "mac-preferences.md").write_text("p" * 100000)  # ~25k tokens
-    result = mod.check_health(sanctum)  # project root inferred from the path
-    assert result["companions"]["docs/voice-context-sam.md"]["over_threshold"] is False
+def test_missing_identity_file_reported(v7_project):
+    root, sanctum = v7_project
+    (sanctum / "HOW-I-REMEMBER.md").unlink()
+    result = mod.check_health(sanctum, root)
+    assert result["identity"]["missing"] == ["HOW-I-REMEMBER.md"]
+    assert result["maintenance_recommended"] is True
+
+
+def test_companion_files_owner_voice_and_preferences(v7_project):
+    root, sanctum = v7_project
+    _w(root / "docs" / "voice-context-sam.md", "v" * 1000)
+    _w(root / "docs" / "voice-context-other.md", "o" * 100000)  # not the owner's: not measured
+    _w(root / "docs" / "mac-preferences.md", "p" * 100000)  # ~25k tokens
+    result = mod.check_health(sanctum, root)
+    assert set(result["companions"]) == {"docs/voice-context-sam.md", "docs/mac-preferences.md"}
     assert result["companions_over_budget"] == ["docs/mac-preferences.md"]
     assert "compaction" in result["recommendation"]
+
+
+def test_standing_file_longer_than_a_screen(v7_project):
+    root, sanctum = v7_project
+    _w(sanctum / "memory" / "work" / "parked.md", "- a parked thread\n" * 70)  # 70 lines
+    _w(sanctum / "memory" / "owner" / "preferences.md", "x" * 4500 + "\n")  # few lines, many chars
+    _w(sanctum / "memory" / "module" / "state.md", "- short\n" * 10)
+    result = mod.check_health(sanctum, root)
+    flagged = [f["file"] for f in result["standing_too_long"]]
+    assert flagged == ["memory/owner/preferences.md", "memory/work/parked.md"]
+    assert "appended to" in result["recommendation"]
+
+
+def test_non_standing_folders_are_not_measured(v7_project):
+    """chronology/, sessions/, incidents/, the generated catalog/ and the disciplines
+    are never flagged for length; a new kind of folder is."""
+    root, sanctum = v7_project
+    for rel in (
+        "memory/chronology/2026-04-01-long-milestone.md",
+        "memory/sessions/2026-10-02-long-session.md",
+        "memory/incidents/workshop-capture.md",
+        "memory/catalog/status.md",
+        "memory/disciplines/thematic-discipline.md",
+    ):
+        _w(sanctum / rel, "line\n" * 200)
+    _w(sanctum / "raw" / "2026-05-27-session-log.md", "---\nstatus: distilled\n---\n" + "x" * 50000)
+    result = mod.check_health(sanctum, root)
+    assert result["standing_too_long"] == []
+    _w(sanctum / "memory" / "gear" / "studio.md", "line\n" * 61)
+    _w(sanctum / "memory" / "pending.md", "p" * 4001)
+    flagged = [f["file"] for f in mod.check_health(sanctum, root)["standing_too_long"]]
+    assert flagged == ["memory/gear/studio.md", "memory/pending.md"]
+
+
+def test_undistilled_raw(v7_project):
+    root, sanctum = v7_project
+    _w(sanctum / "raw" / "2026-10-02-owner-poems.md", "---\nstatus: raw\ndistilled_to: []\n---\nwords\n")
+    _w(sanctum / "raw" / "2026-09-01-session-log.md", "---\nstatus: distilled\n---\nold\n")
+    result = mod.check_health(sanctum, root)
+    assert result["undistilled_raw"] == ["2026-10-02-owner-poems.md"]
     assert result["maintenance_recommended"] is True
 
 
-def test_index_coverage(tmp_path):
-    """Organic files INDEX.md does not mention are reported."""
-    (tmp_path / "MEMORY.md").write_text("- ok\n")
-    (tmp_path / "INDEX.md").write_text("| `patterns.md` | x |\n| `_collection_*.txt` | y |\n")
-    (tmp_path / "patterns.md").write_text("p")
-    (tmp_path / "_collection_layout.txt").write_text("c")
-    (tmp_path / "liner-notes.md").write_text("new organic file")
-    (tmp_path / "sessions").mkdir()
-    result = mod.check_health(tmp_path)
-    assert result["index_unlisted"] == ["liner-notes.md"]
-    assert result["maintenance_recommended"] is True
+def test_tending_due_after_three_notes(v7_project):
+    root, sanctum = v7_project
+    sessions = sanctum / "memory" / "sessions"
+    _w(sessions / "2026-09-20-before.md", "old")  # before the stamp: not counted
+    for day in ("2026-10-02", "2026-10-05"):
+        _w(sessions / f"{day}-note.md", "n")
+    assert mod.check_health(sanctum, root)["tending"]["tending_due"] is False
+    _w(sessions / "2026-10-09-note.md", "n")
+    result = mod.check_health(sanctum, root)
+    assert result["tending"]["session_notes_since"] == 3
+    assert result["tending"]["tending_due"] is True
+    assert "tend memory" in result["recommendation"]
 
 
-def test_spine_total_reported(tmp_path):
-    for name in mod.SPINE:
-        (tmp_path / name).write_text("x" * 400)
-    result = mod.check_health(tmp_path)
-    assert result["spine_total_tokens_est"] == 700
-    assert result["spine_over_budget"] is False
+def test_never_tended_is_due(v7_project):
+    root, sanctum = v7_project
+    (sanctum / "memory" / ".tended").unlink()
+    result = mod.check_health(sanctum, root)
+    assert result["tending"]["tended"] is None
+    assert result["tending"]["tending_due"] is True
 
 
-def test_chronology_over_char_threshold(tmp_path):
-    """Organic reference files are flagged only on genuine runaway growth."""
-    (tmp_path / "MEMORY.md").write_text("a line\n" * 10)
-    (tmp_path / "patterns.md").write_text("x" * 100)
-    (tmp_path / "chronology.md").write_text("x" * 130000)  # past 120000 ceiling
-
-    result = mod.check_health(tmp_path)
-    assert result["maintenance_recommended"] is True
-    assert "chronology.md" in result["needs_pruning"]
+def test_cli_project_root_json(v7_project, monkeypatch, capsys):
+    root, sanctum = v7_project
+    rc, out = _run(monkeypatch, capsys, str(root), "--format", "json")
+    assert rc == 0
+    result = json.loads(out)
+    assert result["sidecar_format"] == "v7"
+    assert Path(result["sanctum_path"]) == sanctum
 
 
-def test_missing_files(tmp_path):
-    """Missing files reported correctly."""
-    result = mod.check_health(tmp_path)
-    assert result["files"]["MEMORY.md"]["exists"] is False
+def test_cli_text_format(v7_project, monkeypatch, capsys):
+    root, _ = v7_project
+    rc, out = _run(monkeypatch, capsys, str(root), "--format", "text")
+    assert rc == 0
+    assert "Identity set:" in out and "Tended: 2026-10-01" in out
 
 
-def test_sessions_not_flagged(tmp_path):
-    """Large raw session files are reported in a count but never flagged."""
-    (tmp_path / "MEMORY.md").write_text("x" * 100)
-    sessions = tmp_path / "sessions"
-    sessions.mkdir()
-    (sessions / "2026-05-27.md").write_text("x" * 50000)  # huge raw log
-
-    result = mod.check_health(tmp_path)
-    assert result["maintenance_recommended"] is False
-    assert result["needs_pruning"] == []
-    assert result["session_files"] == 1
+def test_cli_accepts_sanctum_path_positionally(v7_project, monkeypatch, capsys):
+    root, sanctum = v7_project
+    _w(root / "docs" / "mac-preferences.md", "prefs")
+    rc, out = _run(monkeypatch, capsys, str(sanctum))
+    assert rc == 0
+    assert "docs/mac-preferences.md" in json.loads(out)["companions"]
 
 
-def test_sanctum_dir_override(tmp_path, monkeypatch, capsys):
-    """--sanctum-dir takes precedence over the positional path."""
-    import json
-    real = tmp_path / "real"
-    real.mkdir()
-    (real / "MEMORY.md").write_text("a line\n" * 10)
-    staging = tmp_path / "staging"
-    staging.mkdir()
-    (staging / "MEMORY.md").write_text("a fairly long curated line here\n" * 500)  # over budget
+def test_cli_sanctum_dir_override(v7_project, monkeypatch, capsys, tmp_path_factory):
+    root, sanctum = v7_project
+    staging = tmp_path_factory.mktemp("staging")
+    for name in mod._seed.IDENTITY_FILES:
+        _w(staging / name, "x")
+    _w(staging / "raw" / "2026-10-10-x.md", "---\nstatus: raw\n---\n")
+    rc, out = _run(monkeypatch, capsys, str(root), "--sanctum-dir", str(staging))
+    assert rc == 0
+    assert json.loads(out)["undistilled_raw"] == ["2026-10-10-x.md"]
 
-    monkeypatch.setattr(
-        sys, "argv",
-        [
-            "check-memory-health.py", str(real),
-            "--sanctum-dir", str(staging),
-        ],
-    )
-    mod.main()
-    result = json.loads(capsys.readouterr().out)
-    assert result["maintenance_recommended"] is True
-    assert "MEMORY.md" in result["needs_pruning"]
+
+def test_cli_refuses_legacy_v2_store(tmp_path, monkeypatch, capsys):
+    legacy = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+    for name in mod._seed.V2_SPINE:
+        _w(legacy / name, "x")
+    rc, out = _run(monkeypatch, capsys, str(tmp_path))
+    assert rc == 1
+    result = json.loads(out)
+    assert result["sidecar_format"] == "v2"
+    assert "migrate-sanctum-to-v7.py" in result["message"]
+
+
+def test_cli_absent_sanctum(tmp_path, monkeypatch, capsys):
+    rc, out = _run(monkeypatch, capsys, str(tmp_path))
+    assert rc == 1
+    assert json.loads(out)["sidecar_format"] == "absent"

@@ -30,7 +30,7 @@ tar xzf "$ARCHIVE"
 echo "{\"status\": \"success\", \"files_unpacked\": $FILE_COUNT}"
 echo "Unpacked $FILE_COUNT files from $ARCHIVE" >&2
 
-# Post-unpack reconciliation — warn if the sidecar's narrative may be stale
+# Post-unpack reconciliation — warn if the sanctum's memory may be stale
 # relative to the unpacked files. Never blocks: reconciliation is the agent's
 # job, not the script's. Bypass with BMAD_SKIP_RECONCILE=1.
 RECONCILE="$PROJECT_ROOT/.claude/skills/suno-agent-band-manager/scripts/reconcile-sidecar.py"

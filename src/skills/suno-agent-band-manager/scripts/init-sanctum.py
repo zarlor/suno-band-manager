@@ -3,29 +3,20 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""First Breath — deterministic v2 sanctum scaffolding for Mac.
+"""First Breath — deterministic v7 sanctum scaffolding for Mac.
 
-Adapted from the bmad-agent-builder sample-init-sanctum.py for the
-suno-agent-band-manager skill ("Mac"). Two deliberate divergences from the v2
-default are preserved here on purpose:
+Creates the BMad v7 memory-agent sanctum at
+    {project-root}/_bmad/memory/suno-agent-band-manager/
+with the identity files from the templates (PERSONA, CREED with the Dominion
+folded in, BOND, HOW-I-REMEMBER, PULSE), CAPABILITIES.md from assets/menu.csv
+(the same source as the menu), the standing files seeded from the sections of
+MEMORY-template.md, the disciplines and incidents sliced from
+references/creed.md, and the empty memory/<kind>/, raw/ and capabilities/
+folders.
 
-  1. SANCTUM LOCATION: the sanctum lives at
-         {project-root}/_bmad/_memory/band-manager-sidecar/
-     NOT {project-root}/_bmad/memory/{skill-name}/. The double-underscore path
-     is load-bearing — portable sync + the reconcile tooling depend on it. Do
-     not "fix" it to the v2 default.
-
-  2. PRESERVED BESPOKE FILES: Mac's sanctum keeps its own superior machinery
-         access-boundaries.md  (Dominion contract; loads first)
-         patterns.md, chronology.md  (organic learned-knowledge / timeline)
-         sessions/  (raw per-date session logs, two-tier memory)
-         _collection_*.txt  (working catalog exports)
-     This script only scaffolds a FRESH sanctum. For an existing sidecar, use
-     migrate-sidecar-to-v2.py instead.
-
-This script runs BEFORE the conversational awakening. It creates the sanctum
-folder structure, copies template files with config values substituted, and
-generates CAPABILITIES.md from assets/menu.csv (the same source as the menu).
+It runs BEFORE the conversational awakening and only scaffolds a FRESH
+sanctum. An old store at `_bmad/_memory/band-manager-sidecar/` converts with
+migrate-sanctum-to-v7.py instead.
 
 Usage:
     init-sanctum.py <project-root> <skill-path>
@@ -35,7 +26,7 @@ Usage:
     skill-path:   Path to the skill directory (where SKILL.md, assets/ live)
 
 Example:
-    uv run scripts/init-sanctum.py /path/to/project /path/to/suno-agent-band-manager
+    uv run {skill-root}/scripts/init-sanctum.py /path/to/project /path/to/suno-agent-band-manager
 """
 
 from __future__ import annotations
@@ -59,19 +50,16 @@ def _load_sanctum_seed():
 
 _seed = _load_sanctum_seed()
 
-SKILL_NAME = "suno-agent-band-manager"
-# Preserved divergence: bespoke sanctum location (double underscore + fixed name).
-SANCTUM_PARENT = "_memory"
-SANCTUM_DIR = "band-manager-sidecar"
-
+# Templates -> identity files at the sanctum root. MEMORY-template.md is not
+# copied whole: its sections seed the standing files under memory/.
 TEMPLATE_FILES = [
-    "INDEX-template.md",
     "PERSONA-template.md",
     "CREED-template.md",
     "BOND-template.md",
-    "MEMORY-template.md",
+    "HOW-I-REMEMBER-template.md",
     "PULSE-template.md",
 ]
+MEMORY_TEMPLATE = "MEMORY-template.md"
 
 
 def builtin_roster(project_root: Path, skill_path: Path) -> list[dict]:
@@ -83,60 +71,58 @@ def builtin_roster(project_root: Path, skill_path: Path) -> list[dict]:
 
 
 def scaffold(project_root: Path, skill_path: Path) -> dict:
-    """Create the sanctum. Returns a result dict (CLI-friendly)."""
-    bmad_dir = project_root / "_bmad"
-    sanctum_path = bmad_dir / SANCTUM_PARENT / SANCTUM_DIR
+    """Create the v7 sanctum. Returns a result dict (CLI-friendly)."""
+    sanctum_path = _seed.sanctum_dir(project_root)
     assets_dir = skill_path / "assets"
     references_dir = skill_path / "references"
 
-    if sanctum_path.exists():
+    if sanctum_path.exists() and any(sanctum_path.iterdir()):
         return {
             "status": "exists",
             "sanctum_path": str(sanctum_path),
             "message": (
                 f"Sanctum already exists at {sanctum_path}. This agent has "
-                "already been born — skipping First Breath scaffolding. For an "
-                "existing sidecar, use migrate-sidecar-to-v2.py."
+                "already been born — skipping First Breath scaffolding. An old "
+                "store at the legacy path converts with migrate-sanctum-to-v7.py."
             ),
             "created": [],
         }
 
-    # Config-driven substitution map (same resolver pre-activate uses).
     variables = _seed.template_variables(project_root)
-
+    variables["dominion"] = _seed.render_dominion(assets_dir, variables)
     created: list[str] = []
 
-    # Sanctum structure + the bespoke raw layers.
-    sanctum_path.mkdir(parents=True, exist_ok=True)
-    (sanctum_path / "capabilities").mkdir(exist_ok=True)
-    (sanctum_path / "sessions").mkdir(exist_ok=True)
-    created.append("capabilities/")
-    created.append("sessions/")
+    for folder in ("raw", "capabilities", *(f"memory/{kind}" for kind in _seed.MEMORY_KINDS)):
+        (sanctum_path / folder).mkdir(parents=True, exist_ok=True)
+        created.append(folder + "/")
 
-    # Templates → ALLCAPS sanctum files.
+    # Templates -> identity files.
     for template_name in TEMPLATE_FILES:
         template_path = assets_dir / template_name
         if not template_path.exists():
             continue
-        output_name = template_name.replace("-template", "").upper()
-        output_name = output_name[:-3] + ".md"  # .MD -> .md
+        output_name = template_name.replace("-template.md", ".md")
         content = _seed.substitute_vars(template_path.read_text(encoding="utf-8"), variables)
         (sanctum_path / output_name).write_text(content, encoding="utf-8")
         created.append(output_name)
 
-    # access-boundaries.md — the Dominion contract that loads FIRST on every
-    # waking. Seeded from assets/ACCESS-BOUNDARIES-template.md via the shared
-    # seed module so a fresh birth and a migration converge on the same shape.
-    ab_written = _seed.write_access_boundaries(sanctum_path, assets_dir, variables)
-    if ab_written:
-        created.append(ab_written)
+    # The standing files, seeded from the sections of MEMORY-template.md.
+    memory_template = assets_dir / MEMORY_TEMPLATE
+    if memory_template.exists():
+        text = _seed.substitute_vars(memory_template.read_text(encoding="utf-8"), variables)
+        _, sections = _seed.split_sections(text)
+        for heading, body in sections:
+            rel = _seed.memory_section_file(heading)
+            if rel == "memory/pending.md" or not body:
+                continue
+            (sanctum_path / rel).parent.mkdir(parents=True, exist_ok=True)
+            (sanctum_path / rel).write_text(f"# {heading}\n\n{body}\n", encoding="utf-8")
+            created.append(rel)
 
-    # On-demand creed shards + the non-loaded incident log — sliced from
-    # references/creed.md by the SAME shard_creed() the migration tool uses.
+    # Disciplines and incidents, sliced from references/creed.md.
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        shards_written = _seed.write_creed_shards(sanctum_path, references_dir)
-    created.extend(shards_written)
+        created.extend(_seed.write_disciplines(sanctum_path, references_dir))
     seed_warnings = sorted({str(w.message) for w in caught})
 
     # CAPABILITIES.md — the built-in roster from assets/menu.csv (the menu's
@@ -161,7 +147,7 @@ def scaffold(project_root: Path, skill_path: Path) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Scaffold a fresh v2 sanctum for Mac (suno-agent-band-manager)."
+        description="Scaffold a fresh v7 sanctum for Mac (suno-agent-band-manager)."
     )
     parser.add_argument("project_root", help="Project root (where _bmad/ lives)")
     parser.add_argument("skill_path", help="Path to the skill directory (assets/ live here)")

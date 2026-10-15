@@ -1,6 +1,6 @@
 ---
 name: reconcile
-description: Reconcile stale references across docs and sidecar files after authoritative data changes.
+description: Reconcile stale references across docs and sanctum memory files after authoritative data changes.
 ---
 
 **Language:** Use `{communication_language}` for all output.
@@ -21,18 +21,18 @@ Reconciliation is triggered after these events:
 - A band profile name or key attributes change
 - A WIP is abandoned or superseded
 - Tier/preference changes (Free → Pro, default mode changes)
-- **Files are deleted** (WIP files, old voice files, obsolete references) — stale entries pointing to deleted files need cleanup in companion files tables, sanctum MEMORY.md/INDEX.md, chronology, and any docs that listed them
+- **Files are deleted** (WIP files, old voice files, obsolete references) — stale entries pointing to deleted files need cleanup in companion files tables, the sanctum's `memory/` files, and any docs that listed them
 
 ## Authoritative Sources
 
 | Data | Authoritative Source | May Be Referenced In |
 |------|---------------------|---------------------|
-| Song title | Songbook entry (`docs/songbook/{band}/{song}.md`) | Per-band playlist YAML, playlist ordering doc, voice context, sanctum MEMORY.md/chronology, WIP files, companion files |
-| Song status (WIP/published) | Songbook entry | Voice context (WIP sections, catalog), sanctum MEMORY.md, per-band playlist YAML, WIP files (marked COMPLETED, never deleted) |
-| Playlist order & track numbers | **Per-band playlist YAML** (`docs/{band-slug}-playlist.yaml`) | Playlist ordering doc (derived narrative companion), voice context (catalog section), songbook placement notes, sanctum MEMORY.md position references, script-generated companion at `docs/{band-slug}-playlist-sequencing.md` |
-| Band profile (genre, vocal, name) | Band profile YAML (`docs/band-profiles/*.yaml`) | Voice context, songbook entries referencing profile values, sanctum MEMORY.md. The band profile YAML carries no `playlist:` block — playlist data lives in the per-band playlist YAML (the suno-band-profile-manager skill's `references/playlist-yaml.md`). |
-| Tier/preferences | Sanctum MEMORY.md / config (`modules.suno` in `{project-root}/_bmad/config.toml` and its `custom/` overrides) | Voice context (Suno Setup section), band profile tier field |
-| Voice file location | The file itself (`docs/voice-context-*.md`) | Pre-activate expectations, sanctum INDEX.md (map row) |
+| Song title | Songbook entry (`docs/songbook/{band}/{song}.md`) | Per-band playlist YAML, playlist ordering doc, voice context, sanctum `memory/work/` and `memory/chronology/`, WIP files, companion files |
+| Song status (WIP/published) | Songbook entry | Voice context (WIP sections, catalog), sanctum `memory/work/current.md` and `parked.md`, per-band playlist YAML, WIP files (marked COMPLETED, never deleted) |
+| Playlist order & track numbers | **Per-band playlist YAML** (`docs/{band-slug}-playlist.yaml`) | Playlist ordering doc (derived narrative companion), voice context (catalog section), songbook placement notes, position references in the sanctum's `memory/` files, script-generated companion at `docs/{band-slug}-playlist-sequencing.md` |
+| Band profile (genre, vocal, name) | Band profile YAML (`docs/band-profiles/*.yaml`) | Voice context, songbook entries referencing profile values, sanctum `memory/bands/active.md`. The band profile YAML carries no `playlist:` block — playlist data lives in the per-band playlist YAML (the suno-band-profile-manager skill's `references/playlist-yaml.md`). |
+| Tier/preferences | Sanctum `memory/owner/preferences.md` / config (`modules.suno` in `{project-root}/_bmad/config.toml` and its `custom/` overrides) | Voice context (Suno Setup section), band profile tier field |
+| Voice file location | The file itself (`docs/voice-context-*.md`) | Pre-activate expectations, the sanctum's `memory/` files that name it |
 
 ## Process
 
@@ -52,7 +52,7 @@ Run the search script with the old value (and the new one, for a replacement pre
 uv run {skill-root}/scripts/find-stale-refs.py "{project-root}" --old "<old value>" --new "<new value>" --format json
 ```
 
-It searches the defined set — songbook entries, band profiles, every `docs/*-playlist.yaml`, playlist ordering and sequencing docs, voice files and every file in their Companion Files tables, `docs/wip-*.md`, and the sanctum's `MEMORY.md`, `INDEX.md`, `chronology.md` and `patterns.md` — and returns each hit with file, line, context and match kind (`exact`, `casefold`, `subtitle`). Add `--partial` to also match the first significant word of a multi-word value, and `--include-sessions` to search the raw `sessions/` logs (usually history, not drift). It also lists `docs/...` references whose target file is gone (`missing_targets`). Sequencing docs refresh themselves between their AUTOGEN markers — don't hand-edit inside them.
+It searches the defined set — songbook entries, band profiles, every `docs/*-playlist.yaml`, playlist ordering and sequencing docs, voice files and every file in their Companion Files tables, `docs/wip-*.md`, and the sanctum's `memory/` files — and returns each hit with file, line, context and match kind (`exact`, `casefold`, `subtitle`). Add `--partial` to also match the first significant word of a multi-word value, and `--include-sessions` to search the sanctum's `raw/` material as well (usually history, not drift). It also lists `docs/...` references whose target file is gone (`missing_targets`). Sequencing docs refresh themselves between their AUTOGEN markers — don't hand-edit inside them.
 
 Then run `uv run {skill-root}/scripts/validate-sidecar.py "{project-root}" --format json` for the parity checks: `playlist_drift` (playlist and songbook name different songs), `voice_catalog_drift` (a stale published count), `companion_missing` (a Companion Files row pointing at nothing), `pending_drift`, and `cross_reference_missing`.
 
@@ -121,15 +121,15 @@ exclude styles, settings, and the full generation log.
 3. The explicit "NOT active work — do not list in pending/parked work" line — this is the instruction to future Mac sessions
 4. A `---` horizontal rule below to separate the marker block from the original fragments
 
-### Listing discipline (sanctum MEMORY.md maintenance)
+### Listing discipline (`memory/work/parked.md` maintenance)
 
-When building or updating the "Pending / Parked Work" section of the sanctum `MEMORY.md`:
+When building or updating the sanctum's `memory/work/parked.md` (Pending / Parked Work):
 
 1. **Run `uv run {skill-root}/scripts/scan-wip-status.py "{project-root}" --format json`** — the marker scan. It reports each `docs/wip-*.md` file as `status: completed | active`, with `completed_as` / `songbook_ref` for resolved ones and a `correlation_warning` (with `correlated_by: source_wip | title`) for any active WIP that looks like the source of a published song. Read the script output rather than the files.
 2. **Skip files reported `status: completed`** — they are resolved, not pending. Partition the script output: `active` (with no warning) → pending; `completed` → resolved.
 3. **When including resolved WIPs in the index for historical reference**, put them under a separate "Resolved WIP fragments (historical record only — not active work)" subsection, clearly delineated from active pending/parked work, with a pointer to the songbook entry they became (`songbook_ref` from the script).
 
-The sanctum `MEMORY.md`'s Pending / Parked Work section is the primary place a future Mac session looks to decide what to work on next. A stale WIP listed there will be picked up as a candidate. The scan-before-list rule prevents this — and the script makes the partition a group-by over structured data rather than a per-file read.
+The sanctum's `memory/work/parked.md` is the primary place a future Mac session looks to decide what to work on next. A stale WIP listed there will be picked up as a candidate. The scan-before-list rule prevents this — and the script makes the partition a group-by over structured data rather than a per-file read.
 
 ### Applying the marker to existing unmarked WIPs
 
@@ -139,7 +139,7 @@ Do NOT guess — if you're not sure the song is published, ask. The marker is a 
 
 ## Scope Boundaries
 
-- Only search within Mac's access boundaries (docs/ and sidecar memory)
+- Only search within Mac's access boundaries (`docs/` and the sanctum; the Dominion section of CREED.md)
 - Never modify files outside the known document locations
 - If a reference is ambiguous (partial match, could refer to something else), ask rather than assume
 - Keep it lightweight — this is a quick consistency check, not a full audit

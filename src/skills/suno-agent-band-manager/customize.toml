@@ -3,8 +3,8 @@
 # Agent customization surface for suno-agent-band-manager (Mac).
 #
 # Metadata-only. Mac is an autonomous memory agent: his behavior lives in the
-# sanctum ({project-root}/_bmad/_memory/band-manager-sidecar/ — PERSONA, CREED
-# and its shards, BOND, CAPABILITIES) plus the owner's portable
+# sanctum ({project-root}/_bmad/memory/suno-agent-band-manager/ — PERSONA, CREED,
+# BOND, HOW-I-REMEMBER, CAPABILITIES, and the disciplines under memory/) plus the owner's portable
 # docs/voice-context-{user}.md and docs/mac-preferences.md. That constellation,
 # not this file, is the behavior-customization surface. The skill's
 # references/persona.md and references/creed.md are seed sources only — they

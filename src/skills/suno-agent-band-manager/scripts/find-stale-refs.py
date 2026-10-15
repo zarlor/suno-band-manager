@@ -16,8 +16,10 @@ Searched (relative to the project root):
   docs/*-playlist.yaml             docs/*-playlist-ordering.md
   docs/*-playlist-sequencing.md    docs/voice-context-*.md
   docs/wip-*.md                    every file in a voice file's Companion Files table
-  sanctum MEMORY.md, INDEX.md, chronology.md, patterns.md
-  sanctum sessions/*.md            only with --include-sessions (raw logs are history)
+  sanctum memory/**/*.md           standing files, disciplines, chronology, session notes
+  sanctum raw/*                    only with --include-raw (write-once history)
+
+The sanctum is `{project-root}/_bmad/memory/suno-agent-band-manager/`.
 
 Match kinds, per line (strongest only):
   exact     the old value as written
@@ -46,9 +48,19 @@ import re
 import sys
 from pathlib import Path
 
-DEFAULT_SANCTUM_REL = ("_bmad", "_memory", "band-manager-sidecar")
-SANCTUM_FILES = ("MEMORY.md", "INDEX.md", "chronology.md", "patterns.md")
 TEXT_SUFFIXES = {".md", ".yaml", ".yml", ".txt"}
+
+
+def _load_sanctum_seed():
+    from importlib.util import module_from_spec, spec_from_file_location
+
+    spec = spec_from_file_location("_sanctum_seed", Path(__file__).resolve().parent / "_sanctum_seed.py")
+    mod = module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_seed = _load_sanctum_seed()
 
 _SUBTITLE_SPLIT_RE = re.compile(r"\s+[—–-]\s+|:\s+|\s*\(|\|")
 _VERSION_RE = re.compile(r"\s+v\d+$", re.IGNORECASE)
@@ -65,7 +77,7 @@ def companion_paths(voice_text: str) -> list[str]:
     return [p.strip() for p in _COMPANION_ROW_RE.findall(m.group(1))] if m else []
 
 
-def search_set(project_root: Path, sanctum: Path, include_sessions: bool) -> list[Path]:
+def search_set(project_root: Path, sanctum: Path, include_raw: bool) -> list[Path]:
     """The defined file set, deduplicated, in a stable order."""
     docs = project_root / "docs"
     files: list[Path] = []
@@ -91,11 +103,10 @@ def search_set(project_root: Path, sanctum: Path, include_sessions: bool) -> lis
                 target = project_root / ref
                 if target.is_file() and target.suffix in TEXT_SUFFIXES:
                     files.append(target)
-    for name in SANCTUM_FILES:
-        if (sanctum / name).is_file():
-            files.append(sanctum / name)
-    if include_sessions and (sanctum / "sessions").is_dir():
-        files += sorted((sanctum / "sessions").glob("*.md"))
+    if (sanctum / "memory").is_dir():
+        files += sorted((sanctum / "memory").rglob("*.md"))
+    if include_raw and (sanctum / "raw").is_dir():
+        files += sorted(p for p in (sanctum / "raw").rglob("*") if p.is_file() and p.suffix in TEXT_SUFFIXES)
     seen: set[Path] = set()
     unique = []
     for f in files:
@@ -145,11 +156,11 @@ def scan(
     old: str | None,
     new: str | None = None,
     sanctum: Path | None = None,
-    include_sessions: bool = False,
+    include_raw: bool = False,
     partial: bool = False,
 ) -> dict:
-    sanctum = sanctum or project_root.joinpath(*DEFAULT_SANCTUM_REL)
-    files = search_set(project_root, sanctum, include_sessions)
+    sanctum = sanctum or _seed.sanctum_dir(project_root)
+    files = search_set(project_root, sanctum, include_raw)
     base = base_title(old) if old else None
     word = first_word(old) if (old and partial) else None
     word_re = re.compile(rf"\b{re.escape(word)}\b", re.IGNORECASE) if word else None
@@ -196,7 +207,7 @@ def scan(
         "old": old,
         "new": new,
         "files_searched": len(files),
-        "sessions_included": include_sessions,
+        "raw_included": include_raw,
         "hit_count": len(hits),
         "hits_by_kind": by_kind,
         "hits": hits,
@@ -209,7 +220,7 @@ def format_text(report: dict) -> str:
         f"Stale-reference scan — old={report['old']!r}"
         + (f" new={report['new']!r}" if report["new"] is not None else ""),
         f"{report['files_searched']} files searched"
-        + ("" if report["sessions_included"] else " (sanctum sessions/ skipped)")
+        + ("" if report["raw_included"] else " (sanctum raw/ skipped)")
         + f"; {report['hit_count']} hit(s) {report['hits_by_kind']}",
         "",
     ]
@@ -239,8 +250,18 @@ def main() -> int:
     parser.add_argument("--new", help="The new value — adds a per-hit replacement preview")
     parser.add_argument("--paths-only", action="store_true", help="Only list missing file targets")
     parser.add_argument("--partial", action="store_true", help="Also match the old value's first significant word")
-    parser.add_argument("--include-sessions", action="store_true", help="Also search the sanctum's raw sessions/ logs")
-    parser.add_argument("--sanctum-dir", default=None, help="Override the sanctum directory")
+    parser.add_argument(
+        "--include-raw",
+        "--include-sessions",
+        dest="include_raw",
+        action="store_true",
+        help="Also search the sanctum's raw/ (old session logs, owner writings). --include-sessions is the old name.",
+    )
+    parser.add_argument(
+        "--sanctum-dir",
+        default=None,
+        help="Override the sanctum directory (default: <project_root>/_bmad/memory/suno-agent-band-manager)",
+    )
     parser.add_argument("--format", choices=["json", "text"], default="json", help="Output format (default: json)")
     args = parser.parse_args()
 
@@ -260,7 +281,7 @@ def main() -> int:
         None if args.paths_only else args.old,
         args.new,
         Path(args.sanctum_dir).resolve() if args.sanctum_dir else None,
-        args.include_sessions,
+        args.include_raw,
         args.partial,
     )
     print(json.dumps(report, indent=2) if args.format == "json" else format_text(report))

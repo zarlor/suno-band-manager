@@ -3,30 +3,45 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Bring an existing v2 sanctum up to date with the shipped templates.
+"""Repair and upgrade an existing v7 sanctum from the shipped templates.
 
-Template and creed fixes never reach an existing sanctum on their own: init
-scaffolds only a fresh sanctum, and migration only handles v1 stores. This
-script compares the live sanctum with what the current templates (and the
-sharded `references/creed.md`) would produce, section by section, and proposes
-changes. It never overwrites owner content on its own.
+The sanctum is `{project-root}/_bmad/memory/suno-agent-band-manager/`. Template
+and creed fixes never reach an existing sanctum on their own: First Breath
+(init-sanctum.py) scaffolds only a fresh one. This script compares the live
+sanctum with what the current skill would produce and proposes changes. It
+never overwrites owner content on its own.
+
+What it checks:
+  - the identity files (PERSONA, CREED, BOND, HOW-I-REMEMBER, CAPABILITIES)
+    and PULSE.md: missing ones are created from the templates (CREED with the
+    Dominion rendered from the access-boundaries template, as First Breath
+    does); existing ones are compared section by section
+  - the folders: memory/<kind>/, raw/, capabilities/
+  - the disciplines (memory/disciplines/) and incident stories
+    (memory/incidents/) sliced from `references/creed.md`
+  - CAPABILITIES.md's Built-in section, regenerated from assets/menu.csv
 
 Change kinds:
-  create-file     a spine file or shard is missing            (safe)
-  add-section     a template `## ` section the file lacks     (safe)
-  add-rows        INDEX.md table rows the live table lacks    (safe)
-  replace-section a section differs from the template         (needs its id)
+  create-folder       a memory/<kind>/, raw/ or capabilities/ folder is missing (safe)
+  create-file         an identity file, discipline or incident file is missing (safe)
+  add-section         a template `## ` section the file lacks                   (safe)
+  regenerate-section  CAPABILITIES.md Built-in differs from assets/menu.csv     (safe)
+  replace-section     a section differs from the template                       (needs its id)
+  replace-file        a discipline differs from the shipped creed               (needs its id)
 
 Sections the owner grows are never proposed: CREED Mission, PERSONA Evolution
-Log, BOND Boundaries / Notes, PULSE Owner Preferences / State, CAPABILITIES
-Learned, and every existing MEMORY.md section (MEMORY only gains new sections;
-its header banner can be replaced on request).
-The creed incident log is only ever created, never replaced.
+Log, BOND Owner Summary / Boundaries / Notes, PULSE Owner Preferences,
+CAPABILITIES Learned, and any section the template does not have. Incident
+stories are only ever created, never replaced. Standing memory files and raw/
+are the owner's and Mac's own; they are never proposed.
 
 Default is a dry run that prints every proposed change with a diff. Apply with
-`--apply safe` (creates and additions only) and/or `--apply ID,ID` (named
-changes, including replacements). Every file touched is backed up first to a
-sibling `.sanctum-upgrade-backup-<stamp>/` directory.
+`--apply safe` (creates, additions, the generated roster) and/or `--apply ID,ID`
+(named changes, including replacements the owner confirmed). Every file
+touched is backed up first to a sibling `.suno-agent-band-manager-upgrade-backup-<stamp>/`.
+
+A v1 or v2 store (the legacy `_bmad/_memory/band-manager-sidecar/`) is not
+upgraded here: it converts with migrate-sanctum-to-v7.py.
 
 Usage:
     uv run scripts/upgrade-sanctum.py --project-root PATH [--sanctum-dir DIR]
@@ -61,33 +76,27 @@ SECTION_SPLIT_RE = re.compile(r"(?m)^(?=##\s)")
 BORN_RE = re.compile(r"\*\*Born:\*\*\s*(\d{4}-\d{2}-\d{2})")
 PREAMBLE = "(preamble)"
 
+# Identity files (and PULSE.md) built from a template.
 TEMPLATES = {
-    "CREED.md": "CREED-template.md",
     "PERSONA.md": "PERSONA-template.md",
+    "CREED.md": "CREED-template.md",
     "BOND.md": "BOND-template.md",
+    "HOW-I-REMEMBER.md": "HOW-I-REMEMBER-template.md",
     "PULSE.md": "PULSE-template.md",
-    "INDEX.md": "INDEX-template.md",
-    "MEMORY.md": "MEMORY-template.md",
-    "access-boundaries.md": "ACCESS-BOUNDARIES-template.md",
 }
 PROTECTED = {
     "CREED.md": {"## Mission"},
     "PERSONA.md": {"## Evolution Log"},
-    "BOND.md": {"## Boundaries Observed", "## Notes Toward the Bond"},
-    "PULSE.md": {"## Owner Preferences", "## State"},
+    "BOND.md": {"## Owner Summary", "## Boundaries Observed", "## Notes Toward the Bond"},
+    "PULSE.md": {"## Owner Preferences"},
     "CAPABILITIES.md": {"## Learned"},
 }
-# Headings the templates renamed: live old heading -> template heading. The
-# section is matched under its new name and the heading line is renamed (safe).
-RENAMES = {
-    "INDEX.md": {
-        "## Loaded on Rebirth (always)": "## Loaded on Waking (always)",
-        "## Not Loaded on Rebirth (raw layers / references)": "## Not Loaded on Waking (raw layers / references)",
-    },
-}
-ADDITIVE = {"MEMORY.md"}      # only gains new sections (its banner may be replaced)
-TABLE_MERGE = {"INDEX.md"}    # gains sections and table rows, never loses rows
-CREATE_ONLY = {"creed-incident-log.md"}
+# Sections generated from the skill, never owner content: refreshing them is safe.
+GENERATED = {"CAPABILITIES.md": {"## Built-in"}}
+FOLDERS = ["raw", "capabilities", *(f"memory/{kind}" for kind in _seed.MEMORY_KINDS)]
+DISCIPLINES_DIR = "memory/disciplines/"
+INCIDENTS_DIR = "memory/incidents/"  # stories: only ever created
+OLD_STORE_MARKERS = ("INDEX.md", "MEMORY.md", "access-boundaries.md")
 
 
 # ---------------------------------------------------------------------------
@@ -110,26 +119,11 @@ def split(text: str) -> list[tuple[str, str]]:
 
 
 def join(sections: list[tuple[str, str]]) -> str:
-    chunks = []
-    for _, body in sections:
-        chunks.append(body if body.endswith("\n") else body + "\n")
-    return "".join(chunks)
+    return "".join(body if body.endswith("\n") else body + "\n" for _, body in sections)
 
 
 def norm(text: str) -> str:
     return "\n".join(line.rstrip() for line in text.strip().splitlines())
-
-
-def table_rows(text: str) -> list[str]:
-    return [
-        line for line in text.splitlines()
-        if line.startswith("|") and not re.match(r"^\|[\s\-|:]+\|\s*$", line)
-    ]
-
-
-def row_key(row: str) -> str:
-    cells = [c.strip() for c in row.strip().strip("|").split("|")]
-    return cells[0] if cells else row
 
 
 def diff_text(old: str, new: str, label: str) -> str:
@@ -149,7 +143,7 @@ def diff_text(old: str, new: str, label: str) -> str:
 
 
 def live_birth_date(sanctum: Path) -> str | None:
-    for name in ("CREED.md", "INDEX.md", "PERSONA.md", "MEMORY.md"):
+    for name in ("CREED.md", "PERSONA.md", "PULSE.md"):
         path = sanctum / name
         if path.is_file():
             match = BORN_RE.search(path.read_text(encoding="utf-8"))
@@ -158,30 +152,37 @@ def live_birth_date(sanctum: Path) -> str | None:
     return None
 
 
-def expected_files(project_root: Path, sanctum: Path, skill_path: Path) -> tuple[dict, list[str]]:
-    """{filename: expected text} from the templates, the CSV roster and the creed."""
-    variables = _seed.template_variables(project_root, birth_date=live_birth_date(sanctum))
+def expected_identity(project_root: Path, sanctum: Path, skill_path: Path) -> tuple[dict, list[str]]:
+    """{filename: expected text} for the identity files, as First Breath writes them."""
+    config = _seed.resolve_config(project_root, sanctum)
+    variables = _seed.template_variables(project_root, config, birth_date=live_birth_date(sanctum))
     assets = skill_path / "assets"
+    variables["dominion"] = _seed.render_dominion(assets, variables)
     expected: dict[str, str] = {}
     notes: list[str] = []
     for out_name, template in TEMPLATES.items():
         path = assets / template
         if path.is_file():
             expected[out_name] = _seed.substitute_vars(path.read_text(encoding="utf-8"), variables)
+        else:
+            notes.append(f"assets/{template} not found; {out_name} not checked.")
     csv_path = _seed.find_menu_csv(skill_path)
     if csv_path:
-        expected["CAPABILITIES.md"] = _seed.generate_capabilities_md(
-            _seed.menu_rows(csv_path, [_seed.MODULE_CODE])
-        )
+        expected["CAPABILITIES.md"] = _seed.generate_capabilities_md(_seed.menu_rows(csv_path, [_seed.MODULE_CODE]))
     else:
         notes.append("assets/menu.csv not found; CAPABILITIES.md left as is.")
-    creed = skill_path / "references" / "creed.md"
-    if creed.is_file():
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            expected.update(_seed.shard_creed(creed.read_text(encoding="utf-8")))
-        notes.extend(sorted({str(w.message) for w in caught}))
     return expected, notes
+
+
+def expected_disciplines(skill_path: Path) -> tuple[dict, list[str]]:
+    """{sanctum-relative path: text} for memory/disciplines/ and memory/incidents/."""
+    creed = skill_path / "references" / "creed.md"
+    if not creed.is_file():
+        return {}, ["references/creed.md not found; disciplines not checked."]
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        files = _seed.discipline_files(creed.read_text(encoding="utf-8"))
+    return files, sorted({str(w.message) for w in caught})
 
 
 # ---------------------------------------------------------------------------
@@ -190,129 +191,118 @@ def expected_files(project_root: Path, sanctum: Path, skill_path: Path) -> tuple
 
 
 def plan_file(name: str, live_text: str, new_text: str) -> tuple[list[dict], list[str]]:
-    """Proposed changes for one existing file, plus the owner sections kept."""
+    """Proposed changes for one existing identity file, plus the owner sections kept."""
     changes: list[dict] = []
     kept: list[str] = []
-    renames = RENAMES.get(name, {})
     tmpl = split(new_text)
     template_headings = {h for h, _ in tmpl}
-    live = []
-    for heading, body in split(live_text):
-        new_heading = renames.get(heading)
-        if new_heading and new_heading in template_headings:
-            changes.append(
-                {
-                    "file": name,
-                    "kind": "rename-heading",
-                    "heading": heading,
-                    "to": new_heading,
-                    "safe": True,
-                    "diff": f"-{heading}\n+{new_heading}\n",
-                }
-            )
-            body = body.replace(heading, new_heading, 1)
-            heading = new_heading
-        live.append((heading, body))
+    live = split(live_text)
     live_by = {h: body for h, body in live}
     protected = PROTECTED.get(name, set())
+    generated = GENERATED.get(name, set())
 
     for idx, (heading, body) in enumerate(tmpl):
         if heading not in live_by:
             if heading == PREAMBLE:
                 continue
             # Insert after the nearest earlier template heading the live file has.
-            after = None
-            for prev_heading, _ in reversed(tmpl[:idx]):
-                if prev_heading in live_by:
-                    after = prev_heading
-                    break
-            changes.append(
-                {
-                    "file": name,
-                    "kind": "add-section",
-                    "heading": heading,
-                    "safe": True,
-                    "after": after,
-                    "new": body,
-                    "diff": diff_text("", body, name),
-                }
-            )
+            after = next((h for h, _ in reversed(tmpl[:idx]) if h in live_by), None)
+            changes.append({
+                "file": name, "kind": "add-section", "heading": heading, "safe": True,
+                "after": after, "new": body, "diff": diff_text("", body, name),
+            })
             continue
         live_body = live_by[heading]
         if norm(live_body) == norm(body):
             continue
-        if heading in protected or (name in ADDITIVE and heading != PREAMBLE):
+        if heading in protected:
             kept.append(f"{name} {heading}")
             continue
-        if name in TABLE_MERGE:
-            have = {row_key(r) for r in table_rows(live_body)}
-            missing = [r for r in table_rows(body) if row_key(r) not in have]
-            if missing:
-                changes.append(
-                    {
-                        "file": name,
-                        "kind": "add-rows",
-                        "heading": heading,
-                        "safe": True,
-                        "rows": missing,
-                        "diff": "".join(f"+{r}\n" for r in missing),
-                    }
-                )
+        if heading in generated:
+            changes.append({
+                "file": name, "kind": "regenerate-section", "heading": heading, "safe": True,
+                "new": body, "diff": diff_text(live_body, body, f"{name} {heading}"),
+            })
             continue
         removed = [l for l in norm(live_body).splitlines() if l.strip() and l not in norm(body).splitlines()]
-        changes.append(
-            {
-                "file": name,
-                "kind": "replace-section",
-                "heading": heading,
-                "safe": False,
-                "removes_lines": len(removed),
-                "new": body,
-                "diff": diff_text(live_body, body, f"{name} {heading}"),
-            }
-        )
+        changes.append({
+            "file": name, "kind": "replace-section", "heading": heading, "safe": False,
+            "removes_lines": len(removed), "new": body,
+            "diff": diff_text(live_body, body, f"{name} {heading}"),
+        })
     for heading, _ in live:
         if heading not in template_headings and heading != PREAMBLE:
             kept.append(f"{name} {heading}")
     return changes, kept
 
 
+def refusal(sanctum: Path, fmt: str) -> dict | None:
+    """A not-applicable report for anything that is not a v7 sanctum to repair."""
+    messages = {
+        "absent": "No sanctum to upgrade — First Breath (init-sanctum.py) scaffolds one.",
+        "v1": (
+            "This is a v1 store. Convert it first: migrate-sidecar-to-v2.py --in-place, "
+            "then migrate-sanctum-to-v7.py."
+        ),
+        "v2": "This is a v2 store. Convert it with migrate-sanctum-to-v7.py; upgrade-sanctum.py repairs v7 sanctums only.",
+    }
+    if fmt == "damaged" and sanctum.is_dir() and not (sanctum / "HOW-I-REMEMBER.md").exists() and any(
+        (sanctum / m).exists() for m in OLD_STORE_MARKERS
+    ):
+        fmt, message = "v2", (
+            "This looks like a partial v2 store (INDEX.md / MEMORY.md / access-boundaries.md). "
+            "Convert it with migrate-sanctum-to-v7.py; upgrade-sanctum.py repairs v7 sanctums only."
+        )
+    elif fmt in messages:
+        message = messages[fmt]
+    else:
+        return None
+    return {"status": "not-applicable", "sanctum_path": str(sanctum), "sidecar_format": fmt,
+            "message": message, "changes": []}
+
+
 def plan(project_root: Path, sanctum: Path, skill_path: Path) -> dict:
     state = _seed.classify_sanctum(sanctum)
-    if state["sidecar_format"] in ("absent", "v1"):
-        return {
-            "status": "not-applicable",
-            "sanctum_path": str(sanctum),
-            "sidecar_format": state["sidecar_format"],
-            "message": (
-                "No sanctum to upgrade — First Breath scaffolds one."
-                if state["sidecar_format"] == "absent"
-                else "This is a v1 store — migrate it with migrate-sidecar-to-v2.py --in-place."
-            ),
-            "changes": [],
-        }
-    expected, notes = expected_files(project_root, sanctum, skill_path)
+    refused = refusal(sanctum, state["sidecar_format"])
+    if refused:
+        return refused
+
     changes: list[dict] = []
     kept: list[str] = []
+
+    for folder in FOLDERS:
+        if not (sanctum / folder).is_dir():
+            changes.append({"file": folder + "/", "kind": "create-folder", "heading": None, "safe": True,
+                            "diff": f"+{folder}/\n"})
+
+    expected, notes = expected_identity(project_root, sanctum, skill_path)
     for name, new_text in expected.items():
         path = sanctum / name
         if not path.is_file():
-            changes.append(
-                {
-                    "file": name,
-                    "kind": "create-file",
-                    "heading": None,
-                    "safe": True,
-                    "new": new_text,
-                    "diff": diff_text("", new_text, name),
-                }
-            )
-            continue
-        if name in CREATE_ONLY:
+            changes.append({"file": name, "kind": "create-file", "heading": None, "safe": True,
+                            "new": new_text, "diff": diff_text("", new_text, name)})
             continue
         file_changes, file_kept = plan_file(name, path.read_text(encoding="utf-8"), new_text)
         changes.extend(file_changes)
         kept.extend(file_kept)
+
+    disciplines, discipline_notes = expected_disciplines(skill_path)
+    notes.extend(discipline_notes)
+    for rel, new_text in disciplines.items():
+        path = sanctum / rel
+        if not path.is_file():
+            changes.append({"file": rel, "kind": "create-file", "heading": None, "safe": True,
+                            "new": new_text, "diff": diff_text("", new_text, rel)})
+            continue
+        if rel.startswith(INCIDENTS_DIR):
+            continue  # the stories are only ever created
+        live = path.read_text(encoding="utf-8")
+        if norm(live) == norm(new_text):
+            continue
+        removed = [l for l in norm(live).splitlines() if l.strip() and l not in norm(new_text).splitlines()]
+        changes.append({"file": rel, "kind": "replace-file", "heading": None, "safe": False,
+                        "removes_lines": len(removed), "new": new_text, "diff": diff_text(live, new_text, rel)})
+
     counters: dict[str, int] = {}
     for change in changes:
         counters[change["file"]] = counters.get(change["file"], 0) + 1
@@ -320,8 +310,9 @@ def plan(project_root: Path, sanctum: Path, skill_path: Path) -> dict:
     return {
         "status": "dry-run",
         "sanctum_path": str(sanctum),
+        "skill_path": str(skill_path),
         "sidecar_format": state["sidecar_format"],
-        "missing_spine": state["missing_spine"],
+        "missing_identity": state["missing_spine"],
         "changes": changes,
         "owner_sections_kept": kept,
         "notes": notes,
@@ -333,77 +324,74 @@ def plan(project_root: Path, sanctum: Path, skill_path: Path) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _apply_sections(path: Path, file_changes: list[dict]) -> None:
+    sections = split(path.read_text(encoding="utf-8"))
+    for change in file_changes:
+        headings = [h for h, _ in sections]
+        if change["kind"] in ("replace-section", "regenerate-section"):
+            i = headings.index(change["heading"])
+            sections[i] = (change["heading"], change["new"])
+        elif change["kind"] == "add-section":
+            after = change["after"]
+            i = headings.index(after) + 1 if after in headings else len(sections)
+            new_body = change["new"].rstrip("\n") + ("\n\n" if i < len(sections) else "\n")
+            if i > 0 and not sections[i - 1][1].endswith("\n\n"):
+                prev_h, prev_b = sections[i - 1]
+                sections[i - 1] = (prev_h, prev_b.rstrip("\n") + "\n\n")
+            sections.insert(i, (change["heading"], new_body))
+    path.write_text(join(sections), encoding="utf-8")
+
+
 def apply_changes(sanctum: Path, report: dict, selection: set[str]) -> dict:
     """Apply the selected changes ('safe' and/or ids). Back up each file first."""
-    chosen = [
-        c for c in report["changes"]
-        if c["id"] in selection or ("safe" in selection and c["safe"])
-    ]
+    chosen = [c for c in report["changes"] if c["id"] in selection or ("safe" in selection and c["safe"])]
     unknown = sorted(s for s in selection if s != "safe" and s not in {c["id"] for c in report["changes"]})
     if not chosen:
         return {**report, "status": "nothing-applied", "applied": [], "unknown_ids": unknown}
 
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup = sanctum.parent / f".sanctum-upgrade-backup-{stamp}"
+    backup = sanctum.parent / f".{sanctum.name}-upgrade-backup-{stamp}"
+
+    # Folders first, so new files have somewhere to go.
+    for change in chosen:
+        if change["kind"] == "create-folder":
+            (sanctum / change["file"]).mkdir(parents=True, exist_ok=True)
+
+    # Missing disciplines/incidents: when every planned one was chosen, re-seed
+    # them the way the recovery CLI does (only missing files are written).
+    seed_creates = [
+        c for c in report["changes"]
+        if c["kind"] == "create-file" and c["file"].startswith((DISCIPLINES_DIR, INCIDENTS_DIR))
+    ]
+    chosen_seed = [c for c in chosen if c in seed_creates]
+    if chosen_seed and len(chosen_seed) == len(seed_creates):
+        references = Path(report["skill_path"]) / "references"
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            _seed.write_disciplines(sanctum, references, only_missing=True)
+    else:
+        for change in chosen_seed:
+            target = sanctum / change["file"]
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(change["new"], encoding="utf-8")
+
     by_file: dict[str, list[dict]] = {}
     for change in chosen:
+        if change["kind"] == "create-folder" or change in chosen_seed:
+            continue
         by_file.setdefault(change["file"], []).append(change)
 
     for name, file_changes in by_file.items():
         path = sanctum / name
         if path.exists():
-            backup.mkdir(parents=True, exist_ok=True)
+            (backup / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, backup / name)
-        create = [c for c in file_changes if c["kind"] == "create-file"]
-        if create:
-            path.write_text(create[0]["new"], encoding="utf-8")
+        whole = [c for c in file_changes if c["kind"] in ("create-file", "replace-file")]
+        if whole:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(whole[0]["new"], encoding="utf-8")
             continue
-        sections = split(path.read_text(encoding="utf-8"))
-        renamed = {}
-        for change in file_changes:
-            if change["kind"] == "rename-heading":
-                renamed[change["heading"]] = change["to"]
-        rebuilt = []
-        for heading, body in sections:
-            target = renamed.get(heading)
-            if target:
-                body = body.replace(heading, target, 1)
-                heading = target
-            rebuilt.append((heading, body))
-        sections = rebuilt
-        # Changes are planned under the new heading names; when a rename was not
-        # selected, address the section by its old name.
-        aliases = {new: old for old, new in RENAMES.get(name, {}).items()}
-        for change in file_changes:
-            headings = [h for h, _ in sections]
-            if change["kind"] == "rename-heading":
-                continue
-            if change.get("heading") not in headings and aliases.get(change.get("heading")) in headings:
-                change = {**change, "heading": aliases[change["heading"]]}
-            if change["kind"] == "replace-section":
-                i = headings.index(change["heading"])
-                sections[i] = (change["heading"], change["new"])
-            elif change["kind"] == "add-rows":
-                i = headings.index(change["heading"])
-                body = sections[i][1]
-                rows = table_rows(body)
-                last = body.rfind(rows[-1]) + len(rows[-1]) if rows else len(body.rstrip("\n"))
-                body = body[:last] + "\n" + "\n".join(change["rows"]) + body[last:]
-                sections[i] = (change["heading"], body)
-            elif change["kind"] == "add-section":
-                after = change["after"]
-                if after not in headings and aliases.get(after) in headings:
-                    after = aliases[after]
-                if after in headings:
-                    i = headings.index(after) + 1
-                else:
-                    i = len(sections)
-                new_body = change["new"].rstrip("\n") + ("\n\n" if i < len(sections) else "\n")
-                if i > 0 and not sections[i - 1][1].endswith("\n\n"):
-                    prev_h, prev_b = sections[i - 1]
-                    sections[i - 1] = (prev_h, prev_b.rstrip("\n") + "\n\n")
-                sections.insert(i, (change["heading"], new_body))
-        path.write_text(join(sections), encoding="utf-8")
+        _apply_sections(path, file_changes)
 
     return {
         **report,
@@ -425,6 +413,8 @@ def render_text(report: dict) -> str:
         out.append(report["message"])
         return "\n".join(out) + "\n"
     changes = report["changes"]
+    if report.get("missing_identity"):
+        out.append(f"Missing identity files: {', '.join(report['missing_identity'])}")
     out.append(f"Status: {report['status']} — {len(changes)} proposed change(s)")
     for c in changes:
         flag = "safe" if c["safe"] else f"review (removes {c.get('removes_lines', 0)} line(s))"
@@ -445,16 +435,22 @@ def render_text(report: dict) -> str:
             out += ["", f"----- {c['id']} {c['kind']} -----", c["diff"].rstrip()]
         out += [
             "",
-            "Nothing was written. Apply with --apply safe (creates/additions) and/or "
-            "--apply <id>,<id> after the owner confirms each replacement.",
+            "Nothing was written. Apply with --apply safe (folders, missing files, additions, the "
+            "generated roster) and/or --apply <id>,<id> after the owner confirms each replacement.",
         ]
     return "\n".join(out) + "\n"
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Dry-run diff and confirmed upgrade of an existing v2 sanctum.")
+    parser = argparse.ArgumentParser(
+        description="Dry-run diff and confirmed repair/upgrade of an existing v7 sanctum from the shipped templates."
+    )
     parser.add_argument("--project-root", default=".", help="Project root (where _bmad/ lives).")
-    parser.add_argument("--sanctum-dir", default=None, help="Override the sanctum directory.")
+    parser.add_argument(
+        "--sanctum-dir",
+        default=None,
+        help="Override the sanctum directory (default: <project-root>/_bmad/memory/suno-agent-band-manager).",
+    )
     parser.add_argument("--skill-path", default=None, help="Skill dir (assets/, references/). Default: inferred.")
     parser.add_argument(
         "--apply",
@@ -465,7 +461,8 @@ def main() -> int:
     args = parser.parse_args()
 
     project_root = Path(args.project_root).resolve()
-    sanctum = _seed.sanctum_dir(project_root, args.sanctum_dir).resolve()
+    sanctum, _ = _seed.locate_sanctum(project_root, args.sanctum_dir)
+    sanctum = sanctum.resolve()
     skill_path = Path(args.skill_path).resolve() if args.skill_path else Path(__file__).resolve().parent.parent
 
     report = plan(project_root, sanctum, skill_path)

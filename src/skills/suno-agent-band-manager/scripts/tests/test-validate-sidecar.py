@@ -120,44 +120,93 @@ def test_run_checks_clean_published_song(tmp_path):
     assert stats["findings_error"] == 0
 
 
+V7_REL = ("_bmad", "memory", "suno-agent-band-manager")
+GHOST_RECENT = (
+    "# Recently Published\n\n"
+    "<!-- derived:recently-published:start -->\n\n"
+    "- **Ghost Song** (2026-01-15, PUBLISHED) — not in songbook.\n\n"
+    "<!-- derived:recently-published:end -->\n"
+)
+
+
+def _v7_file(root, rel, text):
+    path = root / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
 def test_run_checks_detects_index_drift(tmp_path):
-    # One published song, but MEMORY.md claims a different title in Recently Published.
+    # One published song, but the catalog file claims a different title.
     _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
-    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
-    sanctum.mkdir(parents=True)
-    (sanctum / "MEMORY.md").write_text(
-        "# Mac — Curated Memory\n\n"
-        "## Recently Published\n\n"
-        "- **Ghost Song** (2026-01-15, PUBLISHED) — not in songbook.\n\n"
-        "## Catalog Status\n\nstub\n\n"
-        "## Module State\n\nend\n",
-        encoding="utf-8",
-    )
+    sanctum = tmp_path.joinpath(*V7_REL)
+    _v7_file(sanctum, "memory/catalog/recently-published.md", GHOST_RECENT)
     findings, stats = mod.run_checks(tmp_path)
-    assert any(f.category == "index_drift" for f in findings)
-    # The finding's path points at MEMORY.md, not the legacy index.md.
-    assert any(
-        f.category == "index_drift" and f.path.endswith("MEMORY.md")
-        for f in findings
+    drift = [f for f in findings if f.category == "index_drift"]
+    assert drift
+    # The finding points at the v7 catalog file.
+    assert all(f.path == "_bmad/memory/suno-agent-band-manager/memory/catalog/recently-published.md" for f in drift)
+
+
+def test_run_checks_reads_catalog_status_file(tmp_path):
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
+    _v7_file(tmp_path, "docs/band-profiles/paper-lanterns.yaml", "name: Paper Lanterns\n")
+    sanctum = tmp_path.joinpath(*V7_REL)
+    _v7_file(
+        sanctum,
+        "memory/catalog/status.md",
+        "# Catalog Status\n\n<!-- derived:catalog-status:start -->\n\n"
+        "- **Paper Lanterns:** **5 published tracks** — Harbor Lights.\n\n"
+        "<!-- derived:catalog-status:end -->\n",
     )
+    findings, _ = mod.run_checks(tmp_path)
+    drift = [f for f in findings if f.category == "index_drift"]
+    assert drift and drift[0].path.endswith("memory/catalog/status.md")
+
+
+def test_run_checks_reads_parked_file(tmp_path):
+    _v7_file(tmp_path, "docs/wip-dock.md", "# Dock\n")
+    sanctum = tmp_path.joinpath(*V7_REL)
+    _v7_file(sanctum, "memory/work/parked.md", "# Pending / Parked Work\n\n- nothing about the dock\n")
+    findings, _ = mod.run_checks(tmp_path)
+    pending = [f for f in findings if f.category == "pending_drift"]
+    assert [f.message for f in pending] == ["active WIP docs/wip-dock.md is not listed in Pending / Parked Work"]
+    assert pending[0].path.endswith("memory/work/parked.md")
+
+
+def test_run_checks_ignores_legacy_memory_md(tmp_path):
+    """A MEMORY.md (v2) is not a live file: its claims are not checked."""
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
+    sanctum = tmp_path.joinpath(*V7_REL)
+    _v7_file(sanctum, "MEMORY.md", "## Recently Published\n\n- **Ghost Song** (2026-01-15, PUBLISHED)\n\n## X\n")
+    findings, _ = mod.run_checks(tmp_path)
+    assert not any(f.category == "index_drift" for f in findings)
 
 
 def test_run_checks_honors_sanctum_dir_override(tmp_path):
-    """--sanctum-dir reads the derived sections from a staging copy."""
+    """--sanctum-dir reads the catalog files from a staging copy."""
     _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
     staging = tmp_path / "staging-copy"
-    staging.mkdir()
-    (staging / "MEMORY.md").write_text(
-        "# Mac — Curated Memory\n\n"
-        "## Recently Published\n\n"
-        "- **Ghost Song** (2026-01-15, PUBLISHED) — not in songbook.\n\n"
-        "## Catalog Status\n\nstub\n\n"
-        "## Module State\n\nend\n",
-        encoding="utf-8",
-    )
-    # No MEMORY.md at the default location — drift only surfaces via the override.
+    _v7_file(staging, "memory/catalog/recently-published.md", GHOST_RECENT)
+    # Nothing at the default location — drift only surfaces via the override.
+    assert not any(f.category == "index_drift" for f in mod.run_checks(tmp_path)[0])
     findings, stats = mod.run_checks(tmp_path, sanctum_dir=str(staging))
     assert any(f.category == "index_drift" for f in findings)
+
+
+def test_cli_json_with_sanctum_dir(tmp_path, monkeypatch, capsys):
+    import json
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
+    staging = tmp_path / "staging-copy"
+    _v7_file(staging, "memory/catalog/recently-published.md", GHOST_RECENT)
+    monkeypatch.setattr(sys, "argv", [
+        "validate-sidecar.py", str(tmp_path), "--format", "json", "--sanctum-dir", str(staging)])
+    assert mod.main() == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "fail"
+    monkeypatch.setattr(sys, "argv", [
+        "validate-sidecar.py", str(tmp_path), "--warn-only", "--sanctum-dir", str(staging)])
+    assert mod.main() == 0
 
 
 def test_format_text_pass():
@@ -229,10 +278,13 @@ def test_cross_ref_still_flags_a_missing_file(tmp_path):
 
 def test_cross_ref_honors_sanctum_ignore_list(tmp_path):
     _docs(tmp_path, "docs/other-agent/notes.md", "see `their-memory/secret.md`\n")
-    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
-    _docs(tmp_path, "_bmad/_memory/band-manager-sidecar/validate-ignore.txt", "# other agent's docs\ndocs/other-agent/*\n")
+    sanctum = tmp_path.joinpath(*V7_REL)
+    _docs(tmp_path, "_bmad/memory/suno-agent-band-manager/validate-ignore.txt", "# other agent's docs\ndocs/other-agent/*\n")
     assert mod.check_markdown_cross_references(tmp_path, sanctum) == []
     assert len(mod.check_markdown_cross_references(tmp_path)) == 1
+    # run_checks reads the ignore list from the v7 sanctum root.
+    findings, _ = mod.run_checks(tmp_path)
+    assert not any(f.category == "cross_reference_missing" for f in findings)
 
 
 def test_parity_skips_thematic_playlists_and_counts_versions_once(tmp_path):
@@ -338,13 +390,12 @@ def test_companion_untracked_since_date(tmp_path):
     assert mod.check_companion_files(tmp_path) == []  # no --since, no forward check
 
 
-MEMORY_WITH_PENDING = (
-    "# Memory\n\n## Pending / Parked Work\n\n"
+PARKED_FILE = (
+    "# Pending / Parked Work\n\n"
     "- Dock song — `docs/wip-dock.md`\n"
     "- Old idea — `docs/wip-done.md`\n\n"
     "### Resolved WIP fragments (historical record only)\n\n"
-    "- `docs/wip-finished.md` -> published\n\n"
-    "## Session History\n"
+    "- `docs/wip-finished.md` -> published\n"
 )
 
 
@@ -354,7 +405,7 @@ def test_pending_vs_wip_markers(tmp_path):
     _docs(tmp_path, "docs/wip-done.md", marker)
     _docs(tmp_path, "docs/wip-finished.md", marker)
     _docs(tmp_path, "docs/wip-unlisted.md", "# Unlisted\n")
-    findings = mod.check_pending_vs_wip(MEMORY_WITH_PENDING, tmp_path, "MEMORY.md")
+    findings = mod.check_pending_vs_wip(PARKED_FILE, tmp_path, "memory/work/parked.md")
     messages = sorted(f.message for f in findings)
     assert messages == [
         "Pending / Parked Work lists docs/wip-done.md as active, but it carries a COMPLETED marker",

@@ -2,7 +2,7 @@
 
 Each band owns exactly **one** canonical playlist file, `{docs}/{band-slug}-playlist.yaml`, where `{docs}` is the parent of `{band_profiles_folder}` (`docs/` by default). Other skills read it from that location, so it does not move per band.
 
-The slug matches the band profile filename: `docs/band-profiles/iron-meridian.yaml` pairs with `docs/iron-meridian-playlist.yaml`. This file is the single source of truth for the band's track sequence. **Do not copy the track list anywhere else.** Other files (sidecar narrative, voice context, ordering doc) reference this YAML or derive from it.
+The slug matches the band profile filename: `docs/band-profiles/iron-meridian.yaml` pairs with `docs/iron-meridian-playlist.yaml`. This file is the single source of truth for the band's track sequence. **Do not copy the track list anywhere else.** Other files (Mac's memory files, voice context, ordering doc) reference this YAML or derive from it.
 
 **Who owns what.** This skill creates the file when a band is created and makes simple edits to it: adding a published track, renaming one, fixing a `file:` name. **Order changes and album-craft sequencing belong to the suno-playlist-sequencer skill.** It reads this file, checks proposed orders (locked arcs included) and rewrites the `tracks:` list.
 
@@ -64,7 +64,7 @@ A band profile YAML must NOT contain a `playlist:` block, and `validate-profile.
 
 - **On song publish:** update the band's `docs/{band-slug}-playlist.yaml` alongside the songbook entry.
 - **On track reorder:** edit the playlist YAML first (through the suno-playlist-sequencer skill). The sequencer's per-album companion, `docs/{band-slug}-playlist-sequencing.md`, refreshes from it on the next run.
-- **On track removal or rename:** update the YAML, the songbook (if renaming), the sidecar narrative and any ordering doc together.
+- **On track removal or rename:** update the YAML, the songbook (if renaming), Mac's memory files and any ordering doc together.
 - **On band deletion:** the profile manager archives the playlist YAML together with the profile and decision log. Songbook entries stay where they are.
 
 For the album-craft method that uses this file, see the suno-playlist-sequencer skill's `references/playlist-sequencing-methodology.md`.

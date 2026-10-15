@@ -31,7 +31,8 @@ SAMPLE_CSV = (
     'Suno Band Manager,suno-feedback-elicitor,Analyze Audio,AA,"Measure a render.",analyze-audio,,anytime,,,false,,\n'
 )
 
-SPINE = [
+SPINE = ["PERSONA.md", "CREED.md", "BOND.md", "HOW-I-REMEMBER.md", "CAPABILITIES.md"]
+V2_SPINE = [
     "access-boundaries.md",
     "INDEX.md",
     "MEMORY.md",
@@ -42,8 +43,8 @@ SPINE = [
 ]
 
 
-def _full_spine(sanctum):
-    for name in SPINE:
+def _full_spine(sanctum, names=SPINE):
+    for name in names:
         (sanctum / name).write_text(f"# {name}\n")
 
 
@@ -57,9 +58,11 @@ def test_check_first_run_true(tmp_path):
 
 
 def test_check_first_run_false(tmp_path):
-    """Not first run when sanctum exists."""
-    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+    """Not first run when the sanctum holds anything."""
+    sanctum = tmp_path / "_bmad" / "memory" / "suno-agent-band-manager"
     sanctum.mkdir(parents=True)
+    assert mod.check_first_run(tmp_path) is True  # an empty dir is not a sanctum
+    (sanctum / "PERSONA.md").write_text("x")
     assert mod.check_first_run(tmp_path) is False
 
 
@@ -69,8 +72,8 @@ def test_check_first_run_honors_sanctum_dir_override(tmp_path):
     # Override points at a non-existent dir → first run.
     assert mod.check_first_run(tmp_path, sanctum_dir=str(staging)) is True
     staging.mkdir()
-    # An empty existing dir is NOT first-run (it's "damaged"), but check_first_run
-    # is the "absent" question only → False once the dir exists.
+    assert mod.check_first_run(tmp_path, sanctum_dir=str(staging)) is True  # empty
+    (staging / "PERSONA.md").write_text("x")
     assert mod.check_first_run(tmp_path, sanctum_dir=str(staging)) is False
 
 
@@ -78,6 +81,12 @@ def test_check_first_run_honors_sanctum_dir_override(tmp_path):
 
 
 def _make_sanctum(tmp_path):
+    sanctum = tmp_path / "_bmad" / "memory" / "suno-agent-band-manager"
+    sanctum.mkdir(parents=True)
+    return sanctum
+
+
+def _make_legacy(tmp_path):
     sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
     sanctum.mkdir(parents=True)
     return sanctum
@@ -93,8 +102,8 @@ def test_detect_format_absent(tmp_path):
 
 
 def test_detect_format_v1_needs_migration(tmp_path):
-    """Old v1 layout (index.md, no v2 markers) → 'v1', needs migration."""
-    sanctum = _make_sanctum(tmp_path)
+    """Old v1 layout at the legacy path (index.md, no v2 markers) → 'v1', needs migration."""
+    sanctum = _make_legacy(tmp_path)
     (sanctum / "index.md").write_text("# old content store\n")
     (sanctum / "patterns.md").write_text("# patterns\n")
     state = mod.detect_sidecar_format(tmp_path)
@@ -105,41 +114,47 @@ def test_detect_format_v1_needs_migration(tmp_path):
     assert mod.check_first_run(tmp_path) is False
 
 
-def test_detect_format_v2_loads_normally(tmp_path):
-    """The full spine present → 'v2', no migration → normal load."""
+def test_detect_format_v7_loads_normally(tmp_path):
+    """The identity set present → 'v7', no migration → normal load."""
     sanctum = _make_sanctum(tmp_path)
     _full_spine(sanctum)
     state = mod.detect_sidecar_format(tmp_path)
-    assert state["sidecar_format"] == "v2"
+    assert state["sidecar_format"] == "v7"
     assert state["needs_migration"] is False
     assert state["missing_spine"] == []
 
 
-def test_detect_format_partial_spine_is_damaged(tmp_path):
-    """A half-built v2 (INDEX present, the rest missing) is damaged, not v1 or v2."""
-    sanctum = _make_sanctum(tmp_path)
-    (sanctum / "INDEX.md").write_text("# thin map\n")
+def test_detect_format_legacy_v2_needs_conversion(tmp_path):
+    """The old seven-file spine at the legacy path → 'v2', converted, never woken."""
+    _full_spine(_make_legacy(tmp_path), V2_SPINE)
     state = mod.detect_sidecar_format(tmp_path)
-    # Never force-migrated over, and never loaded as if whole.
+    assert state["sidecar_format"] == "v2"
+    assert state["needs_migration"] is True
+
+
+def test_detect_format_partial_spine_is_damaged(tmp_path):
+    """A half-built v7 sanctum is damaged, never loaded as if whole."""
+    sanctum = _make_sanctum(tmp_path)
+    (sanctum / "HOW-I-REMEMBER.md").write_text("# layout\n")
+    state = mod.detect_sidecar_format(tmp_path)
     assert state["sidecar_format"] == "damaged"
     assert state["needs_migration"] is False
-    assert "MEMORY.md" in state["missing_spine"]
+    assert "PERSONA.md" in state["missing_spine"]
 
 
 def test_detect_format_v2_wins_even_with_legacy_index(tmp_path):
-    """A full spine plus a stray legacy index.md is still v2."""
-    sanctum = _make_sanctum(tmp_path)
-    _full_spine(sanctum)
+    """A full v2 spine plus a stray legacy index.md is still v2."""
+    sanctum = _make_legacy(tmp_path)
+    _full_spine(sanctum, V2_SPINE)
     (sanctum / "index.md").write_text("# stray legacy index\n")
     state = mod.detect_sidecar_format(tmp_path)
     assert state["sidecar_format"] == "v2"
-    assert state["needs_migration"] is False
 
 
 def test_detect_format_v1_on_case_insensitive_filesystem(tmp_path, monkeypatch):
     """On APFS/NTFS, is_file('INDEX.md') is true for a v1 index.md. Detection must
     compare real directory entries, so the store is still v1."""
-    sanctum = _make_sanctum(tmp_path)
+    sanctum = _make_legacy(tmp_path)
     (sanctum / "index.md").write_text("# v1 store\n")
     real_is_file = Path.is_file
 
@@ -155,7 +170,7 @@ def test_detect_format_v1_on_case_insensitive_filesystem(tmp_path, monkeypatch):
 
 
 def test_detect_format_damaged(tmp_path):
-    """Dir exists but neither index.md nor MEMORY.md → 'damaged' (re-scaffold)."""
+    """A non-empty v7 dir with no identity file → 'damaged'."""
     sanctum = _make_sanctum(tmp_path)
     (sanctum / "stray.txt").write_text("junk\n")
     state = mod.detect_sidecar_format(tmp_path)
@@ -181,6 +196,7 @@ def test_main_emits_sidecar_format_and_needs_migration(tmp_path, monkeypatch, ca
     sanctum = bmad_dir / "_memory" / "band-manager-sidecar"
     sanctum.mkdir(parents=True)
     (sanctum / "index.md").write_text("# old store\n")
+    # A v1 store is found at the legacy path.
 
     monkeypatch.setattr(sys, "argv", ["pre-activate.py", str(tmp_path)])
     mod.main()
@@ -193,32 +209,30 @@ def test_main_emits_sidecar_format_and_needs_migration(tmp_path, monkeypatch, ca
 
 
 def test_scaffold_delegates_to_init_sanctum(tmp_path):
-    """Scaffold builds the v2 sanctum via init-sanctum.py (not the old stubs)."""
+    """Scaffold builds the v7 sanctum via init-sanctum.py."""
     (tmp_path / "_bmad").mkdir()
     result = mod.scaffold_sidecar(tmp_path, SKILL_DIR)
     assert result["scaffolded"] is True
     assert result["via"] == "init-sanctum.py"
 
-    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
-    # v2 sanctum skeleton files (from assets/ templates), not the old 3 stubs.
-    assert (sanctum / "INDEX.md").exists()
-    assert (sanctum / "MEMORY.md").exists()
-    assert (sanctum / "CREED.md").exists()
-    assert (sanctum / "PERSONA.md").exists()
-    assert (sanctum / "sessions").is_dir()
+    sanctum = tmp_path / "_bmad" / "memory" / "suno-agent-band-manager"
+    for name in SPINE:
+        assert (sanctum / name).exists(), name
+    assert (sanctum / "memory" / "work").is_dir()
+    assert (sanctum / "raw").is_dir()
 
 
 def test_scaffold_idempotent(tmp_path):
     """Scaffold is a no-op when the sanctum already exists (init-sanctum guards)."""
     (tmp_path / "_bmad").mkdir()
     mod.scaffold_sidecar(tmp_path, SKILL_DIR)
-    sanctum = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
-    (sanctum / "MEMORY.md").write_text("custom content")
+    sanctum = tmp_path / "_bmad" / "memory" / "suno-agent-band-manager"
+    (sanctum / "BOND.md").write_text("custom content")
 
     # Second scaffold: init-sanctum.py reports "exists" and creates nothing.
     result = mod.scaffold_sidecar(tmp_path, SKILL_DIR)
     assert result["init_result"].get("status") == "exists"
-    assert (sanctum / "MEMORY.md").read_text() == "custom content"
+    assert (sanctum / "BOND.md").read_text() == "custom content"
 
 
 def _write_csv(tmp_path, content=SAMPLE_CSV):
@@ -329,19 +343,10 @@ def test_find_menu_csv_not_found(tmp_path):
     assert mod.find_menu_csv(skill_dir) is None
 
 
-def test_sanctum_load_order_is_the_canonical_seven(tmp_path):
-    """The always-loaded waking set is exactly the canonical 7 files, in order."""
-    assert mod.SANCTUM_LOAD_ORDER == [
-        "access-boundaries.md",
-        "INDEX.md",
-        "MEMORY.md",
-        "CREED.md",
-        "PERSONA.md",
-        "BOND.md",
-        "CAPABILITIES.md",
-    ]
-    # access-boundaries.md must load FIRST (Dominion contract before any file op).
-    assert mod.SANCTUM_LOAD_ORDER[0] == "access-boundaries.md"
+def test_sanctum_load_order_is_the_v7_identity_set(tmp_path):
+    """The always-loaded waking set is the five identity files, in order; Pulse adds PULSE.md."""
+    assert mod.SANCTUM_LOAD_ORDER == ["PERSONA.md", "CREED.md", "BOND.md", "HOW-I-REMEMBER.md", "CAPABILITIES.md"]
+    assert mod.PULSE_LOAD_ORDER == [*mod.SANCTUM_LOAD_ORDER, "PULSE.md"]
 
 
 def _run_main(monkeypatch, capsys, argv):
@@ -356,12 +361,12 @@ def test_missing_csv_still_wakes(tmp_path, monkeypatch, capsys):
     _full_spine(sanctum)
     monkeypatch.setattr(mod, "find_menu_csv", lambda *_: None)
     payload = json.loads(_run_main(monkeypatch, capsys, [str(tmp_path)]))
-    assert payload["sidecar_format"] == "v2"
+    assert payload["sidecar_format"] == "v7"
     assert payload["mode"] == "WAKING"
     assert payload["menu_text"] is None
     assert payload["routing_table"] is None
     assert any("menu.csv" in w for w in payload["warnings"])
-    assert payload["sanctum_load_order"][0] == "access-boundaries.md"
+    assert payload["sanctum_load_order"][0] == "PERSONA.md"
 
 
 def test_config_resolved_from_v7_config_and_bond(tmp_path, monkeypatch, capsys):
@@ -401,28 +406,47 @@ def test_config_defaults_when_missing(tmp_path, monkeypatch, capsys):
 
 
 def test_wake_prints_spine_in_load_order(tmp_path, monkeypatch, capsys):
-    """--wake prints MODE, state, then the seven files, access-boundaries first."""
+    """--wake prints MODE, state, the identity files in order, then the memory map."""
     sanctum = _make_sanctum(tmp_path)
     _full_spine(sanctum)
     (sanctum / "PULSE.md").write_text("# PULSE.md\n")
+    (sanctum / "memory" / "work").mkdir(parents=True)
+    (sanctum / "memory" / "work" / "current.md").write_text("pick up here")
+    (sanctum / "memory" / "pending.md").write_text("Raise the Redux playlist.\n")
     out = _run_main(monkeypatch, capsys, [str(tmp_path), "--wake"])
     assert out.startswith("MODE: WAKING")
-    positions = [out.index(f"===== {name} =====") for name in SPINE]
+    positions = [out.index(f"===== {name} =====") for name in [*SPINE, "memory map", "memory/pending.md"]]
     assert positions == sorted(positions)
+    assert "memory/work/ (1 files)" in out
+    assert "Raise the Redux playlist." in out
+    assert "pick up here" not in out  # memory is mapped, not printed
     assert "===== PULSE.md =====" not in out
 
 
 def test_pulse_prints_maintenance_set(tmp_path, monkeypatch, capsys):
-    """--pulse prints access-boundaries, CREED, PERSONA, PULSE — in that order."""
+    """--pulse prints the identity files, then PULSE.md, then the map."""
     sanctum = _make_sanctum(tmp_path)
     _full_spine(sanctum)
     (sanctum / "PULSE.md").write_text("# PULSE.md\n")
     out = _run_main(monkeypatch, capsys, [str(tmp_path), "--pulse"])
     assert out.startswith("MODE: PULSE")
-    names = ["access-boundaries.md", "CREED.md", "PERSONA.md", "PULSE.md"]
+    names = [*SPINE, "PULSE.md", "memory map"]
     positions = [out.index(f"===== {n} =====") for n in names]
     assert positions == sorted(positions)
-    assert "===== MEMORY.md =====" not in out
+
+
+def test_wake_on_a_legacy_v2_store_routes_to_conversion(tmp_path, monkeypatch, capsys):
+    """A v2 store wakes as itself (old spine printed) and is told to convert."""
+    legacy = _make_legacy(tmp_path)
+    _full_spine(legacy, V2_SPINE)
+    (legacy / "BOND.md").write_text("- **Name:** Robin\n")
+    out = _run_main(monkeypatch, capsys, [str(tmp_path), "--wake"])
+    assert out.startswith("MODE: UPGRADE_V2")
+    assert "references/upgrade-v2.md" in out
+    assert "===== MEMORY.md =====" in out and "===== INDEX.md =====" in out
+    assert "===== memory map =====" not in out
+    assert '"user_name": "Robin"' in out
+    assert not (tmp_path / "_bmad" / "memory").exists()
 
 
 def test_pulse_without_sanctum_is_skipped(tmp_path, monkeypatch, capsys):
@@ -432,7 +456,7 @@ def test_pulse_without_sanctum_is_skipped(tmp_path, monkeypatch, capsys):
 
 def test_wake_damaged_prints_present_files(tmp_path, monkeypatch, capsys):
     sanctum = _make_sanctum(tmp_path)
-    (sanctum / "MEMORY.md").write_text("# MEMORY.md\n")
+    (sanctum / "PERSONA.md").write_text("# PERSONA.md\n")
     out = _run_main(monkeypatch, capsys, [str(tmp_path), "--wake"])
     assert out.startswith("MODE: DAMAGED")
     assert "(missing: CREED.md)" in out
@@ -444,7 +468,8 @@ def test_wake_scaffold_is_first_breath_and_prints_newborn(tmp_path, monkeypatch,
     out = _run_main(monkeypatch, capsys, [str(tmp_path), "--wake", "--scaffold"])
     assert out.startswith("MODE: FIRST_BREATH")
     assert "references/init.md" in out
-    assert "===== access-boundaries.md =====" in out
+    assert "===== HOW-I-REMEMBER.md =====" in out
+    assert "===== memory map =====" in out
     assert "(missing:" not in out
 
 
@@ -452,7 +477,7 @@ def test_wake_first_breath_without_scaffold(tmp_path, monkeypatch, capsys):
     out = _run_main(monkeypatch, capsys, [str(tmp_path), "--wake"])
     assert out.startswith("MODE: FIRST_BREATH")
     assert "--scaffold" in out
-    assert not (tmp_path / "_bmad" / "_memory").exists()
+    assert not (tmp_path / "_bmad" / "memory").exists()
 
 
 def test_main_emits_menu_text_key(tmp_path, monkeypatch, capsys):
@@ -468,6 +493,5 @@ def test_main_emits_menu_text_key(tmp_path, monkeypatch, capsys):
     assert "menu_text" in payload
     assert "menu" not in payload
     assert "[CS]" in payload["menu_text"]
-    # The load order is surfaced as the canonical 7.
-    assert payload["sanctum_load_order"] == mod.SANCTUM_LOAD_ORDER
-    assert len(payload["sanctum_load_order"]) == 7
+    # The load order is surfaced as the v7 identity set.
+    assert payload["sanctum_load_order"] == mod.SANCTUM_LOAD_ORDER == SPINE

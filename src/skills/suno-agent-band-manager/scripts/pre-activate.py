@@ -9,25 +9,27 @@ One script decides the mode and gathers what activation needs:
 
   - config: BMad v7's `modules.suno` answers and output_folder, plus the
     owner's name and language from the sanctum's BOND.md — no separate step
-  - the sanctum state: absent / v1 / v2 / damaged (case-sensitive markers; an
-    incomplete spine is damaged)
+  - the sanctum state: absent / v7 / v2 / v1 / damaged (case-sensitive
+    markers; an incomplete identity set is damaged). The v7 sanctum is
+    `_bmad/memory/suno-agent-band-manager/`; a v1/v2 store at the legacy
+    `_bmad/_memory/band-manager-sidecar/` routes to its conversion
   - the dynamic menu and routing table from assets/menu.csv (null with a
     warning when the CSV is missing — the sanctum still wakes)
   - the voice file and docs/mac-preferences.md, with their sizes
 
 Default output is JSON (headless callers, tests). `--wake` prints a MODE line,
-the state JSON, and then the sanctum files in load order in one pass, so the
-agent becomes itself in a single read. `--pulse` (with `--wake`) prints the
-Pulse set instead: access-boundaries, CREED, PERSONA, PULSE.
+the state JSON, the identity files in load order and a generated map of
+memory/ and raw/ (plus memory/pending.md when it has content) in one pass, so
+the agent becomes itself in a single read. `--pulse` adds PULSE.md.
 
 Usage:
-    uv run scripts/pre-activate.py <project-root> [--wake] [--pulse] [--scaffold]
+    uv run {skill-root}/scripts/pre-activate.py <project-root> [--wake] [--pulse] [--scaffold]
                                    [--user-name NAME] [--sanctum-dir PATH] [-o OUTPUT]
 
 Options:
     --wake          Print MODE + state + sanctum files (one-pass wake).
-    --pulse         Pulse wake: print the maintenance set (implies --wake).
-    --scaffold      Scaffold the v2 sanctum (via init-sanctum.py) if it is absent.
+    --pulse         Pulse wake: also print PULSE.md (implies --wake).
+    --scaffold      Scaffold the v7 sanctum (via init-sanctum.py) if it is absent.
     --user-name     Override the configured user name (voice-file matching).
     --sanctum-dir   Override the sanctum directory (staging copies, tests).
     -o, --output    Write the output to a file instead of stdout.
@@ -116,9 +118,14 @@ def detect_sync_package(project_root: Path) -> dict:
     return {"found": False, "path": None}
 
 
+def locate(project_root: Path, sanctum_dir: str | None = None) -> tuple[Path, dict]:
+    """The sanctum to wake from: the v7 path, or a v1/v2 store at the legacy path."""
+    return _seed.locate_sanctum(project_root, sanctum_dir)
+
+
 def detect_sidecar_format(project_root: Path, sanctum_dir: str | None = None) -> dict:
-    """absent / v1 / v2 / damaged — see _sanctum_seed.classify_sanctum."""
-    return _seed.classify_sanctum(resolve_sanctum_dir(project_root, sanctum_dir))
+    """absent / v7 / v2 / v1 / damaged — see _sanctum_seed.classify_sanctum."""
+    return locate(project_root, sanctum_dir)[1]
 
 
 def check_first_run(project_root: Path, sanctum_dir: str | None = None) -> bool:
@@ -127,7 +134,7 @@ def check_first_run(project_root: Path, sanctum_dir: str | None = None) -> bool:
 
 
 def scaffold_sidecar(project_root: Path, skill_dir: Path, sanctum_dir: str | None = None) -> dict:
-    """Scaffold the v2 sanctum by delegating to init-sanctum.py."""
+    """Scaffold the v7 sanctum by delegating to init-sanctum.py."""
     init_script = skill_dir / "scripts" / "init-sanctum.py"
     if not init_script.is_file():
         return {"scaffolded": False, "error": True, "message": f"init-sanctum.py not found at {init_script}"}
@@ -242,12 +249,18 @@ def build_routing_table(
 def mode_for(state: dict, pulse: bool) -> str:
     fmt = state["sidecar_format"]
     if pulse:
-        return "PULSE" if fmt == "v2" else "PULSE_SKIPPED"
-    return {"absent": "FIRST_BREATH", "v1": "UPGRADE_V1", "v2": "WAKING", "damaged": "DAMAGED"}[fmt]
+        return "PULSE" if fmt == "v7" else "PULSE_SKIPPED"
+    return {
+        "absent": "FIRST_BREATH",
+        "v1": "UPGRADE_V1",
+        "v2": "UPGRADE_V2",
+        "v7": "WAKING",
+        "damaged": "DAMAGED",
+    }[fmt]
 
 
 def build_state(args, project_root: Path, skill_dir: Path) -> dict:
-    sanctum = resolve_sanctum_dir(project_root, args.sanctum_dir)
+    sanctum, _ = locate(project_root, args.sanctum_dir)
     config = _seed.resolve_config(project_root, sanctum)
     user_name = args.user_name or config["values"].get("user_name")
     warnings: list[str] = list(config["warnings"])
@@ -257,12 +270,12 @@ def build_state(args, project_root: Path, skill_dir: Path) -> dict:
     sidecar = detect_sidecar_format(project_root, args.sanctum_dir)
     if args.scaffold and sidecar["sidecar_format"] == "absent":
         scaffold = scaffold_sidecar(project_root, skill_dir, args.sanctum_dir)
-        sidecar = detect_sidecar_format(project_root, args.sanctum_dir)
+        sanctum, sidecar = locate(project_root, args.sanctum_dir)
     else:
         scaffold = None
 
     csv_path = find_menu_csv(skill_dir)
-    learned = learned_capabilities(sanctum) if sidecar["sidecar_format"] in ("v2", "damaged") else []
+    learned = learned_capabilities(sanctum) if sidecar["sidecar_format"] in ("v7", "v2", "damaged") else []
     if csv_path is None:
         menu_text = None
         routing_table = None
@@ -289,7 +302,11 @@ def build_state(args, project_root: Path, skill_dir: Path) -> dict:
         "menu_aliases": dict(MENU_ALIASES),
         "voice_context": detect_voice_files(project_root, user_name),
         "sanctum_path": str(sanctum),
-        "sanctum_load_order": PULSE_LOAD_ORDER if pulse else SANCTUM_LOAD_ORDER,
+        "sanctum_load_order": (
+            _seed.V2_SPINE if sidecar["sidecar_format"] == "v2"
+            else PULSE_LOAD_ORDER if pulse else SANCTUM_LOAD_ORDER
+        ),
+        "memory": _seed.tending_state(sanctum) | {"undistilled_raw": len(_seed.undistilled_raw(sanctum))},
         "warnings": warnings,
     }
     if scaffold is not None:
@@ -304,6 +321,11 @@ WAKE_GUIDANCE = {
     "FIRST_BREATH": (
         "No sanctum yet. Re-run with --scaffold to create it from the templates; "
         "the output will print the newborn sanctum. Then load references/init.md."
+    ),
+    "UPGRADE_V2": (
+        "Your memory is still in the old layout (printed below, so you wake as yourself). "
+        "Load references/upgrade-v2.md: back it up and convert it to the v7 sanctum. "
+        "Never re-scaffold over it."
     ),
     "UPGRADE_V1": (
         "A v1 memory store from an earlier version is here. Load references/upgrade-v1.md: "
@@ -326,10 +348,10 @@ def render_wake(state: dict) -> str:
     elif mode in WAKE_GUIDANCE:
         out.append(WAKE_GUIDANCE[mode])
     out += ["", "===== STATE =====", json.dumps(state, indent=2, ensure_ascii=False)]
-    if mode in ("WAKING", "PULSE", "DAMAGED") or (
+    sanctum = Path(state["sanctum_path"])
+    if mode in ("WAKING", "PULSE", "DAMAGED", "UPGRADE_V2") or (
         mode == "FIRST_BREATH" and state.get("scaffold", {}).get("scaffolded")
     ):
-        sanctum = Path(state["sanctum_path"])
         for name in state["sanctum_load_order"]:
             path = sanctum / name
             out.append(f"\n===== {name} =====")
@@ -337,6 +359,13 @@ def render_wake(state: dict) -> str:
                 out.append(path.read_text(encoding="utf-8").rstrip())
             else:
                 out.append(f"(missing: {name})")
+    if mode in ("WAKING", "PULSE", "DAMAGED") or (
+        mode == "FIRST_BREATH" and state.get("scaffold", {}).get("scaffolded")
+    ):
+        out += ["\n===== memory map =====", _seed.memory_map(sanctum)]
+        pending = _seed.pending_text(sanctum)
+        if pending:
+            out += ["\n===== memory/pending.md =====", pending]
     return "\n".join(out) + "\n"
 
 
@@ -345,7 +374,7 @@ def main():
     parser.add_argument("project_root", help="Project root directory")
     parser.add_argument("--wake", action="store_true", help="Print MODE + state + sanctum files")
     parser.add_argument("--pulse", action="store_true", help="Pulse wake (maintenance set); implies --wake")
-    parser.add_argument("--scaffold", action="store_true", help="Scaffold the v2 sanctum if absent")
+    parser.add_argument("--scaffold", action="store_true", help="Scaffold the v7 sanctum if absent")
     parser.add_argument("--sanctum-dir", default=None, help="Override the sanctum directory")
     parser.add_argument("--user-name", help="Override the configured user name (voice-file matching)")
     parser.add_argument("-o", "--output", help="Output file path")

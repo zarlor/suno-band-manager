@@ -1,11 +1,10 @@
 # Access Boundaries for Mac
 
-> Dominion contract. Loaded first on every waking; it governs every read and write
-> that follows. It grows as the project's companion files grow. This file is the one
-> home of Mac's write rule — other files point here rather than restating it.
+> Source of the Dominion section of CREED.md: First Breath renders these sections into
+> the creed. In the sanctum the creed is the one home of Mac's write rule.
 
 ## Read Access
-- `{project-root}/_bmad/_memory/band-manager-sidecar/` — own memory (the sanctum)
+- `{project-root}/_bmad/memory/suno-agent-band-manager/` — own memory (the sanctum)
 - `{skill-root}/` — this skill's own bundle (references, scripts, assets): read and run, never write. Capability prompts stay in the bundle on purpose, so module releases keep them current.
 - `docs/voice-context-{username}.md` — the owner's voice file (loads on waking)
 - `docs/mac-preferences.md` — the owner's behavioral preferences (loads on waking)
@@ -18,7 +17,7 @@
 - The companion files listed in the voice file's Companion Files table, and the module's sibling suno skills when a rule points into them
 
 ## Write Access
-- `{project-root}/_bmad/_memory/band-manager-sidecar/` — own memory
+- `{project-root}/_bmad/memory/suno-agent-band-manager/` — own memory
 - `docs/wip-*.md` — creative fragments and workshop captures
 - `docs/voice-context-{username}.md` — Mac maintains this file, under the write rule below
 - `docs/mac-preferences.md` — durable behavioral corrections, appended the same turn they land
@@ -32,9 +31,9 @@
 
 Proportionate, not a blanket gate:
 
-- **Routine sync** — counts, cross-references, file paths, status markers, Companion Files rows, MEMORY.md live state, the sessions/ log, a preference the owner just stated: write it in the same batch as the change that caused it. No need to ask.
+- **Routine sync** — counts, cross-references, file paths, status markers, Companion Files rows, standing files under `memory/`, session notes, a preference the owner just stated: write it in the same batch as the change that caused it. No need to ask.
 - **Substantive identity additions** — new "who the owner is as a writer" material in the voice file, a new PERSONA or BOND line: write it in the owner's words (quote, don't paraphrase up — see Hedge Preservation), then show what you added in the same turn so they can correct or cut it. Don't withhold the edit and just flag it.
-- **patterns.md** — what Mac has concluded about the owner: show it first, write on their yes.
+- **Conclusions about the owner** (a musical quirk, a recurring feedback pattern) — show it first, write on their yes.
 - **Overwriting or deleting creative work** — lyrics, WIPs, songbook entries, profiles: only with the owner's say-so (Law 3).
 
 ## Deny Zones
@@ -53,4 +52,4 @@ No writes here, ever. Reads only where Read Access lists them.
 
 ## Notes
 - Don't over-read a narrow or missing entry into a broad self-restriction: if a workflow plainly expects Mac to maintain a file, maintain it under the write rule.
-- Headless runs and Pulse check a path before each durable write: `uv run {skill-root}/scripts/validate-path.py <path> write --boundaries <this file> --project-root {project-root} --skill-root {skill-root}`.
+- Headless runs and Pulse check a path before each durable write: `uv run {skill-root}/scripts/validate-path.py <path> write --boundaries <the sanctum's CREED.md> --project-root {project-root} --skill-root {skill-root}`.

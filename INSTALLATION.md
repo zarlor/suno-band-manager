@@ -110,7 +110,7 @@ To override them without touching that file, put a `[modules.suno]` table in `_b
 
 **Changing an answer:** run `bmad setup suno` again and say which answer to change, or edit the file yourself. Rerunning setup asks only questions you haven't answered and never overwrites an answer you didn't change.
 
-**Your name and language** are not config keys. Mac takes them from his memory (the Owner Summary in `_bmad/_memory/band-manager-sidecar/BOND.md`), or, before that exists, from your `docs/voice-context-<name>.md` file; if neither exists he asks. The other skills reply in the language you write in.
+**Your name and language** are not config keys. Mac takes them from his memory (the Owner Summary in `_bmad/memory/suno-agent-band-manager/BOND.md`), or, before that exists, from your `docs/voice-context-<name>.md` file; if neither exists he asks. The other skills reply in the language you write in.
 
 **Without BMad:** with no `_bmad/` directory, every skill uses the defaults in the table above. Mac mentions once that `bmad setup suno` sets the tier, mode and folders, and carries on. Tier and mode preferences you give Mac in conversation ("I'm on Pro", "switch to Studio mode") are saved to his memory either way.
 
@@ -259,13 +259,15 @@ Module 4.0.0 drops BMad v6 support and the `suno-setup` skill.
 3. Ask `bmad setup suno`. It doesn't read the old `_bmad/config.yaml`, so answer the five questions again (see [Configuration](#configuration)). It offers to delete the retired `suno-setup` skill and to remove other v6 leftovers (it backs up `_bmad/` first).
 4. If you used the pipeline guard, nothing changes: the hook still runs `suno-agent-band-manager/scripts/pipeline-guard.py`.
 
-Mac's memory (`_bmad/_memory/band-manager-sidecar/`), band profiles, songbook and voice files are not touched.
+Band profiles, songbook and voice files are not touched. Mac's memory moves: 4.0.0 keeps it at `_bmad/memory/suno-agent-band-manager/` in the BMad v7 layout. The first time Mac wakes after the upgrade he finds the old store at `_bmad/_memory/band-manager-sidecar/`, backs it up to `_bmad/backups/`, shows you the conversion plan, and converts it on your yes. The old folder stays as the rollback until you tell him to remove it.
 
 ---
 
 ## Multi-Machine Sync (Optional)
 
 Mac stores user-generated content (voice files, band profiles, songbook, WIP files) under `docs/`, which is gitignored so personal content stays out of the repo. To move that content between machines without git, use the bundled pack/unpack scripts.
+
+**Mac's sanctum does not travel.** His memory (`_bmad/memory/suno-agent-band-manager/`) is per-machine; each machine's Mac keeps his own, and anything durable about you or your craft goes into `docs/` so it reaches the other machine. After you upgrade a machine to module 4.0.0, the first waking there converts its old `_bmad/_memory/band-manager-sidecar/` store to the new layout (backup first); upgrade each machine separately.
 
 **Important — these scripts ship at the repository's top-level `scripts/` folder.** They are user-facing entry points (commands you run directly), distinct from the agent's internal scripts that live inside the skill at `.claude/skills/suno-agent-band-manager/scripts/`. If you installed the module with `npx skills` and only the skills landed (no top-level `scripts/` folder), you can either: (a) clone this repo separately and run the scripts from there pointed at your project root, or (b) copy `pack-portable.sh` / `unpack-portable.sh` (and the `.ps1` variants) from the [GitHub repo](https://github.com/zarlor/suno-band-manager/tree/main/scripts) into your project's `scripts/` folder.
 

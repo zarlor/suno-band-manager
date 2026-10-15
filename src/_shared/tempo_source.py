@@ -6,7 +6,7 @@
 """Tempo source selection: Beat This! when the owner opted in, librosa otherwise.
 
 The librosa scripts read tempo and beat positions with librosa's beat tracker.
-Beat This! (beat-grid.py, optional, PyTorch) matched felt BPM more often on the
+Beat This! (the shared beat_grid.py, optional, PyTorch) matched felt BPM more often on the
 reference catalog and fixes most of librosa's halftime double-reads. So when the
 owner has opted in to the PyTorch audio tools (`pytorch_audio_tools` in the suno
 module config, asked by `bmad setup suno`), those scripts take their beats from Beat
@@ -18,7 +18,7 @@ librosa readings come in pairs (librosa_tempo_pair): the default reading, kept
 as before, plus a second one with a slow starting prior (start_bpm=80). When
 they land ~2x apart it's a likely halftime ambiguity; the script reports both.
 
-beat-grid.py runs as its own `uv run` process, so the librosa scripts never
+beat_grid.py runs as its own `uv run` process, so the librosa scripts never
 pull PyTorch into their own environments.
 """
 
@@ -52,23 +52,11 @@ SHIFT_THRESHOLD = 0.10
 FEEL_TOLERANCE = 0.08
 
 
-def _find_beat_grid():
-    """Locate beat-grid.py from wherever this module sits.
-
-    This file is vendored into each skill's scripts/_shared/ (installers copy
-    skill folders one by one), so search upward: the feedback elicitor's own
-    scripts/ folder first, then a sibling suno-feedback-elicitor skill (from the
-    canonical copy in src/_shared/, the one under src/skills/).
-    """
-    for root in Path(__file__).resolve().parents:
-        for candidate in (root / "beat-grid.py", root / "suno-feedback-elicitor" / "scripts" / "beat-grid.py",
-                          root / "skills" / "suno-feedback-elicitor" / "scripts" / "beat-grid.py"):
-            if candidate.is_file():
-                return candidate
-    return Path(__file__).resolve().parent.parent / "suno-feedback-elicitor" / "scripts" / "beat-grid.py"
-
-
-BEAT_GRID = _find_beat_grid()
+# beat_grid.py is a shared helper too, vendored beside this file into every skill
+# that vendors tempo_source (dev-tools/sync-shared.py reads __shared_runs__), so
+# no skill reaches into another's folder for it.
+__shared_runs__ = ("beat_grid",)
+BEAT_GRID = Path(__file__).resolve().with_name("beat_grid.py")
 
 
 class BeatThisUnavailable(RuntimeError):

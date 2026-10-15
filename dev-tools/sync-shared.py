@@ -44,15 +44,29 @@ def imports_of(path: Path, names: set[str]) -> set[str]:
     return found & names
 
 
+def runs_of(path: Path, names: set[str]) -> set[str]:
+    """Shared scripts a helper runs as their own process, declared as `__shared_runs__ = (...)`."""
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (SyntaxError, UnicodeDecodeError):
+        return set()
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "__shared_runs__" for t in node.targets):
+            if isinstance(node.value, (ast.Tuple, ast.List)):
+                return {e.value for e in node.value.elts if isinstance(e, ast.Constant) and isinstance(e.value, str)} & names
+    return set()
+
+
 def needed(skill: Path, modules: dict[str, Path]) -> set[str]:
-    """Shared modules a skill's scripts import, closed over the helpers' own imports."""
+    """Shared modules a skill's scripts import, closed over the helpers' own imports and the scripts they run."""
     names = set(modules)
     want = set()
     for script in (skill / "scripts").glob("*.py"):
         want |= imports_of(script, names)
     queue = list(want)
     while queue:
-        for dep in imports_of(modules[queue.pop()], names) - want:
+        mod = modules[queue.pop()]
+        for dep in (imports_of(mod, names) | runs_of(mod, names)) - want:
             want.add(dep)
             queue.append(dep)
     return want

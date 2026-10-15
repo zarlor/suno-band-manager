@@ -47,6 +47,8 @@ Record each one you apply in `decision_log`.
 
 ## Transform Return
 
+**The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field (`warnings`, `decision_log`, `summary`).
+
 Copy `transformation_summary` as is from `assemble-summary.py`'s JSON; don't compute any of it. `cliche_report.flagged` is its `metrics.total_cliches` (`cliche_report` is `null` when CD didn't run), and `validation_result` is the final `validate-lyrics.py` run's `status` and `findings`.
 
 ```json

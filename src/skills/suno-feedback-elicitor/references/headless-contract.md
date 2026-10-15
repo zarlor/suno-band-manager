@@ -30,6 +30,8 @@ A headless run writes the same iteration-log round and `generation_history` snap
 
 ## Output
 
+**The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field (`warnings`, `decision_log`, `summary`).
+
 ```json
 {
   "status": "complete|blocked",

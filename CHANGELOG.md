@@ -52,7 +52,7 @@ Each was reviewed through the Toolsmith's five lenses (bugs, v7 conformance, det
 | Feedback elicitor | parameter map split by dimension and routed per complaint; analyze-audio fails loudly; headless complaint ~18.5k → ~8k | 87/93 vs 85/93 |
 | Playlist sequencer | an analyze-nothing run no longer overwrites the re-eval baseline; the headless gate enforces every locked arc; full re-sequence ~8.7k → ~6.2k | 117/120 vs 118/120 |
 
-Every skill: two-part trigger descriptions with `evals/triggers.json`, no paths into sibling skills, `{skill-root}` script calls, `uv run` everywhere. Tests moved to `unittest` module-wide (1,118 pass).
+Every skill: two-part trigger descriptions with `evals/triggers.json`, no paths into sibling skills, `{skill-root}` script calls, `uv run` everywhere; a headless reply is the JSON object alone (no text around it, no code fence), so scripts can parse it. The Beat This! tracker (`beat_grid.py`) is now a shared helper vendored beside the tempo helper, so the playlist sequencer no longer reaches into the feedback elicitor's folder for it (the elicitor's `beat-grid.py` command is unchanged). The band identity card is capped at four sentences. Tests moved to `unittest` module-wide (1,118 pass).
 
 ### Suno v6 — research
 

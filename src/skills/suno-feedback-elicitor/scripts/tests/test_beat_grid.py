@@ -18,8 +18,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).parent.parent / "beat-grid.py"
-spec = importlib.util.spec_from_file_location("beat_grid", SCRIPT)
+SCRIPT = Path(__file__).parent.parent / "beat-grid.py"  # the CLI wrapper
+IMPL = Path(__file__).parent.parent / "_shared" / "beat_grid.py"
+spec = importlib.util.spec_from_file_location("beat_grid", IMPL)
 bg = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bg)
 

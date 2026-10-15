@@ -10,7 +10,7 @@ All scripts run as `uv run {skill-root}/scripts/<name>.py … --project-root {pr
 
 **Decision log.** Every assumption made without the user goes into `{band_profiles_folder}/{slug}.decision-log.md`: an inferred name or slug, inferred tier or model, an auto-trimmed style baseline, conflict resolutions, lint fixes. Create it on `create` and `duplicate`; on `edit` and `append`, add a new session heading.
 
-**Returns.** Every return is JSON with `status` (`complete` | `blocked`). On `blocked`, add a one-line `reason`, and include `decision_log` only if one was written. Return the smallest set of paths the caller needs.
+**Returns.** Every return is JSON with `status` (`complete` | `blocked`). **The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field (`reason`, `decision_log`). On `blocked`, add a one-line `reason`, and include `decision_log` only if one was written. Return the smallest set of paths the caller needs.
 
 | Subcommand | Action | Returns |
 |---|---|---|

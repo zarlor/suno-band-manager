@@ -28,7 +28,7 @@ Invite the user to dump everything: the vibe, bands it should sound like, lyrics
 
 1. Run `scripts/validate-profile.py {slug} --staged {band_profiles_folder}/drafts/{slug}.yaml --project-root {project-root}` for the structural checks. Fix what it finds before judging quality.
 2. Judge what the validator cannot: is the style baseline specific, the vocal direction evocative, and do the exclusions fight the genre? Fix what you can; flag what needs the user.
-3. Present a **Band Identity Card** (3-4 sentences on who this band is), then the YAML.
+3. Present a **Band Identity Card**, then the YAML. The card is at most four sentences: who the band is, its sound, its voice, and what sets it apart — one sentence each. Count before presenting; anything more belongs in the YAML.
 4. On approval, write it all in one batch:
    - `scripts/apply-profile.py --save --in {band_profiles_folder}/drafts/{slug}.yaml --project-root {project-root}`. The file is written verbatim, comments included, and the call refuses to overwrite an existing profile. If its JSON carries `existing_decision_log`, resolve that with the user first. Then delete the draft.
    - `scripts/scaffold-playlist.py {slug} --project-root {project-root}` creates the band's empty playlist YAML. Without it the validator flags the band as soon as a song is added, and playlist work has nowhere to write.

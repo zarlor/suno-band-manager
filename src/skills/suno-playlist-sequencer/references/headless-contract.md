@@ -22,6 +22,8 @@ No user is in the room: every call a user would make is made here, recorded in `
 
 ## Success
 
+**The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field (`warnings`, `decision_log`, `summary`).
+
 ```json
 {
   "status": "complete",

@@ -52,6 +52,8 @@ Headless skips the reference-decomposition confirmation; record the skip in `dec
 
 ## Success output
 
+**The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field (`warnings`, `decision_log`, `summary`).
+
 Fields run in the order the caller presents them: Voice → Lyrics → Style → Exclude → Settings (Model, then the Controls panel) → Title → Wild Card.
 
 ```json

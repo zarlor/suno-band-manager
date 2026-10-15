@@ -21,7 +21,7 @@ No greeting, no menu, no sync-package prompt, no reconcile walk-through, and no 
 
 ## Result
 
-Return structured output, no conversational prose:
+Return structured output, no conversational prose. **The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field (`warnings`, `decision_log`, `summary`).
 
 ```json
 {

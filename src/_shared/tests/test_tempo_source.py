@@ -171,7 +171,8 @@ class TestTempoSource(TmpPathTestCase):
 
     def test_beat_grid_path_points_at_the_real_script(self):
         self.assertTrue(ts.BEAT_GRID.is_file())
-        self.assertEqual(ts.BEAT_GRID.name, "beat-grid.py")
+        self.assertEqual(ts.BEAT_GRID.name, "beat_grid.py")
+        self.assertEqual(ts.BEAT_GRID.parent, Path(ts.__file__).resolve().parent)
 
     def test_usable_and_source_summary(self):
         self.assertTrue(ts.usable({"bpm": 90.0}))

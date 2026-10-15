@@ -7,11 +7,11 @@
 
 One script decides the mode and gathers what activation needs:
 
-  - config (core settings + the `suno:` module section), resolved here on
-    BMad v6.12 — no separate config step
+  - config: BMad v7's `modules.suno` answers and output_folder, plus the
+    owner's name and language from the sanctum's BOND.md — no separate step
   - the sanctum state: absent / v1 / v2 / damaged (case-sensitive markers; an
     incomplete spine is damaged)
-  - the dynamic menu and routing table from module-help.csv (null with a
+  - the dynamic menu and routing table from assets/menu.csv (null with a
     warning when the CSV is missing — the sanctum still wakes)
   - the voice file and docs/mac-preferences.md, with their sizes
 
@@ -55,12 +55,11 @@ def _load_sanctum_seed():
 _seed = _load_sanctum_seed()
 
 AGENT_SKILL_NAME = _seed.AGENT_SKILL_NAME
-SETUP_SKILL_NAME = _seed.SETUP_SKILL_NAME
 MODULE_CODE = _seed.MODULE_CODE
 SANCTUM_LOAD_ORDER = _seed.SANCTUM_LOAD_ORDER
 PULSE_LOAD_ORDER = _seed.PULSE_LOAD_ORDER
 MENU_ALIASES = _seed.MENU_ALIASES
-find_module_csv = _seed.find_module_csv
+find_menu_csv = _seed.find_menu_csv
 normalize_username = _seed.normalize_username
 
 VOICE_FILE_PREFIX = "voice-context-"
@@ -192,7 +191,7 @@ def learned_capabilities(sanctum: Path) -> list[dict]:
 
 
 def render_menu(csv_path: Path, include_modules: list[str] | None = None, learned: list[dict] | None = None) -> str:
-    """Mac's menu: module-help.csv rows (minus setup and FL) + learned capabilities."""
+    """Mac's menu: assets/menu.csv rows (minus FL) + learned capabilities."""
     rows = _seed.menu_rows(csv_path, include_modules)
     lines = ["What would you like to do today?\n"]
     codes = set()
@@ -248,9 +247,9 @@ def mode_for(state: dict, pulse: bool) -> str:
 
 
 def build_state(args, project_root: Path, skill_dir: Path) -> dict:
-    config = _seed.resolve_config(project_root)
-    user_name = args.user_name or config["values"].get("user_name")
     sanctum = resolve_sanctum_dir(project_root, args.sanctum_dir)
+    config = _seed.resolve_config(project_root, sanctum)
+    user_name = args.user_name or config["values"].get("user_name")
     warnings: list[str] = list(config["warnings"])
     if args.user_name:
         warnings = [w for w in warnings if not w.startswith("user_name")]
@@ -262,14 +261,14 @@ def build_state(args, project_root: Path, skill_dir: Path) -> dict:
     else:
         scaffold = None
 
-    csv_path = find_module_csv(project_root, skill_dir)
+    csv_path = find_menu_csv(skill_dir)
     learned = learned_capabilities(sanctum) if sidecar["sidecar_format"] in ("v2", "damaged") else []
     if csv_path is None:
         menu_text = None
         routing_table = None
         warnings.append(
-            "module-help.csv not found: the menu is unavailable. Wake normally and "
-            "tell the owner the suno-setup skill restores the menu."
+            "assets/menu.csv not found: the menu is unavailable. Wake normally and "
+            "tell the owner that reinstalling the suno-agent-band-manager skill restores the menu."
         )
     else:
         menu_text = render_menu(csv_path, [MODULE_CODE], learned)

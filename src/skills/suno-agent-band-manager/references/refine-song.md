@@ -33,13 +33,13 @@ If invoked with `--headless` or structured JSON input, skip all interactive step
 
 **Process (no interaction):** Read `MEMORY.md` User Preferences for a missing tier (warn and assume Free if unresolved). Run the Feedback Elicitor headless on the feedback and context, then route its `adjustment_recommendations` back through the Style Prompt Builder and/or Lyric Transformer headless exactly as Step 3 does. The Package Assembly Rule still binds — load `creed-package-assembly.md`. Assemble and return.
 
-**Output:** the refined package delta as structured JSON (only what changed — style prompt, exclusions, lyrics, settings — in the create-song `package` field names), plus the standard headless result envelope (`status`, `capability`, `artifact_path`, `summary`, `warnings`). A refinement that would overwrite a *published* songbook entry is a Law-3-gated write — stage it and report it as a warning rather than applying it. Any other durable write first passes `uv run scripts/validate-path.py "<target path>" write`; a denied path is skipped and reported in `warnings`. If `feedback` is missing or no original prompt/lyrics can be resolved, return `status: blocked` with the reason.
+**Output:** the refined package delta as structured JSON (only what changed — style prompt, exclusions, lyrics, settings — in the create-song `package` field names), plus the standard headless result envelope (`status`, `capability`, `artifact_path`, `summary`, `warnings`). A refinement that would overwrite a *published* songbook entry is a Law-3-gated write — stage it and report it as a warning rather than applying it. Any other durable write first passes `uv run {skill-root}/scripts/validate-path.py "<target path>" write`; a denied path is skipped and reported in `warnings`. If `feedback` is missing or no original prompt/lyrics can be resolved, return `status: blocked` with the reason.
 
 ## Step 1: Gather Context
 
 **From this session** (create-song ran earlier): the package, model, settings, band profile and intent are already in context.
 
-**Starting fresh:** look the song up before asking for technical details. `MEMORY.md`'s Recently Published section is already loaded; for anything else run `uv run scripts/songbook-catalog.py "{project-root}" --title "<words they used>"` (or `--band <slug> --since <date>` for "the one from last week"). Confirm: "Is this the one you're refining? {title / style prompt preview}". If nothing matches, ask what they generated and with which prompts.
+**Starting fresh:** look the song up before asking for technical details. `MEMORY.md`'s Recently Published section is already loaded; for anything else run `uv run {skill-root}/scripts/songbook-catalog.py "{project-root}" --title "<words they used>"` (or `--band <slug> --since <date>` for "the one from last week"). Confirm: "Is this the one you're refining? {title / style prompt preview}". If nothing matches, ask what they generated and with which prompts.
 
 **Minimal context path:** If the user can't give details ("I just hit Create"), work with what they have: infer the model from tier (Free = v6-mini; paid = v6 unless the package ran on v6-wild), don't ask about sliders on Free, and accept a plain reaction — "I pasted X and got Y, but it sounds too Z" is enough. The Feedback Elicitor handles vague feedback.
 
@@ -91,7 +91,7 @@ Then: "Give this version a spin on Suno — listen in the browser, and come back
 
 If the feedback revealed a **systematic preference** rather than a one-song tweak, suggest a profile update ("You've mentioned wanting rawer vocals twice now — want me to update your band profile's vocal direction?") and make it through `suno-band-profile-manager`.
 
-**Published songs:** a refinement that edits a song already in the songbook is a published-attribute change. Its cross-file updates (playlist YAML, voice file, songbook Settings block) go in the same write batch — the sanctum `CREED.md` "Sync at the point of change" principle — and a rename runs `references/reconcile.md` in that batch. Afterwards, `uv run scripts/validate-sidecar.py "{project-root}" --format json` is the backstop. A refinement of the current, not-yet-saved iteration has nothing to sync.
+**Published songs:** a refinement that edits a song already in the songbook is a published-attribute change. Its cross-file updates (playlist YAML, voice file, songbook Settings block) go in the same write batch — the sanctum `CREED.md` "Sync at the point of change" principle — and a rename runs `references/reconcile.md` in that batch. Afterwards, `uv run {skill-root}/scripts/validate-sidecar.py "{project-root}" --format json` is the backstop. A refinement of the current, not-yet-saved iteration has nothing to sync.
 
 ## Loop
 

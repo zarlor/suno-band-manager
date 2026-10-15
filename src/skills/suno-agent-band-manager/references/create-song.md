@@ -63,7 +63,7 @@ If invoked with `--headless` or structured JSON input, skip all interactive step
 }
 ```
 
-Sliders are `null` on Free. `wild_card` is `null` when `include_wild_card` is false. `artifact_path` stays `null` unless `save_to_songbook` is true; before that write, run `uv run scripts/validate-path.py "<target path>" write` and, if it's denied, skip the write and report it in `warnings`. Missing `genre_mood` with no band profile → `status: blocked` with the reason.
+Sliders are `null` on Free. `wild_card` is `null` when `include_wild_card` is false. `artifact_path` stays `null` unless `save_to_songbook` is true; before that write, run `uv run {skill-root}/scripts/validate-path.py "<target path>" write` and, if it's denied, skip the write and report it in `warnings`. Missing `genre_mood` with no band profile → `status: blocked` with the reason.
 
 ## Interactive Mode
 
@@ -85,7 +85,7 @@ Sliders are `null` on Free. `wild_card` is `null` when `include_wild_card` is fa
 
 ## Step 2: Gather Direction
 
-> **Load the relevant creed shards as the work calls for them.** When you start drafting or processing any creative material inline (a lyric swing, a structural sketch, pasted external text), load `{project-root}/_bmad/_memory/band-manager-sidecar/creed-workshop-capture.md` and capture the verbatim material to its WIP file BEFORE discussing it. When you build a song-direction candidates list or make any "this is fresh/new territory for the band" claim, load `{project-root}/_bmad/_memory/band-manager-sidecar/creed-disciplines.md` (Catalog Verification + Thematic Discipline). Run `uv run scripts/genre-coverage.py "{project-root}" --check --band {band-slug}` first; if it exits 1, regenerate the index (drop `--check`), then read `docs/{band-slug}-genre-coverage.md` before asserting. Absence from the index isn't proof of freshness — grep the songbook and profile before any never-done claim.
+> **Load the relevant creed shards as the work calls for them.** When you start drafting or processing any creative material inline (a lyric swing, a structural sketch, pasted external text), load `{project-root}/_bmad/_memory/band-manager-sidecar/creed-workshop-capture.md` and capture the verbatim material to its WIP file BEFORE discussing it. When you build a song-direction candidates list or make any "this is fresh/new territory for the band" claim, load `{project-root}/_bmad/_memory/band-manager-sidecar/creed-disciplines.md` (Catalog Verification + Thematic Discipline). Run `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --check --band {band-slug}` first; if it exits 1, regenerate the index (drop `--check`), then read `docs/{band-slug}-genre-coverage.md` before asserting. Absence from the index isn't proof of freshness — grep the songbook and profile before any never-done claim.
 
 Collect what you need for the mode. Not everything is required.
 
@@ -292,7 +292,7 @@ When the owner has published a track and its audio is in the band's audio folder
 1. **Measure:** run the suno-feedback-elicitor skill's `analyze-audio.py` on the keeper (its Analyze Audio capability; `references/audio-analysis-scripts.md` there covers flags and reading the numbers).
 2. **Section map:** when `pytorch_audio_tools` is on in the module config, run its `section-map.py` on the keeper with the package lyrics.
 3. **Songbook entry:** write the measured BPM, key, duration and LUFS into the songbook entry, and record `source_wip: docs/wip-<slug>.md` in its frontmatter when the song grew from a WIP. If the Lyric Transformer returned a `decision_log` / `intentional_keeps` (no `song_path` was passed), append them as a `## Session YYYY-MM-DD (transform)` section to `{song-title}.decision-log.md` beside the entry.
-4. **Reconcile and index:** run the reconciliation below, then `uv run scripts/genre-coverage.py "{project-root}" --band {band-slug}` so the coverage index reflects the new song.
+4. **Reconcile and index:** run the reconciliation below, then `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --band {band-slug}` so the coverage index reflects the new song.
 
 Scripts are the source of truth for numbers. External LLM listening notes (Gemini, etc.) help with qualitative description but are unreliable for BPM, duration and vocal-dynamics claims — compare them against the script output, never the other way round. Playlist placement goes to the suno-playlist-sequencer skill, and weighs key transitions, tempo flow, energy arc and thematic fit together — never one factor alone.
 
@@ -300,8 +300,8 @@ Scripts are the source of truth for numbers. External LLM listening notes (Gemin
 
 Sync happens at the point of change (the sanctum `CREED.md` Principles): each publish write carries its cross-file updates in the same batch — songbook entry, the band's playlist YAML, the voice file's catalog count and Companion Files row, the sidecar's Current Work and Pending / Parked Work. Then one deterministic backstop:
 
-- **Run `uv run scripts/validate-sidecar.py "{project-root}" --format json`** and act on `playlist_drift` (the playlist and songbook name different songs), `voice_catalog_drift` (a stale published count), `pending_drift` (a COMPLETED WIP still listed, or an active one missing) and `companion_missing` findings.
+- **Run `uv run {skill-root}/scripts/validate-sidecar.py "{project-root}" --format json`** and act on `playlist_drift` (the playlist and songbook name different songs), `voice_catalog_drift` (a stale published count), `pending_drift` (a COMPLETED WIP still listed, or an active one missing) and `companion_missing` findings.
 - **Title changed from the working title:** load `references/reconcile.md` and run it with the old and new titles.
-- **Song came from a WIP file:** mark that WIP COMPLETED — never delete it. You know which WIP you worked from this session; mark it directly (`references/reconcile.md` → "The COMPLETED WIP convention" has the marker). `uv run scripts/scan-wip-status.py "{project-root}" --format json` is the backstop for WIPs this session didn't touch: its `correlation_warning` names unmarked WIPs that a published entry's `source_wip` points at, or whose working title matches. The marker is required whenever a song originated from a WIP, even if nothing else changed — without it, the next session (especially on another machine after a portable sync) treats the finished song as pending work.
+- **Song came from a WIP file:** mark that WIP COMPLETED — never delete it. You know which WIP you worked from this session; mark it directly (`references/reconcile.md` → "The COMPLETED WIP convention" has the marker). `uv run {skill-root}/scripts/scan-wip-status.py "{project-root}" --format json` is the backstop for WIPs this session didn't touch: its `correlation_warning` names unmarked WIPs that a published entry's `source_wip` points at, or whose working title matches. The marker is required whenever a song originated from a WIP, even if nothing else changed — without it, the next session (especially on another machine after a portable sync) treats the finished song as pending work.
 
 A song that published under its original title with no metadata changes needs nothing beyond the validator run.

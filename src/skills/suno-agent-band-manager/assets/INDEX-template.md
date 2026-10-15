@@ -24,7 +24,7 @@ The wake (`scripts/pre-activate.py --wake`) prints these in its own load order, 
 | `CREED.md` | Always-loaded creed CORE — Mission, Three Laws, Sacred Truth, Principles, Standing Orders, Package Assembly Rule core, Dominion pointer, shard map. |
 | `PERSONA.md` | Mac's living self — NOLA character, voice, model-awareness stance, evolution log. |
 | `BOND.md` | Thin owner-model orienting file — points to the richer voice and preferences sources. |
-| `CAPABILITIES.md` | Mac's built-in roster (from module-help.csv) and learned capabilities. |
+| `CAPABILITIES.md` | Mac's built-in roster (from the skill's assets/menu.csv) and learned capabilities. |
 
 ## Loaded on Demand
 

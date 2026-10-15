@@ -33,6 +33,7 @@ persistent_facts = []
 on_complete = ""
 
 # Output paths are not set here: profiles and songbook entries land where the
-# module config says (`band_profiles_folder` / `songbook_folder` in the suno:
-# section of {project-root}/_bmad/config.yaml). The per-band playlist path is a
-# module-wide contract the playlist sequencer reads, so it is not overridable.
+# module config says (`band_profiles_folder` / `songbook_folder` under
+# [modules.suno] in {project-root}/_bmad/config.toml, set by `bmad setup suno`).
+# The per-band playlist path is a module-wide contract the playlist sequencer
+# reads, so it is not overridable.

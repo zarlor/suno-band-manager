@@ -38,8 +38,8 @@ Changed blocks are rendered with ruamel.yaml round-trip (keeps nested comments,
 quote style and key order). Without ruamel the PyYAML fallback re-renders
 changed blocks without their inner comments and reports `comments_dropped`.
 
-Folders: --profiles-dir > suno.band_profiles_folder in
-{project-root}/_bmad/config.yaml > {project-root}/docs/band-profiles. The
+Folders: --profiles-dir > modules.suno.band_profiles_folder in
+BMad's config > {project-root}/docs/band-profiles. The
 playlist YAML lives in --docs-dir, default the profiles folder's parent.
 
 Output: JSON on stdout. Exit codes: 0=success, 1=fail (bad input, schema

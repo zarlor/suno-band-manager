@@ -10,8 +10,8 @@ agree on:
 
   - the always-loaded spine (SANCTUM_LOAD_ORDER) and sanctum classification
     (absent / v1 / v2 / damaged), matched case-sensitively
-  - config resolution (core settings + the `suno:` module section) on BMad v6.12
-  - the module-help.csv roster that drives Mac's menu and CAPABILITIES.md
+  - config resolution (BMad v7 `modules.suno` answers; the owner from BOND.md)
+  - the menu roster (assets/menu.csv) that drives Mac's menu and CAPABILITIES.md
   - the loaded-first Dominion contract `access-boundaries.md`
   - the on-demand creed shards sliced from `references/creed.md`
 
@@ -33,7 +33,6 @@ import csv
 import json
 import os
 import re
-import subprocess
 import sys
 import warnings
 from pathlib import Path
@@ -102,10 +101,15 @@ def classify_sanctum(sanctum: Path) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Config resolution (BMad v6.12)
+# Config resolution (BMad v7)
 # ---------------------------------------------------------------------------
 
-CORE_KEYS = ("user_name", "communication_language", "document_output_language", "output_folder")
+# BMad v7 config holds no owner keys: `bmad setup suno` asks only the module's
+# questions (read as modules.suno.<key>) and core keeps output_folder. Who the
+# owner is and which language they speak live in the sanctum's BOND.md, written
+# at First Breath; before then, a lone voice file names them.
+CORE_KEYS = ("output_folder",)
+OWNER_KEYS = ("user_name", "communication_language", "document_output_language")
 SUNO_KEYS = (
     "suno_tier",
     "default_mode",
@@ -120,49 +124,11 @@ CONFIG_DEFAULTS = {
     "output_folder": "{project-root}/_bmad-output",
     "suno_tier": None,
     "default_mode": "demo",
-    "band_profiles_folder": "{project-root}/docs/band-profiles",
-    "songbook_folder": "{project-root}/docs/songbook",
+    "band_profiles_folder": "docs/band-profiles",
+    "songbook_folder": "docs/songbook",
     "pytorch_audio_tools": "off",
 }
-
-
-def parse_simple_yaml(path: Path) -> dict:
-    """Read top-level scalars plus one level of nested mappings. Stdlib only.
-
-    Enough for BMad's config.yaml / config.user.yaml (core keys at the top, the
-    module's keys under `suno:`). Folded continuation lines are ignored.
-    """
-    data: dict = {}
-    if not path.is_file():
-        return data
-    section: dict | None = None
-    section_indent: int | None = None
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        if not raw.strip() or raw.lstrip().startswith("#"):
-            continue
-        indent = len(raw) - len(raw.lstrip(" "))
-        match = re.match(r"^\s*([A-Za-z0-9_\-]+):\s*(.*)$", raw)
-        if indent == 0:
-            section, section_indent = None, None
-            if not match:
-                continue
-            key, value = match.group(1), match.group(2).strip()
-            if value:
-                data[key] = value.strip("'\"")
-            else:
-                section = {}
-                data[key] = section
-            continue
-        if section is None or not match:
-            continue
-        if section_indent is None:
-            section_indent = indent
-        if indent != section_indent:
-            continue
-        key, value = match.group(1), match.group(2).strip()
-        if value:
-            section[key] = value.strip("'\"")
-    return data
+VOICE_GLOB = "voice-context-*.md"
 
 
 def _load_toml_layers(bmad: Path) -> dict:
@@ -192,51 +158,45 @@ def _load_toml_layers(bmad: Path) -> dict:
     return merged
 
 
-def _run_bmad_resolver(project_root: Path) -> dict | None:
-    """Ask BMad's own resolver for `core` and `modules.suno`. None if unavailable."""
-    script = project_root / "_bmad" / "scripts" / "resolve_config.py"
-    if not script.is_file():
-        return None
-    try:
-        proc = subprocess.run(
-            [
-                sys.executable,
-                str(script),
-                "--project-root",
-                str(project_root),
-                "--key",
-                "core",
-                "--key",
-                "modules.suno",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=20,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if proc.returncode != 0 or not proc.stdout.strip():
-        return None
-    try:
-        payload = json.loads(proc.stdout)
-    except json.JSONDecodeError:
-        return None
-    return {
-        "core": payload.get("core") or {},
-        "suno": payload.get("modules.suno") or {},
-    }
+def owner_from_bond(sanctum: Path) -> dict:
+    """`user_name` and `communication_language` from BOND.md's Owner Summary."""
+    bond = sanctum / "BOND.md"
+    found: dict = {}
+    if not bond.is_file():
+        return found
+    labels = {"name": "user_name", "language": "communication_language"}
+    for line in bond.read_text(encoding="utf-8").splitlines():
+        match = re.match(r"^\s*-\s*\*\*(Name|Language):\*\*\s*(.+?)\s*$", line)
+        if match:
+            value = match.group(2)
+            if "{" not in value:  # an unfilled template token is not a name
+                found.setdefault(labels[match.group(1).lower()], value)
+    return found
 
 
-def resolve_config(project_root: Path) -> dict:
+def owner_from_voice_file(project_root: Path) -> str | None:
+    """The owner's name from the voice file, when exactly one exists.
+
+    The file name holds the slug (`voice-context-mary-jane.md`); its title-cased
+    form ("Mary Jane") slugs back to the same file.
+    """
+    docs = project_root / "docs"
+    files = sorted(docs.glob(VOICE_GLOB)) if docs.is_dir() else []
+    if len(files) != 1:
+        return None
+    slug = files[0].stem[len("voice-context-"):]
+    return slug.replace("-", " ").title() or None
+
+
+def resolve_config(project_root: Path, sanctum: Path | None = None) -> dict:
     """Resolve Mac's config. Never raises; missing pieces fall back to defaults.
 
-    Order: BMad's resolver (`_bmad/scripts/resolve_config.py --key core`), then
-    the TOML layers read directly, then the YAML files (`config.yaml` /
-    `config.user.yaml` top-level keys and the `suno:` section), then defaults.
-    Earlier sources win; later ones only fill gaps.
+    Module answers and output_folder come from BMad's TOML layers; the owner's
+    name and language from the sanctum's BOND.md, then a lone voice file, then
+    defaults (greet generically, English).
     """
-    bmad = project_root / "_bmad"
+    project_root = Path(project_root)
+    sanctum = sanctum or sanctum_dir(project_root)
     values: dict = {}
     sources: list[str] = []
 
@@ -249,32 +209,33 @@ def resolve_config(project_root: Path) -> dict:
         if took and label not in sources:
             sources.append(label)
 
-    resolved = _run_bmad_resolver(project_root)
-    if resolved:
-        fill(resolved["core"], CORE_KEYS, "resolve_config.py")
-        fill(resolved["suno"], SUNO_KEYS, "resolve_config.py")
-
-    toml = _load_toml_layers(bmad)
+    toml = _load_toml_layers(project_root / "_bmad")
     if toml:
         fill(toml.get("core") or {}, CORE_KEYS, "config.toml")
         fill((toml.get("modules") or {}).get("suno") or {}, SUNO_KEYS, "config.toml")
 
-    for name in ("config.user.yaml", "config.yaml"):
-        data = parse_simple_yaml(bmad / name)
-        if data:
-            fill(data, CORE_KEYS, name)
-            suno = data.get("suno")
-            if isinstance(suno, dict):
-                fill(suno, SUNO_KEYS, name)
+    fill(owner_from_bond(sanctum), OWNER_KEYS, "BOND.md")
+    voice_name = owner_from_voice_file(project_root)
+    if voice_name:
+        fill({"user_name": voice_name}, ("user_name",), "voice file")
+    if values.get("communication_language"):
+        values.setdefault("document_output_language", values["communication_language"])
 
     warnings_out: list[str] = []
     for key, default in CONFIG_DEFAULTS.items():
         if values.get(key) in (None, ""):
             values[key] = default
+    for key in ("band_profiles_folder", "songbook_folder"):
+        values[key] = values[key].replace("{project-root}/", "")
     if not values.get("user_name"):
         warnings_out.append(
-            "user_name not found in BMad config; greet generically. "
-            "The suno-setup skill can configure the module."
+            "user_name not found (no BOND.md name, no single voice file); greet generically "
+            "and ask what to call the owner."
+        )
+    if not toml.get("modules", {}).get("suno"):
+        warnings_out.append(
+            "No suno answers in BMad's config: the module defaults apply. "
+            "`bmad setup suno` asks the questions."
         )
     return {"values": values, "sources": sources or ["defaults"], "warnings": warnings_out}
 
@@ -308,14 +269,16 @@ def substitute_vars(content: str, variables: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
-# module-help.csv -> menu roster and CAPABILITIES.md
+# assets/menu.csv -> menu roster and CAPABILITIES.md
 # ---------------------------------------------------------------------------
 
 AGENT_SKILL_NAME = "suno-agent-band-manager"
-SETUP_SKILL_NAME = "suno-setup"
 MODULE_CODE = "Suno Band Manager"
+# BMad v7 has no module help CSV; Mac's menu rows ship in his own skill, in the
+# old CSV columns so the menu, routing and CAPABILITIES.md share one source.
+MENU_CSV_REL = ("assets", "menu.csv")
 
-# Rows the module CSV keeps for standalone use but Mac's own menu leaves out.
+# Rows the menu file keeps for standalone use but Mac's own menu leaves out.
 # Feedback Loop (FL) is folded into Refine Song (RS): Mac's refine flow calls
 # the suno-feedback-elicitor skill inside it.
 MAC_MENU_EXCLUDE = {("suno-feedback-elicitor", "elicit-feedback")}
@@ -323,27 +286,19 @@ MAC_MENU_EXCLUDE = {("suno-feedback-elicitor", "elicit-feedback")}
 MENU_ALIASES = {"FL": "RS"}
 
 
-def find_module_csv(project_root: Path, skill_dir: Path) -> Path | None:
-    """Find module-help.csv: the BMad install first, then the setup skill's assets."""
-    for candidate in (
-        project_root / "_bmad" / "module-help.csv",
-        skill_dir.parent / SETUP_SKILL_NAME / "assets" / "module-help.csv",
-        project_root / "src" / "skills" / SETUP_SKILL_NAME / "assets" / "module-help.csv",
-    ):
-        if candidate.is_file():
-            return candidate
-    return None
+def find_menu_csv(skill_dir: Path) -> Path | None:
+    """Mac's menu roster, shipped in his skill folder."""
+    candidate = Path(skill_dir).joinpath(*MENU_CSV_REL)
+    return candidate if candidate.is_file() else None
 
 
 def menu_rows(csv_path: Path, include_modules: list[str] | None = None) -> list[dict]:
-    """Rows for Mac's menu: this module's rows minus setup and the folded-in FL."""
+    """Rows for Mac's menu: this module's rows minus the folded-in FL."""
     rows: list[dict] = []
     with open(csv_path, encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
             skill = (row.get("skill") or "").strip()
             action = (row.get("action") or "").strip()
-            if skill == SETUP_SKILL_NAME:
-                continue
             if (skill, action) in MAC_MENU_EXCLUDE:
                 continue
             if include_modules is not None and (row.get("module") or "").strip() not in include_modules:
@@ -362,11 +317,11 @@ def route_for(row: dict) -> dict:
 
 
 def generate_capabilities_md(rows: list[dict]) -> str:
-    """CAPABILITIES.md: the built-in roster from module-help.csv + the Learned table."""
+    """CAPABILITIES.md: the built-in roster from assets/menu.csv + the Learned table."""
     lines = ["# Capabilities", "", "## Built-in", ""]
     if rows:
         lines += [
-            "_Generated from the module's `module-help.csv` (the same source as the menu)._",
+            "_Generated from Mac's `assets/menu.csv` (the same source as the menu)._",
             "",
             "| Code | Name | What it does | Runs |",
             "|------|------|--------------|------|",
@@ -381,8 +336,8 @@ def generate_capabilities_md(rows: list[dict]) -> str:
         lines += ["", "Typing FL or \"feedback loop\" routes to [RS] Refine Song, which runs the feedback skill inside it."]
     else:
         lines += [
-            "_module-help.csv was not found, so the roster could not be generated. "
-            "Run the suno-setup skill, then regenerate this section with "
+            "_assets/menu.csv was not found, so the roster could not be generated. "
+            "Reinstall the suno-agent-band-manager skill, then regenerate this section with "
             "`uv run scripts/upgrade-sanctum.py`._"
         ]
     lines += [

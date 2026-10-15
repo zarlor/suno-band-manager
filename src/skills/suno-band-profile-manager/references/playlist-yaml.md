@@ -45,7 +45,7 @@ Each band's audio lives in its own folder, `docs/audio/{band-slug}/`, using the 
 If a band already has songbook entries but no playlist YAML, scaffold one:
 
 ```bash
-uv run scripts/scaffold-playlist.py {band-slug} --from-songbook --project-root {project-root}
+uv run {skill-root}/scripts/scaffold-playlist.py {band-slug} --from-songbook --project-root {project-root}
 ```
 
 This writes the playlist YAML with the discovered song titles and the `audio_dir:` key already filled in. The `file:` fields are left as empty strings; fill them in from the band's audio folder (`docs/audio/{band-slug}/`). The user reviews it, fills in the filenames, sets the order and saves. The script reads `band_profiles_folder` and `songbook_folder` from module config, so a relocated songbook is still found.

@@ -22,12 +22,12 @@ spec.loader.exec_module(mod)
 
 @pytest.fixture
 def project(tmp_path):
-    """A minimal project with a _bmad/config.yaml."""
+    """A minimal project: BMad config and the owner's voice file (which names them before BOND.md exists)."""
     bmad = tmp_path / "_bmad"
     bmad.mkdir()
-    (bmad / "config.yaml").write_text(
-        "user_name: TestUser\ncommunication_language: English\n"
-    )
+    (bmad / "config.toml").write_text('[modules.suno]\nsuno_tier = "pro"\n')
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "voice-context-testuser.md").write_text("# voice\n")
     return tmp_path
 
 
@@ -54,7 +54,7 @@ def test_scaffold_substitutes_variables(project):
     mod.scaffold(project, SKILL_DIR)
     sanctum = project / "_bmad" / "_memory" / "band-manager-sidecar"
     persona = (sanctum / "PERSONA.md").read_text()
-    assert "TestUser" in persona
+    assert "Testuser" in persona
     assert "{user_name}" not in persona
 
 

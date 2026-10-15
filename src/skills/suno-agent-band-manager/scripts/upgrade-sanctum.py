@@ -168,13 +168,13 @@ def expected_files(project_root: Path, sanctum: Path, skill_path: Path) -> tuple
         path = assets / template
         if path.is_file():
             expected[out_name] = _seed.substitute_vars(path.read_text(encoding="utf-8"), variables)
-    csv_path = _seed.find_module_csv(project_root, skill_path)
+    csv_path = _seed.find_menu_csv(skill_path)
     if csv_path:
         expected["CAPABILITIES.md"] = _seed.generate_capabilities_md(
             _seed.menu_rows(csv_path, [_seed.MODULE_CODE])
         )
     else:
-        notes.append("module-help.csv not found; CAPABILITIES.md left as is.")
+        notes.append("assets/menu.csv not found; CAPABILITIES.md left as is.")
     creed = skill_path / "references" / "creed.md"
     if creed.is_file():
         with warnings.catch_warnings(record=True) as caught:

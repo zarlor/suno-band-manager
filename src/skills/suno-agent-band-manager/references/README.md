@@ -57,25 +57,27 @@ graph TD
 
 - **An LLM CLI with skill support** — Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, or OpenCode
 - **Suno account** (free tier works; Pro/Premier unlocks additional features)
-- **BMad Method** (optional) — built with BMad, runs independently without it
+- **BMad Method v7** (optional) — its `bmad` skill (version 6.13.0-next or later) sets the module's answers. Without it every skill runs on the defaults
 
 ## Installation
 
 1. Run `link-skills.sh` from the project root to create symlinks in `.claude/skills/` and `.agents/skills/` (the portable [Agent Skills](https://agentskills.io) standard). Or copy skill folders from `src/skills/` into your tool's skill discovery directory.
 
-2. Run the setup skill to configure the module:
+2. Configure the module with BMad's `bmad` skill. If it isn't installed yet, add it with `npx skills add bmad-code-org/BMAD-METHOD --skill bmad`, then ask it:
 
 ```
-/suno-setup
+bmad setup suno
 ```
 
-3. The setup skill collects your preferences (Suno tier, default mode, folder paths) and registers all capabilities with the help system.
+3. Setup asks five questions: Suno tier (`free`, `pro` or `premier`), default mode (`demo`, `studio` or `jam`), PyTorch audio tools (`on` or `off`), and the band profiles and songbook folders (defaults `docs/band-profiles` and `docs/songbook`, relative to the project root). The answers go to `_bmad/config.toml` under `[modules.suno]`.
 
-4. On first activation, Mac will greet you and confirm your setup. All preferences are changeable anytime through conversation.
+4. On first activation, Mac will greet you and confirm your setup. Day-to-day preferences are changeable anytime through conversation.
+
+5. Optional: ask Mac to "set up the pipeline guard" (see `pipeline-guard.md`).
 
 ## Updating
 
-To reconfigure after a module update, run `/suno-setup` again. Existing settings are preserved as defaults.
+After a module update, run `bmad setup suno` again: it asks only the questions you haven't answered and keeps the rest. To change an answer, run it and say which one (for example, "set suno_tier to pro"). `bmad` also checks for module updates and suggests what to do next.
 
 ## Quick Start
 
@@ -102,7 +104,7 @@ To reconfigure after a module update, run `/suno-setup` again. Existing settings
 suno-agent-band-manager/
 ├── SKILL.md                    # Lean bootloader — identity seed, Three Laws, activation routing
 ├── customize.toml              # Agent customization surface
-├── assets/                     # Sanctum templates seeded at First Breath
+├── assets/                     # Sanctum templates seeded at First Breath; menu.csv (Mac's menu)
 ├── references/
 │   ├── activation.md           # Waking — reads the wake script's state block and sanctum (loaded in order, access boundaries first), then greets; Pulse and headless routes
 │   ├── headless.md             # Headless capability runs (--headless:{capability} / -H) — what's skipped, the result envelope
@@ -118,6 +120,7 @@ suno-agent-band-manager/
 │   ├── init.md                 # First Breath — first-run setup
 │   ├── upgrade-v1.md           # Migrating an old v1 memory store to the v2 sanctum (backup first)
 │   ├── memory-system.md        # Memory discipline and structure
+│   ├── pipeline-guard.md       # Setting up the pipeline guard (standing order + Claude Code Stop hook)
 │   ├── SUNO-REFERENCE.md       # Suno platform reference
 │   ├── STUDIO-EDITOR-REFERENCE.md # Studio 2.0 and Song Editor reference (cited by the other module skills)
 │   ├── USAGE.md                # End-user guide
@@ -136,6 +139,7 @@ suno-agent-band-manager/
     ├── check-memory-health.py  # Token-size check of what Mac loads on waking, with maintenance advice
     ├── regenerate-index-sections.py # Regenerates MEMORY.md's derived sections (Recently Published, Catalog Status)
     ├── pipeline-guard.py       # Stop hook: package pipeline + order guard (runs on bare python3)
+    ├── configure-guard.py      # Installs the guard: AGENTS.md standing order + Claude Code Stop hook
     ├── validate-path.py        # Access boundary check
     ├── _sanctum_seed.py        # Shared sanctum logic (load order, config, menu roster, creed shards); CLI re-seeds a missing shard
     └── tests/

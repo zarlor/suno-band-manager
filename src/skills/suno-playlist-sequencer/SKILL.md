@@ -34,8 +34,8 @@ This skill orders a body of tracks into a coherent album-craft listening experie
 ## On Activation
 
 1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow` for `activation_steps_prepend`, `activation_steps_append`, `persistent_facts` and `on_complete` (merge order: base `customize.toml`, then team `{project-root}/_bmad/custom/{skill-name}.toml`, then user `{skill-name}.user.toml`). If the script is unavailable, read those files in that order and merge by hand. Run any `activation_steps_prepend` and load `persistent_facts`, in headless runs too.
-2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key core` for `{user_name}`, `{communication_language}` and `{document_output_language}`. Module settings (`songbook_folder`, `pytorch_audio_tools`) are in the `suno:` section of `{project-root}/_bmad/config.yaml`. If either is missing, greet generically, default to English and `docs/songbook`, and carry on.
-3. **Greet** `{user_name}` in `{communication_language}`, run any `activation_steps_append`, and start the workflow.
+2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `songbook_folder` (default `docs/songbook`, relative to `{project-root}`) and `pytorch_audio_tools` (default `off`). Missing answers take the defaults; carry on.
+3. **Greet** the user in their language, run any `activation_steps_append`, and start the workflow.
 
 ## Workflow
 
@@ -51,7 +51,7 @@ This skill orders a body of tracks into a coherent album-craft listening experie
 
 ### Step 2: Generate Sequencing Data
 
-Run `uv run scripts/playlist-sequencing-data.py --playlist docs/{band-slug}-playlist.yaml`. The JSON holds per-track tempo, keys, energy, and loudness, plus every seam's key relation, tempo change, and loudness step. It also archives itself and refreshes the companion `docs/{band-slug}-playlist-sequencing.md`. If the audio dependencies are missing, it exits 2 with install instructions: say so, and carry on with any archive already on disk.
+Run `uv run {skill-root}/scripts/playlist-sequencing-data.py --playlist docs/{band-slug}-playlist.yaml`. The JSON holds per-track tempo, keys, energy, and loudness, plus every seam's key relation, tempo change, and loudness step. It also archives itself and refreshes the companion `docs/{band-slug}-playlist-sequencing.md`. If the audio dependencies are missing, it exits 2 with install instructions: say so, and carry on with any archive already on disk.
 
 **Drops.** Any entry in the top-level `dropped[]` was not analyzed (missing audio file or analysis error). Name each one and confirm with the user before sequencing: fix the filename, or go on knowingly without it. A confident sequence over the wrong list is the failure this prevents.
 
@@ -59,11 +59,11 @@ Run `uv run scripts/playlist-sequencing-data.py --playlist docs/{band-slug}-play
 
 **Fully degraded** (no deps and no archive): don't invent numbers. Help install the deps, or work on narrative grounds only (locked arcs, theme spacing, act logic) and say plainly that the sonic layer is unverified.
 
-**Optional catalog pass:** `uv run scripts/batch-full-analysis.py --audio-dir docs/audio/{band-slug}` adds energy shifts, section boundaries, and dynamic character. Use it when that shape informs the arc; skip it for a quick reorder.
+**Optional catalog pass:** `uv run {skill-root}/scripts/batch-full-analysis.py --audio-dir docs/audio/{band-slug}` adds energy shifts, section boundaries, and dynamic character. Use it when that shape informs the arc; skip it for a quick reorder.
 
 ### Step 3: Apply the Methodology
 
-Reload `references/playlist-sequencing-methodology.md` before every recommendation. Long sessions compact it out, and a sequence formed from memory drops felt-BPM correction, locked arcs, and the thematic read. Work its three ordered gates: surface locked arcs (`uv run scripts/validate-sequence.py docs/{band-slug}-playlist.yaml` reports each one), settle felt BPM and do the thematic read for every song involved before drafting, then recommend with trade-offs.
+Reload `references/playlist-sequencing-methodology.md` before every recommendation. Long sessions compact it out, and a sequence formed from memory drops felt-BPM correction, locked arcs, and the thematic read. Work its three ordered gates: surface locked arcs (`uv run {skill-root}/scripts/validate-sequence.py docs/{band-slug}-playlist.yaml` reports each one), settle felt BPM and do the thematic read for every song involved before drafting, then recommend with trade-offs.
 
 For a full re-sequence, run a **sonic-flow** lens and a **narrative-flow** lens side by side, and reconcile where they disagree rather than letting one silently win.
 
@@ -75,7 +75,7 @@ Present an *opinionated proposal*, not a metrics dump: the order, per-move ratio
 
 **Log as you go** with `uv run {project-root}/_bmad/scripts/memlog.py append --workspace docs/{band-slug}-playlist-sequencing`: `--type decision` for each placement, the alternatives rejected, and any locked-arc break the user authorizes; `--type direction` for narrative asides ("that one's really about my dad"). Capture asides rather than chasing them mid-flow. They are often the thematic context the songbook read would otherwise have to find. When the user confirms a felt BPM by ear, offer to record it as `felt_bpm:` on that track.
 
-**At sign-off,** write the accepted order to `docs/{band-slug}-playlist-sequencing/accepted-order.txt` (one name per line) and run `uv run scripts/validate-sequence.py docs/{band-slug}-playlist.yaml --order <that file>`. Show the user the moves it previews. Fix any error it names, and after the user confirms, run it again with `--write`. Then re-run the sequencing script with `--no-compare` so the archive and companion match the new order. Write the proposal narrative in `{communication_language}` and saved documents in `{document_output_language}`. Then run `{workflow.on_complete}` if set.
+**At sign-off,** write the accepted order to `docs/{band-slug}-playlist-sequencing/accepted-order.txt` (one name per line) and run `uv run {skill-root}/scripts/validate-sequence.py docs/{band-slug}-playlist.yaml --order <that file>`. Show the user the moves it previews. Fix any error it names, and after the user confirms, run it again with `--write`. Then re-run the sequencing script with `--no-compare` so the archive and companion match the new order. Write the proposal narrative and saved documents in the user's language. Then run `{workflow.on_complete}` if set.
 
 ## Scripts
 

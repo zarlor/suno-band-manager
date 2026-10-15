@@ -526,7 +526,7 @@ def main():
     parser.add_argument(
         "--songbook-dir",
         help=("Songbook root holding {slug}/ entries (default: songbook_folder from "
-              "--project-root's _bmad/config.yaml, else {docs-dir}/songbook)."),
+              "--project-root's BMad config (modules.suno), else {docs-dir}/songbook)."),
     )
     parser.add_argument(
         "--project-root",
@@ -554,9 +554,9 @@ def main():
     songbook_dir = Path(args.songbook_dir) if args.songbook_dir else None
     if songbook_dir is None and args.project_root:
         sys.path.insert(0, str(Path(__file__).resolve().parent))
-        from profile_paths import read_module_config
+        from profile_paths import read_module_config, under_root
         configured = read_module_config(args.project_root).get("songbook_folder")
-        songbook_dir = Path(configured) if configured else None
+        songbook_dir = under_root(Path(args.project_root), configured) if configured else None
 
     if args.verbose:
         print(f"Validating profile: {profile_path}", file=sys.stderr)

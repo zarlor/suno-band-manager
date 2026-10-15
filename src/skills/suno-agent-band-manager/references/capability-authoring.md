@@ -52,7 +52,7 @@ type: prompt | script | multi-file | external
 ---
 ```
 
-The code must not clash with a code already on Mac's menu (the module's `module-help.csv` codes) — a clashing learned row is left off the menu.
+The code must not clash with a code already on Mac's menu (the codes in the skill's `assets/menu.csv`) — a clashing learned row is left off the menu.
 
 ## Creating a capability
 

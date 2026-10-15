@@ -1,0 +1,9 @@
+[skill]
+bmod = "bmod-suno"
+source = "github:zarlor/suno-band-manager/src/skills"
+
+# This skill's own needs, on top of the module's. A plain name is a skill from this module's
+# source; a table names one from elsewhere: { skill = "...", source = "github:<owner>/<repo>/<path>" }.
+# Mac's packages are assembled only through the production skills (the Package Assembly Rule).
+required_skills = ["suno-style-prompt-builder", "suno-lyric-transformer", "suno-feedback-elicitor"]
+recommended_skills = ["suno-band-profile-manager", "suno-playlist-sequencer"]

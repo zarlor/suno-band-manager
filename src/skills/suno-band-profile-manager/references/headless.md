@@ -2,7 +2,7 @@
 
 `--headless` or `-H`: scripted profile management with no conversation. Skip the greeting and routing, but still load config and apply customization (activation steps, persistent facts, `on_complete`).
 
-All scripts run as `uv run scripts/<name>.py … --project-root {project-root}`. They read `band_profiles_folder` and `songbook_folder` from module config themselves. `apply-profile.py` owns every profile write: it keeps YAML comments, key order and quoting, and never replaces a list without being told to. Never hand-write profile YAML.
+All scripts run as `uv run {skill-root}/scripts/<name>.py … --project-root {project-root}`. They read `band_profiles_folder` and `songbook_folder` from module config themselves. `apply-profile.py` owns every profile write: it keeps YAML comments, key order and quoting, and never replaces a list without being told to. Never hand-write profile YAML.
 
 **Inputs.** `create` reads the full profile YAML on stdin. `edit` reads a YAML mapping of field overrides on stdin, with nested keys merged by path. `append` reads one list entry (JSON or YAML) on stdin. Every other subcommand takes positional arguments only.
 

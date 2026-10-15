@@ -21,8 +21,19 @@ for dir in "${SKILL_DIRS[@]}"; do
   mkdir -p "$dir"
 done
 
+# Drop links whose skill is gone (a retired skill such as suno-setup).
+for dir in "${SKILL_DIRS[@]}"; do
+  for link in "$dir"/suno-* "$dir"/bmod-suno; do
+    if [ -L "$link" ] && [ ! -e "$link" ]; then
+      rm "$link"
+      echo "  removed stale: $link"
+    fi
+  done
+done
+
 linked=0
-for skill in src/skills/suno-*/; do
+# The skills plus bmod-suno, the module record `bmad setup` reads.
+for skill in src/skills/suno-*/ src/skills/bmod-suno/; do
   name=$(basename "$skill")
   for dir in "${SKILL_DIRS[@]}"; do
     # Compute relative path from target dir to skill source
@@ -47,5 +58,5 @@ else
     echo "  $dir/"
   done
   echo ""
-  echo "Run /suno-setup to complete configuration (or configure manually — see INSTALLATION.md)."
+  echo "Ask the bmad skill to 'setup suno' to complete configuration (see INSTALLATION.md)."
 fi

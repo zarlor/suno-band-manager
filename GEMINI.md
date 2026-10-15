@@ -4,7 +4,7 @@ This file contains standing orders that apply to any LLM agent working in this r
 
 ## Skill Activation Discipline (MANDATORY)
 
-When activating any skill in this module — `suno-agent-band-manager`, `suno-band-profile-manager`, `suno-style-prompt-builder`, `suno-lyric-transformer`, `suno-feedback-elicitor`, `suno-playlist-sequencer`, or `suno-setup` — you MUST follow the "On Activation" instructions in the skill's `SKILL.md` exactly:
+When activating any skill in this module — `suno-agent-band-manager`, `suno-band-profile-manager`, `suno-style-prompt-builder`, `suno-lyric-transformer`, `suno-feedback-elicitor`, or `suno-playlist-sequencer` — you MUST follow the "On Activation" instructions in the skill's `SKILL.md` exactly:
 
 1. **Execute any scripts** referenced in the activation block (e.g., `pre-activate.py`, `check-memory-health.py`, `validate-path.py`) using your shell tool. Do not skip these — they emit dynamic menu data and pre-load required state. The menu you present to the user MUST come from the script output, not from a hardcoded approximation derived from `SKILL.md` text.
 
@@ -32,7 +32,7 @@ Every Python script in this module runs via `uv run scripts/<name>.py` (or `uv r
 
 **Exception:** the `pipeline-guard.py` hook is invoked directly with `python3` — it fires on every tool call, so it is deliberately kept off `uv` to avoid per-invocation startup latency. Do not rewrite the hook's `python3` invocation.
 
-This aligns the module with the BMad v6.9.0 heads-up that v7 standardizes every Python-running skill on `uv run`.
+This matches BMad v7, which runs every Python script in its skills with `uv run`.
 
 ## Cross-References
 

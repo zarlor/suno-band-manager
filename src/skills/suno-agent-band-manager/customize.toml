@@ -8,7 +8,7 @@
 # docs/voice-context-{user}.md and docs/mac-preferences.md. That constellation,
 # not this file, is the behavior-customization surface. The skill's
 # references/persona.md and references/creed.md are seed sources only — they
-# never reach a running Mac. The menu comes from suno-setup's module-help.csv.
+# never reach a running Mac. The menu comes from assets/menu.csv.
 #
 # There is deliberately no override surface here (no activation_steps_*, no
 # persistent_facts, no persona/creed/menu scalars): nothing org-level needs
@@ -17,8 +17,8 @@
 # `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key agent`.
 #
 # Roster descriptors: an entry under [agents.suno-agent-band-manager] in
-# {project-root}/_bmad/custom/config.toml overrides these values if the
-# installer registered Mac in the central roster, and adds him to it if not.
+# {project-root}/_bmad/custom/config.toml overrides these values if BMad's
+# setup registered Mac in the central roster, and adds him to it if not.
 
 [agent]
 

@@ -26,7 +26,7 @@ If the style or lyric skill is missing when a package is needed, say which one p
 
 ## Catalog Scripts (this skill)
 
-Run these instead of reading and comparing catalog files by hand (`uv run scripts/<name>.py --help` for flags):
+Run these instead of reading and comparing catalog files by hand (`uv run {skill-root}/scripts/<name>.py --help` for flags):
 
 - `validate-sidecar.py` — MEMORY.md derived sections vs the songbook, playlist-vs-songbook title sets, voice-file catalog counts, Pending / Parked Work vs WIP markers, Companion Files table vs disk (`--since DATE` adds files the table doesn't list), broken `docs/` cross-references
 - `find-stale-refs.py` — every reference to an old value across the catalog docs and sanctum, with match kind and a replacement preview
@@ -47,7 +47,7 @@ The Feedback Elicitor's scripts measure BPM, key, loudness, energy arcs, section
 - `audio-deep-analysis.py` — Deep single-track analysis
 - `chord-progression.py` — Beat-synchronized chord detection
 - `tempo-detail.py` — Detailed tempo stability analysis
-- `beat-grid.py` — *Optional, PyTorch:* Beat This! beats/downbeats. With the PyTorch audio tools turned on in `/suno-setup`, every script above takes its tempo from it; otherwise it's a second opinion on librosa's halftime reads
+- `beat-grid.py` — *Optional, PyTorch:* Beat This! beats/downbeats. With the PyTorch audio tools turned on (`bmad setup suno`), every script above takes its tempo from it; otherwise it's a second opinion on librosa's halftime reads
 - `vocal-placement.py` — *Optional, PyTorch:* Demucs vocal-vs-band loudness, overall and by thirds
 - `section-map.py` — *Optional, PyTorch:* a render lined up with its lyrics (Demucs vocal stem + Whisper word timestamps): when each tagged section lands, with per-section loudness step, vocal-minus-band, tempo/feel and key, plus lyric lines not heard. With the PyTorch audio tools on, run it on a downloaded render with its package lyrics before judging structure or dynamics
 

@@ -24,7 +24,6 @@ spec.loader.exec_module(mod)
 
 SAMPLE_CSV = (
     "module,skill,display-name,menu-code,description,action,args,phase,preceded-by,followed-by,required,output-location,outputs\n"
-    'Suno Band Manager,suno-setup,Setup Suno Module,SU,"Install or update config.",configure,,anytime,,,false,,\n'
     'Suno Band Manager,suno-agent-band-manager,Create Song,CS,"Create a song package.",create-song,,anytime,,,false,,song package\n'
     'Suno Band Manager,suno-agent-band-manager,Refine Song,RS,"Refine a song.",refine-song,,anytime,,,false,,\n'
     'Suno Band Manager,suno-band-profile-manager,Manage Bands,MB,"Manage band profiles.",manage-profiles,,anytime,,,false,,\n'
@@ -224,18 +223,16 @@ def test_scaffold_idempotent(tmp_path):
 
 def _write_csv(tmp_path, content=SAMPLE_CSV):
     """Helper to write a test CSV file."""
-    csv_path = tmp_path / "module-help.csv"
+    csv_path = tmp_path / "menu.csv"
     csv_path.write_text(content)
     return csv_path
 
 
 def test_render_menu(tmp_path):
-    """Menu renders correctly from module-help.csv."""
+    """Menu renders correctly from assets/menu.csv."""
     csv_path = _write_csv(tmp_path)
 
     menu = mod.render_menu(csv_path)
-    # Setup skill entry should be excluded
-    assert "Setup" not in menu
     # Agent and external skill entries should appear
     assert "[CS]" in menu
     assert "[RS]" in menu
@@ -243,11 +240,12 @@ def test_render_menu(tmp_path):
     assert "Create Song" in menu
 
 
-def test_render_menu_excludes_setup(tmp_path):
-    """Menu does not include the setup skill entry."""
-    csv_path = _write_csv(tmp_path)
-    menu = mod.render_menu(csv_path)
-    assert "[SU]" not in menu
+def test_shipped_menu_has_no_setup_row():
+    """BMad v7 retired suno-setup: the shipped menu neither lists nor routes to it."""
+    csv_path = mod.find_menu_csv(Path(__file__).resolve().parent.parent.parent)
+    assert csv_path is not None
+    assert "suno-setup" not in csv_path.read_text()
+    assert "[CS]" in mod.render_menu(csv_path, [mod.MODULE_CODE])
 
 
 def test_build_routing_table_agent_capabilities(tmp_path):
@@ -275,7 +273,7 @@ def test_build_routing_table_numeric_keys(tmp_path):
     csv_path = _write_csv(tmp_path)
 
     table = mod.build_routing_table(csv_path)
-    # First non-setup entry is CS at position 1; FL is skipped, AA follows MB.
+    # CS is at position 1; FL is skipped, AA follows MB.
     assert table["1"]["name"] == "create-song"
     assert table["2"]["name"] == "refine-song"
     assert table["3"]["name"] == "manage-profiles"
@@ -313,42 +311,22 @@ def test_learned_capabilities_reach_the_menu(tmp_path):
     assert table["LX"]["target"].endswith("capabilities/liner-notes.md")
 
 
-def test_find_module_csv_installed(tmp_path):
-    """Finds CSV at installed location."""
-    bmad_dir = tmp_path / "_bmad"
-    bmad_dir.mkdir()
-    csv_file = bmad_dir / "module-help.csv"
+def test_find_menu_csv_in_skill_assets(tmp_path):
+    """Finds the menu in the skill's own assets."""
+    skill_dir = tmp_path / "skills" / "suno-agent-band-manager"
+    (skill_dir / "assets").mkdir(parents=True)
+    csv_file = skill_dir / "assets" / "menu.csv"
     csv_file.write_text(SAMPLE_CSV)
+    assert mod.find_menu_csv(skill_dir) == csv_file
 
+
+def test_find_menu_csv_not_found(tmp_path):
+    """Returns None when the menu file is missing; a v6 module-help.csv is not read."""
+    (tmp_path / "_bmad").mkdir()
+    (tmp_path / "_bmad" / "module-help.csv").write_text(SAMPLE_CSV)
     skill_dir = tmp_path / "skills" / "suno-agent-band-manager"
     skill_dir.mkdir(parents=True)
-
-    result = mod.find_module_csv(tmp_path, skill_dir)
-    assert result == csv_file
-
-
-def test_find_module_csv_setup_assets(tmp_path):
-    """Falls back to setup skill assets when not installed."""
-    skills_dir = tmp_path / "skills"
-    setup_assets = skills_dir / "suno-setup" / "assets"
-    setup_assets.mkdir(parents=True)
-    csv_file = setup_assets / "module-help.csv"
-    csv_file.write_text(SAMPLE_CSV)
-
-    skill_dir = skills_dir / "suno-agent-band-manager"
-    skill_dir.mkdir(parents=True)
-
-    result = mod.find_module_csv(tmp_path, skill_dir)
-    assert result == csv_file
-
-
-def test_find_module_csv_not_found(tmp_path):
-    """Returns None when CSV is not found."""
-    skill_dir = tmp_path / "skills" / "suno-agent-band-manager"
-    skill_dir.mkdir(parents=True)
-
-    result = mod.find_module_csv(tmp_path, skill_dir)
-    assert result is None
+    assert mod.find_menu_csv(skill_dir) is None
 
 
 def test_sanctum_load_order_is_the_canonical_seven(tmp_path):
@@ -373,34 +351,35 @@ def _run_main(monkeypatch, capsys, argv):
 
 
 def test_missing_csv_still_wakes(tmp_path, monkeypatch, capsys):
-    """No module-help.csv: menu is null with a warning, the sanctum still wakes."""
+    """No assets/menu.csv: menu is null with a warning, the sanctum still wakes."""
     sanctum = _make_sanctum(tmp_path)
     _full_spine(sanctum)
-    monkeypatch.setattr(mod, "find_module_csv", lambda *_: None)
+    monkeypatch.setattr(mod, "find_menu_csv", lambda *_: None)
     payload = json.loads(_run_main(monkeypatch, capsys, [str(tmp_path)]))
     assert payload["sidecar_format"] == "v2"
     assert payload["mode"] == "WAKING"
     assert payload["menu_text"] is None
     assert payload["routing_table"] is None
-    assert any("module-help.csv" in w for w in payload["warnings"])
+    assert any("menu.csv" in w for w in payload["warnings"])
     assert payload["sanctum_load_order"][0] == "access-boundaries.md"
 
 
-def test_config_resolved_without_bmad_init(tmp_path, monkeypatch, capsys):
-    """pre-activate resolves user_name and the suno section itself; the voice
-    file matches with no --user-name."""
+def test_config_resolved_from_v7_config_and_bond(tmp_path, monkeypatch, capsys):
+    """pre-activate resolves the suno answers from BMad v7 config and the owner
+    from BOND.md; the voice file matches with no --user-name."""
     bmad = tmp_path / "_bmad"
     bmad.mkdir()
-    (bmad / "module-help.csv").write_text(SAMPLE_CSV)
-    (bmad / "config.user.yaml").write_text("user_name: Alex Smith\ncommunication_language: English\n")
-    (bmad / "config.yaml").write_text(
-        "document_output_language: English\noutput_folder: '{project-root}/out'\n"
-        "suno:\n  name: Suno Band Manager\n  description: long text\n    continued here\n"
-        "  suno_tier: premier\n  default_mode: studio\n"
+    (bmad / "config.toml").write_text(
+        '[core]\noutput_folder = "{project-root}/out"\n'
+        '[modules.suno]\nsuno_tier = "premier"\ndefault_mode = "studio"\n'
     )
+    sanctum = _make_sanctum(tmp_path)
+    _full_spine(sanctum)
+    (sanctum / "BOND.md").write_text("# Bond\n\n- **Name:** Alex Smith\n- **Language:** English\n")
     docs = tmp_path / "docs"
     docs.mkdir()
     (docs / "voice-context-alex-smith.md").write_text("# voice\n")
+    (docs / "voice-context-someone-else.md").write_text("# voice\n")
     (docs / "mac-preferences.md").write_text("# prefs\n")
     payload = json.loads(_run_main(monkeypatch, capsys, [str(tmp_path)]))
     assert payload["config"]["user_name"] == "Alex Smith"

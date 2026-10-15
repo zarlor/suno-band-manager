@@ -30,16 +30,16 @@ The writer's indentation, internal spacing ("Day   by   Day"), line breaks and b
 ## Conventions
 
 - Bare paths (`references/...`, `scripts/...`) resolve from the skill root (`{skill-root}`); `{project-root}` paths from the project working directory.
-- Run every script with `uv run scripts/<name>.py` (stdlib-only, so `python3` also works); `--help` documents its flags and output.
+- Run every script with `uv run {skill-root}/scripts/<name>.py` (stdlib-only, so `python3` also works); `--help` documents its flags and output.
 
 ## On Activation
 
 These steps run in every mode, headless included.
 
 1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. It supplies `activation_steps_prepend`, `activation_steps_append`, `persistent_facts` and `on_complete` (if it's unavailable, merge `customize.toml` with the overrides in `{project-root}/_bmad/custom/` by hand). Run any `activation_steps_prepend` and load `persistent_facts`.
-2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key core` for `{user_name}`, `{communication_language}` and `{document_output_language}` (lyrics default to the source text's language). Module settings (`band_profiles_folder`, default `docs/band-profiles`; `songbook_folder`, default `docs/songbook`) are in the `suno:` section of `{project-root}/_bmad/config.yaml`. If either is missing, greet generically, default to English and the folder defaults, and carry on.
+2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `band_profiles_folder` (default `docs/band-profiles`) and `songbook_folder` (default `docs/songbook`), both relative to `{project-root}`. Missing answers take the defaults; carry on. Lyrics default to the source text's language.
 3. **Headless** (`--headless` / `-H`): load `references/headless-contract.md`, run any `activation_steps_append`, and follow it without greeting or asking.
-4. **Greet** `{user_name}` in `{communication_language}`, run any `activation_steps_append`, and go to Step 1.
+4. **Greet** the user in their language, run any `activation_steps_append`, and go to Step 1.
 
 ## Step 1: Gather Input
 

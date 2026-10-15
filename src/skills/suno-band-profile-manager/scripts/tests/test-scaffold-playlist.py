@@ -188,10 +188,10 @@ def test_main_follows_module_config(tmp_path):
     # band_profiles_folder and songbook_folder relocated in config: the playlist
     # lands beside the profiles folder and --from-songbook reads the songbook there.
     (tmp_path / "_bmad").mkdir()
-    (tmp_path / "_bmad" / "config.yaml").write_text(
-        "suno:\n"
-        "  band_profiles_folder: '{project-root}/music/band-profiles'\n"
-        "  songbook_folder: '{project-root}/music/songbook'  # moved\n")
+    (tmp_path / "_bmad" / "config.toml").write_text(
+        "[modules.suno]\n"
+        "band_profiles_folder = 'music/band-profiles'\n"
+        "songbook_folder = '{project-root}/music/songbook'  # moved\n")
     entry = tmp_path / "music" / "songbook" / "my-band" / "song.md"
     entry.parent.mkdir(parents=True)
     entry.write_text('---\ntitle: "Moved Song"\nstatus: published\n---\n')

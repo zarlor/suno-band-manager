@@ -5,7 +5,7 @@
 # ///
 """Tests for _shared/tempo_source.py: Beat This! when opted in, librosa otherwise.
 
-Pins the opt-in reading (per-module and shared BMad config, walked up from the
+Pins the opt-in reading (BMad's TOML config layers, walked up from the
 working directory), the --tempo-source override, and the beat-grid.py hand-off
 and its fallbacks. A stand-in script plays beat-grid.py, so no PyTorch is needed.
 """
@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).parent.parent / "tempo_source.py"
+sys.path.insert(0, str(SCRIPT.parent))  # tempo_source imports its sibling bmad_config
 spec = importlib.util.spec_from_file_location("tempo_source", SCRIPT)
 ts = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ts)
@@ -36,27 +37,28 @@ def fake_beat_grid(monkeypatch, tmp_path, body):
     monkeypatch.setattr(ts.shutil, "which", lambda _name: None)  # run with sys.executable, not uv
 
 
-def test_flag_from_per_module_config(tmp_path):
-    write(tmp_path / "_bmad/suno/config.yaml", "user_name: X\npytorch_audio_tools: 'on'\n")
+def test_flag_from_module_config(tmp_path):
+    write(tmp_path / "_bmad/config.toml", "[core]\noutput_folder = 'x'\n[modules.suno]\npytorch_audio_tools = 'on'\n")
     assert ts.read_config_flag(tmp_path) == "on"
     assert ts.opted_in(tmp_path)
 
 
-def test_flag_from_shared_config_reads_only_the_suno_section(tmp_path):
-    write(tmp_path / "_bmad/config.yaml",
-          "core:\n  pytorch_audio_tools: true\nsuno:\n  suno_tier: pro\n  pytorch_audio_tools: off  # comment\n")
+def test_flag_reads_only_the_suno_table(tmp_path):
+    write(tmp_path / "_bmad/config.toml",
+          "[core]\npytorch_audio_tools = 'on'\n[modules.other]\npytorch_audio_tools = 'on'\n"
+          "[modules.suno]\nsuno_tier = 'pro'\npytorch_audio_tools = 'off'  # comment\n")
     assert ts.read_config_flag(tmp_path) == "off"
     assert not ts.opted_in(tmp_path)
 
 
-def test_per_module_config_wins_over_shared(tmp_path):
-    write(tmp_path / "_bmad/suno/config.yaml", "pytorch_audio_tools: true\n")
-    write(tmp_path / "_bmad/config.yaml", "suno:\n  pytorch_audio_tools: 'off'\n")
+def test_custom_override_wins_and_toml_booleans_count(tmp_path):
+    write(tmp_path / "_bmad/config.toml", "[modules.suno]\npytorch_audio_tools = 'off'\n")
+    write(tmp_path / "_bmad/custom/config.user.toml", "[modules.suno]\npytorch_audio_tools = true\n")
     assert ts.opted_in(tmp_path)
 
 
 def test_opt_in_found_from_a_subdirectory(tmp_path):
-    write(tmp_path / "_bmad/suno/config.yaml", "pytorch_audio_tools: yes\n")
+    write(tmp_path / "_bmad/config.toml", "[modules.suno]\npytorch_audio_tools = 'yes'\n")
     sub = tmp_path / "docs" / "audio"
     sub.mkdir(parents=True)
     assert ts.resolve_tempo_source("auto", sub) == "beat-this"
@@ -64,15 +66,20 @@ def test_opt_in_found_from_a_subdirectory(tmp_path):
 
 def test_no_config_means_librosa(tmp_path):
     assert ts.find_config_flag(tmp_path) is None or not ts.opted_in(tmp_path)
-    write(tmp_path / "_bmad/suno/config.yaml", "user_name: X\n")
-    write(tmp_path / "_bmad/config.yaml", "suno:\n  suno_tier: pro\n")
+    write(tmp_path / "_bmad/config.toml", "[modules.suno]\nsuno_tier = 'pro'\n")
+    assert ts.read_config_flag(tmp_path) is None
+
+
+def test_legacy_yaml_config_is_not_read(tmp_path):
+    write(tmp_path / "_bmad/suno/config.yaml", "pytorch_audio_tools: 'on'\n")
+    write(tmp_path / "_bmad/config.yaml", "suno:\n  pytorch_audio_tools: 'on'\n")
     assert ts.read_config_flag(tmp_path) is None
 
 
 def test_explicit_source_overrides_config(tmp_path):
-    write(tmp_path / "_bmad/suno/config.yaml", "pytorch_audio_tools: 'on'\n")
+    write(tmp_path / "_bmad/config.toml", "[modules.suno]\npytorch_audio_tools = 'on'\n")
     assert ts.resolve_tempo_source("librosa", tmp_path) == "librosa"
-    write(tmp_path / "_bmad/suno/config.yaml", "pytorch_audio_tools: 'off'\n")
+    write(tmp_path / "_bmad/config.toml", "[modules.suno]\npytorch_audio_tools = 'off'\n")
     assert ts.resolve_tempo_source("auto", tmp_path) == "librosa"
     assert ts.resolve_tempo_source("beat-this", tmp_path) == "beat-this"
 

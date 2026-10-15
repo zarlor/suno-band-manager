@@ -225,8 +225,8 @@ def test_cli_profiles_dir_from_module_config(tmp_path):
     with open(store / "test-band.yaml", "w") as f:
         yaml.dump(SAMPLE_PROFILE, f)
     (tmp_path / "_bmad").mkdir()
-    (tmp_path / "_bmad" / "config.yaml").write_text(
-        "core:\n  user_name: Someone\nsuno:\n  band_profiles_folder: '{project-root}/music/profiles'\n")
+    (tmp_path / "_bmad" / "config.toml").write_text(
+        "[core]\noutput_folder = 'out'\n[modules.suno]\nband_profiles_folder = '{project-root}/music/profiles'\n")
     proc = _run("--project-root", str(tmp_path))
     assert proc.returncode == 0, proc.stderr
     assert json.loads(proc.stdout)["count"] == 1

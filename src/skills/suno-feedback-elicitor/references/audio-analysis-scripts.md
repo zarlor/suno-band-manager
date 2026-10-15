@@ -1,6 +1,6 @@
 # Audio Analysis Scripts
 
-Objective measurements to set beside the user's ear. The ear still decides: every number here is evidence, not a verdict. Run each script with `uv run scripts/<name>.py` — `uv` provisions its dependencies from the script's PEP 723 header. Run `--help` for flags, output fields and archive paths. If the dependencies can't be provisioned, a script returns JSON with install instructions (exit code 2); the feedback workflow runs fully without any of them.
+Objective measurements to set beside the user's ear. The ear still decides: every number here is evidence, not a verdict. Run each script with `uv run {skill-root}/scripts/<name>.py` — `uv` provisions its dependencies from the script's PEP 723 header. Run `--help` for flags, output fields and archive paths. If the dependencies can't be provisioned, a script returns JSON with install instructions (exit code 2); the feedback workflow runs fully without any of them.
 
 ## Which script for what
 

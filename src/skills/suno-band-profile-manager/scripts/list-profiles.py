@@ -147,7 +147,7 @@ def main():
         dest="profiles_dir_opt",
         help=(
             "Band profiles directory (wins over the positional). Default: "
-            "band_profiles_folder from {project-root}/_bmad/config.yaml, else "
+            "band_profiles_folder from BMad's config (modules.suno), else "
             "{project-root}/docs/band-profiles."
         ),
     )

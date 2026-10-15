@@ -9,7 +9,7 @@ The librosa scripts read tempo and beat positions with librosa's beat tracker.
 Beat This! (beat-grid.py, optional, PyTorch) matched felt BPM more often on the
 reference catalog and fixes most of librosa's halftime double-reads. So when the
 owner has opted in to the PyTorch audio tools (`pytorch_audio_tools` in the suno
-module config, asked by /suno-setup), those scripts take their beats from Beat
+module config, asked by `bmad setup suno`), those scripts take their beats from Beat
 This! instead. Opted out, they use librosa exactly as before. If Beat This!
 can't run (not provisioned yet, or an error), the script falls back to librosa
 and says so.
@@ -30,8 +30,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+import bmad_config
+
 CONFIG_KEY = "pytorch_audio_tools"
-MODULE_CODE = "suno"
 TRUTHY = {"true", "yes", "on", "1"}
 SOURCES = ("auto", "beat-this", "librosa")
 SOURCE_LABELS = {
@@ -56,10 +57,12 @@ def _find_beat_grid():
 
     This file is vendored into each skill's scripts/_shared/ (installers copy
     skill folders one by one), so search upward: the feedback elicitor's own
-    scripts/ folder first, then a sibling suno-feedback-elicitor skill.
+    scripts/ folder first, then a sibling suno-feedback-elicitor skill (from the
+    canonical copy in src/_shared/, the one under src/skills/).
     """
     for root in Path(__file__).resolve().parents:
-        for candidate in (root / "beat-grid.py", root / "suno-feedback-elicitor" / "scripts" / "beat-grid.py"):
+        for candidate in (root / "beat-grid.py", root / "suno-feedback-elicitor" / "scripts" / "beat-grid.py",
+                          root / "skills" / "suno-feedback-elicitor" / "scripts" / "beat-grid.py"):
             if candidate.is_file():
                 return candidate
     return Path(__file__).resolve().parent.parent / "suno-feedback-elicitor" / "scripts" / "beat-grid.py"
@@ -72,35 +75,16 @@ class BeatThisUnavailable(RuntimeError):
     """Beat This! could not produce readings; the caller falls back to librosa."""
 
 
-def _scalar(raw):
-    """A YAML scalar from one line's value: comment stripped, quotes removed, lower-cased."""
-    value = raw.split(" #", 1)[0].strip().strip("'\"")
-    return value.lower()
-
-
 def read_config_flag(root):
-    """The `pytorch_audio_tools` value from a project root's BMad config, or None.
+    """The `pytorch_audio_tools` answer from a project root's BMad config, or None.
 
-    Looks in the per-module file _bmad/suno/config.yaml (flat keys) first, then
-    the `suno:` section of the shared _bmad/config.yaml. A line scan rather than
-    a YAML parse, so the scripts that use it need no pyyaml.
+    `bmad setup suno` writes it as `modules.suno.pytorch_audio_tools`; the shared
+    reader merges BMad's TOML layers, so overrides in `_bmad/custom/` win.
     """
-    root = Path(root)
-    flat = root / "_bmad" / MODULE_CODE / "config.yaml"
-    if flat.is_file():
-        for line in flat.read_text(encoding="utf-8").splitlines():
-            if line.startswith(f"{CONFIG_KEY}:"):
-                return _scalar(line.split(":", 1)[1])
-    shared = root / "_bmad" / "config.yaml"
-    if shared.is_file():
-        section = None
-        for line in shared.read_text(encoding="utf-8").splitlines():
-            if line and not line[0].isspace() and not line.startswith("#"):
-                section = line.split(":", 1)[0].strip()
-                continue
-            if section == MODULE_CODE and line.strip().startswith(f"{CONFIG_KEY}:"):
-                return _scalar(line.strip().split(":", 1)[1])
-    return None
+    if not (Path(root) / "_bmad").is_dir():
+        return None
+    value = bmad_config.module_config(root).get(CONFIG_KEY)
+    return value.strip().lower() if value is not None else None
 
 
 def find_config_flag(start=None):

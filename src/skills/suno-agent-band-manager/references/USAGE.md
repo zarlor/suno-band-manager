@@ -39,7 +39,7 @@ Mac doesn't open with a form. He asks one thing -- "What kind of music are you l
 | **Your band or project** | When you mention one, Mac offers to create a band profile after the song | Profiles keep every song's sound consistent. |
 | **What you always or never want** | "I hate autotune" becomes a default exclusion | Your baseline exclusions, genres, and vocal preferences -- starting points you can change anytime. |
 
-All of these preferences are changeable through conversation at any time -- no need to edit config files or re-run the installer.
+All of these preferences are changeable through conversation at any time -- no need to edit config files or re-run setup.
 
 ### What Gets Created
 
@@ -571,12 +571,14 @@ Round 3: "That's it." → Save successful elements to profile
 Mac orchestrates five specialized skills. You can use them directly through Mac's menu or invoke them independently.
 
 **Claude Code (slash commands):**
-- `/suno-setup` -- Install or reconfigure the module
 - `/suno-agent-band-manager` -- Talk to Mac (the orchestrating agent)
 - `/suno-band-profile-manager` -- Manage band profiles directly
 - `/suno-style-prompt-builder` -- Build style prompts directly
 - `/suno-lyric-transformer` -- Transform lyrics directly
 - `/suno-feedback-elicitor` -- Diagnose a take directly (adjustment recommendations, no rebuild)
+- `/suno-playlist-sequencer` -- Sequence a band's playlist directly
+
+To set or change the module's answers (Suno tier, default mode, PyTorch audio tools, folders), ask BMad's `bmad` skill: `bmad setup suno`. Install it first if needed: `npx skills add bmad-code-org/BMAD-METHOD --skill bmad`.
 
 **Other LLM CLIs:** Skills in `.agents/skills/` are auto-discovered. Use your tool's native skill activation (e.g., `@skill-name` in Windsurf, `$skill-name` in Codex, or by description match in Gemini CLI).
 
@@ -620,7 +622,7 @@ Note: FR and WF are mutually exclusive.
 ### Audio Analysis with External Tools
 
 For detailed audio analysis of Suno output, three complementary tools are available:
-- **librosa scripts** (included in the Feedback Elicitor) — programmatic BPM, key detection, loudness (LUFS / loudness range), tempo stability, and energy arc analysis. Optional PyTorch tools add a second opinion on tempo (`beat-grid.py`, Beat This!), vocal placement against the band (`vocal-placement.py`, Demucs), and a section map that lines a render up with its lyrics (`section-map.py`, Demucs + Whisper) to show when each tagged section lands and how it sounds. Turn on **PyTorch audio tools** in `/suno-setup` and the other scripts take their tempo from Beat This! instead of librosa. Run `analyze-audio.py` on a directory of MP3s for batch analysis, or `audio-deep-analysis.py` on individual tracks for deep dives. Requires Python 3 with librosa and numpy.
+- **librosa scripts** (included in the Feedback Elicitor) — programmatic BPM, key detection, loudness (LUFS / loudness range), tempo stability, and energy arc analysis. Optional PyTorch tools add a second opinion on tempo (`beat-grid.py`, Beat This!), vocal placement against the band (`vocal-placement.py`, Demucs), and a section map that lines a render up with its lyrics (`section-map.py`, Demucs + Whisper) to show when each tagged section lands and how it sounds. Turn on **PyTorch audio tools** with `bmad setup suno` and the other scripts take their tempo from Beat This! instead of librosa. Run `analyze-audio.py` on a directory of MP3s for batch analysis, or `audio-deep-analysis.py` on individual tracks for deep dives. Requires Python 3 with librosa and numpy.
 - **Gemini 3.1 Pro** — upload MP3 to Google AI Studio for AI-powered instrument identification, genre classification, and style prompt accuracy feedback. A two-pass workflow is mandatory for fusion genres.
 - **ChatGPT** — upload MP3 for "blind" analysis (without the style prompt) to get unbiased genre and instrument identification. Useful for catching cases where the style prompt intent diverges from what Suno actually produced.
 
@@ -815,7 +817,6 @@ If you are not sure what to do:
 
 | Code | Capability | Skill | Description |
 |------|-----------|-------|-------------|
-| **SU** | Setup Module | Setup | Install or reconfigure the Suno module |
 | **CS** | Create Song | Band Manager (Mac) | Full song creation workflow |
 | **RS** | Refine Song | Band Manager (Mac) | Bring back a take: diagnose it and rebuild the changed parts ("FL" / "feedback loop" also land here) |
 | **SB** | Browse Songbook | Band Manager (Mac) | Browse past songs and creative history |

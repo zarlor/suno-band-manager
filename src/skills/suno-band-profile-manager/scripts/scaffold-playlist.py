@@ -180,7 +180,7 @@ def main():
     parser.add_argument(
         "--profiles-dir",
         help=("Band profiles folder (default: band_profiles_folder from "
-              "{project-root}/_bmad/config.yaml, else {project-root}/docs/band-profiles). "
+              "BMad's config (modules.suno), else {project-root}/docs/band-profiles). "
               "The playlist YAML is written to its parent folder."),
     )
     parser.add_argument(

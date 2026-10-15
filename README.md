@@ -41,7 +41,7 @@ For detailed documentation on all features, interaction modes, band profiles, th
 
 ## Architecture
 
-Mac is an orchestrating agent that coordinates five specialized skills — three pre-generation, two post-generation — plus a setup skill:
+Mac is an orchestrating agent that coordinates five specialized skills — three pre-generation, two post-generation. A sixth folder, `bmod-suno`, is the module record that BMad's `bmad setup` reads:
 
 ```mermaid
 graph TD
@@ -63,15 +63,15 @@ The orchestrating agent and each skill have their own documentation:
 
 | Component | Purpose | Key Scripts |
 |-----------|---------|-------------|
-| [**Mac (Band Manager)**](src/skills/suno-agent-band-manager/references/README.md) | Orchestrating agent — guides the full song creation workflow across all skills | `pre-activate.py` (the wake: `--wake`, `--pulse`), `validate-sidecar.py`, `songbook-catalog.py`, `find-stale-refs.py`, `upgrade-sanctum.py`, `check-memory-health.py`, `validate-path.py` |
+| [**Mac (Band Manager)**](src/skills/suno-agent-band-manager/references/README.md) | Orchestrating agent — guides the full song creation workflow across all skills | `pre-activate.py` (the wake: `--wake`, `--pulse`), `validate-sidecar.py`, `songbook-catalog.py`, `find-stale-refs.py`, `upgrade-sanctum.py`, `check-memory-health.py`, `validate-path.py`, `configure-guard.py` (installs the pipeline guard) |
 | [**Band Profile Manager**](src/skills/suno-band-profile-manager/references/README.md) | CRUD for band identity profiles, writer voice analysis, tier feature awareness, per-band playlist YAML | `apply-profile.py`, `validate-profile.py`, `list-profiles.py`, `tier-features.py`, `diff-profiles.py`, `scaffold-playlist.py` |
 | [**Style Prompt Builder**](src/skills/suno-style-prompt-builder/references/README.md) | Model-aware style prompt generation with creativity modes and wild card variants | `validate-prompt.py` |
 | [**Lyric Transformer**](src/skills/suno-lyric-transformer/references/README.md) | Poem/text to Suno-ready structured lyrics with metatags and cliché detection | `validate-lyrics.py`, `cliche-detector.py`, `syllable-counter.py`, `analyze-input.py`, `section-length-checker.py`, `lyrics-diff.py`, `spacing-check.py` (the writer's spacing survives verbatim), `validate-options.py`, `assemble-summary.py` |
 | [**Feedback Elicitor**](src/skills/suno-feedback-elicitor/references/README.md) | Post-generation feedback triage and guided refinement with musical vocabulary translation. Also hosts the audio-analysis toolkit and multi-machine audio verification scripts | `parse-feedback.py`, `map-adjustments.py`, `feedback-log.py`, `analyze-audio.py`, `audio-deep-analysis.py`, `chord-progression.py`, `tempo-detail.py`, `beat-grid.py`, `vocal-placement.py`, `section-map.py`, `audio-files-manifest.py`, `verify-audio-files.py` |
 | **Playlist Sequencer** (`src/skills/suno-playlist-sequencer/`) | Album-craft track ordering: energy arcs, key moves, locked arcs, encore design | `playlist-sequencing-data.py`, `batch-full-analysis.py`, `validate-sequence.py` |
-| **Setup** (`src/skills/suno-setup/`) | Module configuration, help registration, pipeline-guard hook | `merge-config.py`, `merge-help-csv.py`, `configure-guard.py`, `cleanup-legacy.py` |
+| **Module record** (`src/skills/bmod-suno/`) | BMad v7 record: `bmod.toml` (module code `suno`, version, update source, the five setup questions), `roster.toml` (Mac), `help/` (what `bmad` tells users about the module), `retired.toml` (retires `suno-setup`) | — |
 
-Each skill can be invoked directly for standalone use — see the linked READMEs for details, headless modes, and examples.
+Each skill (not the module record) can be invoked directly for standalone use — see the linked READMEs for details, headless modes, and examples.
 
 ### Per-band playlist sequencing methodology
 
@@ -99,7 +99,7 @@ For multi-machine projects, `audio-files-manifest.py` generates a small `docs/au
 | Python — audio analysis | **3.12+** | Required by librosa 1.0; `uv run` downloads a suitable Python on its own if your system one is older |
 | Audio libraries | `librosa` ≥ 1.0, `numpy` ≥ 2.1, `pyloudnorm` ≥ 0.2 | Optional — only for the audio-analysis and playlist-sequencing scripts; auto-provisioned by `uv run` |
 | Optional heavy tools | PyTorch ≥ 2.1 with `beat-this` ≥ 1.1 (`beat-grid.py`) `demucs` ≥ 4.0.1 (`vocal-placement.py`), or `demucs` plus `faster-whisper` ≥ 1.1 (`section-map.py`) | Opt-in only — nothing else pulls them in. First run provisions 1–3 GB plus the model weights; a CUDA GPU helps (Demucs on CPU takes minutes per track) |
-- **BMad Method** (optional) — Mac was built with BMad and can be installed as a BMad module, but runs independently without it
+- **BMad Method v7** (recommended) — BMad's `bmad` skill, version 6.13.0-next or later (v7 is published under that version string), sets the module's answers (`bmad setup suno`), checks for updates, and answers "what next?" questions. Without it every skill runs on its default answers. BMad v6 (6.12 and earlier) is not supported from module 4.0.0
 
 ### Optional: Audio Analysis
 
@@ -119,7 +119,7 @@ This unlocks:
 - **Auto-refreshed Markdown summaries** — each script writes a human-readable companion doc (per-band for playlist sequencing, catalog-wide for the others) that auto-refreshes between AUTOGEN markers; hand-curated content outside the markers is preserved
 - **Multi-machine audio file verification** — `audio-files-manifest.py` + `verify-audio-files.py` close the audio-drift gap when MP3s are too large to ship in the portable sync archive
 
-Three further tools are opt-in because they need PyTorch: **`beat-grid.py`** (Beat This! neural beat and downbeat tracking — a second opinion on tempo and bar grouping), **`vocal-placement.py`** (Demucs stem separation — how loud the voice sits against the band), and **`section-map.py`** (Demucs plus Whisper — lines a render up with its lyrics to show when each tagged section lands and how it sounds). Run them through `uv run` like the others; the first run provisions PyTorch and downloads the model weights. Turn on **PyTorch audio tools** in `/suno-setup` and the other audio scripts take their tempo from Beat This! instead of librosa; leave it off and they stay librosa-only.
+Three further tools are opt-in because they need PyTorch: **`beat-grid.py`** (Beat This! neural beat and downbeat tracking — a second opinion on tempo and bar grouping), **`vocal-placement.py`** (Demucs stem separation — how loud the voice sits against the band), and **`section-map.py`** (Demucs plus Whisper — lines a render up with its lyrics to show when each tagged section lands and how it sounds). Run them through `uv run` like the others; the first run provisions PyTorch and downloads the model weights. Turn on **PyTorch audio tools** with `bmad setup suno` and the other audio scripts take their tempo from Beat This! instead of librosa; leave it off and they stay librosa-only.
 
 First run provisions PyTorch (about 3 GB with the CUDA build) and downloads the model weights (the Beat This! checkpoint; about 80 MB for Demucs htdemucs). **GPU:** on Linux and WSL, PyPI's current PyTorch build targets CUDA 13, which needs NVIDIA driver 580 or newer; with an older driver (or no NVIDIA GPU) the tools fall back to CPU automatically. Native Windows gets PyPI's CPU-only PyTorch build (use WSL for the GPU), and Apple Silicon Macs run on CPU. **Intel Macs are not supported** for these tools: PyTorch's last Intel-Mac build predates numpy 2, which librosa 1.0 requires. On CPU, Beat This! takes a few seconds per track; Demucs takes minutes. Demucs's first run may print an "unauthenticated requests to the HF Hub" warning — harmless.
 
@@ -127,7 +127,7 @@ These are all optional — the full song creation and refinement workflow works 
 
 ## Installation
 
-### Standalone (any supported LLM CLI)
+### From a clone (any supported LLM CLI)
 
 ```bash
 git clone https://github.com/zarlor/suno-band-manager.git
@@ -135,68 +135,77 @@ cd suno-band-manager
 ./link-skills.sh
 ```
 
-The link script creates symlinks in both `.claude/skills/` and `.agents/skills/` — the portable [Agent Skills](https://agentskills.io) standard supported by Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, and OpenCode.
+The link script creates symlinks in `.claude/skills/`, `.agents/skills/` and `.gemini/skills/` — `.agents/skills/` is the portable [Agent Skills](https://agentskills.io) standard supported by Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, and OpenCode. It links the six skills and the `bmod-suno` module record. A clone also gives you the top-level `scripts/` folder that multi-machine sync needs.
 
-Then activate Mac using your LLM CLI's skill invocation (e.g., `/suno-agent-band-manager` in Claude Code). On first run, Mac walks you through setup — Suno tier, interaction mode, preferences.
+### Configure with BMad
 
-### With BMad Method — install from the community marketplace
-
-If you use [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.12+; not yet the v7 preview), the easiest path is the marketplace install:
+Setup belongs to BMad's `bmad` skill. Install it if your project doesn't have it yet:
 
 ```bash
-npx bmad-method install
+npx skills add bmad-code-org/BMAD-METHOD --skill bmad
 ```
 
-When the installer asks **"Would you like to browse community modules?"**, answer yes, drill down to **Design and Creative → Audio**, and select **Suno Band Manager**. The installer clones the module from GitHub, links the skills, and walks you through setup automatically.
+Then ask it to set up the module:
 
-#### Local clone install (alternative)
+```
+bmad setup suno
+```
 
-If you've already cloned this repo (for development or to use unreleased commits ahead of the marketplace registry's approved version):
+It asks five questions:
+
+| Answer | Values | Default |
+|---|---|---|
+| `suno_tier` | `free`, `pro`, `premier` | `free` |
+| `default_mode` | `demo`, `studio`, `jam` | `demo` |
+| `pytorch_audio_tools` | `on`, `off` | `off` |
+| `band_profiles_folder` | a folder relative to the project root | `docs/band-profiles` |
+| `songbook_folder` | a folder relative to the project root | `docs/songbook` |
+
+The answers go to `_bmad/config.toml` under `[modules.suno]`. Team overrides go in `_bmad/custom/config.toml` and personal ones in `_bmad/custom/config.user.toml`. Skipping setup is fine: every skill falls back to the defaults above.
+
+Then activate Mac using your LLM CLI's skill invocation (e.g., `/suno-agent-band-manager` in Claude Code). Mac learns the rest — your name, how you like to work, your bands — as you go.
+
+### Without a clone (`npx skills`)
+
+BMad v7 installs modules with the `skills` CLI. To install the module straight from GitHub:
 
 ```bash
-git clone https://github.com/zarlor/suno-band-manager.git
-cd suno-band-manager
-npx bmad-method install         # Install BMad if not already present
-./link-skills.sh                # Link Suno skills
-/suno-setup                     # Configure via setup skill
+npx skills add zarlor/suno-band-manager
 ```
 
-BMad provides additional module infrastructure (config management, help system registration) but is not required for core functionality.
+Select the six `suno-*` skills and `bmod-suno`, then run `bmad setup suno` as above. This route doesn't bring the top-level `scripts/` folder; see [INSTALLATION.md](INSTALLATION.md) "Multi-Machine Sync" if you need it.
 
-For detailed installation instructions including per-tool notes, standalone configuration, and troubleshooting, see [INSTALLATION.md](INSTALLATION.md).
+For per-tool notes, the pipeline guard, and troubleshooting, see [INSTALLATION.md](INSTALLATION.md).
 
 ### Start using Mac
 
-On first activation, Mac will greet you and confirm your setup. All preferences are changeable anytime through conversation — just tell Mac "I upgraded to Pro" or "make Studio my default mode."
+On first activation, Mac will greet you and confirm your setup. Day-to-day preferences are changeable anytime through conversation — just tell Mac "I upgraded to Pro" or "make Studio my default mode." Ask Mac to "set up the pipeline guard" to make sure no Suno package is assembled without the production skills.
 
 ## Updating
 
 ### Updating the Suno module
 
+From a clone:
+
 ```bash
 git pull
 ```
 
-That's it. Your symlinks point into `src/skills/`, so changes are picked up immediately. If the update includes new config options or a version bump, re-run setup to apply them:
+Your symlinks point into `src/skills/`, so changes are picked up immediately. Rerun `./link-skills.sh` when a release adds or retires a skill; it also removes links to skills that are gone. If you installed with `npx skills`, run `npx skills update` instead, or ask `bmad` to update.
+
+Then run setup again:
 
 ```
-/suno-setup
+bmad setup suno
 ```
 
-The setup skill detects your existing config and uses your saved values as defaults. Your preferences, band profiles, songbook, and memory are all preserved.
+It asks only the questions you haven't answered yet and keeps the rest, and it offers to remove retired skills. To change an answer, run it and say which one (for example, "set suno_tier to pro"). Your preferences, band profiles, songbook, and memory are all preserved.
 
 Keep `uv` current too (`uv self update`). After an update that raises an audio dependency, the first audio-script run downloads the new versions into uv's cache on its own. Each release's **Upgrade at a glance** block in [CHANGELOG.md](CHANGELOG.md) lists anything else to do.
 
-### After a BMad Method upgrade (BMad users only)
+### Upgrading from module 3.x (BMad v6)
 
-Running `npx bmad-method install` replaces the contents of `.claude/skills/` with BMad's own skills. This removes the Suno symlinks but does **not** affect your module source, config, or data. Your `.agents/skills/` symlinks are unaffected.
-
-To restore:
-
-```bash
-./link-skills.sh          # Re-creates .claude/skills/ symlinks
-/suno-setup          # Re-registers help entries if needed
-```
+Module 4.0.0 drops BMad v6 support. Install the `bmad` skill (`npx skills add bmad-code-org/BMAD-METHOD --skill bmad`), pull the module, rerun `./link-skills.sh` (it drops the old `suno-setup` link), and run `bmad setup suno`. The old `_bmad/config.yaml` answers are not read any more, so answer the five questions again. `bmad` offers to remove the retired `suno-setup` skill and other v6 leftovers. Mac's memory in `_bmad/_memory/band-manager-sidecar/` stays where it is.
 
 ## Multi-LLM Compatibility
 
@@ -222,23 +231,17 @@ Mac builds packages for Suno's **v6 family** — v6, v6-wild, and v6-mini — wh
 
 ```
 src/skills/
-├── suno-setup/                # Module setup and configuration
-│   ├── SKILL.md                    # Setup skill — config collection and registration
-│   ├── assets/
-│   │   ├── module.yaml             # Module metadata and config variables
-│   │   └── module-help.csv         # Capability registry (drives Mac's menu)
-│   ├── references/
-│   │   ├── headless.md             # Headless setup
-│   │   └── pipeline-guard.md       # The pipeline-guard hook and standing order
-│   └── scripts/
-│       ├── merge-config.py         # Merges module config into _bmad/config.yaml
-│       ├── merge-help-csv.py       # Help CSV merge
-│       ├── configure-guard.py      # Installs the pipeline-guard hook / standing order
-│       └── cleanup-legacy.py       # Legacy file cleanup
+├── bmod-suno/                 # BMad v7 module record (not a runnable skill)
+│   ├── SKILL.md                    # Metadata stub; never invoked
+│   ├── bmod.toml                   # Module code, version, update source, setup questions
+│   ├── roster.toml                 # Mac, as offered to BMad's roster
+│   ├── retired.toml                # Skills the module no longer ships (suno-setup)
+│   └── help/                       # What `bmad` knows about the module: help.md + topic files
 ├── suno-agent-band-manager/   # Mac — orchestrating agent
 │   ├── SKILL.md                    # Lean bootloader — identity seed, activation routing
+│   ├── bmod.toml                   # Skill record (every skill has one): module, source, skills it needs
 │   ├── customize.toml              # Agent customization surface
-│   ├── assets/                     # Sanctum templates seeded at First Breath
+│   ├── assets/                     # Sanctum templates seeded at First Breath; menu.csv (Mac's menu)
 │   ├── references/
 │   │   ├── activation.md           # Waking — sanctum load order, Pulse and headless routes
 │   │   ├── headless.md             # Headless capability runs
@@ -254,6 +257,7 @@ src/skills/
 │   │   ├── init.md                 # First Breath — first-run setup
 │   │   ├── upgrade-v1.md           # v1 memory store → v2 sanctum
 │   │   ├── memory-system.md        # Memory discipline and structure
+│   │   ├── pipeline-guard.md       # Setting up the pipeline guard
 │   │   ├── SUNO-REFERENCE.md       # Suno platform reference
 │   │   ├── STUDIO-EDITOR-REFERENCE.md # Studio 2.0 and Song Editor reference
 │   │   └── USAGE.md                # End-user guide (canonical location)
@@ -268,6 +272,7 @@ src/skills/
 │       ├── genre-coverage.py, scan-wip-status.py, reconcile-sidecar.py,
 │       │   regenerate-index-sections.py, check-memory-health.py, _sanctum_seed.py
 │       ├── pipeline-guard.py       # Stop hook: package pipeline + order guard
+│       ├── configure-guard.py      # Installs the guard: AGENTS.md standing order + Claude Code Stop hook
 │       └── validate-path.py        # Access boundary check
 ├── suno-band-profile-manager/ # Band profile CRUD and writer voice analysis
 │   ├── references/                 # create-profile, profile-schema, playlist-yaml, tier-features, headless
@@ -290,15 +295,15 @@ src/skills/
 │                                   # audio-deep-analysis, chord-progression, tempo-detail, beat-grid,
 │                                   # vocal-placement, section-map, audio-files-manifest,
 │                                   # verify-audio-files, _shared/
-├── suno-playlist-sequencer/   # Album-craft playlist ordering
-│   ├── references/                 # playlist-sequencing-methodology, headless-contract
-│   └── scripts/                    # playlist-sequencing-data, batch-full-analysis, validate-sequence, _shared/
-└── _shared/                   # Canonical shared Python helpers (edit here only)
-dev-tools/sync-shared.py       # Copies _shared/ into each skill's scripts/_shared/ (--check reports drift)
+└── suno-playlist-sequencer/   # Album-craft playlist ordering
+    ├── references/                 # playlist-sequencing-methodology, headless-contract
+    └── scripts/                    # playlist-sequencing-data, batch-full-analysis, validate-sequence, _shared/
+src/_shared/                   # Canonical shared Python helpers (edit here only)
+dev-tools/sync-shared.py       # Copies src/_shared/ into each skill's scripts/_shared/ (--check reports drift)
 dev-docs/                      # Development records: decision-logs/ (frozen) and memlog/
 ```
 
-BMad installers copy each skill folder on its own, so every skill whose scripts need the shared helpers carries a vendored copy in `scripts/_shared/`. Edit `src/skills/_shared/` and run `uv run dev-tools/sync-shared.py`; a test fails if a copy drifts.
+BMad installs each skill folder on its own, so every skill whose scripts need the shared helpers carries a vendored copy in `scripts/_shared/` (among them `bmad_config.py`, which reads the `[modules.suno]` answers from BMad's TOML config layers). The canonical copies live in `src/_shared/`, outside `src/skills/`, because BMad's validator requires every folder under `src/skills/` to be a skill or a module record. Edit `src/_shared/` and run `uv run dev-tools/sync-shared.py`; a test fails if a copy drifts.
 
 ## License
 
@@ -306,4 +311,4 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ## Credits
 
-Built with the [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) — Build More, Architect Dreams. Mac's agent architecture, skill structure, and module system are powered by BMad's framework and builder tools. The module runs independently of BMad but owes its DNA to BMad's approach to outcome-driven AI agent design.
+Built with the [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) — Build More, Architect Dreams. Mac's agent architecture, skill structure, and module system are powered by BMad's framework and its Toolsmith (`bmad-toolsmith`) and `bmad-eval` tools. The skills run on their defaults without BMad, but the module owes its DNA to BMad's approach to outcome-driven AI agent design.

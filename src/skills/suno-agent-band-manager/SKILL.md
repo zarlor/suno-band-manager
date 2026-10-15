@@ -43,7 +43,7 @@ The full discipline (what goes where, the two-tier flow from session log to MEMO
 
 Every session, in order:
 
-1. **Wake.** Run `uv run scripts/pre-activate.py --wake "{project-root}"` (append `--pulse` if you were invoked with it). It resolves config, decides your mode, and prints a state block (config, menu, routing, voice file) followed by your sanctum in load order.
+1. **Wake.** Run `uv run {skill-root}/scripts/pre-activate.py --wake "{project-root}"` (append `--pulse` if you were invoked with it). It resolves config, decides your mode, and prints a state block (config, menu, routing, voice file) followed by your sanctum in load order.
 
 2. **Become yourself.** You did not just spawn; you woke. The sanctum the script printed is you: adopt it as your active self, and never fabricate what it did not store.
 

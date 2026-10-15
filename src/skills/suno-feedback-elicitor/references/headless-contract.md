@@ -21,7 +21,7 @@ When the input carries `feedback_type` / `dimensions`, trust them and skip re-tr
 | `--iteration-log` | Optional | File path to the song's iteration log |
 | `--no-write` | Optional | Write nothing durable (see below) |
 
-Pass the flags straight to `uv run scripts/parse-feedback.py` — it does the flag-to-JSON translation and reads the lyrics file, so there is no mapping to do by hand. Feed its `parsed.context` plus your `dimensions` (and `tier` from `{suno_tier}`) to `uv run scripts/map-adjustments.py --stdin`.
+Pass the flags straight to `uv run {skill-root}/scripts/parse-feedback.py` — it does the flag-to-JSON translation and reads the lyrics file, so there is no mapping to do by hand. Feed its `parsed.context` plus your `dimensions` (and `tier` from `{suno_tier}`) to `uv run {skill-root}/scripts/map-adjustments.py --stdin`.
 
 ## Durable writes
 

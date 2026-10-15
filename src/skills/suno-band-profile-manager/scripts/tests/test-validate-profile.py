@@ -503,8 +503,8 @@ def test_cli_reads_songbook_folder_from_config(tmp_path):
     moved.parent.mkdir()
     (tmp_path / "docs" / "songbook").rename(moved)
     (tmp_path / "_bmad").mkdir()
-    (tmp_path / "_bmad" / "config.yaml").write_text(
-        "suno:\n  songbook_folder: '{project-root}/music/songbook'\n")
+    (tmp_path / "_bmad" / "config.toml").write_text(
+        "[modules.suno]\nsongbook_folder = 'music/songbook'\n")
     script = Path(__file__).parent.parent / "validate-profile.py"
     proc = subprocess.run([sys.executable, str(script), str(profile_path),
                            "--project-root", str(tmp_path)], capture_output=True, text=True)

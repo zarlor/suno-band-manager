@@ -40,3 +40,11 @@ Resolved the five clustered opportunities from the 0618 report. All edits scoped
 
 SKILL.md grew 152→169 lines; above the ~130 soft ceiling but justified for a multi-section installer with per-mode branch narration (report classifies it as correctly inline). No items skipped — every listed opportunity was resolved or better.
 
+## 2026-10-15 — Retired in the BMad v7 migration
+
+BMad v7 replaced the v6 installer and BMad Builder, and setup became BMad's job. The module is now a v7 bmod, and this skill is deleted. Retired in `src/skills/bmod-suno/retired.toml`; `bmad setup` offers to delete any installed copy.
+
+- **Setup and reconfigure.** Replaced by `bmad setup suno`, run by BMad's `bmad` skill (`npx skills add bmad-code-org/BMAD-METHOD --skill bmad` if missing). The five questions (`suno_tier`, `default_mode`, `pytorch_audio_tools`, `band_profiles_folder`, `songbook_folder`) now live in the module record `src/skills/bmod-suno/bmod.toml`. Answers go to `_bmad/config.toml` under `[modules.suno]`, with team and personal overrides in `_bmad/custom/config.toml` and `_bmad/custom/config.user.toml`.
+- **Gone with it.** `assets/module.yaml` (now `bmod.toml`), `assets/module-help.csv` (help moved to `bmod-suno/help/`, Mac's menu to `suno-agent-band-manager/assets/menu.csv`), `merge-config.py`, `merge-help-csv.py` and `cleanup-legacy.py` (bmad's setup and v6 clean-up do this work), and the headless contract.
+- **Pipeline guard.** `configure-guard.py` and `references/pipeline-guard.md` moved to `suno-agent-band-manager`; the owner asks Mac to "set up the pipeline guard". The hook script is unchanged (`suno-agent-band-manager/scripts/pipeline-guard.py`, run with `python3`).
+- **Version floor.** Module 4.0.0 requires the `bmad` skill at 6.13.0-next or later (v7); v6.12 installs are no longer supported.

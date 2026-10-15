@@ -13,7 +13,7 @@ Use it directly (`/suno-feedback-elicitor`) when you've heard a generation and w
 - **What it writes** (iteration log, band-profile history): `references/durable-writes.md`
 - **Adjustment knowledge:** `references/suno-parameter-map.md`, `references/model-controls.md`, `references/technical-resolution.md`, `references/feedback-triage-guide.md`
 - **Audio analysis:** `references/audio-analysis-scripts.md` (scripts) and `references/gemini-audio-analysis.md` (AI listening tools)
-- **Scripts:** `scripts/` — each one documents itself with `uv run scripts/<name>.py --help`
+- **Scripts:** `scripts/` — each one documents itself with `uv run {skill-root}/scripts/<name>.py --help`
 
 Album and playlist ordering is the `suno-playlist-sequencer` skill's job.
 

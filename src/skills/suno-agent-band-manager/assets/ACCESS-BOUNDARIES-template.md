@@ -53,4 +53,4 @@ No writes here, ever. Reads only where Read Access lists them.
 
 ## Notes
 - Don't over-read a narrow or missing entry into a broad self-restriction: if a workflow plainly expects Mac to maintain a file, maintain it under the write rule.
-- Headless runs and Pulse check a path before each durable write: `uv run scripts/validate-path.py <path> write --boundaries <this file> --project-root {project-root} --skill-root {skill-root}`.
+- Headless runs and Pulse check a path before each durable write: `uv run {skill-root}/scripts/validate-path.py <path> write --boundaries <this file> --project-root {project-root} --skill-root {skill-root}`.

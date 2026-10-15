@@ -3,21 +3,21 @@
 # requires-python = ">=3.10"
 # dependencies = ["pytest>=7.0"]
 # ///
-"""Every skill's scripts/_shared/ must be a byte-identical copy of src/skills/_shared/.
+"""Every skill's scripts/_shared/ must be a byte-identical copy of src/_shared/.
 
 Installers copy skill folders one at a time, so each skill vendors the helpers it
-imports. Edit only src/skills/_shared/, then run `uv run dev-tools/sync-shared.py`.
+imports. Edit only src/_shared/, then run `uv run dev-tools/sync-shared.py`.
 """
 
 from pathlib import Path
 
 SHARED = Path(__file__).resolve().parent.parent
-SKILLS = SHARED.parent
+SKILLS = SHARED.parent / "skills"
 CANON = sorted(SHARED.glob("*.py"))
 
 
 def test_canon_exists():
-    assert CANON, "no helpers found in src/skills/_shared/"
+    assert CANON, "no helpers found in src/_shared/"
 
 
 def test_every_importing_skill_vendors_the_helpers():

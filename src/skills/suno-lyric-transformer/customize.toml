@@ -34,5 +34,5 @@ persistent_facts = []
 on_complete = ""
 
 # Output paths are not set here: songbook entries and their decision logs land
-# where the module config says (`songbook_folder` in the suno: section of
-# {project-root}/_bmad/config.yaml).
+# where the module config says (`songbook_folder` under [modules.suno] in
+# {project-root}/_bmad/config.toml, set by `bmad setup suno`).

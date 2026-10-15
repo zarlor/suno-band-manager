@@ -360,8 +360,8 @@ def migrate(project_root: Path, sanctum_path: Path, out_dir: Path, skill_path: P
             (out_dir / shard_name).write_text(shard_text, encoding="utf-8")
             produced.append(shard_name)
 
-    # --- CAPABILITIES.md (built-in roster from module-help.csv) ---
-    csv_path = _seed.find_module_csv(project_root, skill_path)
+    # --- CAPABILITIES.md (built-in roster from assets/menu.csv) ---
+    csv_path = _seed.find_menu_csv(skill_path)
     roster = _seed.menu_rows(csv_path, [_seed.MODULE_CODE]) if csv_path else []
     (out_dir / "CAPABILITIES.md").write_text(_seed.generate_capabilities_md(roster), encoding="utf-8")
     produced.append("CAPABILITIES.md")

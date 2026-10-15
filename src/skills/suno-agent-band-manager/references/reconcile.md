@@ -31,7 +31,7 @@ Reconciliation is triggered after these events:
 | Song status (WIP/published) | Songbook entry | Voice context (WIP sections, catalog), sanctum MEMORY.md, per-band playlist YAML, WIP files (marked COMPLETED, never deleted) |
 | Playlist order & track numbers | **Per-band playlist YAML** (`docs/{band-slug}-playlist.yaml`) | Playlist ordering doc (derived narrative companion), voice context (catalog section), songbook placement notes, sanctum MEMORY.md position references, script-generated companion at `docs/{band-slug}-playlist-sequencing.md` |
 | Band profile (genre, vocal, name) | Band profile YAML (`docs/band-profiles/*.yaml`) | Voice context, songbook entries referencing profile values, sanctum MEMORY.md. The band profile YAML carries no `playlist:` block — playlist data lives in the per-band playlist YAML (the suno-band-profile-manager skill's `references/playlist-yaml.md`). |
-| Tier/preferences | Sanctum MEMORY.md / config (`{project-root}/_bmad/config*.yaml`) | Voice context (Suno Setup section), band profile tier field |
+| Tier/preferences | Sanctum MEMORY.md / config (`modules.suno` in `{project-root}/_bmad/config.toml` and its `custom/` overrides) | Voice context (Suno Setup section), band profile tier field |
 | Voice file location | The file itself (`docs/voice-context-*.md`) | Pre-activate expectations, sanctum INDEX.md (map row) |
 
 ## Process
@@ -49,12 +49,12 @@ Determine what changed and what the old vs. new values are. The trigger context 
 Run the search script with the old value (and the new one, for a replacement preview):
 
 ```
-uv run scripts/find-stale-refs.py "{project-root}" --old "<old value>" --new "<new value>" --format json
+uv run {skill-root}/scripts/find-stale-refs.py "{project-root}" --old "<old value>" --new "<new value>" --format json
 ```
 
 It searches the defined set — songbook entries, band profiles, every `docs/*-playlist.yaml`, playlist ordering and sequencing docs, voice files and every file in their Companion Files tables, `docs/wip-*.md`, and the sanctum's `MEMORY.md`, `INDEX.md`, `chronology.md` and `patterns.md` — and returns each hit with file, line, context and match kind (`exact`, `casefold`, `subtitle`). Add `--partial` to also match the first significant word of a multi-word value, and `--include-sessions` to search the raw `sessions/` logs (usually history, not drift). It also lists `docs/...` references whose target file is gone (`missing_targets`). Sequencing docs refresh themselves between their AUTOGEN markers — don't hand-edit inside them.
 
-Then run `uv run scripts/validate-sidecar.py "{project-root}" --format json` for the parity checks: `playlist_drift` (playlist and songbook name different songs), `voice_catalog_drift` (a stale published count), `companion_missing` (a Companion Files row pointing at nothing), `pending_drift`, and `cross_reference_missing`.
+Then run `uv run {skill-root}/scripts/validate-sidecar.py "{project-root}" --format json` for the parity checks: `playlist_drift` (playlist and songbook name different songs), `voice_catalog_drift` (a stale published count), `companion_missing` (a Companion Files row pointing at nothing), `pending_drift`, and `cross_reference_missing`.
 
 Your part is the judgment: which hits are intentional history ("formerly known as", a dated session note) and which are drift, and whether any other count-bearing description ("34 tracks", "577 lines") has gone stale because its content changed.
 
@@ -125,7 +125,7 @@ exclude styles, settings, and the full generation log.
 
 When building or updating the "Pending / Parked Work" section of the sanctum `MEMORY.md`:
 
-1. **Run `uv run scripts/scan-wip-status.py "{project-root}" --format json`** — the marker scan. It reports each `docs/wip-*.md` file as `status: completed | active`, with `completed_as` / `songbook_ref` for resolved ones and a `correlation_warning` (with `correlated_by: source_wip | title`) for any active WIP that looks like the source of a published song. Read the script output rather than the files.
+1. **Run `uv run {skill-root}/scripts/scan-wip-status.py "{project-root}" --format json`** — the marker scan. It reports each `docs/wip-*.md` file as `status: completed | active`, with `completed_as` / `songbook_ref` for resolved ones and a `correlation_warning` (with `correlated_by: source_wip | title`) for any active WIP that looks like the source of a published song. Read the script output rather than the files.
 2. **Skip files reported `status: completed`** — they are resolved, not pending. Partition the script output: `active` (with no warning) → pending; `completed` → resolved.
 3. **When including resolved WIPs in the index for historical reference**, put them under a separate "Resolved WIP fragments (historical record only — not active work)" subsection, clearly delineated from active pending/parked work, with a pointer to the songbook entry they became (`songbook_ref` from the script).
 

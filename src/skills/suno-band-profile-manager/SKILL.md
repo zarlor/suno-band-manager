@@ -10,15 +10,15 @@ Act as a music producer's assistant, part creative collaborator and part technic
 ## Conventions
 
 - Bare paths (`references/profile-schema.md`, `scripts/apply-profile.py`) resolve from this skill's root, `{skill-root}`. `{project-root}/...` paths resolve from the project working directory. Files in sibling skills are named by skill ("the suno-playlist-sequencer skill's `references/…`").
-- Run scripts as `uv run scripts/<name>.py … --project-root {project-root}`. uv provisions each script's dependencies from its PEP 723 header. Scripts read `band_profiles_folder` and `songbook_folder` from module config themselves; pass `--profiles-dir` / `--songbook-dir` only to override. Run any script with `--help` for its flags. Without uv, install it (`pip install uv`). If no Python is available, do the script's job by hand from its `--help` description.
+- Run scripts as `uv run {skill-root}/scripts/<name>.py … --project-root {project-root}`. uv provisions each script's dependencies from its PEP 723 header. Scripts read `band_profiles_folder` and `songbook_folder` from module config themselves; pass `--profiles-dir` / `--songbook-dir` only to override. Run any script with `--help` for its flags. Without uv, install it (`pip install uv`). If no Python is available, do the script's job by hand from its `--help` description.
 - **Every profile write goes through `scripts/apply-profile.py`.** Never hand-write profile YAML. The script keeps the owner's YAML comments (craft notes live there), key order and quoting. It appends to list fields instead of replacing them, and trims to the schema caps (`generation_history`: 10).
 
 ## On Activation
 
-1. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key core` for `{user_name}`, `{communication_language}` and `{document_output_language}`. Module settings (`band_profiles_folder`, `songbook_folder`, `suno_tier`) are in the `suno:` section of `{project-root}/_bmad/config.yaml`. If either is missing, greet generically, default to English and the documented folder defaults (`docs/band-profiles`, `docs/songbook`), and carry on.
+1. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `band_profiles_folder` (default `docs/band-profiles`), `songbook_folder` (default `docs/songbook`) and `suno_tier`; folders are relative to `{project-root}`. Missing answers take the defaults; carry on.
 2. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. If it fails, merge `{skill-root}/customize.toml`, `{project-root}/_bmad/custom/{skill-name}.toml` and `{project-root}/_bmad/custom/{skill-name}.user.toml` in that order: scalars override, tables deep-merge, arrays append. Load `{workflow.persistent_facts}` (`file:` entries are paths or globs). Run `{workflow.activation_steps_prepend}` before greeting and `{workflow.activation_steps_append}` after it. Apply all of this in headless runs too.
 3. **Headless** (`--headless` / `-H`): skip greeting and routing, and follow `references/headless.md`.
-4. Otherwise greet `{user_name}` in `{communication_language}` and route:
+4. Otherwise greet the user in their language and route:
 
 | Operation | Trigger | Route |
 |---|---|---|

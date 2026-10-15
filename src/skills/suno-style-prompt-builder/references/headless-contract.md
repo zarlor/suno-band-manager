@@ -44,7 +44,7 @@ Headless skips the reference-decomposition confirmation; record the skip in `dec
 - **Audio Influence follows its slot:** a Persona runs 15–25%, a Voice 35–95%. A value from the wrong range is an error.
 - **Every exclude defends against drift from the current prompt's own descriptors.** Give each one a rationale naming the descriptor it defends against; drop any that defend against nothing.
 - **Wild card:** see SKILL.md Step 4. It's on by default for a build.
-- **Validate before emitting,** in every mode: pipe the package JSON to `uv run scripts/validate-prompt.py --stdin` (it checks the wild card too), fix what it flags, re-run, and put the report in `validation`. If the script can't run, do its checks by hand (see SKILL.md Step 5) and say so in `validation`.
+- **Validate before emitting,** in every mode: pipe the package JSON to `uv run {skill-root}/scripts/validate-prompt.py --stdin` (it checks the wild card too), fix what it flags, re-run, and put the report in `validation`. If the script can't run, do its checks by hand (see SKILL.md Step 5) and say so in `validation`.
 - **Capture, don't drop:** lyric ideas, structure preferences or mix notes in the input go in `handoff_notes`.
 
 ## Success output

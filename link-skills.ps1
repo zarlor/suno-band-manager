@@ -25,8 +25,20 @@ foreach ($dir in $SkillDirs) {
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
 }
 
+# Drop links whose skill is gone (a retired skill such as suno-setup).
+foreach ($dir in $SkillDirs) {
+    Get-ChildItem -Path $dir -Force -ErrorAction SilentlyContinue |
+        Where-Object { ($_.Name -like 'suno-*' -or $_.Name -eq 'bmod-suno') -and $_.LinkType -and -not (Test-Path $_.Target) } |
+        ForEach-Object {
+            Remove-Item -Path $_.FullName -Force
+            Write-Host "  removed stale: $($_.FullName)"
+        }
+}
+
 $linked = 0
-$skillFolders = Get-ChildItem -Path 'src/skills' -Directory -Filter 'suno-*' -ErrorAction Stop
+# The skills plus bmod-suno, the module record `bmad setup` reads.
+$skillFolders = @(Get-ChildItem -Path 'src/skills' -Directory -Filter 'suno-*' -ErrorAction Stop) +
+    @(Get-ChildItem -Path 'src/skills' -Directory -Filter 'bmod-suno' -ErrorAction Stop)
 
 foreach ($skill in $skillFolders) {
     $name = $skill.Name
@@ -69,5 +81,5 @@ if ($linked -eq 0) {
         Write-Host "  $dir/"
     }
     Write-Host ""
-    Write-Host "Run /suno-setup to complete configuration (or configure manually -- see INSTALLATION.md)."
+    Write-Host "Ask the bmad skill to 'setup suno' to complete configuration (see INSTALLATION.md)."
 }

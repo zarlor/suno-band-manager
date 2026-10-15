@@ -2,9 +2,9 @@
 
 Mac follows the [Agent Skills](https://agentskills.io) open standard. The same SKILL.md files work across multiple LLM CLI tools. Choose the installation path that matches your setup.
 
-> **Requirement: `uv`.** The module's Python scripts run via `uv run`, which reads each script's [PEP 723](https://peps.python.org/pep-0723/) inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`) — no virtualenv or manual `pip install` to manage. Install it once: `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux/WSL) or `pip install uv`. Dependency-free scripts can fall back to plain `python3` (3.11+) if `uv` is unavailable. (BMad v6.9.0 flags this ahead of the v7 standardization on `uv run`.)
+> **Requirement: `uv`.** The module's Python scripts run via `uv run`, which reads each script's [PEP 723](https://peps.python.org/pep-0723/) inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`) — no virtualenv or manual `pip install` to manage. Install it once: `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux/WSL) or `pip install uv`. Dependency-free scripts can fall back to plain `python3` (3.11+) if `uv` is unavailable. (BMad v7 runs its own skill scripts with `uv run` too.)
 
-## Standalone Installation (Recommended)
+## Installation from a Clone (Recommended)
 
 Works with any LLM CLI that supports Agent Skills: Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, OpenCode.
 
@@ -27,70 +27,94 @@ cd bmad-suno-band-manager
 ./link-skills.ps1
 ```
 
-This creates symlinks in both `.claude/skills/` and `.agents/skills/`. The `.agents/skills/` path is the portable standard scanned by most LLM CLI tools.
+This links the six Suno skills and `bmod-suno`, the module record BMad's setup reads, into `.claude/skills/`, `.agents/skills/` and `.gemini/skills/`. The `.agents/skills/` path is the portable standard scanned by most LLM CLI tools. The script also removes links to skills that no longer exist (such as the retired `suno-setup`).
 
 > **Windows note:** Symlinks require either Developer Mode (Settings → Update & Security → For developers → Developer Mode) or running PowerShell as Administrator. The script will print a clear error if neither is enabled.
 
-### 3. First-run setup
+### 3. Configure with BMad
 
-Activate Mac using your tool's skill invocation. On first run, Mac walks you through setup interactively — Suno tier, interaction mode, preferences. No manual config files needed.
+Install BMad's `bmad` skill if the project doesn't have it (BMad v7; the skill's version string is 6.13.0-next or later):
+
+```bash
+npx skills add bmad-code-org/BMAD-METHOD --skill bmad
+```
+
+Then ask it, in your LLM CLI:
+
+```
+bmad setup suno
+```
+
+It asks the five questions described under [Configuration](#configuration) and writes the answers to `_bmad/config.toml`. You can skip this step: every skill runs on the default answers until you set them.
+
+### 4. First run
+
+Activate Mac using your tool's skill invocation. Mac doesn't open with a form; he learns your name, how you like to work and your bands as you go.
 
 **Claude Code:**
 ```
-/bmad-suno-agent-band-manager
+/suno-agent-band-manager
 ```
 
 **Gemini CLI:**
-Activate the `bmad-suno-agent-band-manager` skill via Gemini's skill activation flow.
+Activate the `suno-agent-band-manager` skill via Gemini's skill activation flow.
 
 **Other tools:**
 Skills in `.agents/skills/` are auto-discovered at session start. Invoke by name or description match.
 
-### 4. Start creating
+### 5. Start creating
 
 Tell Mac what kind of song you want. See the [Usage Guide](src/skills/suno-agent-band-manager/references/USAGE.md) for all features.
 
 ---
 
-## Installation with BMad Method
+## Installation without a clone (`npx skills`)
 
-If you use [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) (v6.12+; not yet the v7 preview), the module integrates with BMad's config management and help system. Two install paths:
-
-### Option A: Marketplace install (recommended)
-
-The Suno Band Manager module is registered in the [BMad community plugins marketplace](https://github.com/bmad-code-org/bmad-plugins-marketplace) and is discoverable directly from BMad's interactive installer.
+BMad v7 installs modules with the `skills` CLI instead of the old `npx bmad-method install` installer. To install the module straight from GitHub:
 
 ```bash
-npx bmad-method install
+npx skills add bmad-code-org/BMAD-METHOD --skill bmad   # if the project doesn't have BMad's bmad skill yet
+npx skills add zarlor/suno-band-manager
 ```
 
-When the installer asks **"Would you like to browse community modules?"**, answer **yes**, drill down to **Design and Creative → Audio**, and select **Suno Band Manager**. The installer clones the module from GitHub at the marketplace-registry's approved version, links the skills into your project, and runs the configuration prompts (Suno tier, interaction mode, folder paths) automatically. No separate clone step needed.
+Select the six `suno-*` skills and `bmod-suno` (the module record; `bmad setup` can't find the module without it), then ask `bmad setup suno`. This route installs the skills only. The top-level `scripts/` folder (multi-machine sync) and the `CLAUDE.md` / `GEMINI.md` / `AGENTS.md` standing orders don't come with it; see [Multi-Machine Sync](#multi-machine-sync-optional) and [Pipeline Guard](#pipeline-guard-recommended).
 
-### Option B: Local clone install (development / unreleased commits)
+BMad v6 installs (6.12 and earlier, `npx bmad-method install`) are not supported from module 4.0.0.
 
-Use this when you want to install from a specific branch, an unreleased commit, or a local fork:
+---
 
-```bash
-git clone https://github.com/zarlor/bmad-suno-band-manager.git
-cd bmad-suno-band-manager
-npx bmad-method install
+## Configuration
+
+`bmad setup suno` asks these questions in order:
+
+| Key | Values | Default | What it decides |
+|---|---|---|---|
+| `suno_tier` | `free`, `pro`, `premier` | `free` | Which Suno models and features Mac recommends |
+| `default_mode` | `demo`, `studio`, `jam` | `demo` | Mac's starting interaction mode |
+| `pytorch_audio_tools` | `on`, `off` | `off` | Whether the audio scripts take tempo from Beat This! and the Demucs tools are available (see [Optional: Audio Analysis](#optional-audio-analysis)) |
+| `band_profiles_folder` | folder, relative to the project root | `docs/band-profiles` | Where band profiles are stored |
+| `songbook_folder` | folder, relative to the project root | `docs/songbook` | Where saved songs and lyrics are stored |
+
+The answers live in `_bmad/config.toml` under `[modules.suno]`:
+
+```toml
+[modules.suno]
+suno_tier = "pro"
+default_mode = "studio"
+pytorch_audio_tools = "off"
+band_profiles_folder = "docs/band-profiles"
+songbook_folder = "docs/songbook"
 ```
 
-Then link skills and run setup:
+To override them without touching that file, put a `[modules.suno]` table in `_bmad/custom/config.toml` (shared with the team) or `_bmad/custom/config.user.toml` (personal, not committed). Later layers win. Skills read the merged result through `_bmad/scripts/resolve_config.py`; the module's scripts read the same layers through their vendored `scripts/_shared/bmad_config.py`.
 
-**macOS / Linux / WSL:**
-```bash
-./link-skills.sh
-/suno-setup
-```
+**Changing an answer:** run `bmad setup suno` again and say which answer to change, or edit the file yourself. Rerunning setup asks only questions you haven't answered and never overwrites an answer you didn't change.
 
-**Windows (PowerShell):**
-```powershell
-./link-skills.ps1
-/suno-setup
-```
+**Your name and language** are not config keys. Mac takes them from his memory (the Owner Summary in `_bmad/_memory/band-manager-sidecar/BOND.md`), or, before that exists, from your `docs/voice-context-<name>.md` file; if neither exists he asks. The other skills reply in the language you write in.
 
-The setup skill configures Suno tier, interaction mode, folder paths, and registers capabilities with BMad's help system.
+**Without BMad:** with no `_bmad/` directory, every skill uses the defaults in the table above. Mac mentions once that `bmad setup suno` sets the tier, mode and folders, and carries on. Tier and mode preferences you give Mac in conversation ("I'm on Pro", "switch to Studio mode") are saved to his memory either way.
+
+**Help:** ask `bmad` what to do next, or about the module ("what can the suno module do?"); it answers from the module's help files in `src/skills/bmod-suno/help/`.
 
 ---
 
@@ -100,7 +124,7 @@ The module ships a Stop hook script (`.claude/skills/suno-agent-band-manager/scr
 
 **Why:** Without this guard, the agent may hand-build packages from conversation memory instead of running them through the skills. The skills contain critical guardrails (artist name detection, production descriptor checks, character budget validation, section tag validation) that cannot be replicated from memory.
 
-**Auto-configuration:** Running `suno-setup` offers to configure the pipeline guard automatically — both the Claude Code Stop hook and the cross-platform AGENTS.md standing order. The manual steps below are for reference or if you prefer to set it up yourself.
+**Auto-configuration:** Ask Mac to "set up the pipeline guard". He runs `configure-guard.py` (in `suno-agent-band-manager/scripts/`), which appends the standing order to `AGENTS.md` and, when the project has a `.claude/` folder, merges the Stop hook into `.claude/settings.local.json`. Both steps are safe to repeat. The manual steps below are for reference or if you prefer to set it up yourself.
 
 ### Claude Code Setup
 
@@ -145,7 +169,7 @@ If you have your own `CLAUDE.md`/`GEMINI.md`/`AGENTS.md` in the project root tha
 ### Claude Code
 
 Primary development and testing platform. Full feature support including:
-- Skill invocation via `/bmad-suno-agent-band-manager`
+- Skill invocation via `/suno-agent-band-manager`
 - Sub-agent spawning for parallel skill execution
 - Bash tool for `uv run` script execution (validation, analysis)
 - Full read/write file access for memory, profiles, songbook
@@ -159,13 +183,7 @@ Skills discovered from: `.agents/skills/`, `.gemini/skills/`
 
 Gemini CLI uses the same SKILL.md format. The skill activates when Gemini identifies a matching task from the skill description. User approval is requested before activation.
 
-If you prefer Gemini's native path, you can additionally symlink into `.gemini/skills/`:
-```bash
-mkdir -p .gemini/skills
-for skill in src/skills/bmad-suno-*/; do
-  ln -s "../../$skill" ".gemini/skills/$(basename "$skill")" 2>/dev/null
-done
-```
+`link-skills.sh` / `link-skills.ps1` also link the skills into `.gemini/skills/`, Gemini's native path, because Gemini doesn't always follow the symlinks in `.agents/skills/`.
 
 ### Codex CLI (OpenAI)
 
@@ -200,7 +218,7 @@ Skills discovered from: `.cursor/skills/` only (does not scan `.agents/skills/`)
 Cursor requires skills in its own directory. Copy (don't symlink) if symlinks cause issues:
 ```bash
 mkdir -p .cursor/skills
-cp -r src/skills/bmad-suno-* .cursor/skills/
+cp -r src/skills/suno-* src/skills/bmod-suno .cursor/skills/
 ```
 
 Note: Copying means `git pull` won't auto-update Cursor's copies. Re-copy after updates.
@@ -218,66 +236,30 @@ This provides Suno context but not the interactive Mac workflow.
 
 ---
 
-## Standalone Configuration (without BMad)
-
-When installed standalone (no `_bmad/` directory), Mac uses sensible defaults on first run:
-- **Suno tier:** Free (configurable through conversation — "I'm on Pro")
-- **Interaction mode:** Demo (configurable — "switch to Studio mode")
-- **Band profiles:** `docs/band-profiles/`
-- **Songbook:** `docs/songbook/`
-
-All preferences are saved to Mac's memory system and persist across sessions. No manual config file is required.
-
-If you prefer to pre-configure, create `_bmad/config.yaml` and `_bmad/config.user.yaml` manually:
-
-```yaml
-# _bmad/config.yaml
-document_output_language: English
-output_folder: '{project-root}/_bmad-output'
-suno:
-  name: BMad Suno Band Manager
-  version: 1.6.7
-  suno_tier: pro          # free, pro, or premier
-  default_mode: studio    # demo, studio, or jam
-  band_profiles_folder: '{project-root}/docs/band-profiles'
-  songbook_folder: '{project-root}/docs/songbook'
-```
-
-```yaml
-# _bmad/config.user.yaml (gitignored — personal settings)
-user_name: Your Name
-communication_language: English
-```
-
----
-
 ## Updating
+
+From a clone:
 
 ```bash
 git pull
 ```
 
-Symlinks point into `src/skills/`, so changes are picked up immediately. If the update includes new config options, Mac will detect them on next activation.
+Symlinks point into `src/skills/`, so changes are picked up immediately. When a release adds or retires a skill, rerun `./link-skills.sh` (or `./link-skills.ps1`); it links new skills and removes links to retired ones. If you installed with `npx skills`, run `npx skills update` instead, or ask `bmad` to update.
+
+Then run `bmad setup suno`. It asks any new questions, keeps your existing answers, and offers to delete skills the module has retired.
 
 Keep `uv` current as well (`uv self update`). The first audio-script run after an update fetches any new dependency versions automatically. Check the release's **Upgrade at a glance** block in `CHANGELOG.md` for anything else to do.
 
-### After a BMad Method upgrade
+### Upgrading from module 3.x (BMad v6)
 
-BMad upgrades may replace `.claude/skills/` contents. Re-run:
+Module 4.0.0 drops BMad v6 support and the `suno-setup` skill.
 
-**macOS / Linux / WSL:**
-```bash
-./link-skills.sh
-/suno-setup
-```
+1. Install BMad's `bmad` skill: `npx skills add bmad-code-org/BMAD-METHOD --skill bmad`.
+2. `git pull`, then rerun `./link-skills.sh` (or `./link-skills.ps1`). It removes the dangling `suno-setup` links and links `bmod-suno`.
+3. Ask `bmad setup suno`. It doesn't read the old `_bmad/config.yaml`, so answer the five questions again (see [Configuration](#configuration)). It offers to delete the retired `suno-setup` skill and to remove other v6 leftovers (it backs up `_bmad/` first).
+4. If you used the pipeline guard, nothing changes: the hook still runs `suno-agent-band-manager/scripts/pipeline-guard.py`.
 
-**Windows (PowerShell):**
-```powershell
-./link-skills.ps1
-/suno-setup
-```
-
-Your `.agents/skills/` symlinks, config, profiles, songbook, and memory are unaffected.
+Mac's memory (`_bmad/_memory/band-manager-sidecar/`), band profiles, songbook and voice files are not touched.
 
 ---
 
@@ -285,7 +267,7 @@ Your `.agents/skills/` symlinks, config, profiles, songbook, and memory are unaf
 
 Mac stores user-generated content (voice files, band profiles, songbook, WIP files) under `docs/`, which is gitignored so personal content stays out of the repo. To move that content between machines without git, use the bundled pack/unpack scripts.
 
-**Important — these scripts ship at the repository's top-level `scripts/` folder.** They are user-facing entry points (commands you run directly), distinct from the agent's internal scripts that live inside the skill at `.claude/skills/suno-agent-band-manager/scripts/`. If you installed the module via the BMad marketplace and only the skills landed (no top-level `scripts/` folder), you can either: (a) clone this repo separately and run the scripts from there pointed at your project root, or (b) copy `pack-portable.sh` / `unpack-portable.sh` (and the `.ps1` variants) from the [GitHub repo](https://github.com/zarlor/suno-band-manager/tree/main/scripts) into your project's `scripts/` folder. A future installer release may auto-deposit these in `{project-root}/scripts/` for you.
+**Important — these scripts ship at the repository's top-level `scripts/` folder.** They are user-facing entry points (commands you run directly), distinct from the agent's internal scripts that live inside the skill at `.claude/skills/suno-agent-band-manager/scripts/`. If you installed the module with `npx skills` and only the skills landed (no top-level `scripts/` folder), you can either: (a) clone this repo separately and run the scripts from there pointed at your project root, or (b) copy `pack-portable.sh` / `unpack-portable.sh` (and the `.ps1` variants) from the [GitHub repo](https://github.com/zarlor/suno-band-manager/tree/main/scripts) into your project's `scripts/` folder.
 
 **Pack on the source machine:**
 
@@ -327,7 +309,7 @@ pip install librosa numpy pyloudnorm
 
 Three opt-in scripts in the Feedback Elicitor need PyTorch: `beat-grid.py` (Beat This! beat tracking), `vocal-placement.py` (Demucs vocal placement), and `section-map.py` (Demucs plus faster-whisper: maps a render's sections against its lyrics). Through `uv run`, the first run provisions PyTorch (1–3 GB) and downloads the model weights; nothing else in the module pulls them in. **GPU:** on Linux and WSL, PyPI's current PyTorch build targets CUDA 13, which needs NVIDIA driver 580 or newer; with an older driver (or no NVIDIA GPU) the tools fall back to CPU automatically. Native Windows gets PyPI's CPU-only PyTorch build (use WSL for the GPU), and Apple Silicon Macs run on CPU. **Intel Macs are not supported** for these tools: PyTorch's last Intel-Mac build predates numpy 2, which librosa 1.0 requires. On CPU, Beat This! takes a few seconds per track; Demucs takes minutes. Demucs's first run may print an "unauthenticated requests to the HF Hub" warning — harmless. `section-map.py` also downloads a Whisper model on first run (medium, about 1.5 GB). Whisper runs on CPU, because its GPU build needs CUDA 12 libraries that PyTorch's CUDA 13 build doesn't ship; expect about a minute per song.
 
-**Using Beat This! for tempo everywhere:** turn on **PyTorch audio tools** in `/suno-setup` (config key `pytorch_audio_tools`). The audio scripts then take tempo and beats from Beat This! instead of librosa. With it off, they keep using librosa and never download PyTorch. Any of them also accepts `--tempo-source librosa|beat-this` for a single run.
+**Using Beat This! for tempo everywhere:** turn on **PyTorch audio tools** with `bmad setup suno` (config key `pytorch_audio_tools`). The audio scripts then take tempo and beats from Beat This! instead of librosa. With it off, they keep using librosa and never download PyTorch. Any of them also accepts `--tempo-source librosa|beat-this` for a single run.
 
 Without `uv` and without these deps, the audio scripts return JSON with install instructions (exit code 2). The full song creation and refinement workflow works without audio analysis.
 
@@ -341,6 +323,10 @@ Without `uv` and without these deps, the audio scripts return JSON with install 
 
 **Python scripts fail:** The module's scripts run via `uv run`, which reads each script's PEP 723 inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`). If `uv` is missing, install it (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`). Most scripts are dependency-free and also run under plain Python 3.10+ (`python3 scripts/<name>.py`); scripts that need `pyyaml` require either `uv` or a manual `pip install pyyaml`. The one exception is the `pipeline-guard.py` Stop-hook command, which is invoked directly with `python3` (a hot path — kept off `uv` to avoid per-call startup latency).
 
-**Config not found warnings:** Safe to ignore on standalone installs. Mac uses defaults and discovers preferences through conversation.
+**Mac says the module has no answers yet:** `bmad setup suno` hasn't been run in this project. Run it, or ignore the note: every skill uses the defaults.
 
-**Symlinks not working (Windows):** Run `link-skills.ps1` from an elevated PowerShell, or enable Developer Mode (Settings → Update & Security → For developers → Developer Mode) and re-run from a normal PowerShell. As a last resort, copy `src/skills/suno-*` directories into `.agents/skills/` manually — but you'll need to re-copy after every `git pull`.
+**`bmad setup suno` reports an unknown module:** BMad can't see the `bmod-suno` record. Rerun `./link-skills.sh`, or, for an `npx skills` install, add `bmod-suno` with `npx skills add zarlor/suno-band-manager --skill bmod-suno`.
+
+**A `suno-setup` skill still shows up:** it was retired in 4.0.0. Rerun `./link-skills.sh` to drop the dangling link, and let `bmad setup suno` delete any installed copy.
+
+**Symlinks not working (Windows):** Run `link-skills.ps1` from an elevated PowerShell, or enable Developer Mode (Settings → Update & Security → For developers → Developer Mode) and re-run from a normal PowerShell. As a last resort, copy the `src/skills/suno-*` and `src/skills/bmod-suno` directories into `.agents/skills/` manually — but you'll need to re-copy after every `git pull`.

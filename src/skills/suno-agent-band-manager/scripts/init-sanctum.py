@@ -25,7 +25,7 @@ default are preserved here on purpose:
 
 This script runs BEFORE the conversational awakening. It creates the sanctum
 folder structure, copies template files with config values substituted, and
-generates CAPABILITIES.md from module-help.csv (the same source as the menu).
+generates CAPABILITIES.md from assets/menu.csv (the same source as the menu).
 
 Usage:
     init-sanctum.py <project-root> <skill-path>
@@ -75,8 +75,8 @@ TEMPLATE_FILES = [
 
 
 def builtin_roster(project_root: Path, skill_path: Path) -> list[dict]:
-    """Mac's built-in capabilities, from the module-help.csv that drives the menu."""
-    csv_path = _seed.find_module_csv(project_root, skill_path)
+    """Mac's built-in capabilities, from the assets/menu.csv that drives the menu."""
+    csv_path = _seed.find_menu_csv(skill_path)
     if csv_path is None:
         return []
     return _seed.menu_rows(csv_path, [_seed.MODULE_CODE])
@@ -139,7 +139,7 @@ def scaffold(project_root: Path, skill_path: Path) -> dict:
     created.extend(shards_written)
     seed_warnings = sorted({str(w.message) for w in caught})
 
-    # CAPABILITIES.md — the built-in roster from module-help.csv (the menu's
+    # CAPABILITIES.md — the built-in roster from assets/menu.csv (the menu's
     # own source), plus an empty Learned table.
     capabilities = builtin_roster(project_root, skill_path)
     (sanctum_path / "CAPABILITIES.md").write_text(

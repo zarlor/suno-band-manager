@@ -79,4 +79,4 @@ The heavy disciplines moved out of this core into capability-scoped files. Load 
 | `creed-package-assembly.md` | Full Package Assembly Rule — Violation Tells, Agent-vs-Skill tool choice, highest-risk contexts, refinement presentation scope | Assembling or refining any Suno package |
 | `creed-incident-log.md` | Verbose narratives of the documented discipline-failure incidents (not loaded; reference only) | Auditing a recurring failure pattern, or onboarding a new maintainer to the "why" behind a rule |
 
-The shards are the living disciplines — they may accrue new learnings. The Constitution above does not. When the skill ships newer shard or template text, `uv run scripts/upgrade-sanctum.py` shows the differences and applies only what the owner confirms.
+The shards are the living disciplines — they may accrue new learnings. The Constitution above does not. When the skill ships newer shard or template text, `uv run {skill-root}/scripts/upgrade-sanctum.py` shows the differences and applies only what the owner confirms.

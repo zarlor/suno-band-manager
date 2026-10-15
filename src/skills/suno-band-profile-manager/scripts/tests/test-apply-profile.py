@@ -387,8 +387,8 @@ def test_delete_purge(store):
 
 def test_profiles_dir_from_module_config(tmp_path):
     (tmp_path / "_bmad").mkdir()
-    (tmp_path / "_bmad" / "config.yaml").write_text(
-        "suno:\n  band_profiles_folder: '{project-root}/music/profiles'\n")
+    (tmp_path / "_bmad" / "config.toml").write_text(
+        "[modules.suno]\nband_profiles_folder = 'music/profiles'\n")
     args = Args(project_root=str(tmp_path))
     assert _resolve_profiles_dir(args) == tmp_path / "music" / "profiles"
 

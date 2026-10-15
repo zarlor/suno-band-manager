@@ -8,12 +8,12 @@ If the wake output came back as a preview of a saved file rather than the full t
 
 ## Waking
 
-1. **Config.** Take `{user_name}`, `{communication_language}`, `{document_output_language}`, `{output_folder}` and the suno settings (`suno_tier`, `default_mode`, `band_profiles_folder`, `songbook_folder`, `pytorch_audio_tools`) from `config`. If `user_name` is empty, greet generically, mention that the suno-setup skill can configure the module, and carry on.
+1. **Config.** Take `{user_name}`, `{communication_language}`, `{document_output_language}`, `{output_folder}` and the suno settings (`suno_tier`, `default_mode`, `band_profiles_folder`, `songbook_folder`, `pytorch_audio_tools`) from `config`. The owner's name and language come from BOND.md; folder settings are relative to `{project-root}`. If `user_name` is empty, greet generically, ask what to call them, and write the answer to BOND.md's Owner Summary. If `warnings` says the module has no answers yet, mention once that `bmad setup suno` sets the tier, mode and folders, and carry on with the defaults.
 
 2. **Sync gate.** If `sync_package.found`, ask whether to unpack the package from the other machine before starting. On yes:
    - Run `bash {project-root}/scripts/unpack-portable.sh "{project-root}"` (PowerShell: `unpack-portable.ps1`). These live in the repository's top-level `scripts/` folder, not in this skill.
-   - Run `uv run scripts/reconcile-sidecar.py "{project-root}" --format json`. For every `newer_files` entry and every non-skipped validator finding, decide whether the sanctum narrative needs to absorb it, and offer the owner a walk-through: *"Sync landed — a few files moved on since we last talked: X, Y, Z. Want to walk them, or skip?"*
-   - Integrate what they approve: raw detail into today's `sessions/` file, the live state up into MEMORY.md, then `uv run scripts/regenerate-index-sections.py "{project-root}"`. Re-run the wake if MEMORY.md changed.
+   - Run `uv run {skill-root}/scripts/reconcile-sidecar.py "{project-root}" --format json`. For every `newer_files` entry and every non-skipped validator finding, decide whether the sanctum narrative needs to absorb it, and offer the owner a walk-through: *"Sync landed — a few files moved on since we last talked: X, Y, Z. Want to walk them, or skip?"*
+   - Integrate what they approve: raw detail into today's `sessions/` file, the live state up into MEMORY.md, then `uv run {skill-root}/scripts/regenerate-index-sections.py "{project-root}"`. Re-run the wake if MEMORY.md changed.
 
    Don't present the menu while the sanctum is known to be stale against unpacked files — that is how outdated framing reaches the owner.
 
@@ -31,7 +31,7 @@ If the wake output came back as a preview of a saved file rather than the full t
    - If they opened with a request, skip the offer and do it.
    - If they seem new to Suno, offer a short orientation.
 
-5. **Menu.** Present `menu_text` exactly as rendered — don't hand-build it. If it is null (module-help.csv missing; see `warnings`), say the suno-setup skill restores the menu and carry on conversationally.
+5. **Menu.** Present `menu_text` exactly as rendered — don't hand-build it. If it is null (`assets/menu.csv` missing; see `warnings`), say that reinstalling the skill restores the menu and carry on conversationally.
 
 **Routing a selection.** Look the code or number up in `routing_table` and branch on `type`:
 
@@ -39,13 +39,13 @@ If the wake output came back as a preview of a saved file rather than the full t
 - `skill` → invoke the skill named in `target`.
 - `learned` → load the owner-taught capability prompt at `target`.
 
-"FL" or "feedback loop" routes to RS, Refine Song (the table carries the alias); refine-song runs the suno-feedback-elicitor skill inside it.
+"FL" or "feedback loop" routes to RS, Refine Song (the table carries the alias); refine-song runs the suno-feedback-elicitor skill inside it. Asked to set up the pipeline guard, load `references/pipeline-guard.md`.
 
 ## Damaged sanctum
 
 `MODE: DAMAGED` means the sanctum directory exists but its spine is incomplete (`missing_spine`) and it is not a v1 store. The files that survive were printed — be as much of yourself as they allow. Then:
 
-- **Some spine files survive** → tell the owner plainly which are missing and offer to restore only those. `uv run scripts/upgrade-sanctum.py --project-root "{project-root}"` shows what it would create; `--apply safe` writes the missing files from the templates and leaves the surviving ones untouched.
+- **Some spine files survive** → tell the owner plainly which are missing and offer to restore only those. `uv run {skill-root}/scripts/upgrade-sanctum.py --project-root "{project-root}"` shows what it would create; `--apply safe` writes the missing files from the templates and leaves the surviving ones untouched.
 - **Nothing recognizable survives** → the sanctum is truly lost; say so honestly. With the owner's say-so, move the directory aside and take the FIRST_BREATH route. The partnership can rebuild the memory from the voice file, the songbook and the owner. Never re-scaffold over a store that might still be recovered.
 
 ## Mode switching

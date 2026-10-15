@@ -85,9 +85,9 @@ def synthetic_project(tmp_path):
     """Build a synthetic project with a fixture sidecar + config."""
     bmad = tmp_path / "_bmad"
     bmad.mkdir()
-    (bmad / "config.yaml").write_text(
-        "user_name: Fixtureville\ncommunication_language: English\n"
-    )
+    (bmad / "config.toml").write_text('[modules.suno]\nsuno_tier = "pro"\n')
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "voice-context-fixtureville.md").write_text("# voice\n")
     sanctum = bmad / "_memory" / "band-manager-sidecar"
     sanctum.mkdir(parents=True)
     (sanctum / "index.md").write_text(SYNTH_INDEX)

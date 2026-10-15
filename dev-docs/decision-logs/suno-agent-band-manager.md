@@ -631,3 +631,31 @@ the user's real `index.md` memory. Nothing auto-migrated.
 - **REAL `_bmad/_memory/band-manager-sidecar/` NEVER TOUCHED** — every run
   pointed at TEMP or the READ-ONLY backup fixture; live MEMORY.md mtime unchanged.
   No git commit.
+
+## 2026-10-15 — BMad v7 migration: what changed for Mac
+
+**Context.** The module moved from BMad v6 to v7 (module 4.0.0). `suno-setup`
+was retired in favour of `bmad setup suno`, with the module record in
+`src/skills/bmod-suno/`. Mac's sanctum path is unchanged
+(`_bmad/_memory/band-manager-sidecar/`).
+
+### Changes affecting Mac
+
+- **Menu.** Rendered from `assets/menu.csv` in this skill; `module-help.csv` no
+  longer exists.
+- **Owner name and language.** v7 has no `user_name` or
+  `communication_language` config keys. Mac takes both from BOND.md's Owner
+  Summary, or, before that exists, from a single `docs/voice-context-<name>.md`;
+  with neither, he asks and writes the answer to BOND.md.
+- **Pipeline guard moved in.** `scripts/configure-guard.py` and
+  `references/pipeline-guard.md` came over from `suno-setup`. The owner asks Mac
+  to "set up the pipeline guard"; the Stop hook still runs
+  `scripts/pipeline-guard.py` with bare `python3`.
+- **Config.** The suno answers (`suno_tier`, `default_mode`,
+  `pytorch_audio_tools`, `band_profiles_folder`, `songbook_folder`) come from
+  `modules.suno` in BMad's TOML layers (`_bmad/config.toml` plus the
+  `custom/` overrides) instead of `_bmad/config.yaml`. With no answers, Mac
+  mentions `bmad setup suno` once and carries on with the defaults.
+- **Skill record.** `bmod.toml` names `bmod-suno` as the module and requires the
+  style prompt builder, lyric transformer and feedback elicitor.
+- **Script calls** in the skill docs use `uv run {skill-root}/scripts/<name>.py`.

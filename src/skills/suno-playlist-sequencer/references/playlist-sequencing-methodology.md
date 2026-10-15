@@ -24,7 +24,7 @@ Each band owns one playlist file, `docs/{band-slug}-playlist.yaml`: the single s
 - `felt_bpm:` on a track: the tempo the user confirmed by ear. The script uses it to fold that track's half- or double-time readings in the seam math.
 - `locked_arcs:` at the top level: a list of arcs, each a list of track names or an `"A > B > C"` string. `scripts/validate-sequence.py` checks them.
 
-The script's JSON is the *input* to the methodology; it doesn't make sequencing decisions on its own. Its fields are documented in `uv run scripts/playlist-sequencing-data.py --help`.
+The script's JSON is the *input* to the methodology; it doesn't make sequencing decisions on its own. Its fields are documented in `uv run {skill-root}/scripts/playlist-sequencing-data.py --help`.
 
 ## Per-Track Variables to Track
 
@@ -143,7 +143,7 @@ When evaluating playlist changes:
 - Treat the arc's position as flexible (the block may move) but the order within as fixed
 - If a proposed reorder requires breaking the arc, stop and ask the user — never break a documented locked arc on your own authority
 
-A locked arc is typically a thematic sequence the writer positioned deliberately — for example, a four-song love → loss → grief → healing run whose emotional logic depends on the songs staying together and in order. Arcs come from the playlist YAML's optional `locked_arcs:`, from the user, or in headless runs from `--locked`. `uv run scripts/validate-sequence.py docs/{band-slug}-playlist.yaml` reports each one as intact, split, or out of order; pass `--locked "A > B"` for arcs the user names that aren't in the YAML yet. The block may shift position as a unit, but the songs inside it never reorder and never split.
+A locked arc is typically a thematic sequence the writer positioned deliberately — for example, a four-song love → loss → grief → healing run whose emotional logic depends on the songs staying together and in order. Arcs come from the playlist YAML's optional `locked_arcs:`, from the user, or in headless runs from `--locked`. `uv run {skill-root}/scripts/validate-sequence.py docs/{band-slug}-playlist.yaml` reports each one as intact, split, or out of order; pass `--locked "A > B"` for arcs the user names that aren't in the YAML yet. The block may shift position as a unit, but the songs inside it never reorder and never split.
 
 ### Encore Structure
 
@@ -188,7 +188,7 @@ Checks between gates 2 and 3, in any order:
 - **Transitions** — each seam on the full variable stack (key relation, felt tempo, intro/outro %, loudness step, sonic palette, theme). Flag the worst.
 - **Clusters** — felt-tempo cousins scattered that could be a deliberate block; thematic cousins adjacent that should be spaced (`runs[]` helps).
 
-The output isn't a metrics dump — it's an opinionated proposal grounded in the variables, with explicit acknowledgment of what's locked, what's a judgment call, and where the user's ear should be the tiebreaker. Write the proposal narrative in `{communication_language}`; any persisted companion/proposal document is written in `{document_output_language}`.
+The output isn't a metrics dump — it's an opinionated proposal grounded in the variables, with explicit acknowledgment of what's locked, what's a judgment call, and where the user's ear should be the tiebreaker. Write the proposal narrative, and any persisted companion/proposal document, in the user's language.
 
 ## Thematic Verification — MANDATORY before any placement recommendation
 

@@ -2,12 +2,12 @@
 # /// script
 # requires-python = ">=3.10"
 # ///
-"""Copy the canonical src/skills/_shared/*.py helpers into every skill that vendors them.
+"""Copy the canonical src/_shared/*.py helpers into every skill that vendors them.
 
 BMad installers copy each skill folder on its own, so a skill can't import from a
 sibling folder at install time. Each skill that needs the helpers carries a copy in
-scripts/_shared/; src/skills/_shared/ is the single place to edit them. Run this after
-editing a helper; src/skills/_shared/tests/test-vendored-copies.py fails on drift.
+scripts/_shared/; src/_shared/ is the single place to edit them. Run this after
+editing a helper; src/_shared/tests/test-vendored-copies.py fails on drift.
 
 Usage: uv run dev-tools/sync-shared.py [--check]
 """
@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SHARED = ROOT / "src" / "skills" / "_shared"
+SHARED = ROOT / "src" / "_shared"
 
 
 def vendored_dirs():

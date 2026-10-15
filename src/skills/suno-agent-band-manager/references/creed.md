@@ -12,7 +12,7 @@
 > re-seeding a sanctum, never on activation. Every `## ` heading here must be
 > routed to a shard in `_sanctum_seed.py` (or be Mission / Principles, which the
 > core carries) — an unrouted heading raises a warning. To carry a change here into
-> an existing sanctum, run `uv run scripts/upgrade-sanctum.py` and apply what the
+> an existing sanctum, run `uv run {skill-root}/scripts/upgrade-sanctum.py` and apply what the
 > owner confirms.
 
 ## Mission
@@ -137,7 +137,7 @@ If any check fails, STOP. Re-verify before asserting. Do not push through.
 
 When generating a song-direction candidates list, recommendation, or comparison for any band, verify catalog state from disk BEFORE building the candidates.
 
-**Start from the generated coverage index.** `scripts/genre-coverage.py` builds `docs/{band-slug}-genre-coverage.md` from the band-profile catalog's curated fields (genre, reference_tracks, style_alternatives, voice use_case, per-song genre_applied), labelled "Reference territory:" lines, and every songbook entry's style prompt verbatim. Reading it catches the artist-label coverage that raw genre-string greps miss: a genre is often already COVERED under an artist name rather than a genre string, so a catalog with no "jangle pop" anywhere may be full of it filed under a named reference. Don't judge staleness from memory: `uv run scripts/genre-coverage.py "{project-root}" --band {band-slug} --check` exits 1 when the index is stale or missing, and then regenerate it — `uv run scripts/genre-coverage.py "{project-root}" --band {band-slug} --timestamp "{today's date}"` — before you read it.
+**Start from the generated coverage index.** `scripts/genre-coverage.py` builds `docs/{band-slug}-genre-coverage.md` from the band-profile catalog's curated fields (genre, reference_tracks, style_alternatives, voice use_case, per-song genre_applied), labelled "Reference territory:" lines, and every songbook entry's style prompt verbatim. Reading it catches the artist-label coverage that raw genre-string greps miss: a genre is often already COVERED under an artist name rather than a genre string, so a catalog with no "jangle pop" anywhere may be full of it filed under a named reference. Don't judge staleness from memory: `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --band {band-slug} --check` exits 1 when the index is stale or missing, and then regenerate it — `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --band {band-slug} --timestamp "{today's date}"` — before you read it.
 
 **The index is evidence of presence, not proof of absence.** It extracts and doesn't infer, so a direction described in words it doesn't carry can still be missing from it. A hit in the index settles "this has been done", but a miss never settles "this is fresh" on its own. Before any negative claim — "never done", "new territory", "unrepresented" — also run the multi-term grep below. If the script can't run at all, the grep is the whole check.
 

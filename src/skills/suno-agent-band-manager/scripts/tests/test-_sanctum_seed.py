@@ -174,37 +174,52 @@ def test_classify_absent_v1_v2_damaged(tmp_path):
 # --- config -----------------------------------------------------------------
 
 
-def test_resolve_config_from_toml_layers(tmp_path):
+def test_resolve_config_from_toml_layers_and_bond(tmp_path):
     bmad = tmp_path / "_bmad"
     bmad.mkdir()
-    (bmad / "config.toml").write_text('[core]\ndocument_output_language = "German"\n')
-    (bmad / "config.user.toml").write_text('[core]\nuser_name = "Robin"\ncommunication_language = "French"\n')
-    (bmad / "config.yaml").write_text("suno:\n  suno_tier: free\n")
+    (bmad / "config.toml").write_text('[core]\noutput_folder = "{project-root}/out"\n[modules.suno]\nsuno_tier = "pro"\n')
+    (bmad / "custom").mkdir()
+    (bmad / "custom" / "config.user.toml").write_text('[modules.suno]\nsuno_tier = "free"\nsongbook_folder = "{project-root}/book"\n')
+    (bmad / "config.yaml").write_text("user_name: Yaml\nsuno:\n  default_mode: jam\n")
+    sanctum = mod.sanctum_dir(tmp_path)
+    sanctum.mkdir(parents=True)
+    (sanctum / "BOND.md").write_text("# Bond\n\n- **Name:** Robin\n- **Language:** French\n")
     cfg = mod.resolve_config(tmp_path)
     assert cfg["values"]["user_name"] == "Robin"
     assert cfg["values"]["communication_language"] == "French"
-    assert cfg["values"]["document_output_language"] == "German"
+    assert cfg["values"]["document_output_language"] == "French"
+    assert cfg["values"]["output_folder"] == "{project-root}/out"
     assert cfg["values"]["suno_tier"] == "free"
-    assert cfg["values"]["songbook_folder"] == "{project-root}/docs/songbook"
+    assert cfg["values"]["default_mode"] == "demo"  # legacy YAML is not read
+    assert cfg["values"]["songbook_folder"] == "book"
     assert cfg["warnings"] == []
 
 
-def test_parse_simple_yaml_nested_section(tmp_path):
-    path = tmp_path / "c.yaml"
-    path.write_text(
-        "user_name: Lee\nsuno:\n  description: one\n    two: not a key\n  suno_tier: 'pro'\nother: x\n"
-    )
-    data = mod.parse_simple_yaml(path)
-    assert data["user_name"] == "Lee"
-    assert data["suno"] == {"description": "one", "suno_tier": "pro"}
-    assert data["other"] == "x"
+def test_owner_from_lone_voice_file_before_bond(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "voice-context-mary-jane.md").write_text("# voice\n")
+    cfg = mod.resolve_config(tmp_path)
+    assert cfg["values"]["user_name"] == "Mary Jane"
+    assert mod.normalize_username(cfg["values"]["user_name"]) == "mary-jane"
+    (docs / "voice-context-other.md").write_text("# voice\n")
+    assert mod.resolve_config(tmp_path)["values"]["user_name"] is None
+
+
+def test_template_token_in_bond_is_not_a_name(tmp_path):
+    sanctum = mod.sanctum_dir(tmp_path)
+    sanctum.mkdir(parents=True)
+    (sanctum / "BOND.md").write_text("- **Name:** {user_name}\n")
+    cfg = mod.resolve_config(tmp_path)
+    assert cfg["values"]["user_name"] is None
+    assert any("user_name" in w for w in cfg["warnings"])
 
 
 # --- roster -----------------------------------------------------------------
 
 
-def test_capabilities_roster_from_module_csv():
-    csv_path = mod.find_module_csv(SKILL_DIR.parent.parent.parent, SKILL_DIR)
+def test_capabilities_roster_from_menu_csv():
+    csv_path = mod.find_menu_csv(SKILL_DIR)
     assert csv_path is not None
     rows = mod.menu_rows(csv_path, [mod.MODULE_CODE])
     text = mod.generate_capabilities_md(rows)

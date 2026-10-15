@@ -32,9 +32,9 @@ Translates subjective musical reactions into concrete parameter adjustments for 
 These steps run in every mode, headless included.
 
 1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. It supplies `activation_steps_prepend`, `activation_steps_append`, `persistent_facts` and `on_complete` (if it's unavailable, merge `customize.toml` with the overrides in `{project-root}/_bmad/custom/` by hand). Run any `activation_steps_prepend` and load `persistent_facts`.
-2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key core` for `{user_name}`, `{communication_language}` and `{document_output_language}`. Module settings (`suno_tier`, `band_profiles_folder`, `pytorch_audio_tools`) are in the `suno:` section of `{project-root}/_bmad/config.yaml`. If either is missing, greet generically, default to English and the documented folder defaults, and carry on.
+2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `suno_tier`, `band_profiles_folder` (default `docs/band-profiles`, relative to `{project-root}`) and `pytorch_audio_tools` (default `off`). Missing answers take the defaults; carry on.
 3. **Headless** (`--headless` / `-H`, or clearly non-interactive intent): load `references/headless-contract.md`, run any `activation_steps_append`, and follow the steps without greeting or asking.
-4. **Greet** `{user_name}` in `{communication_language}`.
+4. **Greet** the user in their language.
 5. **Intent check.** If the request clearly isn't about feedback on an existing Suno generation, redirect: a new song goes to the Band Manager agent or the Style Prompt Builder; album, playlist or tracklist ordering goes to `suno-playlist-sequencer`. If it's ambiguous, ask one question first ("Are we refining a generation you've already heard, or starting a fresh one?") -- don't bounce a user who's actually in scope.
 6. Run any `activation_steps_append`, then go to Step 1.
 
@@ -56,7 +56,7 @@ Let them express freely -- don't interrupt or categorize yet ("How did it turn o
 
 **Audio (optional).** With a render in hand, load `references/audio-analysis-scripts.md` and run what fits (`section-map.py` when the PyTorch audio tools are on and you have the render's lyrics). Skip gracefully when unavailable.
 
-**Headless:** run `uv run scripts/parse-feedback.py` with the skill's flags; it validates the input and builds the JSON.
+**Headless:** run `uv run {skill-root}/scripts/parse-feedback.py` with the skill's flags; it validates the input and builds the JSON.
 
 ### Step 3: Triage Feedback
 
@@ -94,7 +94,7 @@ Set expectations: "Audio artifacts are usually specific to a particular generati
 
 ### Step 5: Map to Adjustments
 
-Translate the findings into dimensions for `uv run scripts/map-adjustments.py` (e.g. "vocals feel too polished" -> `{"dimension": "vocals", "direction": "too_polished"}`), passing `--style-prompt`, `--model` and `tier` from `{suno_tier}` when known so overflow and free-tier slider limits surface as data. Refine its baseline with judgment from the full context (band profile, intent, Step 1's creative context).
+Translate the findings into dimensions for `uv run {skill-root}/scripts/map-adjustments.py` (e.g. "vocals feel too polished" -> `{"dimension": "vocals", "direction": "too_polished"}`), passing `--style-prompt`, `--model` and `tier` from `{suno_tier}` when known so overflow and free-tier slider limits surface as data. Refine its baseline with judgment from the full context (band profile, intent, Step 1's creative context).
 
 **Effectiveness:** reason against the iteration log -- don't re-recommend a move that failed; lean on one that worked. With search tools, check descriptors against current Suno behavior -- models evolve.
 

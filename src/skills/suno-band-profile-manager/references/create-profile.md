@@ -2,7 +2,7 @@
 
 The outcome is a saved band profile at `{band_profiles_folder}/{slug}.yaml`, a sibling decision log, and the band's empty playlist YAML. The profile's real readers are the Style Prompt Builder, Lyric Transformer and Feedback Elicitor: every field must be specific enough for the Style Prompt Builder to write a distinctive prompt from it. Vague profiles produce vague songs. The field list, types and limits are in `references/profile-schema.md`. Load it now, together with `references/tier-features.md`.
 
-All scripts run as `uv run scripts/<name>.py … --project-root {project-root}`. They read `band_profiles_folder` and `songbook_folder` from module config themselves.
+All scripts run as `uv run {skill-root}/scripts/<name>.py … --project-root {project-root}`. They read `band_profiles_folder` and `songbook_folder` from module config themselves.
 
 ## Open the floor
 

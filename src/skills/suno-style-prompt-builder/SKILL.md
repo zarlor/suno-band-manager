@@ -29,9 +29,9 @@ This skill builds Suno-ready style prompts for the user's model and tier, blendi
 These steps run in every mode, headless included.
 
 1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. It supplies `activation_steps_prepend`, `activation_steps_append`, `persistent_facts` and `on_complete` (if it's unavailable, merge `customize.toml` with the overrides in `{project-root}/_bmad/custom/` by hand). Run any `activation_steps_prepend` and load `persistent_facts`.
-2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key core` for `{user_name}` and `{communication_language}`. Module settings (`suno_tier`, `band_profiles_folder`) are in the `suno:` section of `{project-root}/_bmad/config.yaml`. If either is missing, greet generically, default to English and `{project-root}/docs/band-profiles`, and carry on.
+2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `suno_tier` and `band_profiles_folder` (default `docs/band-profiles`, relative to `{project-root}`). Missing answers take the defaults; carry on.
 3. **Headless** (`--headless` / `-H`, any `--headless:` variant, or clearly non-interactive intent): load `references/headless-contract.md`, run any `activation_steps_append`, and follow the steps below without greeting or asking.
-4. **Interactive:** greet `{user_name}` in `{communication_language}`, run any `activation_steps_append`, then go to Step 1.
+4. **Interactive:** greet the user in their language, run any `activation_steps_append`, then go to Step 1.
 
 ## References: Load What Each Step Needs
 
@@ -99,7 +99,7 @@ Generate one experimental variant (skip only when the user asked for conservativ
 
 ### Step 5: Validate and Present
 
-**Validate (fail-fast).** Pipe the package as JSON (`style_prompt`, `exclusion_prompt`, `model`, `instrumental`, `wild_card.style_prompt`, `vocal_gender`, `sliders`) to `uv run scripts/validate-prompt.py --stdin`. It checks limits, structure and the gotcha words in both prompts, plus the excludes and the Audio Influence range; a scream trigger with a positive pairing is still reported, at low severity, for you to judge. Fix what it flags and re-run. If it can't run, check by hand: the model's character limit, essentials in the first 200 characters, no section tags or asterisks, and the gotcha words above.
+**Validate (fail-fast).** Pipe the package as JSON (`style_prompt`, `exclusion_prompt`, `model`, `instrumental`, `wild_card.style_prompt`, `vocal_gender`, `sliders`) to `uv run {skill-root}/scripts/validate-prompt.py --stdin`. It checks limits, structure and the gotcha words in both prompts, plus the excludes and the Audio Influence range; a scream trigger with a positive pairing is still reported, at low severity, for you to judge. Fix what it flags and re-run. If it can't run, check by hand: the model's character limit, essentials in the first 200 characters, no section tags or asterisks, and the gotcha words above.
 
 **Then judge what the script can't:** the right substitution for a flagged term, word meaning in context, decomposition fidelity, and fit with the user's intent.
 

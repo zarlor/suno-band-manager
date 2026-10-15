@@ -7,52 +7,35 @@
 Imported by this skill's scripts (not run on its own). Resolution order for
 each folder:
 
-  profiles dir  --profiles-dir flag > suno.band_profiles_folder in
-                {project-root}/_bmad/config.yaml > {project-root}/docs/band-profiles
+  profiles dir  --profiles-dir flag > modules.suno.band_profiles_folder in
+                BMad's config > {project-root}/docs/band-profiles
   docs dir      --docs-dir flag > parent of the resolved profiles dir
                 (holds {slug}-playlist.yaml, the sequencer's module-wide contract)
-  songbook dir  --songbook-dir flag > suno.songbook_folder > {docs dir}/songbook
+  songbook dir  --songbook-dir flag > modules.suno.songbook_folder > {docs dir}/songbook
 
-Stdlib only: the config read is a narrow parse of the `suno:` section's flat
-`key: value` lines, so scripts without a YAML dependency can use it too.
+The config read is the shared `_shared/bmad_config.py` (stdlib TOML), so scripts
+without a YAML dependency can use it too.
 """
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-CONFIG_REL = Path("_bmad") / "config.yaml"
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
+import bmad_config  # noqa: E402
 
 
-def read_module_config(project_root: Path | str, section: str = "suno") -> dict:
-    """Return the flat `key: value` pairs of one top-level section of
-    {project-root}/_bmad/config.yaml, with `{project-root}` substituted.
-    Missing file or section returns {}."""
-    root = Path(project_root)
-    path = root / CONFIG_REL
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return {}
-    out: dict = {}
-    inside = False
-    for line in lines:
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        if not line[0].isspace():
-            inside = line.split("#", 1)[0].strip() == f"{section}:"
-            continue
-        if not inside or ":" not in line:
-            continue
-        key, _, value = line.strip().partition(":")
-        value = value.strip()
-        quote = value[:1]
-        if quote in ("'", '"') and quote in value[1:]:
-            value = value[1:value.index(quote, 1)]
-        elif " #" in value:
-            value = value.split(" #", 1)[0].strip()
-        out[key.strip()] = value.replace("{project-root}", str(root))
-    return out
+def read_module_config(project_root: Path | str) -> dict:
+    """This module's answers from {project-root}/_bmad, `{project-root}` filled in.
+    No config returns {}."""
+    return bmad_config.module_config(project_root)
+
+
+def under_root(root: Path, value: str) -> Path:
+    """A folder answer: relative to the project root unless already absolute."""
+    path = Path(value)
+    return path if path.is_absolute() else root / path
 
 
 def resolve_dirs(project_root: Path | str = ".", profiles_dir=None,
@@ -61,9 +44,9 @@ def resolve_dirs(project_root: Path | str = ".", profiles_dir=None,
     root = Path(project_root)
     cfg = read_module_config(root)
     profiles = Path(profiles_dir) if profiles_dir else (
-        Path(cfg["band_profiles_folder"]) if cfg.get("band_profiles_folder")
+        under_root(root, cfg["band_profiles_folder"]) if cfg.get("band_profiles_folder")
         else root / "docs" / "band-profiles")
     docs = Path(docs_dir) if docs_dir else profiles.parent
     songbook = Path(songbook_dir) if songbook_dir else (
-        Path(cfg["songbook_folder"]) if cfg.get("songbook_folder") else docs / "songbook")
+        under_root(root, cfg["songbook_folder"]) if cfg.get("songbook_folder") else docs / "songbook")
     return {"profiles_dir": profiles, "docs_dir": docs, "songbook_dir": songbook}

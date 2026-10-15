@@ -4,7 +4,7 @@ What this skill writes outside the conversation, and how. Two stores: the song's
 
 ## Iteration log
 
-One markdown file per song, the canonical memory of multi-round refinement. `uv run scripts/feedback-log.py locate --band {profile} --title {title} --project-root {project-root}` returns its path, whether it exists, the last round and date, the next round number, and near-match candidates when the exact file is missing (the title may be fuzzy — pick among them). Each round goes under `## Round {n} — YYYY-MM-DD`; the entry format is in `references/output-template.md`.
+One markdown file per song, the canonical memory of multi-round refinement. `uv run {skill-root}/scripts/feedback-log.py locate --band {profile} --title {title} --project-root {project-root}` returns its path, whether it exists, the last round and date, the next round number, and near-match candidates when the exact file is missing (the title may be fuzzy — pick among them). Each round goes under `## Round {n} — YYYY-MM-DD`; the entry format is in `references/output-template.md`.
 
 ## Band profile
 

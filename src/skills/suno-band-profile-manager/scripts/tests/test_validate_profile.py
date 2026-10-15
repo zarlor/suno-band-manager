@@ -30,9 +30,9 @@ validate_profile = validate_profile_mod.validate_profile
 derive_filename = validate_profile_mod.derive_filename
 
 
-def write_profile(tmp_path, data):
+def write_profile(tmp_path, data, filename="test-band.yaml"):
     """Helper to write a YAML profile and return its path."""
-    profile_path = tmp_path / "test-band.yaml"
+    profile_path = tmp_path / filename
     with open(profile_path, "w") as f:
         yaml.dump(data, f)
     return profile_path
@@ -203,7 +203,7 @@ class TestValidateProfile(TmpPathTestCase):
     # --- Instrumental profile tests ---
     def test_instrumental_profile_valid_without_vocal(self):
         tmp_path = self.tmp_path
-        path = write_profile(tmp_path, VALID_INSTRUMENTAL_PROFILE)
+        path = write_profile(tmp_path, VALID_INSTRUMENTAL_PROFILE, "ambient-waves.yaml")
         result = validate_profile(path)
         self.assertEqual(result["status"], "pass")
         self.assertEqual(result["summary"]["total"], 0)
@@ -519,6 +519,140 @@ class TestDocsDirAndModels(TmpPathTestCase):
         proc = subprocess.run([sys.executable, str(script), str(profile_path),
                                "--project-root", str(tmp_path)], capture_output=True, text=True)
         self.assertTrue(_has_missing_playlist_finding(json.loads(proc.stdout)))
+
+
+def _run_cli(*args):
+    import subprocess
+    script = Path(__file__).parent.parent / "validate-profile.py"
+    return subprocess.run([sys.executable, str(script), *map(str, args)],
+                          capture_output=True, text=True)
+
+
+def _configured_project(root: Path):
+    """A standard layout whose module config names both folders, as `bmad setup suno` writes them."""
+    profile_path = _make_standard_layout(root)
+    (root / "_bmad").mkdir()
+    (root / "_bmad" / "config.toml").write_text(
+        "[modules.suno]\n"
+        "band_profiles_folder = '{project-root}/docs/band-profiles'\n"
+        "songbook_folder = '{project-root}/docs/songbook'\n")
+    install_resolver(root)
+    (root / "docs" / "test-band-playlist.yaml").write_text('album: "X"\ntracks: []\n')
+    draft = profile_path.parent / "drafts" / "test-band.yaml"
+    draft.parent.mkdir()
+    draft.write_text(profile_path.read_text())
+    return profile_path, draft
+
+
+class TestStagedDrafts(TmpPathTestCase):
+    """A draft in {profiles}/drafts/ is checked against the band's real folders."""
+
+    def test_staged_draft_of_band_with_songs_passes(self):
+        _, draft = _configured_project(self.tmp_path)
+        proc = _run_cli("test-band", "--staged", draft, "--project-root", self.tmp_path)
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        result = json.loads(proc.stdout)
+        self.assertEqual(result["status"], "pass")
+        self.assertFalse(_has_missing_playlist_finding(result))
+
+    def test_draft_path_with_project_root_passes(self):
+        # The pre-fix call form: before, docs resolved to the band-profiles folder
+        # and every Edit of a band with songs failed on a phantom missing playlist.
+        _, draft = _configured_project(self.tmp_path)
+        proc = _run_cli(draft, "--project-root", self.tmp_path)
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        self.assertFalse(_has_missing_playlist_finding(json.loads(proc.stdout)))
+
+    def test_draft_path_without_project_root_uses_profiles_parent(self):
+        _, draft = _configured_project(self.tmp_path)
+        proc = _run_cli(draft)
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        self.assertFalse(_has_missing_playlist_finding(json.loads(proc.stdout)))
+
+    def test_staged_draft_still_flags_a_truly_missing_playlist(self):
+        _, draft = _configured_project(self.tmp_path)
+        (self.tmp_path / "docs" / "test-band-playlist.yaml").unlink()
+        proc = _run_cli("test-band", "--staged", draft, "--project-root", self.tmp_path)
+        self.assertEqual(proc.returncode, 1)
+        result = json.loads(proc.stdout)
+        self.assertTrue(_has_missing_playlist_finding(result))
+        finding = next(f for f in result["findings"] if "playlist YAML" in f.get("issue", ""))
+        self.assertEqual(finding["location"]["expected_file"],
+                         str(self.tmp_path / "docs" / "test-band-playlist.yaml"))
+
+    def test_staged_slug_wins_over_draft_filename(self):
+        _, draft = _configured_project(self.tmp_path)
+        odd = draft.parent / "scratch-copy.yaml"
+        draft.rename(odd)
+        result = json.loads(_run_cli("test-band", "--staged", odd,
+                                     "--project-root", self.tmp_path).stdout)
+        self.assertEqual(result["status"], "pass")
+        self.assertFalse(any(f.get("location", {}).get("field") == "name" for f in result["findings"]))
+
+    def test_slug_positional_validates_saved_profile(self):
+        _configured_project(self.tmp_path)
+        proc = _run_cli("test-band", "--project-root", self.tmp_path)
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        self.assertTrue(json.loads(proc.stdout)["skill_path"].endswith("band-profiles/test-band.yaml"))
+
+    def test_unknown_slug_fails_with_reason(self):
+        _configured_project(self.tmp_path)
+        proc = _run_cli("no-such-band", "--project-root", self.tmp_path)
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("does not exist", proc.stdout)
+
+    def test_derive_filename_reports_slug(self):
+        out = json.loads(_run_cli("--derive-filename", "Ember Hollow - Redux").stdout)
+        self.assertEqual(out["slug"], "ember-hollow-redux")
+        self.assertEqual(out["filename"], "ember-hollow-redux.yaml")
+
+
+class TestSchemaRules16To19(TmpPathTestCase):
+    def _field_findings(self, data, field, filename="test-band.yaml"):
+        path = self.tmp_path / filename
+        path.write_text(yaml.dump(data))
+        return [f for f in validate_profile(path)["findings"]
+                if f.get("location", {}).get("field") == field]
+
+    def test_rule16_filename_matches_name(self):
+        self.assertEqual(self._field_findings(VALID_PROFILE, "name"), [])
+
+    def test_rule16_filename_mismatch_is_low(self):
+        found = self._field_findings({**VALID_PROFILE, "name": "Renamed Band"}, "name")
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["severity"], "low")
+        self.assertIn("renamed-band.yaml", found[0]["issue"])
+
+    def test_rule16_punctuated_name_matches_its_slug(self):
+        data = {**VALID_PROFILE, "name": "Rosa's Voice"}
+        self.assertEqual(self._field_findings(data, "name", "rosas-voice.yaml"), [])
+
+    def test_rule17_voice_with_gender_warns_low(self):
+        data = {**PRO_PROFILE, "vocal": {**PRO_PROFILE["vocal"], "voice_id": "v-1"}}
+        found = self._field_findings(data, "vocal.gender")
+        self.assertEqual([f["severity"] for f in found], ["low"])
+
+    def test_rule17_voice_without_gender_is_valid(self):
+        vocal = {k: v for k, v in PRO_PROFILE["vocal"].items() if k != "gender"}
+        data = {**PRO_PROFILE, "vocal": {**vocal, "voice_id": "v-1"}}
+        path = self.tmp_path / "test-band.yaml"
+        path.write_text(yaml.dump(data))
+        result = validate_profile(path)
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(result["findings"], [])
+
+    def test_gender_still_required_without_voice(self):
+        vocal = {k: v for k, v in PRO_PROFILE["vocal"].items() if k != "gender"}
+        found = self._field_findings({**PRO_PROFILE, "vocal": vocal}, "vocal.gender")
+        self.assertEqual([f["severity"] for f in found], ["high"])
+
+    def test_rule19_custom_model_on_free_warns(self):
+        found = self._field_findings({**VALID_PROFILE, "custom_model_id": "cm-1"}, "custom_model_id")
+        self.assertEqual([f["severity"] for f in found], ["medium"])
+
+    def test_rule19_custom_model_on_pro_is_fine(self):
+        self.assertEqual(self._field_findings({**PRO_PROFILE, "custom_model_id": "cm-1"},
+                                              "custom_model_id"), [])
 
 
 if __name__ == "__main__":

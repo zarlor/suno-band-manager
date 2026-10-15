@@ -112,6 +112,11 @@ class TestSectionLengthChecker(unittest.TestCase):
         self.assertIn("findings", report)
         self.assertIn("summary", report)
 
+    def test_out_of_range_sections_exit_zero(self):
+        report, code = run_script("--text", "[Verse 1]\nonly one line\n[Chorus]\nhook")
+        self.assertEqual(report["status"], "warning")
+        self.assertEqual(code, 0)
+
     def test_help_flag(self):
         result = subprocess.run(
             [sys.executable, SCRIPT, "--help"],

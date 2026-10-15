@@ -70,7 +70,7 @@ from tempo_source import librosa_tempo_pair, tempo_relation
 SCRIPT_NAME = "beat-grid"
 VERSION = "1.1.0"
 AUDIO_EXTS = (".mp3", ".wav", ".flac", ".ogg", ".m4a")
-INSTALL_CMD = "pip install beat-this torch librosa numpy"
+INSTALL_CMD = f"uv run {Path(__file__).resolve()}  (provisions every dependency from the PEP 723 header)"
 CHECKPOINT = "final0"
 ANALYSIS_SR = 22050
 EDGE_WINDOW_S = 30.0

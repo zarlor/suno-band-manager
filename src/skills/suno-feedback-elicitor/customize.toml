@@ -26,7 +26,14 @@ activation_steps_append = []
 
 persistent_facts = []
 
-# Items run at Step 7, after the recommendations and iteration log are
-# delivered (e.g. sync the log somewhere). Override wins. Empty = nothing.
+# An instruction run at Step 7, after the recommendations and iteration log
+# are delivered (e.g. "sync the iteration log to the shared drive").
+# Override wins. Empty = nothing.
 
-on_complete = []
+on_complete = ""
+
+# Where per-song iteration logs live ({band-or-session}/{song-slug}.md
+# beneath it). Override to keep refinement history out of docs/, e.g.
+# "{project-root}/_bmad-output/feedback-history".
+
+feedback_history_output_path = "{project-root}/docs/feedback-history"

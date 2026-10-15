@@ -29,6 +29,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
+from script_class import classify_script, latin_checkable
+
 SCRIPT_NAME = "syllable-counter"
 VERSION = "1.0.0"
 
@@ -192,10 +195,16 @@ def format_duration_range(min_seconds: int, max_seconds: int) -> str:
     return f"{format_duration(min_seconds)}-{format_duration(max_seconds)}"
 
 
-def analyze_lyrics(text: str) -> dict:
-    """Analyze lyrics for syllable counts and rhythmic consistency."""
+def analyze_lyrics(text: str, latin_only: bool = False) -> dict:
+    """Analyze lyrics for syllable counts and rhythmic consistency.
+
+    With latin_only, lines holding non-Latin letters are left out of the counts
+    (the heuristic is English-based) and listed in skipped_lines; they still
+    count toward the duration estimate, since they are sung.
+    """
     lines = text.split('\n')
     line_data = []
+    skipped = []
     sections = []
     current_section = {"name": "ungrouped", "lines": []}
 
@@ -213,6 +222,10 @@ def analyze_lyrics(text: str) -> dict:
 
         # Skip empty lines and descriptor metatags
         if not stripped or re.match(r'^\[.*:.*\]$', stripped):
+            continue
+
+        if latin_only and not latin_checkable(stripped):
+            skipped.append({"line_number": i, "script": classify_script(stripped), "text": stripped})
             continue
 
         syllables = count_line_syllables(stripped)
@@ -270,7 +283,7 @@ def analyze_lyrics(text: str) -> dict:
     overall_avg = sum(all_counts) / len(all_counts) if all_counts else 0
 
     # Duration estimation (accounts for instrumental sections)
-    min_sec, max_sec = estimate_duration(len(line_data), overall_avg, sections)
+    min_sec, max_sec = estimate_duration(len(line_data) + len(skipped), overall_avg, sections)
     duration_info = {
         "min_seconds": min_sec,
         "max_seconds": max_sec,
@@ -287,8 +300,11 @@ def analyze_lyrics(text: str) -> dict:
             "average_syllables_per_line": round(overall_avg, 1),
             "min_syllables": min(all_counts) if all_counts else 0,
             "max_syllables": max(all_counts) if all_counts else 0,
-            "estimated_duration": duration_info
+            "estimated_duration": duration_info,
+            "latin_only": latin_only,
+            "skipped_line_count": len(skipped),
         },
+        "skipped_lines": skipped,
         "findings": findings
     }
 
@@ -314,6 +330,7 @@ def build_report(analysis: dict, text: str, skill_path: str = "") -> dict:
         "metrics": analysis["overall"],
         "line_data": analysis["line_data"],
         "section_analysis": analysis["section_analysis"],
+        "skipped_lines": analysis["skipped_lines"],
         "findings": findings,
         "summary": {
             "total": len(findings),
@@ -333,7 +350,11 @@ Examples:
   %(prog)s --stdin < lyrics.txt
   %(prog)s lyrics.txt -o results.json --verbose
 
-Exit codes: 0=pass, 1=rhythm issues found, 2=error
+--latin-only leaves lines with non-Latin letters out of the counts (listed in
+skipped_lines); they still count toward the duration estimate.
+The duration estimate is always in metrics.estimated_duration.
+
+Exit codes: 0 = analysis ran (read status and findings), 2 = bad input
         """
     )
     parser.add_argument("file", nargs="?", help="Path to lyrics text file")
@@ -342,7 +363,8 @@ Exit codes: 0=pass, 1=rhythm issues found, 2=error
     parser.add_argument("-o", "--output", help="Output file path (defaults to stdout)")
     parser.add_argument("--verbose", action="store_true", help="Print diagnostics to stderr")
     parser.add_argument("--skill-path", default="", help="Skill path for report context")
-    parser.add_argument("--estimate-duration", action="store_true", help="Show estimated duration prominently")
+    parser.add_argument("--latin-only", action="store_true",
+                        help="Count only Latin-script lines; list the others in skipped_lines")
 
     args = parser.parse_args()
 
@@ -353,10 +375,11 @@ Exit codes: 0=pass, 1=rhythm issues found, 2=error
         text = sys.stdin.read()
     elif args.file:
         file_path = Path(args.file)
-        if not file_path.exists():
-            print(f"Error: File not found: {args.file}", file=sys.stderr)
+        try:
+            text = file_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            print(f"Error: cannot read {args.file}: {exc}", file=sys.stderr)
             sys.exit(2)
-        text = file_path.read_text()
     else:
         parser.print_help()
         sys.exit(2)
@@ -364,7 +387,7 @@ Exit codes: 0=pass, 1=rhythm issues found, 2=error
     if args.verbose:
         print(f"Analyzing syllables ({len(text.splitlines())} lines)...", file=sys.stderr)
 
-    analysis = analyze_lyrics(text)
+    analysis = analyze_lyrics(text, latin_only=args.latin_only)
     report = build_report(analysis, text, args.skill_path)
 
     output_json = json.dumps(report, indent=2)
@@ -376,7 +399,7 @@ Exit codes: 0=pass, 1=rhythm issues found, 2=error
     else:
         print(output_json)
 
-    sys.exit(0 if report["status"] == "pass" else 1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,14 @@
 [skill]
 bmod = "bmod-suno"
 source = "github:zarlor/suno-band-manager/src/skills"
+
+# Skills this one routes to when they're installed: the sound for finished lyrics
+# goes to the style prompt builder, listening feedback to the feedback elicitor,
+# a whole-song request without text to the Band Manager, and customization
+# overrides to bmad-customize.
+recommended_skills = [
+  "suno-style-prompt-builder",
+  "suno-feedback-elicitor",
+  "suno-agent-band-manager",
+  { skill = "bmad-customize", source = "github:bmad-code-org/BMAD-METHOD/skills" },
+]

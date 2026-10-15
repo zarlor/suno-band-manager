@@ -11,12 +11,13 @@
 #   arrays-of-tables with `code`/`id`: replace matching items, append new ones.
 
 # Steps to run before the standard activation (config load, greet).
-# Overrides append. Use for pre-flight loads, compliance checks, etc.
+# Overrides append. Applied in headless runs too. Use for pre-flight loads,
+# compliance checks, etc.
 
 activation_steps_prepend = []
 
-# Steps to run after greet but before routing to an operation.
-# Overrides append.
+# Steps to run after greet (headless: after config load) but before routing
+# to an operation. Overrides append.
 
 activation_steps_append = []
 
@@ -27,13 +28,14 @@ activation_steps_append = []
 
 persistent_facts = []
 
-# Run after Create, Edit, Duplicate or Delete has written the profile, e.g.
-# "commit the changed profile files" or "sync docs/band-profiles". Override wins.
+# An instruction run after any operation that wrote files (Create, Edit,
+# Duplicate, Delete, a saved writer-voice analysis, Health Check appends, a
+# playlist scaffold or edit; headless writes too), e.g. "commit the changed
+# profile files" or "sync docs/band-profiles". Override wins. Empty = nothing.
 
 on_complete = ""
 
 # Output paths are not set here: profiles and songbook entries land where the
-# module config says (`band_profiles_folder` / `songbook_folder` under
-# [modules.suno] in {project-root}/_bmad/config.toml, set by `bmad setup suno`).
-# The per-band playlist path is a module-wide contract the playlist sequencer
-# reads, so it is not overridable.
+# module config says (modules.suno.band_profiles_folder / songbook_folder,
+# set by `bmad setup suno`). The per-band playlist path is a module-wide
+# contract the playlist sequencer reads, so it is not overridable.

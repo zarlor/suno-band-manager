@@ -1,14 +1,15 @@
 # Suno Parameter Map
 
-> **Related references:** For the complete delivery metatag catalog, section tag behavior, and experimental tags, see the suno-lyric-transformer skill's `references/metatag-reference.md`. For section emotional roles and poem-to-song structure decisions, see the suno-lyric-transformer skill's `references/section-jobs.md`.
+> **Lyric-side detail:** the full metatag catalog and section-job decisions belong to the suno-lyric-transformer skill. Lyric changes go to it as an adjustment spec, and it applies them with that knowledge.
 >
-> **Critical zone:** The first ~200 characters of a style prompt carry disproportionate influence on generation. When recommending additions, prioritize the most impactful descriptors for the critical zone. Supplementary descriptors go after. The style prompt limit is 1,000 characters (200 on the retired v4 Pro) and exclusions aim for ~200 — community-attested figures, not officially documented by Suno; `scripts/map-adjustments.py` and the suno-style-prompt-builder skill's `scripts/validate-prompt.py` enforce them.
+> **Critical zone:** The first ~200 characters of a style prompt carry disproportionate influence on generation. When recommending additions, prioritize the most impactful descriptors for the critical zone. Supplementary descriptors go after. The style prompt limit is 1,000 characters (200 on the retired v4 Pro) and exclusions aim for ~200 — community-attested figures, not officially documented by Suno; this skill's map-adjustments script and the suno-style-prompt-builder skill's validator enforce them.
 >
 > **Last validated:** August 13, 2026 against v5.5, v5, and v4.5-all — models that can no longer generate since the v6 family launched (2026-09-09). Re-check model-specific advice on v6 before relying on it.
->
-> **Elsewhere in this skill:** v6 controls, Voices/Custom Models and per-model patterns are in `references/model-controls.md`; artifacts, editor/Studio paths, length and genre drift are in `references/technical-resolution.md`.
+
 
 Maps feedback dimensions and emotional vocabulary to concrete Suno parameter adjustments.
+
+**Contents** (read the section the complaint needs, not the whole file): Style Prompt Mechanics (keyword order, dynamic arc, perceived tempo) · Descriptor Families · Parameterized Section Tags · Inline Performance Modifiers · Confirmed Descriptor Effects · Three-Pass Layered Prompting · Style Prompt Adjustment Patterns (instrumentation, vocals, energy and tempo, production, mood) · Confirmed Suno Behavior · Exclusion Guidance · Slider Adjustment Guide (Weirdness, Audio Influence, Style Influence, per-section) · Lyric-to-Metatag Feedback Patterns.
 
 ## Style Prompt Mechanics
 
@@ -207,7 +208,7 @@ Certain style prompt keywords reliably trigger unwanted arrangement choices. Whe
 | "Not emotional enough" | "emotional, yearning, deeply felt, passionate" | Style Influence ↑ |
 | "Too dramatic" | "understated, subtle, restrained, casual" | — |
 
-**v6 caution on feeling words (2026-10-03):** "big", "emotional" and "epic" as a heavy chorus's instruction are reported to slow it into a ballad (COMMUNITY). A mood tag on a section meant to be bare may be read as intensity (n=1, a thing to try). For those cases, describe the section's job, harmony or arrangement instead of its feeling. See the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "v6 prompt guidelines".
+**v6 caution on feeling words (2026-10-03):** "big", "emotional" and "epic" as a heavy chorus's instruction are reported to slow it into a ballad (COMMUNITY). A mood tag on a section meant to be bare may be read as intensity (n=1, a thing to try). For those cases, describe the section's job, harmony or arrangement instead of its feeling.
 
 ## Confirmed Suno Behavior
 
@@ -221,7 +222,7 @@ Prioritize 2-3 specific exclusions over filling the space. Supported syntax: 'no
 
 ## Slider Adjustment Guide
 
-**Goal-based starting points (ANECDOTAL, single source, updated 2026-08):** a set of goal-keyed slider recipes — clean/predictable, strong genre, stable hook with variation, adventurous bridge, uploaded-melody-leads, upload-as-loose-inspiration — is documented in the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "Goal-Based Slider Recipes." They don't contradict the production-tested tables below; use them when the user's goal isn't one this file names, especially for uploaded-audio cases. Where they differ from our tables, ours win — ours are measured on this catalog.
+**Goal-based starting points (ANECDOTAL, single source, updated 2026-08):** a set of goal-keyed slider recipes — clean/predictable, strong genre, stable hook with variation, adventurous bridge, uploaded-melody-leads, upload-as-loose-inspiration — is held by the suno-style-prompt-builder skill, which applies it when it rebuilds the prompt. They don't contradict the production-tested tables below; use them when the user's goal isn't one this file names, especially for uploaded-audio cases. Where they differ from our tables, ours win — ours are measured on this catalog.
 
 **Style Influence and Audio Influence compete — never both at 100** (COMMUNITY). If a user has pushed both high and reports incoherent output, that combination is the first thing to unwind: sample-primary work sits around AI 60-70 / SI 30-40, tags-primary around AI 30-40 / SI 60-70.
 
@@ -259,7 +260,7 @@ Prioritize 2-3 specific exclusions over filling the space. Supported syntax: 'no
 - Weirdness 85 causes structural breakdown: [End] tags ignored, songs continue past lyrics with instrumental/gibberish meandering
 - At Weirdness 85, coherence loss increases in longer songs — shorter songs or songs with strong repeating structure (chorus anchors) survive higher Weirdness better
 - **Recommendation:** Cap at 75 for songs needing structural compliance. Reserve 80+ for jam/experimental mode only. Community reports put the danger zone as low as 78.
-- Use the [Fade Out] + [End] combo at high Weirdness values — reported as a more reliable stop signal than [End] alone, though primary-source users report [Fade Out] working in no configuration at all. Expect to crop; that is the only deterministic ending (see the ending-repair tree under "Song Length & Pacing" in `references/technical-resolution.md`)
+- Use the [Fade Out] + [End] combo at high Weirdness values — reported as a more reliable stop signal than [End] alone, though primary-source users report [Fade Out] working in no configuration at all. Expect to crop; that is the only deterministic ending (the technical-resolution reference has the ending-repair tree under "Song Length & Pacing")
 
 ### Audio Influence (0-100%, default 25%) — Persona-dependent
 

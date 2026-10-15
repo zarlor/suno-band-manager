@@ -11,29 +11,31 @@
 #   arrays-of-tables with `code`/`id`: replace matching items, append new ones.
 
 # Steps to run before the standard activation (config load, greet).
-# Overrides append. Use for pre-flight loads, compliance checks, etc.
+# Overrides append. Applied in headless runs too.
 
 activation_steps_prepend = []
 
-# Steps to run after greet but before the intake step.
-# Overrides append. Use for context-heavy setup that should happen
-# once the user has been acknowledged.
+# Steps to run after greet (headless: after config load) but before intake.
+# Overrides append. Applied in headless runs too.
 
 activation_steps_append = []
 
-# Persistent facts the workflow keeps in mind for the whole run
-# (standards, compliance constraints, stylistic guardrails).
-# Loaded on activation, headless runs included. Overrides append.
-#
-# Each entry is either:
-#   - a literal sentence, e.g. "Every playlist opens on a track in a major key."
-#   - a file reference prefixed with `file:`, e.g. "file:{project-root}/docs/standards.md"
-#     (glob patterns are supported; the file's contents are loaded and treated as facts).
+# Persistent facts the workflow keeps in mind for the whole run, e.g.
+# "Every playlist opens on a track in a major key."
+# Each entry is a literal sentence, or `file:` plus a path (globs allowed).
+# Overrides append.
 
 persistent_facts = []
 
-# Items that are executed when the workflow reaches its terminal stage, after
-# the accepted order is written and the sequencing data re-run. Override wins.
-# Leave empty for no custom post-completion behavior.
+# An instruction run when the accepted order is written and the sequencing data
+# re-run (interactive) or the success JSON is emitted (headless), e.g. "post the
+# new order to the band's ordering doc". Override wins. Empty = nothing.
 
-on_complete = []
+on_complete = ""
+
+# The per-band sequencing workspace: the memlog, theme summaries and the
+# accepted order. {docs} (the folder holding the band profiles) and {band-slug}
+# are filled per run. Override to keep it elsewhere, e.g.
+# "{project-root}/_bmad-output/sequencing/{band-slug}".
+
+workspace_output_path = "{docs}/{band-slug}-playlist-sequencing"

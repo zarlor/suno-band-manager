@@ -15,9 +15,6 @@ from pathlib import Path
 
 SCRIPT = str(Path(__file__).parent.parent / "assemble-summary.py")
 
-# Canonical code -> meaning, mirrored from SKILL.md menu table
-# (Step 2: Select Transformations). This is the source of truth; both
-# assemble-summary.py and validate-options.py must agree with it.
 CANONICAL_CODE_DESCRIPTIONS = {
     "ST": "Structure Tagging",
     "CE": "Chorus Extraction",
@@ -38,14 +35,14 @@ def _load_module():
     return module
 
 
-def run_script(*args, input_data=None):
+def run_script(*args):
     """Run the script and return stdout and returncode."""
-    result = subprocess.run(
-        [sys.executable, SCRIPT, *args],
-        capture_output=True, text=True,
-        input=input_data
-    )
+    result = subprocess.run([sys.executable, SCRIPT, *args], capture_output=True, text=True)
     return result.stdout, result.returncode
+
+
+def run_full(*args):
+    return subprocess.run([sys.executable, SCRIPT, *args], capture_output=True, text=True)
 
 
 def create_test_files(tmp_path):
@@ -57,7 +54,10 @@ def create_test_files(tmp_path):
             "total_lines": 20,
             "lyric_lines": 14,
             "section_count": 4,
-            "sections": ["Verse 1", "Chorus", "Verse 2", "Chorus"]
+            "sections": ["Verse 1", "Chorus", "Verse 2", "Chorus"],
+            "character_count": 600,
+            "lyric_character_count": 560,
+            "metatag_character_count": 40
         },
         "findings": [],
         "summary": {"total": 0}
@@ -71,7 +71,8 @@ def create_test_files(tmp_path):
             "total_syllables": 112,
             "average_syllables_per_line": 8.0,
             "min_syllables": 5,
-            "max_syllables": 12
+            "max_syllables": 12,
+            "estimated_duration": {"min_seconds": 60, "max_seconds": 75, "formatted": "1:00-1:15"}
         },
         "findings": [],
         "summary": {"total": 0}
@@ -99,143 +100,147 @@ def create_test_files(tmp_path):
     return str(val_file), str(syl_file), str(cli_file)
 
 
+def write(path, data):
+    Path(path).write_text(json.dumps(data))
+
+
 class TestAssembleSummary(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.tmp_path = Path(tmp.name)
+        self.val, self.syl, self.cli = create_test_files(self.tmp_path)
 
-    def test_basic_assembly(self):
-        val, syl, cli = create_test_files(self.tmp_path)
-        output, code = run_script("--validation", val, "--syllables", syl, "--cliches", cli)
+    def report(self, *extra, cliches=True):
+        args = ["--validation", self.val, "--syllables", self.syl]
+        if cliches:
+            args += ["--cliches", self.cli]
+        output, code = run_script(*args, *extra)
+        self.assertEqual(code, 0, output)
+        return json.loads(output)
+
+    def test_json_to_stdout_by_default(self):
+        report = self.report()
+        self.assertEqual(report["script"], "assemble-summary")
+        self.assertIn("## Transformation Summary", report["markdown"])
+        self.assertEqual(report["status"], "pass")
+
+    def test_markdown_flag_prints_block(self):
+        output, code = run_script("--validation", self.val, "--syllables", self.syl,
+                                  "--cliches", self.cli, "--markdown")
         self.assertEqual(code, 0)
-        self.assertIn("Transformation Summary", output)
+        self.assertTrue(output.startswith("## Transformation Summary"))
         self.assertIn("Validation Status", output)
-        self.assertIn("Sections:", output)
 
-    def test_with_transformations(self):
-        val, syl, cli = create_test_files(self.tmp_path)
-        output, code = run_script(
-            "--validation", val, "--syllables", syl, "--cliches", cli,
-            "--transformations", "ST,CC,RA"
-        )
-        self.assertEqual(code, 0)
-        self.assertIn("Transformations Applied", output)
-        self.assertIn("ST:", output)
-        self.assertIn("CC:", output)
-        self.assertIn("RA:", output)
+    def test_transformation_summary_matches_headless_shape(self):
+        ts = self.report("--transformations", "ST,CC,RA,CD")["transformation_summary"]
+        self.assertEqual(ts, {
+            "sections": ["Verse 1", "Chorus", "Verse 2", "Chorus"],
+            "section_count": 4,
+            "estimated_duration": "1:00-1:15",
+            "transformations_applied": ["ST", "CC", "RA", "CD"],
+            "syllable_range": "5-12",
+            "character_count": 600,
+            "lyric_character_count": 560,
+            "metatag_character_count": 40,
+            "character_budget": "600/3000 (20%)",
+        })
 
     def test_rendered_descriptions_match_canonical(self):
-        # Each applied code must render with its canonical SKILL.md meaning.
-        val, syl, cli = create_test_files(self.tmp_path)
-        all_codes = ",".join(CANONICAL_CODE_DESCRIPTIONS)
-        output, code = run_script(
-            "--validation", val, "--syllables", syl, "--cliches", cli,
-            "--transformations", all_codes
-        )
-        self.assertEqual(code, 0)
+        md = self.report("--transformations", ",".join(CANONICAL_CODE_DESCRIPTIONS))["markdown"]
         for c, meaning in CANONICAL_CODE_DESCRIPTIONS.items():
             with self.subTest(code=c):
-                self.assertIn(f"- {c}: {meaning}", output)
+                self.assertIn(f"- {c}: {meaning}", md)
 
-    def test_code_descriptions_match_canonical(self):
-        # Guard against silent drift: assemble-summary.py CODE_DESCRIPTIONS must
-        # match the canonical SKILL.md menu-table mapping exactly.
-        module = _load_module()
-        self.assertEqual(module.CODE_DESCRIPTIONS, CANONICAL_CODE_DESCRIPTIONS)
+    def test_unknown_code_exits_2(self):
+        result = run_full("--validation", self.val, "--syllables", self.syl, "--transformations", "ST,ZZ")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("ZZ", result.stderr)
 
-    def test_skill_menu_table_matches_canonical(self):
-        # The SKILL.md Step 2 menu table is the human-facing source of truth.
-        import re
-        skill = (Path(__file__).parent.parent.parent / "SKILL.md").read_text()
-        rows = dict(re.findall(r"^\| ([A-Z]{2}) \| ([^|]+?) \|", skill, re.MULTILINE))
-        self.assertEqual(rows, CANONICAL_CODE_DESCRIPTIONS)
-
-    def test_json_output(self):
-        val, syl, cli = create_test_files(self.tmp_path)
-        out_file = self.tmp_path / "output.json"
-        output, code = run_script(
-            "--validation", val, "--syllables", syl, "--cliches", cli,
-            "-o", str(out_file)
-        )
-        self.assertEqual(code, 0)
-        report = json.loads(out_file.read_text())
-        self.assertEqual(report["script"], "assemble-summary")
-        self.assertIn("metrics", report)
-        self.assertIn("markdown", report)
-
-    def test_markdown_output_file(self):
-        val, syl, cli = create_test_files(self.tmp_path)
-        out_file = self.tmp_path / "output.md"
-        output, code = run_script(
-            "--validation", val, "--syllables", syl, "--cliches", cli,
-            "-o", str(out_file)
-        )
-        self.assertEqual(code, 0)
-        content = out_file.read_text()
-        self.assertIn("## Transformation Summary", content)
+    def test_cliches_omitted_reads_not_run(self):
+        report = self.report(cliches=False)
+        m = report["metrics"]
+        self.assertIs(m["cliche_detection_ran"], False)
+        self.assertIsNone(m["total_cliches"])
+        self.assertEqual(m["cliche_status"], "not run")
+        self.assertIn("**Cliche Detection:** not run", report["markdown"])
 
     def test_cliche_categories_displayed(self):
-        val, syl, cli = create_test_files(self.tmp_path)
-        output, code = run_script("--validation", val, "--syllables", syl, "--cliches", cli)
-        self.assertEqual(code, 0)
-        self.assertIn("2 found", output)
-        self.assertIn("emotional", output)
-        self.assertIn("nature", output)
+        md = self.report()["markdown"]
+        self.assertIn("2 found", md)
+        self.assertIn("emotional", md)
+        self.assertIn("nature", md)
 
-    def test_syllable_range_displayed(self):
-        val, syl, cli = create_test_files(self.tmp_path)
-        output, code = run_script("--validation", val, "--syllables", syl, "--cliches", cli)
-        self.assertEqual(code, 0)
-        self.assertIn("5-12", output)
-        self.assertIn("avg 8.0", output)
-
-    def test_estimated_duration(self):
-        val, syl, cli = create_test_files(self.tmp_path)
-        output, code = run_script("--validation", val, "--syllables", syl, "--cliches", cli)
-        self.assertEqual(code, 0)
-        # 4 sections * 15 sec = 60 sec = 1:00
-        self.assertIn("1:00", output)
+    def test_syllable_range_and_duration_from_reports(self):
+        report = self.report()
+        self.assertIn("5-12", report["markdown"])
+        self.assertIn("avg 8.0", report["markdown"])
+        self.assertEqual(report["metrics"]["estimated_duration"], "1:00-1:15")
 
     def test_character_budget_from_validation_metrics(self):
-        val, syl, cli = create_test_files(self.tmp_path)
-        data = json.loads(Path(val).read_text())
+        data = json.loads(Path(self.val).read_text())
         data["metrics"].update({"character_count": 1850, "lyric_character_count": 1640,
                                 "metatag_character_count": 210})
-        Path(val).write_text(json.dumps(data))
-        out_file = self.tmp_path / "out.json"
-        _, code = run_script("--validation", val, "--syllables", syl, "--cliches", cli, "-o", str(out_file))
-        self.assertEqual(code, 0)
-        report = json.loads(out_file.read_text())
+        write(self.val, data)
+        report = self.report()
         m = report["metrics"]
         self.assertEqual(m["character_budget"], "1850/3000 (62%)")
-        self.assertEqual(m["lyric_character_count"], 1640)
-        self.assertEqual(m["metatag_character_count"], 210)
         self.assertIs(m["over_quality_budget"], False)
         self.assertIn("Lyrics 1640 + Metatags 210 = 1850/3000 (62%)", report["markdown"])
 
-    def test_duration_prefers_syllable_counter_range(self):
-        val, syl, cli = create_test_files(self.tmp_path)
-        data = json.loads(Path(syl).read_text())
-        data["metrics"]["estimated_duration"] = {"min_seconds": 165, "max_seconds": 210,
-                                                 "formatted": "2:45-3:30"}
-        Path(syl).write_text(json.dumps(data))
-        output, code = run_script("--validation", val, "--syllables", syl, "--cliches", cli)
-        self.assertEqual(code, 0)
-        self.assertIn("2:45-3:30", output)
+    def test_status_follows_inputs(self):
+        data = json.loads(Path(self.syl).read_text())
+        data["status"] = "warning"
+        write(self.syl, data)
+        self.assertEqual(self.report()["status"], "warning")
+        data = json.loads(Path(self.val).read_text())
+        data["status"] = "fail"
+        write(self.val, data)
+        report = self.report()
+        self.assertEqual(report["status"], "fail")
+        self.assertEqual(report["metrics"]["input_status"]["validation"], "fail")
 
-    def test_missing_files_handled(self):
+    def test_missing_named_file_exits_2(self):
         missing = str(self.tmp_path / "nonexistent.json")
-        output, code = run_script(
-            "--validation", missing, "--syllables", missing, "--cliches", missing
-        )
-        self.assertEqual(code, 2)
+        for flag in ("--validation", "--syllables", "--cliches"):
+            with self.subTest(flag=flag):
+                args = {"--validation": self.val, "--syllables": self.syl, "--cliches": self.cli}
+                args[flag] = missing
+                result = run_full(*[x for kv in args.items() for x in kv])
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("nonexistent.json", result.stderr)
+
+    def test_unparseable_file_exits_2(self):
+        Path(self.cli).write_text("not json")
+        result = run_full("--validation", self.val, "--syllables", self.syl, "--cliches", self.cli)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("not JSON", result.stderr)
+
+    def test_wrong_script_report_exits_2(self):
+        result = run_full("--validation", self.syl, "--syllables", self.syl)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("expected validate-lyrics", result.stderr)
+
+    def test_missing_metric_exits_2(self):
+        data = json.loads(Path(self.val).read_text())
+        del data["metrics"]["character_count"]
+        write(self.val, data)
+        result = run_full("--validation", self.val, "--syllables", self.syl)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("character_count", result.stderr)
+
+    def test_output_file(self):
+        out_file = self.tmp_path / "out.json"
+        _, code = run_script("--validation", self.val, "--syllables", self.syl, "-o", str(out_file))
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out_file.read_text())["script"], "assemble-summary")
+
+    def test_code_names_come_from_the_shared_table(self):
+        module = _load_module()
+        self.assertEqual(module.CODE_NAMES, CANONICAL_CODE_DESCRIPTIONS)
 
     def test_help_flag(self):
-        result = subprocess.run(
-            [sys.executable, SCRIPT, "--help"],
-            capture_output=True, text=True
-        )
+        result = run_full("--help")
         self.assertEqual(result.returncode, 0)
         self.assertIn("assemble", result.stdout.lower())
 

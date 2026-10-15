@@ -127,7 +127,11 @@ def find_positive_pairings(lowered: str) -> list[str]:
     for phrase in VOCAL_SAFE_PAIRINGS:
         if phrase.startswith(NEGATION_PREFIXES):
             continue
-        for m in re.finditer(_word_re(phrase), lowered):
+        # "clean sung vocal" protects the vocal as well as "sung vocals" does.
+        pattern = _word_re(phrase)
+        if phrase.endswith("vocals"):
+            pattern = _word_re(phrase[:-1]) + "|" + pattern
+        for m in re.finditer(pattern, lowered):
             before = lowered[max(0, m.start() - 12):m.start()]
             if re.search(r"\b(no|without|not|never|avoid\w*)\s+$", before):
                 continue

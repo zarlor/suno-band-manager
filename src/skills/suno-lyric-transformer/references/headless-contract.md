@@ -1,6 +1,6 @@
 # Headless Contract
 
-Load this when the skill runs with `--headless` / `-H`. The Band Manager agent calls it this way for every package with lyrics, so the return must be complete without a conversation. The workflow steps in `SKILL.md` still apply; this file covers the inputs, the defaults that replace questions, what is written, and what comes back.
+Read this when the skill runs with `--headless` / `-H`. The Band Manager agent calls it this way for every package with lyrics, so the return must be complete without a conversation. The workflow steps in `SKILL.md` still apply; this file covers the inputs, the defaults that replace questions, what is written, and what comes back.
 
 ## Modes
 
@@ -10,7 +10,18 @@ Load this when the skill runs with `--headless` / `-H`. The Band Manager agent c
 | `--headless:analyze` | Step 1 only | Analysis return |
 | `--headless:refine` | Refinement (below) | Transform return, with `adjustments_applied` |
 
-**Input** (structured): `text` (the source; required except for refine), and optionally `options` (codes), `profile`, `direction` (genre, mood, energy), `reference_tracks`, `language`, `model`, `section_cues` (per-section instructions from the style map, for cues that restate it word for word), and `song_path` (the songbook entry, when one exists). Check `options` with `validate-options.py` before starting.
+## Inputs
+
+| Field | Notes |
+|---|---|
+| `text` | The source. Required except for refine |
+| `options` | Codes, e.g. `["ST", "RA", "CD"]`. When given they win over `creativity_mode`. Check them with `validate-options.py` before starting |
+| `creativity_mode` | `conservative` / `balanced` (default) / `experimental`; sets the default codes when `options` is absent (below) |
+| `band_profile` | Profile name, read from `{band_profiles_folder}/{name}.yaml` (`profile` is accepted for older callers) |
+| `direction` | Genre, mood, energy |
+| `section_cues` | Per-section instructions from the style prompt's section map, e.g. `{"Verse 1": "riff continues under vocal, drums drive"}`. ST writes each into its section's tag verbatim (`[Verse 1 - riff continues under vocal, drums drive]`); a cue for a section the arc doesn't have goes in `decision_log` |
+| `reference_tracks`, `language`, `model` | Optional context; `language` defaults to the source text's |
+| `song_path` | The songbook entry, when one exists (decides where the decision log is written) |
 
 ## The Writer's Spacing
 
@@ -22,15 +33,23 @@ Before returning, `spacing-check.py` must show no high findings, and every line 
 
 Record each one you apply in `decision_log`.
 
-- **Options:** ST + CC + RA + CD. Pre-structured input → RA + CD. Short input → ST + a short-poem strategy. Over ~2,500 characters → drop CC.
-- **Non-Latin or mixed script** (`analyze-input.py` `script_type`): non-Latin lines get structure and arc work only; no syllable, rhyme or cliche checks. Add a caveat.
+- **Options:** `options` when given. Otherwise start from SKILL.md Step 2's defaults for this input (raw, pre-structured, short, over ~2,500 characters) and apply `creativity_mode`:
+
+  | `creativity_mode` | Codes |
+  |---|---|
+  | `conservative` | The defaults with CE in place of CC: promote the writer's own lines rather than write a new chorus |
+  | `balanced` | The defaults as they are |
+  | `experimental` | The defaults, with ST taking structural liberties using the writer's own lines: reorder sections, repeat or split lines, call-and-response, unconventional forms (the Band Manager's Jam mode). The writer's words stay theirs: add FR or RE only when `direction` asks for a rewrite or new rhymes (owner, 2026-10-15) |
+
+  The input-size rules still hold after the mode: a short input takes a short-poem strategy instead of CC, and over ~2,500 characters drops CC. Log the mode and the resulting codes in `decision_log`.
+- **Non-Latin or mixed script** (`analyze-input.py` `script_type`): non-Latin lines get structure and arc work only; no syllable, rhyme or cliche checks (`--latin-only`). Add a caveat.
 - **Oversized input:** focus on the single strongest section that fits the budget and return `complete_with_caveats`. Block only if even that section is over the 5,000 hard limit.
 - **Band profile:** record which state applied (not found, malformed, or no voice fields) and proceed without what's missing.
 - **Narrative section labels:** translate them to Suno direction and record the original labels.
 
 ## Transform Return
 
-Map `transformation_summary` straight from `assemble-summary.py`'s JSON `metrics`; don't compute any of it.
+Copy `transformation_summary` as is from `assemble-summary.py`'s JSON; don't compute any of it. `cliche_report.flagged` is its `metrics.total_cliches` (`cliche_report` is `null` when CD didn't run), and `validation_result` is the final `validate-lyrics.py` run's `status` and `findings`.
 
 ```json
 {
@@ -76,20 +95,20 @@ Map `transformation_summary` straight from `assemble-summary.py`'s JSON `metrics
 - non-Latin or mixed script forced structure-only work;
 - a flat copy was needed.
 
-`blocked` means no source text, no section that fits the hard limit, or options that cannot be reconciled. Give a one-line `reason` and still return `decision_log`.
+`blocked` means no source text (or a path the scripts can't read), no section that fits the hard limit, or options that cannot be reconciled (`validate-options.py` exit 1). Give a one-line `reason` and still return `decision_log`.
 
 ## Where Keeps Are Written
 
-A song's decision log sits beside its songbook entry: `{songbook_folder}/{band-profile-or-untitled}/{song-title}.decision-log.md`. It is the writer's data. It records the structural decisions and **intentional keeps**: a cliche kept on purpose, a hedge or certainty level the writer insisted on, a line they refused to lose. It is append-only; each run adds a `## Session YYYY-MM-DD (transform | refine)` heading with one bullet per decision or keep.
+The decision log is `{song-title}.decision-log.md` beside the songbook entry, append-only, one `## Session YYYY-MM-DD (transform | refine)` heading per run with one bullet per structural decision and intentional keep.
 
 - **`song_path` given:** append this run's session to the log beside it and return the path in `decision_log_path`.
 - **No `song_path`** (for example, the pipeline before the song is saved): write nothing. Return `decision_log` and `intentional_keeps`; the caller appends them as a session when it saves the songbook entry.
 
 ## Refinement
 
-For `--headless:refine`, or an adjustment spec from the Feedback Elicitor, skip the full pipeline and apply targeted changes.
+For `--headless:refine`, or an adjustment spec from the `suno-feedback-elicitor` skill, skip the full pipeline and apply targeted changes.
 
-1. **Read the decision log first** if one exists beside the song (`{song-title}.decision-log.md`, or an older `.decision-log.md` in that folder). It says why earlier choices were made and which keeps were intentional, so refinement doesn't quietly undo a kept cliche or an insisted-on hedge. If an adjustment contradicts a logged keep, don't apply it: mark it `skipped` with the conflict in `detail`, and add a caveat. (Interactively, raise the conflict before applying.)
+1. **Read the decision log first** if one exists beside the song (`{song-title}.decision-log.md`, or an older `.decision-log.md` in that folder). It says why earlier choices were made and which keeps were intentional, so refinement doesn't quietly undo a kept cliche or an insisted-on hedge. If an adjustment contradicts a logged keep, don't apply it: mark it `skipped` with the conflict in `detail`, and add a caveat.
 2. Apply each adjustment.
 3. Run the Step 4 checks. `spacing-check.py` compares against `source_lyrics`, the writer's current version.
 4. Append the session to the log (per the rules above) and return the transform contract.

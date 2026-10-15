@@ -458,6 +458,13 @@ class TestControls(unittest.TestCase):
 
 
 class TestPackageValidation(unittest.TestCase):
+    def test_singular_vocal_pairing_protects_a_heavy_genre(self):
+        report = validate_prompt.validate_package(
+            {"model": "v6", "style_prompt": "heavy swamp metal lullaby, clean sung vocal, slow sway, warm room"})
+        heavy = [f for f in report["findings"] if "scream trigger" in f["issue"]]
+        self.assertTrue(heavy)
+        self.assertEqual(heavy[0]["severity"], "low")
+
     def test_wild_card_exclusions_are_validated_like_the_primary(self):
         package = {
             "model": "v6",

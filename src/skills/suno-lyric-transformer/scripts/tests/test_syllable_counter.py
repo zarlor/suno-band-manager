@@ -217,11 +217,46 @@ class TestDurationEstimation(unittest.TestCase):
         # Check formatted string pattern M:SS-M:SS
         self.assertIn("-", duration["formatted"])
 
-    def test_estimate_duration_flag(self):
-        lyrics = "[Verse 1]\nHello world\n"
-        report, code = run_script("--text", lyrics, "--estimate-duration")
-        self.assertIsNotNone(report)
+    def test_duration_always_in_metrics(self):
+        report, code = run_script("--text", "[Verse 1]\nHello world\n")
+        self.assertEqual(code, 0)
         self.assertIn("estimated_duration", report["metrics"])
+
+
+class TestLatinOnly(unittest.TestCase):
+    MIXED = "[Verse 1]\nWalking through the fog of morning\n夜の雨が降る\nlove is 愛\nThe porch light hums"
+
+    def test_latin_only_skips_and_lists_non_latin_lines(self):
+        report, code = run_script("--text", self.MIXED, "--latin-only")
+        self.assertEqual(code, 0)
+        self.assertEqual([d["line_number"] for d in report["line_data"]], [2, 5])
+        skipped = report["skipped_lines"]
+        self.assertEqual([(d["line_number"], d["script"]) for d in skipped], [(3, "non_latin"), (4, "mixed")])
+        self.assertIs(report["metrics"]["latin_only"], True)
+        self.assertEqual(report["metrics"]["skipped_line_count"], 2)
+
+    def test_skipped_lines_still_count_toward_duration(self):
+        latin_only, _ = run_script("--text", self.MIXED, "--latin-only")
+        latin_text = "[Verse 1]\nWalking through the fog of morning\nThe porch light hums"
+        just_latin, _ = run_script("--text", latin_text)
+        self.assertGreater(latin_only["metrics"]["estimated_duration"]["max_seconds"],
+                           just_latin["metrics"]["estimated_duration"]["max_seconds"])
+
+    def test_without_flag_every_line_counts(self):
+        report, _ = run_script("--text", self.MIXED)
+        self.assertEqual(len(report["line_data"]), 4)
+        self.assertEqual(report["skipped_lines"], [])
+        self.assertIs(report["metrics"]["latin_only"], False)
+
+    def test_findings_exit_zero(self):
+        uneven = "[Verse]\nshort\nthis is a much much longer line with many many words in it\nok\nfine"
+        report, code = run_script("--text", uneven)
+        self.assertTrue(report["findings"])
+        self.assertEqual(code, 0)
+
+    def test_missing_file_exits_2(self):
+        _, code = run_script("/nonexistent/lyrics.txt")
+        self.assertEqual(code, 2)
 
 
 if __name__ == "__main__":

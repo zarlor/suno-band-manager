@@ -12,12 +12,18 @@ non-zero exit, not a crash. Invoked via `uv run` to provision librosa; skips
 without uv.
 """
 
+import contextlib
 import importlib.util
+import io
+import json
+import os
 import shutil
+import sys
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPT = str(Path(__file__).parent.parent / "batch-full-analysis.py")
 UV = shutil.which("uv")
@@ -73,6 +79,87 @@ class TestBatchFullAnalysis(unittest.TestCase):
         self.assertIn("| Plain | 3:20 | 96.0 |", text)
         self.assertIn("start_bpm=80", text)
         self.assertNotIn("start_bpm=80", m.format_text([plain]))
+
+
+def _load():
+    spec = importlib.util.spec_from_file_location("batch_full_analysis_main", SCRIPT)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+class TestBatchOutputs(unittest.TestCase):
+    """A band-folder pass never overwrites the catalog-wide report; a run with nothing analyzed writes nothing."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.enterContext(contextlib.chdir(self.root))
+        self.m = _load()
+        for rel in ("docs/audio/band-a/Song.mp3", "docs/audio/band-b/Other.mp3"):
+            (self.root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / rel).write_bytes(b"x")
+        self.enterContext(mock.patch.object(self.m, "require_audio_deps", lambda **kw: None))
+        self.enterContext(mock.patch.dict(sys.modules, {"librosa": type(sys)("librosa"),
+                                                        "numpy": type(sys)("numpy")}))
+
+    def run_main(self, *args, analyze=None):
+        analyze = analyze or (lambda path, reading=None: _result(Path(path).stem, 100.0))
+        out, code = io.StringIO(), 0
+        with mock.patch.object(self.m, "analyze_track", analyze), \
+                mock.patch.object(sys, "argv", ["x", "--tempo-source", "librosa", *args]), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                self.m.main()
+            except SystemExit as exc:
+                code = exc.code
+        return code, json.loads(out.getvalue())
+
+    def test_default_targets_scope_by_folder(self):
+        j = os.path.join
+        self.assertEqual(self.m.default_targets("docs/audio", "2026-10-15"),
+                         (j("docs", "audio-analysis", "catalog", "2026-10-15-deep.json"),
+                          j("docs", "catalog-analysis-report.md")))
+        self.assertEqual(self.m.default_targets("docs/audio/Band A/", "2026-10-15"),
+                         (j("docs", "audio-analysis", "catalog", "2026-10-15-deep-band-a.json"),
+                          j("docs", "band-a-catalog-analysis-report.md")))
+        self.assertEqual(self.m.default_targets("music/audio", "2026-10-15")[1], j("music", "catalog-analysis-report.md"))
+
+    def test_band_pass_leaves_the_catalog_report_alone(self):
+        code, out = self.run_main()
+        self.assertEqual(code, 0)
+        catalog = (self.root / "docs/catalog-analysis-report.md").read_text()
+        code, out = self.run_main("--audio-dir", "docs/audio/band-a")
+        self.assertEqual(code, 0)
+        self.assertEqual(out["artifacts"]["companion"], {"path": os.path.join("docs", "band-a-catalog-analysis-report.md"),
+                                                         "status": "written"})
+        self.assertIn("-deep-band-a.json", out["artifacts"]["archive"]["path"])
+        self.assertEqual((self.root / "docs/catalog-analysis-report.md").read_text(), catalog)
+
+    def test_every_track_failing_exits_1_and_writes_nothing(self):
+        code, out = self.run_main(analyze=lambda path, reading=None: {"file": "x", "error": "boom"})
+        self.assertEqual(code, 1)
+        self.assertEqual(out["status"], "fail")
+        self.assertEqual(len(out["failed"]), 2)
+        self.assertFalse((self.root / "docs/catalog-analysis-report.md").exists())
+        self.assertFalse((self.root / "docs/audio-analysis").exists())
+
+    def test_partial_failure_is_reported(self):
+        def analyze(path, reading=None):
+            return {"file": "x", "error": "boom"} if "Other" in path else _result("Song", 100.0)
+        code, out = self.run_main(analyze=analyze)
+        self.assertEqual(code, 0)
+        self.assertEqual(out["status"], "partial")
+        self.assertEqual(out["failed"], [{"file": "band-b/Other.mp3", "error": "boom"}])
+        self.assertEqual(out["analyzed_count"], 1)
+
+    def test_tempo_source_note_on_fallback(self):
+        def unavailable(paths, include_beats=False):
+            raise self.m.BeatThisUnavailable("beat-grid.py not found")
+        with mock.patch.object(self.m, "run_beat_grid", unavailable):
+            code, out = self.run_main("--tempo-source", "beat-this")
+        self.assertIn("beat-grid.py not found", out["tempo_source_note"])
 
 
 if __name__ == "__main__":

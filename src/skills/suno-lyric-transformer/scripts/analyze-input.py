@@ -29,13 +29,13 @@ import hashlib
 import json
 import re
 import sys
-import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from suno_constants import SUNO_LYRICS_HARD_LIMIT, SUNO_LYRICS_QUALITY_BUDGET
+from script_class import TAG_ONLY_LINE, classify_script
 
 SCRIPT_NAME = "analyze-input"
 VERSION = "1.1.0"
@@ -144,34 +144,9 @@ def find_suffix_matches(text: str) -> list[dict]:
     return pairs
 
 
-TAG_ONLY_LINE = re.compile(r'^\s*\[[^\]]*\]\s*$')
-
 # Unbroken prose: running text with few or no poem-style line breaks.
 # Free verse with long lines averages well under this many words per line.
 PROSE_WORDS_PER_LINE = 25
-
-
-def classify_script(line: str) -> str:
-    """Classify a line's letters as latin, non_latin, mixed, or none."""
-    latin = non_latin = 0
-    for ch in line:
-        if not ch.isalpha():
-            continue
-        try:
-            name = unicodedata.name(ch)
-        except ValueError:
-            name = ""
-        if name.startswith("LATIN"):
-            latin += 1
-        else:
-            non_latin += 1
-    if latin and non_latin:
-        return "mixed"
-    if latin:
-        return "latin"
-    if non_latin:
-        return "non_latin"
-    return "none"
 
 
 def analyze_scripts(lines: list[str]) -> dict:
@@ -302,6 +277,8 @@ def analyze_input(text: str) -> dict:
         "non_empty_line_count": len(non_empty_lines),
         "word_count": word_count,
         "character_count": char_count,
+        "over_quality_budget": char_count > SUNO_LYRICS_QUALITY_BUDGET,
+        "over_hard_limit": char_count > SUNO_LYRICS_HARD_LIMIT,
         "source_hash": source_hash,
         "repeated_phrases": repeated,
         "suffix_matches": suffixes,
@@ -368,9 +345,14 @@ def build_report(analysis: dict, text: str, skill_path: str = "") -> dict:
     for f in findings:
         severity_counts[f["severity"]] = severity_counts.get(f["severity"], 0) + 1
 
-    status = "pass"
-    if severity_counts["medium"] > 0:
-        status = "info"
+    # Status follows the worst finding: over the hard limit fails, over the
+    # quality budget warns; info findings describe the input and leave it at pass.
+    if severity_counts["critical"] or severity_counts["high"]:
+        status = "fail"
+    elif severity_counts["medium"]:
+        status = "warning"
+    else:
+        status = "pass"
 
     return {
         "script": SCRIPT_NAME,
@@ -385,6 +367,8 @@ def build_report(analysis: dict, text: str, skill_path: str = "") -> dict:
             "non_empty_line_count": analysis["non_empty_line_count"],
             "word_count": analysis["word_count"],
             "character_count": analysis["character_count"],
+            "over_quality_budget": analysis["over_quality_budget"],
+            "over_hard_limit": analysis["over_hard_limit"],
             "source_hash": analysis["source_hash"],
             "repeated_phrases": analysis["repeated_phrases"],
             "suffix_matches": analysis["suffix_matches"],
@@ -427,7 +411,8 @@ Metrics extracted:
   - spatial_layout (indented lines, internal space runs, blank-line gaps)
   - Estimated structure size (short/medium/long)
 
-Exit codes: 0=pass, 1=issues, 2=error
+Status: fail = over the hard limit, warning = over the quality budget, else pass.
+Exit codes: 0 = analysis ran (read status and findings), 2 = bad input
         """
     )
     parser.add_argument("file", nargs="?", help="Path to text file")
@@ -446,10 +431,11 @@ Exit codes: 0=pass, 1=issues, 2=error
         text = sys.stdin.read()
     elif args.file:
         file_path = Path(args.file)
-        if not file_path.exists():
-            print(f"Error: File not found: {args.file}", file=sys.stderr)
+        try:
+            text = file_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            print(f"Error: cannot read {args.file}: {exc}", file=sys.stderr)
             sys.exit(2)
-        text = file_path.read_text()
     else:
         parser.print_help()
         sys.exit(2)
@@ -469,7 +455,7 @@ Exit codes: 0=pass, 1=issues, 2=error
     else:
         print(output_json)
 
-    sys.exit(0 if report["status"] == "pass" else 1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

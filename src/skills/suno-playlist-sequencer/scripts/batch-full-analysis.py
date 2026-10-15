@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.12"
+# requires-python = ">=3.12"  # librosa>=1.0 requires Python 3.12
 # dependencies = ["librosa>=1.0", "numpy>=2.1"]
 # ///
 """
@@ -17,9 +17,21 @@ With librosa, each track also gets a second reading at a slow starting tempo
 (`librosa_prior_relation`: agree / double / other; double = a likely halftime
 ambiguity, for the ear to settle).
 
+Where the archive and companion go depends on the folder scanned, so a
+per-band pass never overwrites the catalog-wide report:
+  - the catalog root (an `audio/` folder, default docs/audio):
+    audio-analysis/catalog/<date>-deep.json and catalog-analysis-report.md,
+    both beside that `audio/` folder;
+  - a band folder (audio/<band-slug>/) or any other folder:
+    audio-analysis/catalog/<date>-deep-<folder-slug>.json and
+    <folder-slug>-catalog-analysis-report.md.
+The stdout JSON names both under `artifacts`, lists tracks that failed under
+`failed[]` (status `partial` when some did), and says why tempo fell back from
+Beat This! to librosa in `tempo_source_note`.
+
 Exit codes:
-  0 = analysis completed successfully
-  1 = invalid arguments or no audio files found
+  0 = analysis ran (status ok, or partial with failed[] listed)
+  1 = invalid arguments, no audio files found, or every track failed (nothing written)
   2 = missing dependencies (librosa/numpy)
 """
 
@@ -31,11 +43,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from audio_deps import require_audio_deps
-from companion_writer import update_companion, resolve_companion_path
-from json_archiver import resolve_archive_arg, write_archive
-from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, bpm_cell, feel_sections,
-                          librosa_tempo_pair, resolve_tempo_source, source_summary, usable, window_tempos,
-                          windowed_stability)
+from companion_writer import update_companion
+from json_archiver import _slugify, write_archive
+from tempo_source import (SOURCE_LABELS, BeatThisUnavailable, add_tempo_source_arg, bpm_cell, feel_sections,
+                          librosa_tempo_pair, resolve_tempo_source, run_beat_grid, source_summary, usable,
+                          window_tempos, windowed_stability)
 
 SCRIPT_NAME = "batch-full-analysis"
 
@@ -181,8 +193,8 @@ def analyze_track(filepath, beat_reading=None):
     return results
 
 
-def format_json(all_results):
-    """Format results as standard module JSON."""
+def build_report(all_results, tempo_note=None):
+    """The standard module JSON report as a dict."""
     tracks = []
     for r in all_results:
         if 'error' in r:
@@ -220,13 +232,22 @@ def format_json(all_results):
             'sections': r['sections'],
         })
 
-    return json.dumps({
+    failed = [{'file': r['file'], 'error': r['error']} for r in all_results if 'error' in r]
+    return {
         'script': 'batch-full-analysis',
-        'status': 'ok',
+        'status': 'partial' if failed else 'ok',
         'track_count': len(all_results),
+        'analyzed_count': len(all_results) - len(failed),
+        'failed': failed,
         'tempo_source': source_summary(all_results),
+        'tempo_source_note': tempo_note,
         'tracks': tracks,
-    }, indent=2)
+    }
+
+
+def format_json(all_results, tempo_note=None):
+    """Format results as standard module JSON."""
+    return json.dumps(build_report(all_results, tempo_note), indent=2)
 
 
 def format_text(all_results):
@@ -317,13 +338,65 @@ def rel_label(filepath, audio_dir):
     return os.path.relpath(filepath, audio_dir).replace(os.sep, '/')
 
 
+def output_scope(audio_dir):
+    """(data root, scope slug) for a scanned folder.
+
+    The catalog root is an `audio/` folder: scope None, so the outputs keep their
+    catalog-wide names beside it. A band folder (audio/<band-slug>/) or any other
+    folder gets its own slug, so a narrower pass never overwrites the catalog report."""
+    p = Path(os.path.normpath(audio_dir))
+    if p.name == "audio":
+        return str(p.parent), None
+    if p.parent.name == "audio":
+        return str(p.parent.parent), _slugify(p.name)
+    return "docs", _slugify(p.name)
+
+
+def default_targets(audio_dir, today):
+    """Default (archive, companion) paths for a scan of `audio_dir` on `today` (YYYY-MM-DD)."""
+    root, scope = output_scope(audio_dir)
+    suffix = f"-{scope}" if scope else ""
+    archive = os.path.join(root, "audio-analysis", "catalog", f"{today}-deep{suffix}.json")
+    companion = os.path.join(root, f"{scope}-catalog-analysis-report.md" if scope else "catalog-analysis-report.md")
+    return archive, companion
+
+
+def resolve_target(arg_value, default):
+    """argparse `nargs="?", const=""` value: None = off, "" = the default path, else the path given."""
+    if arg_value is None:
+        return None
+    return arg_value or default
+
+
+def fail(error, code=1, **extra):
+    """Print the failure as JSON on stdout (the caller reads it) and exit non-zero."""
+    print(json.dumps({"script": SCRIPT_NAME, "status": "fail", "error": error, **extra}, indent=2))
+    sys.exit(code)
+
+
+def companion_body(all_results, timestamp, scope):
+    title = f"# Catalog Audio Analysis — {scope}\n" if scope else "# Catalog Audio Analysis — Full\n"
+    title_block = title + f"_Generated by `{SCRIPT_NAME}` on {timestamp}_\n\n"
+    body_lines = format_text(all_results).split("\n")
+    cut = 0
+    while cut < len(body_lines):
+        line = body_lines[cut]
+        if line.startswith("##") or (line.strip() and not line.startswith("#")):
+            break
+        cut += 1
+    return title_block + "\n".join(body_lines[cut:])
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Batch audio analysis: tempo, energy, sections, spectral balance."
+        description="Batch audio analysis: tempo, energy, sections, spectral balance.",
+        epilog="Exit codes: 0 analysis ran (status ok, or partial with failed[]); 1 bad arguments, no audio "
+               "files, or every track failed; 2 missing audio dependencies.",
     )
     parser.add_argument(
         "--audio-dir", default="docs/audio",
-        help="Directory containing .mp3 files, searched recursively so per-band sub-folders are included (default: docs/audio)",
+        help=("Directory containing .mp3 files, searched recursively so per-band sub-folders are included "
+              "(default: docs/audio). A band folder (audio/<band-slug>) writes band-scoped outputs."),
     )
     parser.add_argument(
         "--format", choices=["json", "text"], default="json",
@@ -336,8 +409,8 @@ def main():
     parser.add_argument(
         "--archive", nargs="?", const="", default="",
         help=(
-            "Persist full JSON output to a dated catalog archive. "
-            "With no path: writes to docs/audio-analysis/catalog/<YYYY-MM-DD>-deep.json. "
+            "Persist the full JSON as a dated archive. With no path: "
+            "audio-analysis/catalog/<YYYY-MM-DD>-deep[-<folder-slug>].json beside the audio/ folder. "
             "Pass an explicit path to override. Default: ON."
         ),
     )
@@ -348,8 +421,8 @@ def main():
     parser.add_argument(
         "--companion", nargs="?", const="", default="",
         help=(
-            "Refresh the canonical Markdown companion file. "
-            "With no path: writes to docs/catalog-analysis-report.md. "
+            "Refresh the Markdown companion. With no path: catalog-analysis-report.md for the catalog root, "
+            "<folder-slug>-catalog-analysis-report.md for a band folder, beside the audio/ folder. "
             "Pass an explicit path to override. Default: ON."
         ),
     )
@@ -366,42 +439,75 @@ def main():
 
     audio_dir = args.audio_dir
     if not os.path.isdir(audio_dir):
-        print(json.dumps({
-            "script": "batch-full-analysis",
-            "status": "fail",
-            "error": f"Audio directory not found: {audio_dir}",
-        }), file=sys.stderr)
-        sys.exit(1)
+        fail(f"Audio directory not found: {audio_dir}")
 
     mp3s = find_mp3s(audio_dir)
 
     if not mp3s:
-        print(json.dumps({
-            "script": "batch-full-analysis",
-            "status": "fail",
-            "error": f"No .mp3 files found in: {audio_dir}",
-        }), file=sys.stderr)
-        sys.exit(1)
+        fail(f"No .mp3 files found in: {audio_dir}")
 
     print(f"Analyzing {len(mp3s)} tracks...\n", file=sys.stderr)
 
-    source = resolve_tempo_source(args.tempo_source)
-    readings = beat_this_readings(mp3s, include_beats=True) if source == "beat-this" else None
+    readings, tempo_note = None, None
+    if resolve_tempo_source(args.tempo_source) == "beat-this":
+        try:
+            readings = run_beat_grid(mp3s, include_beats=True)
+        except BeatThisUnavailable as exc:
+            tempo_note = f"Beat This! unavailable ({exc}); tempo is librosa's for every track."
+            print(f"  NOTE: {tempo_note}", file=sys.stderr)
 
-    all_results = []
+    all_results, unread = [], []
     for i, filepath in enumerate(mp3s):
-        print(f"  Processing: {rel_label(filepath, audio_dir)}...", end="", flush=True, file=sys.stderr)
-        result = analyze_track(filepath, readings[i] if readings else None)
-        result['file'] = rel_label(filepath, audio_dir)
+        label = rel_label(filepath, audio_dir)
+        print(f"  Processing: {label}...", end="", flush=True, file=sys.stderr)
+        reading = readings[i] if readings else None
+        result = analyze_track(filepath, reading)
+        result['file'] = label
         all_results.append(result)
         if 'error' in result:
             print(f" ERROR: {result['error']}", file=sys.stderr)
         else:
+            if readings and result.get('tempo_source') != 'beat-this':
+                unread.append(f"{label} ({(reading or {}).get('error') or 'no beats read'})")
             print(f" done ({result['bpm']} BPM, {result['key']}, {result['dynamic_character']})", file=sys.stderr)
+    if unread:
+        tempo_note = f"Beat This! could not read {len(unread)} track(s), librosa used for: {'; '.join(unread)}."
+
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    default_archive, default_companion = default_targets(audio_dir, now.strftime("%Y-%m-%d"))
+    archive_target = resolve_target(args.archive, default_archive)
+    companion_target = resolve_target(args.companion, default_companion)
+    report = build_report(all_results, tempo_note)
+
+    if report['analyzed_count'] == 0:
+        skipped = {"status": "skipped", "reason": "every track failed; the prior files are untouched"}
+        fail("Every track failed analysis (see failed[]). Nothing was written.",
+             track_count=report['track_count'], failed=report['failed'],
+             artifacts={"archive": {"path": archive_target, **skipped},
+                        "companion": {"path": companion_target, **skipped}})
+
+    artifacts = {}
+    scope = output_scope(audio_dir)[1]
+    for kind, target in (("archive", archive_target), ("companion", companion_target)):
+        if target is None:
+            artifacts[kind] = {"path": None, "status": "skipped"}
+            continue
+        try:
+            if kind == "archive":
+                res = write_archive(target, report)
+            else:
+                # Hand-curated sections live OUTSIDE the AUTOGEN markers and survive.
+                res = update_companion(target, SCRIPT_NAME, companion_body(all_results, now.isoformat(), scope))
+        except OSError as exc:
+            artifacts[kind] = {"path": target, "status": "error", "reason": str(exc)}
+            continue
+        artifacts[kind] = {"path": target, "status": "written"}
+        print(f"  {kind.upper()}: {res['status']} {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
 
     # Format output
     if args.format == "json":
-        output = format_json(all_results)
+        output = json.dumps({**report, 'artifacts': artifacts}, indent=2)
     else:
         output = format_text(all_results)
 
@@ -412,42 +518,6 @@ def main():
         print(f"\nReport saved to: {args.output}", file=sys.stderr)
     else:
         print(output)
-
-    # JSON archive (default ON unless --no-archive). Identifier suffix "-deep"
-    # to distinguish from analyze-audio.py's lighter summary archive.
-    from datetime import datetime, timezone
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d") + "-deep"
-    archive_target = resolve_archive_arg("catalog", today, args.archive)
-    if archive_target is not None:
-        try:
-            json_data = json.loads(format_json(all_results))
-        except Exception as exc:
-            print(f"  WARN: archive skipped — JSON build failed: {exc}", file=sys.stderr)
-        else:
-            res = write_archive(archive_target, json_data)
-            print(f"  ARCHIVED: {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
-
-    # Companion .md refresh (default ON unless --no-companion).
-    # Title + timestamp live INSIDE the AUTOGEN markers so each refresh
-    # updates them. Hand-curated sections in the companion file live
-    # outside the markers and are preserved.
-    companion_target = resolve_companion_path(SCRIPT_NAME, args.companion)
-    if companion_target is not None:
-        timestamp = datetime.now(timezone.utc).isoformat()
-        title_block = (
-            "# Catalog Audio Analysis — Full\n"
-            f"_Generated by `{SCRIPT_NAME}` on {timestamp}_\n\n"
-        )
-        body_lines = format_text(all_results).split("\n")
-        cut = 0
-        while cut < len(body_lines):
-            line = body_lines[cut]
-            if line.startswith("##") or (line.strip() and not line.startswith("#")):
-                break
-            cut += 1
-        md_body = title_block + "\n".join(body_lines[cut:])
-        res = update_companion(companion_target, SCRIPT_NAME, md_body)
-        print(f"  COMPANION: {res['status']} {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
 
 
 if __name__ == "__main__":

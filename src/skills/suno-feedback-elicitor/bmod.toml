@@ -1,3 +1,15 @@
 [skill]
 bmod = "bmod-suno"
 source = "github:zarlor/suno-band-manager/src/skills"
+
+# Skills this one invokes: the style prompt builder rebuilds and validates the
+# refined prompt (--headless:refine), and the profile manager owns every band
+# profile write (--headless:append).
+required_skills = ["suno-style-prompt-builder", "suno-band-profile-manager"]
+
+# Skills it hands off to: reworked lyrics go to the lyric transformer, and
+# customization overrides to bmad-customize.
+recommended_skills = [
+  "suno-lyric-transformer",
+  { skill = "bmad-customize", source = "github:bmad-code-org/BMAD-METHOD/skills" },
+]

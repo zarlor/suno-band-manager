@@ -176,6 +176,30 @@ class TestAnalyzeInput(unittest.TestCase):
         self.assertIn("findings", report)
         self.assertIn("summary", report)
 
+    def test_over_hard_limit_fails_but_exits_zero(self):
+        report, code = run_script("--text", "word " * 1100)
+        self.assertEqual(report["status"], "fail")
+        self.assertIs(report["metrics"]["over_hard_limit"], True)
+        self.assertIs(report["metrics"]["over_quality_budget"], True)
+        self.assertEqual(code, 0)
+
+    def test_over_quality_budget_warns(self):
+        report, code = run_script("--text", "word " * 700)
+        self.assertEqual(report["status"], "warning")
+        self.assertIs(report["metrics"]["over_hard_limit"], False)
+        self.assertIs(report["metrics"]["over_quality_budget"], True)
+        self.assertEqual(code, 0)
+
+    def test_within_budget_passes(self):
+        report, code = run_script("--text", "a short line\nanother one")
+        self.assertEqual(report["status"], "pass")
+        self.assertIs(report["metrics"]["over_quality_budget"], False)
+        self.assertEqual(code, 0)
+
+    def test_missing_file_exits_2(self):
+        _, code = run_script("/nonexistent/poem.txt")
+        self.assertEqual(code, 2)
+
     def test_help_flag(self):
         result = subprocess.run(
             [sys.executable, SCRIPT, "--help"],

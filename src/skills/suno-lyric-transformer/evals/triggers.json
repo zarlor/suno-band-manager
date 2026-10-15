@@ -1,0 +1,21 @@
+[
+  {"query": "transform my lyrics for Suno, here's the draft I wrote last night", "should_trigger": true},
+  {"query": "turn this poem into a song I can paste into Suno", "should_trigger": true},
+  {"query": "add section tags to my lyrics, verse chorus bridge, but keep my exact words", "should_trigger": true},
+  {"query": "my lyrics are too long for Suno, it keeps cutting off the last verse", "should_trigger": true},
+  {"query": "convert this prose paragraph about my grandmother into structured song lyrics", "should_trigger": true},
+  {"query": "even out the syllables in my verses so Suno doesn't rush them", "should_trigger": true},
+  {"query": "can you write a chorus from the strongest lines of this poem and tag the rest", "should_trigger": true},
+  {"query": "check these lyrics for cliches before I generate", "should_trigger": true},
+  {"query": "prepare these lyrics for Suno, the bridge feels too long", "should_trigger": true},
+  {"query": "build a style prompt for my midnight-echoes band profile", "should_trigger": false},
+  {"query": "create a song for Suno about my grandfather's fishing boat", "should_trigger": false},
+  {"query": "talk to Mac, I want to start a new song for the swamp band", "should_trigger": false},
+  {"query": "set Exclude Styles and the sliders for this prompt", "should_trigger": false},
+  {"query": "refine a song: the Suno take I generated buries the vocals under the guitars", "should_trigger": false},
+  {"query": "give feedback on my Suno output, the chorus dragged and went ballad on me", "should_trigger": false},
+  {"query": "create a band profile for my new sludge-metal project", "should_trigger": false},
+  {"query": "analyze my writer voice from these three old poems for the band profile", "should_trigger": false},
+  {"query": "sequence my playlist of twelve Suno tracks into an album order", "should_trigger": false},
+  {"query": "migrate this v5.5 prompt to v6", "should_trigger": false}
+]

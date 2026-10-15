@@ -9,7 +9,7 @@
 **Target sound:** {vivid description of what the adjusted version should sound like}
 
 ## What Changed and Why
-{Word-level micro-diff of style prompt: highlight added, removed, and repositioned words with one-line explanations per change. Turns each round into a prompt-engineering micro-lesson.}
+{From `map-adjustments.py --diff`: each added, removed, reworded and moved descriptor (and exclusion) with a one-line why, noting what entered or left the first-200-character critical zone. Turns each round into a prompt-engineering micro-lesson.}
 
 ## Style Prompt Adjustments
 **Current:** {original style prompt if available}
@@ -39,21 +39,18 @@
 
 ## Lyric Transformer Adjustment Spec
 
-Lyric changes go to the Lyric Transformer (`--headless:refine`) in this shape:
+Lyric changes go to the `suno-lyric-transformer` skill's `--headless:refine` in its refine shape, which carries the current lyrics and the context beside the adjustments:
 
 ```json
-{"adjustments": [
-  {"type": "section-restructure", "detail": "..."},
-  {"type": "line-rewrite", "lines": [3, 4], "reason": "..."},
-  {"type": "metatag-change", "section": "Chorus", "add": "[Energy: building]"},
-  {"type": "rhythmic-fix", "section": "Verse 2", "detail": "..."}
-]}
-```
-
-## Iteration Log
-
-The persistent iteration log is one markdown file per song at `docs/feedback-history/{band-or-session}/{song-slug}.md`: `{band-or-session}` is the band-profile name, or a session timestamp `YYYYMMDD-HHMM` when no profile is in play; `{song-slug}` is the song title kebab-cased, or the same timestamp when the song is untitled. `uv run {skill-root}/scripts/feedback-log.py locate` derives the path and the next round number. Each round gets a `## Round {n} — YYYY-MM-DD` heading. Each round's entry captures what was tried and the user's reaction in prose; the JSON line below is the same per-round snapshot in machine-readable form — embed it under the round heading (and it doubles as the headless `iteration_log` payload).
-
-```json
-{"session_id": "{timestamp}", "round": 1, "feedback_type": "vague", "dimensions_adjusted": ["vocals", "production"], "key_changes": ["rawer vocals", "less reverb"], "user_intent": "dreamy indie folk", "reasoning_chain": "User said 'too polished' -> mapped to vocal production -> reduced reverb + added raw/intimate descriptors"}
+{
+  "source_lyrics": "the current lyrics text",
+  "adjustments": [
+    {"type": "section-restructure", "detail": "..."},
+    {"type": "line-rewrite", "lines": [3, 4], "reason": "..."},
+    {"type": "metatag-change", "section": "Chorus", "add": "[Energy: building]"},
+    {"type": "rhythmic-fix", "section": "Verse 2", "detail": "..."}
+  ],
+  "context": {"band_profile": "profile-name", "original_intent": "...", "model_used": "v6"},
+  "song_path": "the songbook entry, when there is one"
+}
 ```

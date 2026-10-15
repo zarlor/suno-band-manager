@@ -1,37 +1,24 @@
 # Playlist Sequencing Methodology
 
-This reference covers album-level playlist sequencing: how to evaluate and order a body of tracks into a coherent listening experience. The focus is on the **album-craft layer** that sits above pairwise transition scoring — narrative structure, energy arcs, key positions, locked arcs, encore design.
+How to evaluate a playlist and recommend an order: the per-track variables, the seam-by-seam transition discipline, the rules that bind any placement (spacing, cause and effect, locked arcs), the review gates, and the thematic read. The whole-album shape (energy arcs, key positions, variety, encore) is in `references/album-craft.md`, for full sequences. The script JSON these sections read is documented in `uv run {skill-root}/scripts/playlist-sequencing-data.py --help`; it is the input to these decisions and never makes them.
 
-The **transition-evaluation layer** it builds on (Camelot moves, BPM tolerances, felt BPM, loudness steps, and what the Camelot wheel cannot see) is in "Transition Discipline" below.
+**Contents:** Scaling the Job · Per-Track Variables · Transition Discipline · Similar Songs Need Distance · Cause and Effect at the Seam · Locked Arcs · What the Methodology Doesn't Capture · Process for Reviewing a Playlist · Thematic Verification
 
-## When to Use
+## Scaling the Job
 
-Apply this methodology when:
-- Ordering tracks into a playlist or album for the first time
-- Re-evaluating sequencing after a regen wave changes track metrics (BPM, key, energy shape)
-- Adding a new track to an existing playlist and choosing its slot
-- Diagnosing why a published playlist "doesn't flow" despite individual tracks being strong
-
-Skip the heavy methodology when:
+Skip the arc models (`references/album-craft.md`) when:
 - Reordering 1-2 adjacent tracks with no upstream/downstream impact
-- The user has a fixed sequence preference and wants only sonic-transition feedback within it
-- The playlist has four or fewer tracks. There is no front, peak, and close to balance, so skip the arc models, surface any locked pair, and reason about the few seams directly.
+- The user has a fixed sequence and wants only sonic-transition feedback within it
+- The playlist has four or fewer tracks. There is no front, peak, and close to balance, so surface any locked pair and reason about the few seams directly.
 
-## The Input
+The gates, the seam rules and the thematic read still apply to every job.
 
-Each band owns one playlist file, `docs/{band-slug}-playlist.yaml`: the single source of truth for its track order and the input to `scripts/playlist-sequencing-data.py`. Its schema, audio-folder layout, and scaffolding live in the suno-band-profile-manager skill's `references/playlist-yaml.md`. This skill reads two optional keys beyond that schema:
-
-- `felt_bpm:` on a track: the tempo the user confirmed by ear. The script uses it to fold that track's half- or double-time readings in the seam math.
-- `locked_arcs:` at the top level: a list of arcs, each a list of track names or an `"A > B > C"` string. `scripts/validate-sequence.py` checks them.
-
-The script's JSON is the *input* to the methodology; it doesn't make sequencing decisions on its own. Its fields are documented in `uv run {skill-root}/scripts/playlist-sequencing-data.py --help`.
-
-## Per-Track Variables to Track
+## Per-Track Variables
 
 For each track in the playlist, gather and reason about all ten of these. Earlier variables tend to dominate when conflicts arise — but every variable matters and a "perfect score" on one (e.g., Camelot) doesn't override a poor score on another (e.g., tempo).
 
 1. **BPM** (measured) — the script's tempo: Beat This! when the PyTorch audio tools are on, librosa otherwise (the report says which)
-2. **Felt BPM** (human-verified) — the *perceived* tempo, often half or double the measured value (more often with librosa than Beat This!). **Felt BPM is what governs listening experience**, so verify it by ear before trusting raw numbers. The usual misreads: speed metal reads half-time, doom and sludge read double-time, power ballads overcount, and slow contemplative songs (felt 70-80) read about 150-160. With librosa tempo, each track also carries a second reading started from a slow tempo (`bpm_librosa_slow_prior`) and how it relates to the default (`librosa_prior_relation`). A `double` (shown as `117.5 / 60.1 (halftime?)`) is a likely halftime ambiguity; both numbers are candidates and neither is the felt tempo. The script flags tracks in the danger ranges, and tracks whose two librosa readings are a `double`, with `felt_bpm_check` until a `felt_bpm:` is recorded. More patterns: the suno-feedback-elicitor skill's `references/audio-analysis-scripts.md`, "Reading librosa numbers".
+2. **Felt BPM** (human-verified) — the *perceived* tempo, often half or double the measured value (more often with librosa than Beat This!). **Felt BPM is what governs listening experience**, so verify it by ear before trusting raw numbers. The usual misreads: speed metal reads half-time, doom and sludge read double-time, power ballads overcount, and slow contemplative songs (felt 70-80) read about 150-160. With librosa tempo, each track also carries a second reading started from a slow tempo (`bpm_librosa_slow_prior`) and how it relates to the default (`librosa_prior_relation`). A `double` (shown as `117.5 / 60.1 (halftime?)`) is a likely halftime ambiguity; both numbers are candidates and neither is the felt tempo. The script flags tracks in the danger ranges, and tracks whose two librosa readings are a `double`, with `felt_bpm_check` until a `felt_bpm:` is recorded. A run's `tempo_source_note` says when Beat This! was asked for but librosa read the tempo, and why.
 3. **Overall key + Camelot code** — the dominant key center
 4. **Entry key + Camelot code** (first 30 sec) — the key the track *opens* in. May differ from overall.
 5. **Exit key + Camelot code** (last 30 sec) — the key the track *ends* in. May differ from overall and from entry.
@@ -80,83 +67,21 @@ So describe the **listening experience** (smooth / fluid / abrupt / jarring) as 
 
 **The loudness step is the seam's volume in absolute terms.** Intro/outro % is relative to each track's own peak, so two tracks can both "end at 70%" and still land 8 LU apart at the seam. The script's `loudness_step_lu` (next track's entry loudness minus this track's exit loudness, over the first and last 15 s) measures that directly: < 3 LU smooth, 3–6 LU noticeable, ≥ 6 LU a big jump. A big step reads the same way as a dramatic energy drop — deliberate at an act break or a hush-then-hit, a volume problem mid-act — so weigh it with the arc, not against it. A large jump *up* into a loud opener is the one listeners most often hear as "the next song is too loud."
 
-## Album-Craft Layer
-
-Beyond pairwise transitions, the playlist as a whole has shape. Several established models apply.
-
-### Energy Arc Models
-
-**Inverted-U (classic album):** Tempo and energy build through the front half, peak mid-album, descend toward the close. Valence/arousal (emotional intensity) often *dips* mid-album, creating a journey shape — the energy is high but the emotional weight gets heavier before lifting.
-
-**W-shape (concert / featured-songs model):** Three peaks at the beginning, middle, and end of the playlist, with complementary songs providing variety in key/tempo/timbre/mood between the peaks. Two valleys between the peaks give the listener room to breathe. The W-shape works well when the playlist has clear "anchor" tracks at all three positions.
-
-**Concert peak-end rule:** The audience remembers the best moment and the final moment most vividly. Open higher-than-average, allow a dip, close higher-than-average. The closer doesn't have to be the loudest track — it has to feel like a *resolution*.
-
-A 6-act narrative structure naturally creates a W-shape if Acts I, IV, and VI hold the peaks; valleys land in Acts II and V. But the shape is descriptive, not prescriptive — if the album's emotional logic produces a different curve (front-double-peak with contemplative descent close, for example), name what it actually is rather than forcing the W.
-
-### Key Positions
-
-The methodology treats positions **1, 4, 7, and 10** as load-bearing. Strongest songs go here. Track 1 sets the tone; track 2 confirms the promise (so 1 → 2 cannot be a misfire); track 4 anchors the front; track 7 carries the listener into the middle; track 10 picks up the second half. The final track provides resolution — separate criterion from "strongest song."
-
-For longer playlists (30+ tracks), the same logic extends: 1 / 4 / 7 / 10 / 13 / ... up to a closer that resolves. The pattern thins out past about position 10 because the listener is now inside the album rather than evaluating it from the outside.
-
-**Streaming-era reality:** Front-loading with engaging material is more critical than ever. The first 3-4 tracks determine whether a listener stays with the album or skips. This doesn't mean the front needs to be the *loudest* — it means it needs to be the most *immediately compelling*.
-
-### Sonic Palette Variety
-
-Avoid placing two songs with similar instrumentation, arrangement density, or timbral character next to each other. The methodology's principle: contrast is essential for maintaining interest.
-
-Specific anti-patterns:
-- Two intricate intros back-to-back — the listener loses orientation
-- Two acoustic stripped-back tracks adjacent — the album feels like it stalled
-- Two power-pop bangers adjacent — the genre register collapses into a single mood
-- Two slow contemplative tracks adjacent — unless deliberate ("breath section")
-
-Variety is an active design choice, not a side effect of randomization.
-
-### Tempo Variety
-
-Categorize tracks into up-tempo / mid-tempo / slow buckets (`runs[]` counts them). Avoid placing too many from the same category adjacent. Two slow songs back-to-back loses listeners unless deliberate.
-
-But: **a deliberate slow-tempo block is a real album convention.** Doom albums, ambient stretches, contemplative interludes — three or four felt-tempo-matched tracks in a row can be an immersive zone if the *sonic palette* and *mood* shift across them. The methodology cautions against accidental same-tempo runs, not against intentional ones.
-
-### Same-Key Adjacency
-
-3-4 songs in the same key consecutively gets boring. When you finally shift keys after too many same-key tracks, the change feels more jarring than a varied stretch would have. Limit same-key consecutive runs to 2 unless you have a specific reason to push to 3. The script's `runs[]` lists same-key runs longer than 2 and tempo-bucket runs (slow under 90, mid 90-125, up 125+; felt BPM where recorded). A run is a fact; whether it is deliberate is your call.
-
-### Similar-Songs-Need-Distance
+## Similar Songs Need Distance
 
 Tracks that cover similar **thematic** ground (e.g., two songs about "knowing nothing," two songs about a parent, two songs drawing on the same local folklore) should be separated in the playlist so each hits fresh. Adjacency blurs them into one long meditation; spacing lets each song carry its own weight.
 
 This is distinct from the same-key rule and the sonic-palette rule — a track can be sonically and harmonically distinct from its neighbor but cover the same lyrical territory.
 
-### Cause and Effect at the Seam
+## Cause and Effect at the Seam
 
 When one song is the cause of another (an overload and the shutdown it causes, a betrayal and its aftermath), never fix a key or tempo seam by handing the effect straight into its cause. The listener hears the story run backwards, and that thematic jar is worse than the musical one it fixed. The constraint binds the seam only. Apart, the two songs can sit in either order, and seam quality ranks freely among the placements that respect it. Don't stretch it into a rule about global running order.
 
-### Locked Arcs / Preserved Sequences
+## Locked Arcs
 
-Sometimes a sequence of 2-N tracks is *deliberately positioned* to read as a unit — a love → loss → grief → healing arc, a three-act story, a musical movement that depends on adjacency. These should be locked: the order within the arc cannot change, and the arc as a whole should travel as a block.
+A locked arc is a run of two or more tracks the writer positioned to read as a unit: a love → loss → grief → healing run, a three-act story, a musical movement that depends on adjacency. The block may move as a unit; the songs inside it never reorder and never split. Surface the arcs before proposing any reorder. If a reorder needs to break one, stop and ask, because the arc's emotional logic is the writer's call, not yours (headless: decline the break and log it).
 
-When evaluating playlist changes:
-- Surface locked arcs explicitly before proposing reorders
-- Treat the arc's position as flexible (the block may move) but the order within as fixed
-- If a proposed reorder requires breaking the arc, stop and ask the user — never break a documented locked arc on your own authority
-
-A locked arc is typically a thematic sequence the writer positioned deliberately — for example, a four-song love → loss → grief → healing run whose emotional logic depends on the songs staying together and in order. Arcs come from the playlist YAML's optional `locked_arcs:`, from the user, or in headless runs from `--locked`. `uv run {skill-root}/scripts/validate-sequence.py docs/{band-slug}-playlist.yaml` reports each one as intact, split, or out of order; pass `--locked "A > B"` for arcs the user names that aren't in the YAML yet. The block may shift position as a unit, but the songs inside it never reorder and never split.
-
-### Encore Structure
-
-For album-as-concert-set framing: Act VI (or the final stretch) functions as a planned 3-5 song mini-set at high energy following a "breath-catching break." The break is often a single contemplative track that gives the listener room before the closing run.
-
-**Anatomy of a working encore section:**
-- Breath-catcher: low-mid energy, contemplative or stripped-back
-- Encore launch: high-energy banger that re-engages the listener
-- Encore middle: sustained energy with thematic coherence
-- Encore close / resolution: doesn't have to peak louder; needs to *resolve*
-- Optional post-encore coda: the singer alone on the empty stage — fade close
-
-If your final stretch lacks this shape (e.g., averages mid-energy throughout with no clear launch), call it what it is: a "contemplative legacy descent" or "extended fade close" — a different valid shape, not a broken encore.
+Arcs come from the playlist YAML's optional `locked_arcs:`, from the user, or in headless runs from `--locked`. `uv run {skill-root}/scripts/validate-sequence.py {docs}/{band-slug}-playlist.yaml` reports each one as intact, split, or out of order; pass `--locked "A > B"` for arcs the user names that aren't in the YAML yet.
 
 ## What the Methodology Doesn't Capture
 
@@ -172,19 +97,18 @@ If your final stretch lacks this shape (e.g., averages mid-energy throughout wit
 
 Three gates run in order. The checks between them are independent.
 
-1. **Surface locked arcs** — what cannot move? Run `scripts/validate-sequence.py` on the current order and state the arcs up front.
+1. **Surface locked arcs** — what cannot move? Run `uv run {skill-root}/scripts/validate-sequence.py` on the current order (with `--locked` for any arc the user named that isn't in the YAML) and state the arcs up front.
 2. **Settle felt BPM and read the theme, before drafting any option.**
    - Felt BPM: for each track with `felt_bpm_check`, ask the user when uncertain, and record the answer as `felt_bpm:`.
    - Thematic read: for every song involved (the one being placed and every neighbor in play), read its entry before any thematic claim. See "Thematic Verification" below. Scale the read to the job:
      - A 1-2-track placement: read the handful of entries directly.
      - A catalog-scale pass: delegate the read to a subagent that returns only a compact per-song summary (one or two lines each: the actual theme, any surface-vs-actual inversion, a load-bearing quote in context). Don't read every entry into the parent context, where they compact out before the recommendation forms.
-     - No subagents available: use `docs/song-thematic-dossier.md` entries where they exist (compact, and cross-band). Otherwise read the entries in batches and write the per-song summary to `docs/{band-slug}-playlist-sequencing/theme-summary.md` as you go, so it survives compaction. The read is never skipped for lack of a subagent.
+     - No subagents available: use `{docs}/song-thematic-dossier.md` entries where they exist (compact, and cross-band). Otherwise read the entries in batches and write the per-song summary to `theme-summary.md` in the sequencing workspace as you go, so it survives compaction. The read is never skipped for lack of a subagent.
 3. **Recommend, then surface trade-offs.** Propose specific moves with named justifications across several variables. Don't just say "swap X and Y" without naming what each variable says. Every move trades something; don't call it "cleaner" when it "trades A-jarring for B-jarring."
 
 Checks between gates 2 and 3, in any order:
 - **Act structure** — narrative acts, their thematic functions, tracks per act.
-- **Energy arc** — the shape it has, and whether it matches the intended one (W, inverted-U, concert peak-end, contemplative descent).
-- **Key positions** — load-bearing tracks at 1, 4, 7, 10; a closer that resolves.
+- **Energy arc** and **key positions** (full sequences) — `references/album-craft.md`.
 - **Transitions** — each seam on the full variable stack (key relation, felt tempo, intro/outro %, loudness step, sonic palette, theme). Flag the worst.
 - **Clusters** — felt-tempo cousins scattered that could be a deliberate block; thematic cousins adjacent that should be spaced (`runs[]` helps).
 
@@ -192,17 +116,9 @@ The output isn't a metrics dump — it's an opinionated proposal grounded in the
 
 ## Thematic Verification — MANDATORY before any placement recommendation
 
-**This applies whether the suno-playlist-sequencer skill was formally invoked or the placement
-question came up in ordinary conversation with Mac ("where should this go?").** The trigger is
-the ACT of recommending placement, not the tool-invocation path. Documented failure (2026-07-08):
-Mac ran placement math for a new song conversationally (no formal skill call) and paired it with
-a neighbor on a title-chain association instead of the neighbor's actual, already-documented
-theme — the exact failure this section exists to prevent, skipped precisely because it happened
-in conversation rather than through this skill. Placement math (Camelot distance, BPM delta) is
-never a substitute for the thematic read, and running the math first is not license to treat the
-theme as secondary color commentary added afterward — read the theme before drafting any option.
+The trigger is the act of recommending a placement, however the question arrived. Placement math (Camelot distance, BPM delta) never substitutes for the thematic read, and running the math first is no license to treat the theme as color commentary added afterward: a song once got paired with a neighbor on a title-chain association instead of the neighbor's documented theme. Read the theme before drafting any option.
 
-**Before making any thematic claim about a song in a placement recommendation, read the song's songbook entry at `{songbook_folder}/{band-slug}/{song-slug}.md`** (default `docs/songbook/`), or its entry in the consolidated `docs/song-thematic-dossier.md`, which distills the songbook plus the writer's direct quotes across every band in the project. Either is acceptable, but read one of them. Don't infer a song's theme from its title, its surface imagery, or fragments pulled out of context: songs whose surface suggests one register often turn out to be the opposite when read in full.
+**Before making any thematic claim about a song in a placement recommendation, read the song's songbook entry at `{songbook_folder}/{band-slug}/{song-slug}.md`**, or its entry in the consolidated `{docs}/song-thematic-dossier.md`, which distills the songbook plus the writer's direct quotes across every band in the project. Either is acceptable, but read one of them. Don't infer a song's theme from its title, its surface imagery, or fragments pulled out of context: songs whose surface suggests one register often turn out to be the opposite when read in full.
 
 **Documented examples where surface inference produced inverted reads:**
 
@@ -225,13 +141,9 @@ theme as secondary color commentary added afterward — read the theme before dr
 - When pulling a line as evidence for a thematic claim, quote enough surrounding context that the line's actual function in the song is clear. A line in isolation almost always misleads.
 - If you don't have time to read the songbooks properly, you don't have time to make a placement recommendation. Ask the user for time, or surface placements with sonic analysis only and flag that thematic verification is pending.
 
-## Cross-References
+## Where Things Live
 
-- `scripts/playlist-sequencing-data.py` — per-track and per-seam sequencing data, drops, runs, re-eval compare
-- `scripts/validate-sequence.py` — locked-arc check and the pre-write gate on the playlist YAML
-- `scripts/batch-full-analysis.py` — catalog-wide deeper analysis (energy shifts, section boundaries, dynamic character)
-- The suno-feedback-elicitor skill's `scripts/audio-deep-analysis.py` (per-song deep analysis) and `references/audio-analysis-scripts.md` ("Reading librosa numbers": felt-BPM misread patterns)
-- The suno-band-profile-manager skill's `references/playlist-yaml.md` — playlist YAML schema and audio-folder layout
-- `docs/audio-analysis/playlists/{band-slug}.json` — the per-band JSON archive (the re-eval compare reads it before each run overwrites it)
-- `docs/{band-slug}-playlist-sequencing.md` — the auto-refreshed Markdown companion
-- `docs/catalog-analysis-report.md` and `docs/audio-analysis/catalog/<date>-deep.json` — the catalog-wide analysis and its archive
+- `{docs}` is the folder holding `{band_profiles_folder}` (default `{project-root}/docs`); the playlist is `{docs}/{band-slug}-playlist.yaml`.
+- The sequencing JSON archive (the re-eval baseline) and the Markdown companion: their paths come from the playlist's `album:`, so read them from the run's `artifacts` block.
+- One song's deeper audio read (sections, vocal placement, beat grid): invoke the `suno-feedback-elicitor` skill.
+- The playlist schema keys this skill reads and the audio-folder layout: `references/playlist-input.md`.

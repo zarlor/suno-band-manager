@@ -116,6 +116,34 @@ class TestListProfiles(TmpPathTestCase):
             yaml.dump(SAMPLE_PROFILE, f)
         result = list_profiles(profiles_dir)
         self.assertEqual(result["count"], 1)
+        self.assertEqual(result["status"], "warning")
+        self.assertEqual([s["file"] for s in result["skipped"]], ["bad.yaml"])
+        self.assertIn("unreadable", result["skipped"][0]["reason"])
+
+    def test_non_mapping_file_is_reported_not_dropped(self):
+        profiles_dir = self.tmp_path / "profiles"
+        profiles_dir.mkdir()
+        (profiles_dir / "notes.yaml").write_text("- just\n- a list\n")
+        result = list_profiles(profiles_dir)
+        self.assertEqual(result["count"], 0)
+        self.assertEqual(result["skipped"], [{"file": "notes.yaml",
+                                              "reason": "not a YAML mapping (no profile fields)"}])
+
+    def test_clean_listing_has_empty_skipped_and_slugs(self):
+        profiles_dir = self.tmp_path / "profiles"
+        profiles_dir.mkdir()
+        (profiles_dir / "test-band.yaml").write_text(yaml.dump(SAMPLE_PROFILE))
+        result = list_profiles(profiles_dir)
+        self.assertEqual((result["status"], result["skipped"]), ("pass", []))
+        self.assertEqual(result["profiles"][0]["slug"], "test-band")
+
+    def test_null_writer_voice_does_not_crash(self):
+        profiles_dir = self.tmp_path / "profiles"
+        profiles_dir.mkdir()
+        (profiles_dir / "test-band.yaml").write_text(yaml.dump(SAMPLE_PROFILE) + "writer_voice:\n")
+        result = list_profiles(profiles_dir)
+        self.assertEqual(result["count"], 1)
+        self.assertIs(result["profiles"][0]["has_writer_voice"], False)
 
     def test_new_fields_in_listing(self):
         tmp_path = self.tmp_path
@@ -166,6 +194,52 @@ class TestListProfiles(TmpPathTestCase):
         result = check_profile(profiles_dir, "nonexistent")
         self.assertIs(result["exists"], False)
         self.assertEqual(result["query"], "nonexistent")
+
+    def _store(self, **profiles):
+        profiles_dir = self.tmp_path / "profiles"
+        profiles_dir.mkdir(exist_ok=True)
+        for slug, name in profiles.items():
+            (profiles_dir / f"{slug}.yaml").write_text(yaml.dump({**SAMPLE_PROFILE, "name": name}))
+        return profiles_dir
+
+    def test_check_by_display_name_derives_slug(self):
+        profiles_dir = self._store(**{"rosas-voice": "Rosa's Voice"})
+        result = check_profile(profiles_dir, "Rosa's Voice")
+        self.assertIs(result["exists"], True)
+        self.assertEqual((result["slug"], result["matched_by"]), ("rosas-voice", "derived_slug"))
+
+    def test_check_finds_renamed_band_by_name_field(self):
+        profiles_dir = self._store(**{"old-slug": "Night Ferry"})
+        result = check_profile(profiles_dir, "night ferry")
+        self.assertIs(result["exists"], True)
+        self.assertEqual((result["slug"], result["matched_by"]), ("old-slug", "name"))
+
+    def test_check_ambiguous_name_lists_matches(self):
+        profiles_dir = self._store(**{"a-copy": "Night Ferry", "b-copy": "Night  Ferry!"})
+        result = check_profile(profiles_dir, "Night Ferry")
+        self.assertIs(result["exists"], False)
+        self.assertIs(result["ambiguous"], True)
+        self.assertEqual(sorted(m["slug"] for m in result["matches"]), ["a-copy", "b-copy"])
+
+    def test_check_not_found_offers_suggestions(self):
+        profiles_dir = self._store(**{"ember-hollow": "Ember Hollow",
+                                      "ember-hollow-redux": "Ember Hollow - Redux"})
+        result = check_profile(profiles_dir, "ember")
+        self.assertIs(result["exists"], False)
+        self.assertEqual(sorted(x["slug"] for x in result["suggestions"]),
+                         ["ember-hollow", "ember-hollow-redux"])
+
+    def test_check_exact_slug_beats_name_match(self):
+        profiles_dir = self._store(**{"ember-hollow": "Ember Hollow",
+                                      "ember-hollow-redux": "Ember Hollow - Redux"})
+        result = check_profile(profiles_dir, "Ember Hollow - Redux")
+        self.assertEqual(result["slug"], "ember-hollow-redux")
+
+    def test_check_ignores_drafts(self):
+        profiles_dir = self._store()
+        (profiles_dir / "drafts").mkdir()
+        (profiles_dir / "drafts" / "test-band.yaml").write_text(yaml.dump(SAMPLE_PROFILE))
+        self.assertIs(check_profile(profiles_dir, "Test Band")["exists"], False)
 
 
 # --- CLI: positional vs --profiles-dir flag ---

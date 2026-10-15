@@ -5,7 +5,7 @@ Objective measurements to set beside the user's ear. The ear still decides: ever
 ## Which script for what
 
 **librosa (light):**
-- `analyze-audio.py` — BPM, key, duration and BS.1770 loudness (integrated LUFS, loudness range) for every track in a folder.
+- `analyze-audio.py` — BPM, key, duration and BS.1770 loudness (integrated LUFS, loudness range) for one render, or every track in a folder. It exits 1 when no file could be measured, and then writes nothing.
 - `audio-deep-analysis.py` — one track in depth: energy arc, chords over time, section boundaries, spectral balance.
 - `tempo-detail.py` — tempo over time with stability and beat regularity. On Beat This! beats it reports 15-second window medians, so one stray beat doesn't read as a tempo change.
 - `chord-progression.py` — beat-synchronized chords with Camelot codes. Bar-by-bar chords are noisy under distorted guitars; the 30-second key-centre summaries hold up.
@@ -15,7 +15,7 @@ Objective measurements to set beside the user's ear. The ear still decides: ever
 - `vocal-placement.py` — vocal-stem loudness minus the rest of the mix (LU), overall and by thirds; thirds with no real vocal are flagged. It describes placement rather than grading it — most useful for comparing renders of one song, or one voice across models.
 - `section-map.py` — lines a render up with the lyrics it was generated from, so each tagged section gets a real start and end even where Suno runs sections together. Per section: loudness and the step from the section before, vocal-minus-band, tempo and feel, and key. `--lyrics` takes a plain lyrics file or a package/songbook doc. About a minute per song; the first run downloads the Whisper model (~1.5 GB).
 
-**What gets written:** `analyze-audio.py` and `audio-deep-analysis.py` write a JSON archive under `docs/audio-analysis/` and refresh the song's markdown companion doc (AUTOGEN markers keep hand-written sections); the PyTorch scripts archive their JSON. `--no-archive` / `--no-companion` skip those writes.
+**What gets written:** `analyze-audio.py` and `audio-deep-analysis.py` write a JSON archive under `docs/audio-analysis/` (a single render to its per-song archive, a folder to the dated catalog archive); a folder run of `analyze-audio.py` also refreshes the catalog's markdown companion doc (AUTOGEN markers keep hand-written sections). The PyTorch scripts archive their JSON. `--no-archive` / `--no-companion` skip those writes.
 
 `audio-files-manifest.py` and `verify-audio-files.py` are multi-machine housekeeping (has every audio file arrived on this machine?), not feedback tools; no workflow step needs them.
 

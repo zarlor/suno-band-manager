@@ -142,11 +142,7 @@ def build_report(result: dict, skill_path: str = "") -> dict:
     """Build the standard output report."""
     total_changes = len(result["changes"])
 
-    status = "pass"
-    if total_changes == 0:
-        status = "pass"
-    else:
-        status = "info"
+    status = "pass" if total_changes == 0 else "info"
 
     findings = []
     if total_changes == 0:
@@ -188,16 +184,13 @@ Examples:
   %(prog)s --original-text "old lyrics" --transformed-text "new lyrics"
   %(prog)s --original orig.txt --transformed trans.txt -o diff.json --verbose
 
-Exit codes: 0=pass, 1=differences found, 2=error
+Exit codes: 0 = diff produced (changes, if any, are in the JSON), 2 = bad input
         """
     )
-    parser.add_argument("file", nargs="?", help="Unused (for pattern consistency)")
     parser.add_argument("--original", help="Path to original lyrics file")
     parser.add_argument("--transformed", help="Path to transformed lyrics file")
     parser.add_argument("--original-text", help="Original lyrics text directly")
     parser.add_argument("--transformed-text", help="Transformed lyrics text directly")
-    parser.add_argument("--text", help="Unused (for pattern consistency)")
-    parser.add_argument("--stdin", action="store_true", help="Unused (for pattern consistency)")
     parser.add_argument("-o", "--output", help="Output file path (defaults to stdout)")
     parser.add_argument("--verbose", action="store_true", help="Print diagnostics to stderr")
     parser.add_argument("--skill-path", default="", help="Skill path for report context")
@@ -211,16 +204,14 @@ Exit codes: 0=pass, 1=differences found, 2=error
         original = args.original_text.replace('\\n', '\n')
         transformed = args.transformed_text.replace('\\n', '\n')
     elif args.original and args.transformed:
-        orig_path = Path(args.original)
-        trans_path = Path(args.transformed)
-        if not orig_path.exists():
-            print(f"Error: File not found: {args.original}", file=sys.stderr)
-            sys.exit(2)
-        if not trans_path.exists():
-            print(f"Error: File not found: {args.transformed}", file=sys.stderr)
-            sys.exit(2)
-        original = orig_path.read_text()
-        transformed = trans_path.read_text()
+        texts = []
+        for name in (args.original, args.transformed):
+            try:
+                texts.append(Path(name).read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError) as exc:
+                print(f"Error: cannot read {name}: {exc}", file=sys.stderr)
+                sys.exit(2)
+        original, transformed = texts
     else:
         print("Error: Provide --original and --transformed files, or --original-text and --transformed-text.", file=sys.stderr)
         parser.print_help()
@@ -241,7 +232,7 @@ Exit codes: 0=pass, 1=differences found, 2=error
     else:
         print(output_json)
 
-    sys.exit(0 if len(result["changes"]) == 0 else 1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

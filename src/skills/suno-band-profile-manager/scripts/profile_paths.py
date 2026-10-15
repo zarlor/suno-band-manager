@@ -18,11 +18,27 @@ The config read goes through BMad's resolve_config.py (via `_shared/bmad_config.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 import bmad_config  # noqa: E402
+
+
+def derive_slug(band_name: str) -> str:
+    """A band name as its kebab-case slug, the profile's filename stem.
+
+    The one derivation every script shares, so a name always finds its file:
+    lowercase, drop everything but letters, digits, whitespace and hyphens,
+    then collapse runs of whitespace and hyphens to one hyphen.
+    "Rosa's Voice" -> "rosas-voice"; "Ember Hollow - Redux" -> "ember-hollow-redux".
+    """
+    name = band_name.strip().lower()
+    name = re.sub(r"[^a-z0-9\s-]", "", name)
+    name = re.sub(r"[\s_]+", "-", name)
+    name = re.sub(r"-+", "-", name)
+    return name.strip("-")
 
 
 def read_module_config(project_root: Path | str) -> dict:

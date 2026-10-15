@@ -33,7 +33,7 @@ No greeting, no soft gates, no handoff checkpoint: the input is taken as confirm
 
 **Process.** Fill what the input leaves out from `memory/owner/preferences.md`, `memory/work/default-exclusions.md` and `memory/bands/active.md`; an unresolved tier builds for Free and says so in `warnings`. Then run the pipeline:
 
-- **suno-lyric-transformer, headless** — when there is source text, the song isn't instrumental and `lyrics_ready` isn't set. Pass the text, the band profile, the direction, the language and the creativity mode. Use its `transformed_lyrics` as returned (the writer's spacing intact); keep its `decision_log` and `intentional_keeps` for the songbook entry.
+- **suno-lyric-transformer, headless** — when there is source text, the song isn't instrumental and `lyrics_ready` isn't set. Pass `text` (the `source_text`), `band_profile`, `direction`, `language` and `creativity_mode`. Use its `transformed_lyrics` as returned (the writer's spacing intact); keep its `decision_log` and `intentional_keeps` for the songbook entry.
 - **suno-style-prompt-builder, headless** — always. Pass the band profile, tier and model, the direction, the creativity mode, the exclusions, any Voice / Persona / Custom Model and a working title. Its success JSON carries the style prompt and character count, exclusions, settings, title and wild card.
 
 Without source text the lyrics are `auto` (Suno's auto-lyrics); instrumental songs carry `instrumental`.

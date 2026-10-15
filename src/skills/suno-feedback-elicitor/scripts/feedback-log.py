@@ -4,7 +4,7 @@
 # dependencies = []
 # ///
 """
-Locate a song's feedback iteration log and report where the last round left off.
+Locate a song's feedback iteration log, and append rounds and notes to it.
 
 The iteration log is one markdown file per song:
   {history-dir}/{band-or-session}/{song-slug}.md
@@ -16,10 +16,17 @@ returns the last round number and date, the next round number, and, when the
 exact file is missing, near-match candidates in the band's folder (the song
 title may be fuzzy). Picking among candidates is left to the caller.
 
+`append` writes to the same path. By default it opens the next round: a
+`## Round {n} — YYYY-MM-DD` heading, the prose entry, and the per-round JSON
+snapshot in a fenced block with its `round` set to n. `--round last` instead
+adds the text under the current round (mid-elicitation anchors as they land),
+opening round 1 when the log has none. A missing log is created with a
+`# {title}` heading.
+
 Exit codes:
-  0 = located (whether or not the file exists)
-  1 = invalid arguments
-  2 = runtime error
+  0 = located / appended
+  1 = invalid input (snapshot isn't a JSON object, nothing to append)
+  2 = usage error or file error
 """
 
 import argparse
@@ -31,7 +38,7 @@ from datetime import datetime
 from pathlib import Path
 
 SCRIPT_NAME = "feedback-log"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 ROUND_RE = re.compile(r"^##\s+Round\s+(\d+)\b(.*)$", re.MULTILINE)
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 CANDIDATE_RATIO = 0.6
@@ -85,6 +92,7 @@ def locate(history_dir: Path, band: str, title: str, stamp: str) -> dict:
         "exists": path.is_file(),
         "band_or_session": band_or_session,
         "song_slug": song_slug,
+        "stamp": stamp,
         "last_round": None,
         "last_date": None,
         "next_round": 1,
@@ -99,6 +107,57 @@ def locate(history_dir: Path, band: str, title: str, stamp: str) -> dict:
     return result
 
 
+def _error(message: str, code: int) -> None:
+    print(json.dumps({"script": SCRIPT_NAME, "version": VERSION, "status": "error", "error": message}))
+    sys.exit(code)
+
+
+def append(history_dir: Path, band: str, title: str, stamp: str, date: str,
+           text: str, snapshot: dict | None, which: str) -> dict:
+    loc = locate(history_dir, band, title, stamp)
+    path = Path(loc["path"])
+    created = not path.is_file()
+    existing = "" if created else path.read_text(encoding="utf-8")
+    last_n = loc["last_round"]
+
+    if which == "last" and last_n is not None:
+        n, heading = last_n, None
+    else:
+        n = loc["next_round"]
+        heading = f"## Round {n} — {date}"
+
+    parts = []
+    if created:
+        parts.append(f"# {title.strip() or loc['song_slug']}\n")
+    if heading:
+        parts.append(heading + "\n")
+    if text.strip():
+        parts.append(text.strip() + "\n")
+    if snapshot is not None:
+        snapshot = {**snapshot, "round": n}
+        parts.append("```json\n" + json.dumps(snapshot, ensure_ascii=False) + "\n```\n")
+
+    lead = ""
+    if existing:
+        lead = "" if existing.endswith("\n\n") else ("\n" if existing.endswith("\n") else "\n\n")
+    chunk = lead + "\n".join(parts)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(chunk)
+
+    return {
+        "script": SCRIPT_NAME,
+        "version": VERSION,
+        "status": "ok",
+        "path": str(path),
+        "created": created,
+        "round": n,
+        "new_round": heading is not None,
+        "snapshot_written": snapshot is not None,
+        "bytes_appended": len(chunk.encode("utf-8")),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Locate a song's feedback iteration log and its last round.",
@@ -106,6 +165,9 @@ def main() -> None:
 Example:
   uv run feedback-log.py locate --band "My Band" --title "Song Title" --project-root .
   uv run feedback-log.py locate --title "Song Title"     # no band profile: session-stamped folder
+  uv run feedback-log.py append --band "My Band" --title "Song Title" --text "Tried: ...  Reaction: ..." \\
+      --snapshot '{"feedback_type": "vague", "dimensions_adjusted": ["vocals"]}'
+  uv run feedback-log.py append --band "My Band" --title "Song Title" --round last --text "Anchor: keep the bass tone"
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -118,6 +180,21 @@ Example:
     loc.add_argument("--stamp", help="Session timestamp YYYYMMDD-HHMM used when band or title is missing "
                                      "(default: now)")
     loc.add_argument("-o", "--output", help="Write JSON to a file instead of stdout")
+
+    app = sub.add_parser("append", help="Append a round (or a note to the current round) to the log")
+    app.add_argument("--band", default="", help="Band profile name (omit when no profile is in play)")
+    app.add_argument("--title", default="", help="Song title (omit when the song is untitled)")
+    app.add_argument("--project-root", default=".", help="Project root (default: current directory)")
+    app.add_argument("--history-dir", help="Log root (default: {project-root}/docs/feedback-history)")
+    app.add_argument("--stamp", help="Session timestamp YYYYMMDD-HHMM used when band or title is missing "
+                                     "(default: now; pass the one locate returned to hit the same file)")
+    app.add_argument("--date", help="Round date YYYY-MM-DD (default: today)")
+    app.add_argument("--round", dest="which", choices=["next", "last"], default="next",
+                     help="next: open a new round (default); last: add to the current round")
+    app.add_argument("--text", default="", help="The prose entry (what was tried and the reaction, or a note)")
+    app.add_argument("--stdin", action="store_true", help="Read the prose entry from stdin instead of --text")
+    app.add_argument("--snapshot", help="The per-round JSON snapshot (an object; its round is set for you)")
+    app.add_argument("-o", "--output", help="Write JSON to a file instead of stdout")
     args = parser.parse_args()
 
     if args.stamp and not re.fullmatch(r"\d{8}-\d{4}", args.stamp):
@@ -126,10 +203,26 @@ Example:
     history_dir = Path(args.history_dir) if args.history_dir else Path(args.project_root) / "docs" / "feedback-history"
 
     try:
-        result = locate(history_dir, args.band, args.title, stamp)
+        if args.command == "locate":
+            result = locate(history_dir, args.band, args.title, stamp)
+        else:
+            if args.date and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.date):
+                parser.error("--date must look like YYYY-MM-DD")
+            date = args.date or datetime.now().strftime("%Y-%m-%d")
+            text = sys.stdin.read() if args.stdin else args.text
+            snapshot = None
+            if args.snapshot is not None:
+                try:
+                    snapshot = json.loads(args.snapshot)
+                except json.JSONDecodeError as e:
+                    _error(f"--snapshot is not valid JSON: {e}", 1)
+                if not isinstance(snapshot, dict):
+                    _error("--snapshot must be a JSON object", 1)
+            if not text.strip() and snapshot is None:
+                _error("nothing to append: give --text, --stdin or --snapshot", 1)
+            result = append(history_dir, args.band, args.title, stamp, date, text, snapshot, args.which)
     except OSError as e:
-        print(json.dumps({"script": SCRIPT_NAME, "version": VERSION, "status": "error", "error": str(e)}))
-        sys.exit(2)
+        _error(str(e), 2)
 
     out = json.dumps(result, indent=2)
     if args.output:

@@ -4,56 +4,56 @@
 # dependencies = ["pyyaml>=6.0"]
 # ///
 
-"""Validate a band profile YAML file against the expected schema.
+"""Validate a band profile YAML file against the profile schema.
 
 Checks required fields, value constraints, tier/model consistency,
-instrumental mode, style_baseline length, and new fields (language,
-creativity_default, generation_history, studio_preferences).
-Returns structured JSON findings.
+instrumental mode, style_baseline length, Voice and Custom Model gating,
+the filename-matches-name rule, and the band's playlist YAML. Returns
+structured JSON findings.
 
-Also supports --derive-filename to convert a band name to kebab-case filename.
+  validate-profile.py <slug>                    the saved profile {profiles}/<slug>.yaml
+  validate-profile.py <path.yaml>               a profile file; its stem is the slug
+  validate-profile.py <slug> --staged <path>    a draft/staged copy of band <slug>
+                                                (e.g. {profiles}/drafts/<slug>.yaml)
+
+Folders come from --project-root's module config (profile_paths.resolve_dirs),
+so a staged file in drafts/ is checked against the band's real playlist and
+songbook folders, not folders guessed from the draft's location.
+
+--derive-filename "Band Name" prints the kebab-case filename and exits.
 """
 
 import argparse
 import json
-import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Graceful degradation: pyyaml and the _shared constants module are the two
-# things this script can't run without. If either is missing (e.g. claude.ai
-# web with no uv, or a relocated skill), emit a clear JSON error so the calling
-# LLM can fall back to validating the profile by hand against profile-schema.md
-# rather than crashing on an uncaught ImportError.
 try:
     import yaml
 except ImportError:
     print(json.dumps({
         "script": "validate-profile",
         "status": "error",
-        "error": (
-            "pyyaml is not installed. Run with `uv run` (auto-installs it), or "
-            "validate the profile by hand against profile-schema.md."
-        ),
+        "error": "pyyaml is not installed. Run this script with `uv run`, which installs it.",
     }))
     sys.exit(2)
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 try:
     from suno_constants import (
         VALID_MODELS, VALID_TIERS, STYLE_PROMPT_LIMITS, STYLE_PROMPT_DEFAULT_MAX, FREE_TIER_MODEL,
         RETIRED_MODELS, MODEL_RETIREMENT_DATE, DEFAULT_MODEL,
     )
-except ImportError:
+    from profile_paths import derive_slug, resolve_dirs
+except ImportError as exc:
     print(json.dumps({
         "script": "validate-profile",
         "status": "error",
         "error": (
-            "Could not import suno_constants from the module's _shared/ directory. "
-            "Ensure the skill is installed under its module, or validate against "
-            "profile-schema.md by hand (valid tiers: free/pro/premier; style_baseline "
-            "max 1000 chars, 200 for v4 Pro)."
+            f"Could not import this skill's helpers ({exc}). The skill's scripts/ folder "
+            "is incomplete; reinstall the suno module."
         ),
     }))
     sys.exit(2)
@@ -66,19 +66,16 @@ MAX_GENERATION_HISTORY = 10
 
 
 def derive_filename(band_name: str) -> str:
-    """Convert a band name to kebab-case filename."""
-    name = band_name.strip().lower()
-    name = re.sub(r"[^a-z0-9\s-]", "", name)
-    name = re.sub(r"[\s_]+", "-", name)
-    name = re.sub(r"-+", "-", name)
-    name = name.strip("-")
-    return f"{name}.yaml"
+    """A band name as its profile filename (the shared slug plus .yaml)."""
+    return f"{derive_slug(band_name)}.yaml"
 
 
 def validate_profile(profile_path: Path, docs_dir: Path | None = None,
-                     songbook_dir: Path | None = None) -> dict:
+                     songbook_dir: Path | None = None, slug: str | None = None) -> dict:
     """Validate a profile YAML file and return structured findings.
 
+    slug: the band this file belongs to. Defaults to the file's stem; pass it
+    for a staged copy whose filename is not the band's.
     docs_dir: the folder holding the canonical playlist YAML
     (`{docs_dir}/{slug}-playlist.yaml`). Defaults to the profile's
     grandparent, i.e. the parent of the band-profiles folder.
@@ -217,7 +214,10 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None,
                 "fix": "Define vocal as a YAML mapping with gender, tone, delivery, energy fields"
             })
         else:
-            for vfield in ["gender", "tone", "delivery", "energy"]:
+            # A Voice defines gender and timbre, so gender is optional with voice_id (rule 17).
+            has_voice = bool(str(vocal.get("voice_id") or "").strip())
+            required_vocal = ["tone", "delivery", "energy"] if has_voice else ["gender", "tone", "delivery", "energy"]
+            for vfield in required_vocal:
                 val = vocal.get(vfield)
                 if not val or not isinstance(val, str) or not val.strip():
                     findings.append({
@@ -367,6 +367,28 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None,
                 "fix": "Set bpm to a numeric value (e.g., 120)"
             })
 
+    # Rule 17: a Voice defines gender and timbre; a stored gender invites
+    # gender descriptors back into the style prompt.
+    if isinstance(vocal, dict) and str(vocal.get("voice_id") or "").strip() \
+            and str(vocal.get("gender") or "").strip():
+        findings.append({
+            "severity": "low",
+            "category": "consistency",
+            "location": {"file": str(profile_path), "field": "vocal.gender"},
+            "issue": "vocal.gender is set alongside vocal.voice_id; the Voice already defines gender and timbre",
+            "fix": "Clear vocal.gender and keep gender and timbre words out of style_baseline",
+        })
+
+    # Rule 19: Custom Models are Pro/Premier only.
+    if str(profile.get("custom_model_id") or "").strip() and tier == "free":
+        findings.append({
+            "severity": "medium",
+            "category": "consistency",
+            "location": {"file": str(profile_path), "field": "custom_model_id"},
+            "issue": "custom_model_id is set but the free tier cannot use Custom Models",
+            "fix": "Clear custom_model_id, or set tier to pro or premier",
+        })
+
     # Multi-Voice mapping validation (schema rules 20-21). Optional v5.5
     # Pro/Premier feature: a list of {voice_id, label, use_case} entries for
     # bands that use more than one cloned Voice. vocal.voice_id stays the
@@ -422,17 +444,25 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None,
                     "fix": "Set vocal.voice_id to one of the listed voices entries (the primary/default)",
                 })
 
-    # Build summary
-    severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
-    for f in findings:
-        severity_counts[f["severity"]] = severity_counts.get(f["severity"], 0) + 1
+    # Per-band playlist YAML check: a band with songbook entries needs its
+    # {docs}/{slug}-playlist.yaml, the canonical source of track order.
+    band_slug = slug or profile_path.stem  # e.g. docs/band-profiles/paper-lanterns.yaml -> paper-lanterns
 
-    # Per-band playlist YAML check: if the band has any songbook entries,
-    # `docs/{band-slug}-playlist.yaml` MUST exist as the canonical source of
-    # truth for playlist sequencing. Multi-band projects need this to keep
-    # bands independent (see playlist-sequencing-methodology.md "Per-Band
-    # Playlist YAML" section).
-    band_slug = profile_path.stem  # e.g. docs/band-profiles/paper-lanterns.yaml -> paper-lanterns
+    # Rule 16: the filename is the kebab-case slug of the band's name, so a
+    # lookup by name finds the file.
+    name_val = profile.get("name")
+    if isinstance(name_val, str) and name_val.strip():
+        expected = derive_slug(name_val)
+        if expected and band_slug != expected:
+            findings.append({
+                "severity": "low",
+                "category": "structure",
+                "location": {"file": str(profile_path), "field": "name"},
+                "issue": (f"Filename slug '{band_slug}' does not match the name "
+                          f"'{name_val}' (expected '{expected}.yaml')"),
+                "fix": (f"Keep the name and file in step: rename the profile to {expected}.yaml "
+                        "(Duplicate under the name, then Delete the old slug), or restore the name"),
+            })
     # Playlist folder: explicit docs_dir, else the band-profiles folder's parent.
     resolved_docs_dir = docs_dir if docs_dir is not None else profile_path.parent.parent
     songbook_root = songbook_dir if songbook_dir is not None else resolved_docs_dir / "songbook"
@@ -450,33 +480,30 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None,
                     f"single source of truth for sequencing."
                 ),
                 "fix": (
-                    f"Run the suno-band-profile-manager skill's `scripts/scaffold-playlist.py "
-                    f"{band_slug} --from-songbook` to bootstrap from songbook entries, then fill in "
-                    f"audio file names and order. See its references/playlist-yaml.md."
+                    f"Run scaffold-playlist.py {band_slug} --from-songbook to bootstrap it from "
+                    f"the songbook entries, then fill in the audio file names."
                 ),
             })
 
-    # Deprecated: in-profile `playlist:` block. Per v1.7.2 the band profile
-    # should NOT carry playlist data — that lives in docs/{band-slug}-playlist.yaml.
+    # Deprecated: an in-profile `playlist:` block (track order lives in the playlist YAML).
     if "playlist" in profile and isinstance(profile["playlist"], dict):
         findings.append({
             "severity": "medium",
             "category": "deprecation",
             "location": {"file": str(profile_path), "field": "playlist"},
             "issue": (
-                "The `playlist:` block in the band profile is DEPRECATED as of v1.7.2. "
-                "Playlist data must live in docs/{band-slug}-playlist.yaml as the single "
-                "source of truth, otherwise the two locations drift independently."
+                "The profile carries a deprecated `playlist:` block. Track order lives only in "
+                "the band's {slug}-playlist.yaml; two copies drift apart."
             ),
             "fix": (
-                f"Move authoritative track list to docs/{band_slug}-playlist.yaml (or run "
-                f"scaffold-playlist.py to bootstrap), then remove the `playlist:` block "
+                f"Move the track list to {playlist_yaml} (scaffold-playlist.py {band_slug} "
+                f"bootstraps it), then remove the `playlist:` block "
                 f"from this profile YAML. Sequencing-history narrative notes can move to "
                 f"the band's playlist-ordering.md if you maintain one."
             ),
         })
 
-    # Re-tally severity counts after the playlist checks above
+    # Summary
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for f in findings:
         sev = f.get("severity", "low")
@@ -493,7 +520,7 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None,
 
     return {
         "script": script_name,
-        "version": "2.1.0",
+        "version": "2.2.0",
         "skill_path": str(profile_path),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "status": status,
@@ -505,65 +532,87 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None,
     }
 
 
+def _looks_like_path(value: str) -> bool:
+    return value.endswith((".yaml", ".yml")) or "/" in value or "\\" in value
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Validate a band profile YAML file against the profile schema.",
-        epilog="Exit codes: 0=pass, 1=fail, 2=error"
+        epilog="Exit codes: 0=pass or warning, 1=fail, 2=error",
     )
-    parser.add_argument("profile_path", nargs="?", help="Path to the band profile YAML file")
+    parser.add_argument(
+        "profile", nargs="?",
+        help=("Band slug (validates {profiles}/<slug>.yaml) or a path to a profile file "
+              "(its stem is the slug). With --staged, the slug of the band the staged file belongs to."),
+    )
+    parser.add_argument(
+        "--staged", metavar="PATH",
+        help="Validate this staged/draft file as band <profile> (e.g. {profiles}/drafts/<slug>.yaml).",
+    )
     parser.add_argument("-o", "--output", help="Output file (defaults to stdout)")
     parser.add_argument("--verbose", action="store_true", help="Print diagnostics to stderr")
     parser.add_argument(
-        "--derive-filename",
-        metavar="BAND_NAME",
-        help="Convert a band name to kebab-case filename and exit"
-    )
-    parser.add_argument(
-        "--docs-dir",
-        help=("Folder holding the band's {slug}-playlist.yaml "
-              "(default: the parent of the profile's folder)."),
-    )
-    parser.add_argument(
-        "--songbook-dir",
-        help=("Songbook root holding {slug}/ entries (default: songbook_folder from "
-              "--project-root's BMad config (modules.suno), else {docs-dir}/songbook)."),
+        "--derive-filename", metavar="BAND_NAME",
+        help="Convert a band name to its kebab-case filename and exit",
     )
     parser.add_argument(
         "--project-root",
-        help="Project root; when given, songbook_folder is read from its module config.",
+        help=("Project root; folders come from its module config (modules.suno). Without it, "
+              "a profile path's own folder is the profiles folder (drafts/ counts as its parent)."),
+    )
+    parser.add_argument("--profiles-dir", help="Band profiles folder (overrides config).")
+    parser.add_argument(
+        "--docs-dir",
+        help="Folder holding the band's {slug}-playlist.yaml (default: the profiles folder's parent).",
+    )
+    parser.add_argument(
+        "--songbook-dir",
+        help="Songbook root holding {slug}/ entries (default: songbook_folder from config, else {docs-dir}/songbook).",
     )
     args = parser.parse_args()
 
     if args.derive_filename:
-        result = {
+        output = json.dumps({
             "band_name": args.derive_filename,
+            "slug": derive_slug(args.derive_filename),
             "filename": derive_filename(args.derive_filename),
-        }
-        output = json.dumps(result, indent=2)
+        }, indent=2)
         if args.output:
             Path(args.output).write_text(output)
         else:
             print(output)
         sys.exit(0)
 
-    if not args.profile_path:
-        parser.error("profile_path is required when not using --derive-filename")
+    if not args.profile:
+        parser.error("a band slug or profile path is required (unless --derive-filename)")
 
-    profile_path = Path(args.profile_path)
-    docs_dir = Path(args.docs_dir) if args.docs_dir else None
-    songbook_dir = Path(args.songbook_dir) if args.songbook_dir else None
-    if songbook_dir is None and args.project_root:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
-        from profile_paths import read_module_config, under_root
-        configured = read_module_config(args.project_root).get("songbook_folder")
-        songbook_dir = under_root(Path(args.project_root), configured) if configured else None
+    if args.staged:
+        slug = Path(args.profile).stem if _looks_like_path(args.profile) else args.profile
+        target = Path(args.staged)
+    elif _looks_like_path(args.profile):
+        target = Path(args.profile)
+        slug = target.stem
+    else:
+        slug, target = args.profile, None
+
+    profiles_dir = args.profiles_dir
+    if profiles_dir is None and args.project_root is None and target is not None and not args.staged:
+        # No project root: the file's own folder is the profiles folder; a file
+        # in drafts/ is a draft of a profile one level up.
+        folder = target.resolve().parent
+        profiles_dir = folder.parent if folder.name == "drafts" else folder
+    dirs = resolve_dirs(args.project_root or ".", profiles_dir=profiles_dir,
+                        docs_dir=args.docs_dir, songbook_dir=args.songbook_dir)
+    if target is None:
+        target = dirs["profiles_dir"] / f"{slug}.yaml"
 
     if args.verbose:
-        print(f"Validating profile: {profile_path}", file=sys.stderr)
-        if docs_dir is not None:
-            print(f"Using docs dir: {docs_dir}", file=sys.stderr)
+        print(f"Validating {target} as band '{slug}' (docs: {dirs['docs_dir']}, "
+              f"songbook: {dirs['songbook_dir']})", file=sys.stderr)
 
-    result = validate_profile(profile_path, docs_dir=docs_dir, songbook_dir=songbook_dir)
+    result = validate_profile(target, docs_dir=dirs["docs_dir"],
+                              songbook_dir=dirs["songbook_dir"], slug=slug)
     output = json.dumps(result, indent=2)
 
     if args.output:
@@ -573,9 +622,7 @@ def main():
     else:
         print(output)
 
-    if result["status"] == "fail":
-        sys.exit(1)
-    sys.exit(0)
+    sys.exit(1 if result["status"] == "fail" else 0)
 
 
 if __name__ == "__main__":

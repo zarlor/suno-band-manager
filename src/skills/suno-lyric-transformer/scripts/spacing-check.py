@@ -273,12 +273,14 @@ Exit codes: 0=pass, 1=spacing changed (fail/warning), 2=error
         original = args.original_text.replace('\\n', '\n')
         transformed = args.transformed_text.replace('\\n', '\n')
     elif args.original and args.transformed:
-        paths = [Path(args.original), Path(args.transformed)]
-        for p in paths:
-            if not p.exists():
-                print(f"Error: File not found: {p}", file=sys.stderr)
+        texts = []
+        for name in (args.original, args.transformed):
+            try:
+                texts.append(Path(name).read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError) as exc:
+                print(f"Error: cannot read {name}: {exc}", file=sys.stderr)
                 sys.exit(2)
-        original, transformed = (p.read_text(encoding="utf-8") for p in paths)
+        original, transformed = texts
     else:
         print("Error: Provide --original and --transformed files, or --original-text and --transformed-text.", file=sys.stderr)
         sys.exit(2)

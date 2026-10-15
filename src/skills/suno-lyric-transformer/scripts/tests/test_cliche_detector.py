@@ -92,6 +92,31 @@ class TestClicheDetector(unittest.TestCase):
         self.assertIn("findings", report)
         self.assertIn("summary", report)
 
+    def test_cliches_found_exit_zero(self):
+        report, code = run_script("--text", "Fire in my soul keeps burning bright")
+        self.assertGreaterEqual(report["metrics"]["total_cliches_found"], 1)
+        self.assertEqual(code, 0)
+
+    def test_latin_only_skips_non_latin_lines(self):
+        text = "my broken heart\nразбитое сердце broken heart\n心が痛い"
+        report, code = run_script("--text", text, "--latin-only")
+        self.assertEqual(code, 0)
+        self.assertEqual([f["location"]["line"] for f in report["findings"]], [1])
+        self.assertEqual([(d["line_number"], d["script"]) for d in report["skipped_lines"]],
+                         [(2, "mixed"), (3, "non_latin")])
+        self.assertIs(report["metrics"]["latin_only"], True)
+        self.assertEqual(report["metrics"]["skipped_line_count"], 2)
+
+    def test_without_flag_scans_every_line(self):
+        text = "my broken heart\nразбитое сердце broken heart"
+        report, _ = run_script("--text", text)
+        self.assertEqual(report["metrics"]["total_cliches_found"], 2)
+        self.assertEqual(report["skipped_lines"], [])
+
+    def test_missing_file_exits_2(self):
+        _, code = run_script("/nonexistent/lyrics.txt")
+        self.assertEqual(code, 2)
+
     def test_help_flag(self):
         result = subprocess.run(
             [sys.executable, SCRIPT, "--help"],

@@ -46,4 +46,4 @@ def require_audio_deps(extra=()):
     Exit with a helpful JSON message if any is missing.
     """
     required = ("librosa", "numpy", *extra)
-    require_modules(required, "pip install " + " ".join(required))
+    require_modules(required, "run the script with `uv run`, which installs " + ", ".join(required) + " from its PEP 723 header")

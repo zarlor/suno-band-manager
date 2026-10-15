@@ -130,6 +130,52 @@ class TestValidateSequence(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(out["status"], "error")
 
+    def test_unusable_playlists_are_errors_not_passes(self):
+        m = load()
+        p = self.tmp_path / "x-playlist.yaml"
+        for text, needle in (("- a list\n", "must be a mapping"),
+                             ("album: X\n", "no `tracks:` list"),
+                             ("album: X\ntracks: []\n", "no `tracks:` list")):
+            p.write_text(text)
+            code, out = run(m, p)
+            self.assertEqual(code, 2)
+            self.assertIn(needle, out["error"])
+
+    def test_unnamed_track_blocks_a_write_that_would_lose_it(self):
+        m = load()
+        p, o = setup(self.tmp_path, "Two\nOne\n")
+        text = 'album: X\ntracks:\n  - name: One\n    file: One.mp3\n  - file: Orphan.mp3\n  - name: Two\n    file: Two.mp3\n'
+        p.write_text(text)
+        code, out = run(m, p, "--order", o, "--write")
+        self.assertEqual(code, 2)
+        self.assertIn("track 2", out["error"])
+        self.assertEqual(p.read_text(), text)
+
+    def test_short_arcs_are_reported(self):
+        m = load()
+        p, _ = setup(self.tmp_path)
+        code, out = run(m, p, "--locked", "One")
+        self.assertEqual(code, 2)
+        self.assertIn("at least two tracks", out["error"])
+        p.write_text(PLAYLIST.replace('  - "Two > Three"', '  - "Two > Three"\n  - "Four"'))
+        code, out = run(m, p)
+        self.assertEqual(code, 1)
+        self.assertIn("locked_arcs item 2 names fewer than two tracks: 'Four'", out["errors"])
+
+    def test_scalar_locked_arcs_is_one_arc(self):
+        m = load()
+        p, _ = setup(self.tmp_path)
+        p.write_text(PLAYLIST.replace('locked_arcs:\n  - "Two > Three"', 'locked_arcs: "Three > Four"'))
+        code, out = run(m, p)
+        self.assertEqual(code, 0)
+        self.assertEqual(out["locked_arcs"], [{"tracks": ["Three", "Four"], "status": "intact"}])
+
+    def test_empty_order_file_is_an_error(self):
+        m = load()
+        p, o = setup(self.tmp_path, "# nothing yet\n")
+        code, out = run(m, p, "--order", o)
+        self.assertEqual(code, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

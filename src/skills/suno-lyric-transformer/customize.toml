@@ -15,8 +15,8 @@
 
 activation_steps_prepend = []
 
-# Steps to run after greet but before Step 1 (Gather Input).
-# Overrides append.
+# Steps to run after greet (headless: after config load) but before Step 1.
+# Overrides append. Applied in headless runs too.
 
 activation_steps_append = []
 

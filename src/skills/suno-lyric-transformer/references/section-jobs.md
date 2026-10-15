@@ -43,19 +43,13 @@ When converting raw text to song structure, ask these questions:
 
 ## Common Poem-to-Song Structures
 
-### Short Poem (8-16 lines)
-```
-Verse 1 (first half of poem)
-Chorus (derived from emotional core)
-Verse 2 (second half of poem)
-Chorus
-```
-
 ### Song Duration — Let the Words Decide
 Not all songs need to be 3-4 minutes. A short duration (e.g., 1:49) can be a feature when it matches the emotional content. Don't pad short poems just for runtime — let the song be the length the words demand. Short tracks create contrast in a playlist between longer epic tracks and short punches. A 90-second song that lands every line hits harder than a 3-minute song with filler.
 
-### Very Short Poem (under 15 lines)
-Poems under 15 lines need special handling — Suno fills short content with looping instrumental, producing a song that feels empty or aimless. Strategies:
+### Short Poem (`estimated_structure: short`, under 16 content lines)
+`analyze-input.py` marks these. A short poem needs special handling — Suno fills short content with looping instrumental, producing a song that feels empty or aimless. Use one of these strategies instead of Chorus Creation, since padding becomes instrumental filler:
+
+**Split delivery:** first half of the poem as Verse 1, an extracted chorus, the second half as Verse 2, the chorus again.
 
 **Double delivery:** Deliver the poem twice with different energy. Clean/quiet first pass, then heavy/intense second pass. The repetition is intentional — the same words change meaning through musical recontextualization. This works when the poem's meaning deepens or shifts under a different emotional lens.
 ```
@@ -129,7 +123,7 @@ Critical requirement: always place a hard `[End]` tag after the final delivery t
 
 ## Structural Metaphor in Song Design
 
-Different time signatures for different section types can serve as a form-serves-content technique — the musical structure itself becomes a storytelling device. When a poem's themes lend themselves to it, the Lyric Transformer should consider suggesting structural metaphors where the musical form embodies the lyrical meaning.
+Different time signatures for different section types can serve as a form-serves-content technique — the musical structure itself becomes a storytelling device. Suno moves feel and tempo but not meter (production-tested), so offer a structural metaphor as aspiration only: at most one meter signal, the rest in feel words that land, and a song that still works in 4/4.
 
 ### Examples
 
@@ -143,9 +137,9 @@ Different time signatures for different section types can serve as a form-serves
 
 ### Application Guidance
 
-This technique is most powerful for prog and through-composed structures where the musical journey parallels the lyrical journey. The Lyric Transformer should flag opportunities for structural metaphor when:
+This technique is most powerful for prog and through-composed structures where the musical journey parallels the lyrical journey. Mention the opportunity when:
 - The poem has contrasting emotional states across sections (e.g., turmoil in verses, peace in choruses)
 - The poem's themes include concepts that have natural musical analogs (freedom/confinement, chaos/order, tension/release)
 - The target genre supports rhythmic experimentation (prog, post-metal, NOLA funk — less applicable to straightforward rock/pop)
 
-Note: Time signature changes are inconsistently respected by Suno (see `references/metatag-reference.md` → Experimental Section Tags), so structural metaphor should be treated as aspirational — worth attempting for the payoff when it lands, but not something to depend on for the song to work.
+Never build a song whose structural point depends on the meter actually changing.

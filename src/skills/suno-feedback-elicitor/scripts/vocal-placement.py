@@ -58,7 +58,7 @@ from loudness import integrated, thirds
 SCRIPT_NAME = "vocal-placement"
 VERSION = "1.1.0"
 AUDIO_EXTS = (".mp3", ".wav", ".flac", ".ogg", ".m4a")
-INSTALL_CMD = "pip install demucs torch librosa numpy pyloudnorm"
+INSTALL_CMD = f"uv run {Path(__file__).resolve()}  (provisions every dependency from the PEP 723 header)"
 MODEL_NAME = "htdemucs"
 GPU_SHIFTS = 5  # averaged Demucs time-shifts on a GPU; CPU default is 1 (each shift is a full separation)
 # A third whose vocal stem sits this far below the band is residual bleed, not singing.

@@ -58,7 +58,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from profile_paths import resolve_dirs  # noqa: E402
+from profile_paths import derive_slug, resolve_dirs  # noqa: E402
 
 SCRIPT_NAME = "apply-profile"
 
@@ -69,9 +69,8 @@ except ImportError:
         "script": SCRIPT_NAME,
         "status": "error",
         "error": (
-            "pyyaml is not installed. Run this script with `uv run` (which installs "
-            "its dependencies), or do the profile write by hand following "
-            "references/profile-schema.md, keeping every comment."
+            "pyyaml is not installed. Run this script with `uv run`, which installs "
+            "its dependencies. Nothing was written."
         ),
     }))
     sys.exit(2)
@@ -113,13 +112,7 @@ class SchemaError(ValueError):
 # Small helpers
 # --------------------------------------------------------------------------
 
-def _derive_slug(band_name: str) -> str:
-    """Convert a band name to a kebab-case slug (no extension)."""
-    name = band_name.strip().lower()
-    name = re.sub(r"[^a-z0-9\s-]", "", name)
-    name = re.sub(r"[\s_]+", "-", name)
-    name = re.sub(r"-+", "-", name)
-    return name.strip("-")
+_derive_slug = derive_slug  # the shared derivation in profile_paths.py
 
 
 def _now() -> str:

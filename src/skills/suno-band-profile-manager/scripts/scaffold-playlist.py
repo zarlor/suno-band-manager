@@ -1,44 +1,85 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = []
+# dependencies = ["pyyaml>=6.0"]
 # ///
-"""Scaffold a per-band playlist YAML.
+"""Scaffold a band's canonical playlist YAML, {docs}/{band-slug}-playlist.yaml.
 
-Each band in the project owns exactly one canonical
-`docs/{band-slug}-playlist.yaml` that lists the tracks in their playlist
-order with a name → audio-file mapping. This file is the authoritative
-input to `playlist-sequencing-data.py` and the single source of truth for
-sequencing decisions.
+That file is the single source of truth for the band's track order; the
+suno-playlist-sequencer skill reads and reorders it. This script writes it
+for a band that doesn't have one yet:
 
-This script bootstraps that YAML for a band that doesn't yet have one. It
-runs in two modes:
+  (default)        a template with no tracks; tracks are added as songs publish.
+  --from-songbook  tracks seeded from the band's published songbook entries
+                   ({songbook}/{band-slug}/*.md with `status: published`), in
+                   filename order, each with an empty `file:` to fill in from
+                   the band's audio folder (songbook frontmatter doesn't
+                   reliably carry the audio filename).
 
-  --empty (default)
-      Write a template with no tracks listed. The user fills in the order.
+The album name is the band profile's `name` ({profiles}/{band-slug}.yaml),
+else --album-name, else the slug title-cased. Every string is written as a
+quoted YAML scalar, so titles with quotes, colons or backslashes stay valid.
 
-  --from-songbook
-      Scan `docs/songbook/{band-slug}/` for published songbook entries and
-      pre-populate the tracks list with their titles. Audio file fields
-      are left as TODO comments — the user must fill in actual filenames
-      from the band's audio folder (`docs/audio/{band-slug}/`) because songbook frontmatter does not reliably
-      track the audio filename.
+Folders: --profiles-dir / --docs-dir / --songbook-dir, else module config,
+else {project-root}/docs/... (see profile_paths.py).
 
-Usage:
-    scaffold-playlist.py <band-slug> [--from-songbook] [--project-root PATH]
-                         [--profiles-dir DIR] [--docs-dir DIR] [--songbook-dir DIR]
-
-Exit codes:
-  0 = playlist YAML written (or already existed and --force not passed)
-  1 = error (band-slug invalid, project root missing, etc.)
+Output: JSON on stdout. Exit codes: 0 = written, or already present (status
+`exists`, nothing changed without --force); 1 = invalid slug or project root.
 """
 
 import argparse
 import json
-import os
 import re
 import sys
 from pathlib import Path
+
+try:
+    import yaml
+except ImportError:  # optional: frontmatter and profile names fall back to a line parser
+    yaml = None
+
+
+def _q(value: str) -> str:
+    """A string as a double-quoted YAML scalar (JSON's escaping is valid YAML)."""
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def _parse_mapping(text: str) -> dict:
+    """A YAML mapping's top-level keys ({} when it isn't one). Without pyyaml,
+    a line parser reads unindented `key: value` lines."""
+    if yaml is not None:
+        try:
+            data = yaml.safe_load(text)
+            return data if isinstance(data, dict) else {}
+        except yaml.YAMLError:
+            return {}
+    data = {}
+    for line in text.splitlines():
+        m = re.match(r"""^([A-Za-z_][\w-]*)\s*:\s*(.*?)\s*$""", line)
+        if m and m.group(1) not in data:
+            val = m.group(2)
+            if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+                val = val[1:-1]
+            data[m.group(1)] = val
+    return data
+
+
+def _frontmatter(content: str) -> dict:
+    """The leading `---` block of a Markdown file as a dict ({} when absent)."""
+    if not content.startswith("---"):
+        return {}
+    end = content.find("\n---", 3)
+    return _parse_mapping(content[3:end]) if end >= 0 else {}
+
+
+def _profile_name(profiles_dir: Path, slug: str) -> str | None:
+    """The band profile's `name`, when the profile exists and has one."""
+    try:
+        text = (profiles_dir / f"{slug}.yaml").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    name = _parse_mapping(text).get("name")
+    return str(name).strip() if name is not None and str(name).strip() else None
 
 
 def _band_name_from_slug(slug: str) -> str:
@@ -48,41 +89,22 @@ def _band_name_from_slug(slug: str) -> str:
     return " ".join(p.capitalize() for p in parts if p)
 
 
-def _extract_title_from_songbook(md_path: Path) -> str | None:
-    """Read a songbook .md file's frontmatter and return its `title` field.
-    Returns None if the file lacks a frontmatter title."""
+def _read_frontmatter(md_path: Path) -> dict:
     try:
-        with open(md_path, "r") as f:
-            content = f.read()
-    except OSError:
-        return None
-    if not content.startswith("---"):
-        return None
-    end = content.find("\n---", 3)
-    if end < 0:
-        return None
-    fm = content[3:end]
-    for line in fm.splitlines():
-        m = re.match(r'^\s*title\s*:\s*"?(.*?)"?\s*$', line)
-        if m:
-            return m.group(1).strip()
-    return None
+        return _frontmatter(md_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError):
+        return {}
+
+
+def _extract_title_from_songbook(md_path: Path) -> str | None:
+    """A songbook entry's frontmatter `title`, or None."""
+    title = _read_frontmatter(md_path).get("title")
+    return str(title).strip() if title and str(title).strip() else None
 
 
 def _is_published(md_path: Path) -> bool:
-    """Heuristic: check frontmatter for `status: published` or similar."""
-    try:
-        with open(md_path, "r") as f:
-            content = f.read()
-    except OSError:
-        return False
-    if not content.startswith("---"):
-        return False
-    end = content.find("\n---", 3)
-    if end < 0:
-        return False
-    fm = content[3:end].lower()
-    return "status: published" in fm or "status: \"published\"" in fm
+    """True when the entry's frontmatter says `status: published`."""
+    return str(_read_frontmatter(md_path).get("status", "")).strip().lower() == "published"
 
 
 def discover_songbook_tracks(
@@ -124,7 +146,7 @@ def render_playlist_yaml(
     the band's audio folder that every track's `file:` is relative to.
     """
     lines = []
-    lines.append(f"# Playlist order for {album_name} — authoritative source.")
+    lines.append(f"# Playlist order for {' '.join(album_name.splitlines())} — authoritative source.")
     lines.append("# This file is the SINGLE source of truth for the band's track sequence.")
     lines.append("# Do NOT duplicate this list in other files (band profile YAML, ordering doc,")
     lines.append("# voice context). Those files derive from or reference this YAML.")
@@ -136,9 +158,9 @@ def render_playlist_yaml(
     lines.append("# Optional: a track's `felt_bpm: 72` records the tempo you hear when the measured")
     lines.append("# BPM reads half/double time; a top-level `locked_arcs:` list (each item a list of")
     lines.append('# track names, or a "A > B > C" string) keeps those runs together and in order.')
-    lines.append(f'album: "{album_name}"')
+    lines.append(f"album: {_q(album_name)}")
     if band_slug:
-        lines.append(f'audio_dir: "docs/audio/{band_slug}"  # this band\'s audio folder; each file: is relative to it')
+        lines.append(f"audio_dir: {_q('docs/audio/' + band_slug)}  # this band's audio folder; each file: is relative to it")
     lines.append("tracks:")
     if not tracks:
         lines.append("  # Add tracks below as they are published. Each track needs:")
@@ -147,13 +169,13 @@ def render_playlist_yaml(
         lines.append("  # Order in this list = playlist order.")
     else:
         for t in tracks:
-            lines.append(f'  - name: "{t["name"]}"')
+            lines.append(f"  - name: {_q(t['name'])}")
             if from_songbook:
                 # We discovered the song from songbook but don't know the audio filename.
                 # User must fill this in.
                 lines.append("    file: \"\"  # TODO: set to the actual filename in the band's audio folder")
                 if t.get("songbook_path"):
-                    lines.append(f"    # songbook: {t['songbook_path']}")
+                    lines.append(f"    # songbook: {' '.join(str(t['songbook_path']).splitlines())}")
             else:
                 lines.append('    file: ""')
     return "\n".join(lines) + "\n"
@@ -194,7 +216,7 @@ def main():
     )
     parser.add_argument(
         "--album-name",
-        help="Album/band name to use in the YAML (default: derived from slug).",
+        help="Album name for the YAML (default: the band profile's `name`, else the slug title-cased).",
     )
     parser.add_argument(
         "--force",
@@ -235,7 +257,8 @@ def main():
         sys.exit(1)
 
     target = docs_dir / f"{slug}-playlist.yaml"
-    if target.exists() and not args.force:
+    existed = target.exists()
+    if existed and not args.force:
         print(json.dumps({
             "status": "exists",
             "message": f"Playlist YAML already exists at {target}. Use --force to overwrite.",
@@ -243,7 +266,8 @@ def main():
         }))
         sys.exit(0)
 
-    album_name = args.album_name or _band_name_from_slug(slug)
+    album_name = (args.album_name or _profile_name(dirs["profiles_dir"], slug)
+                  or _band_name_from_slug(slug))
     tracks: list[dict] = []
     if args.from_songbook:
         tracks = discover_songbook_tracks(project_root, slug, docs_dir=docs_dir,
@@ -255,7 +279,7 @@ def main():
         f.write(body)
 
     print(json.dumps({
-        "status": "created" if not args.force else "overwritten",
+        "status": "overwritten" if existed else "created",
         "path": _report_path(target),
         "album": album_name,
         "tracks_seeded": len(tracks),

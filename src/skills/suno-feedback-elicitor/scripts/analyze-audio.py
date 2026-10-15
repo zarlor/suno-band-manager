@@ -6,7 +6,7 @@
 """Batch audio analysis for a song catalog.
 
 Extracts BPM, estimated key, duration, and BS.1770 loudness (integrated LUFS
-and loudness range) for all MP3s in a directory.
+and loudness range) for one MP3, or for all MP3s under a directory.
 
 Tempo comes from Beat This! (beat-grid.py) when the PyTorch audio tools are
 turned on in the module config (`pytorch_audio_tools`), otherwise from librosa.
@@ -17,20 +17,25 @@ how the two relate (`librosa_prior_relation`: agree / double / other). A
 decides. `--tempo-source` overrides the tempo choice for one run.
 
 Usage:
-    uv run analyze-audio.py [audio-directory] [options]
+    uv run analyze-audio.py [audio-directory-or-file] [options]
 
-    # Analyze default directory
+    # Analyze default directory (catalog run)
     uv run analyze-audio.py
 
-    # Analyze specific directory
-    uv run analyze-audio.py /path/to/audio
+    # Analyze one render (archives to songs/, leaves the catalog companion alone)
+    uv run analyze-audio.py docs/audio/my-band/Song.mp3
 
     # JSON output to file
     uv run analyze-audio.py /path/to/audio --format json -o results.json
 
+Writes: a directory run archives to docs/audio-analysis/catalog/<date>-summary.json
+and refreshes docs/audio-analysis-reference.md; a single-file run archives to
+docs/audio-analysis/songs/[<band>/]<song>-summary.json and refreshes no companion
+unless --companion names a path. Nothing is written when every file failed.
+
 Exit codes:
-  0 = success
-  1 = invalid arguments or runtime error
+  0 = success (status pass, or partial when some files failed)
+  1 = invalid arguments, no MP3s found, or every file failed (status fail)
   2 = missing dependencies
 """
 
@@ -44,13 +49,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from audio_deps import require_audio_deps
 from companion_writer import update_companion, resolve_companion_path
-from json_archiver import resolve_archive_arg, write_archive
+from json_archiver import input_archive_identifier, resolve_archive_arg, write_archive
 from loudness import load_native, summarize as loudness_summary
 from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, halftime_note,
                           librosa_tempo_pair, resolve_tempo_source, source_summary, tempo_relation, usable)
 
 SCRIPT_NAME = "analyze-audio"
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 
 def get_key(y, sr):
@@ -281,13 +286,14 @@ def main():
     globals()["librosa"] = librosa
 
     parser = argparse.ArgumentParser(
-        description="Batch audio analysis — BPM, key, duration, and loudness for all MP3s in a directory.",
+        description="Audio analysis — BPM, key, duration, and loudness for one MP3 or all MP3s under a directory.",
     )
     parser.add_argument(
         "audio_dir",
         nargs="?",
         default="docs/audio",
-        help="Directory containing MP3 files, searched recursively so per-band sub-folders are included (default: docs/audio)",
+        help="An MP3 file, or a directory searched recursively so per-band sub-folders are included "
+             "(default: docs/audio)",
     )
     parser.add_argument(
         "--format",
@@ -304,8 +310,9 @@ def main():
     parser.add_argument(
         "--archive", nargs="?", const="", default="",
         help=(
-            "Persist full JSON output to a dated catalog archive. "
-            "With no path: writes to docs/audio-analysis/catalog/<YYYY-MM-DD>-summary.json. "
+            "Persist full JSON output. With no path: a directory run writes "
+            "docs/audio-analysis/catalog/<YYYY-MM-DD>-summary.json, a single-file run "
+            "docs/audio-analysis/songs/[<band>/]<song>-summary.json. "
             "Pass an explicit path to override. Default: ON."
         ),
     )
@@ -314,28 +321,37 @@ def main():
         help="Skip writing the JSON archive.",
     )
     parser.add_argument(
-        "--companion", nargs="?", const="", default="",
+        "--companion", nargs="?", const="", default=None,
         help=(
             "Refresh the canonical Markdown companion file. "
             "With no path: writes to docs/audio-analysis-reference.md. "
             "Pass an explicit path to override. Hand-curated sections "
-            "outside the AUTOGEN markers are preserved. Default: ON."
+            "outside the AUTOGEN markers are preserved. Default: ON for a "
+            "directory run, OFF for a single file (the companion is the catalog summary)."
         ),
     )
     parser.add_argument(
-        "--no-companion", dest="companion", action="store_const", const=None,
+        "--no-companion", dest="companion", action="store_const", const=False,
         help="Skip refreshing the Markdown companion file.",
     )
     add_tempo_source_arg(parser)
     args = parser.parse_args()
 
     audio_dir = args.audio_dir
+    single_file = os.path.isfile(audio_dir)
 
-    if not os.path.isdir(audio_dir):
-        print(f"Audio directory not found: {audio_dir}", file=sys.stderr)
+    if single_file:
+        if not audio_dir.lower().endswith(".mp3"):
+            print(f"Not an .mp3 file: {audio_dir}", file=sys.stderr)
+            sys.exit(1)
+        mp3s = [audio_dir]
+        label_root = os.path.dirname(audio_dir) or "."
+    elif os.path.isdir(audio_dir):
+        mp3s = find_mp3s(audio_dir)
+        label_root = audio_dir
+    else:
+        print(f"Audio file or directory not found: {audio_dir}", file=sys.stderr)
         sys.exit(1)
-
-    mp3s = find_mp3s(audio_dir)
 
     if not mp3s:
         print(f"No .mp3 files found in {audio_dir}", file=sys.stderr)
@@ -347,7 +363,7 @@ def main():
     results = []
     for i, filepath in enumerate(mp3s):
         result = analyze_file(filepath, readings[i] if readings else None)
-        result['file'] = rel_label(filepath, audio_dir)
+        result['file'] = rel_label(filepath, label_root)
         results.append(result)
 
     json_data = format_json_output(results, len(mp3s))
@@ -362,19 +378,30 @@ def main():
     else:
         print(output)
 
+    # Every file failed: report it and write nothing, so a failed run never
+    # overwrites a good archive or companion.
+    if json_data["status"] == "fail":
+        print(f"  FAILED: none of {len(mp3s)} file(s) could be analyzed; nothing archived", file=sys.stderr)
+        sys.exit(1)
+
     # JSON archive (default ON unless --no-archive). Identifier suffix "-summary"
-    # to distinguish from batch-full-analysis.py's "-deep" archive.
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d") + "-summary"
-    archive_target = resolve_archive_arg("catalog", today, args.archive)
+    # distinguishes it from the "-deep" archives.
+    category, identifier = input_archive_identifier(audio_dir, "summary")
+    archive_target = resolve_archive_arg(category, identifier, args.archive)
     if archive_target is not None:
         res = write_archive(archive_target, json_data)
         print(f"  ARCHIVED: {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
 
-    # Companion .md refresh (default ON unless --no-companion). The companion
-    # docs/audio-analysis-reference.md has hand-curated sections (Felt BPM
-    # Corrections, LLM BPM Comparison) preserved OUTSIDE the AUTOGEN markers.
-    # Title + timestamp live inside the markers so each refresh updates them.
-    companion_target = resolve_companion_path(SCRIPT_NAME, args.companion)
+    # Companion .md refresh: ON by default for a directory run, OFF for one file.
+    # The companion docs/audio-analysis-reference.md has hand-curated sections
+    # (Felt BPM Corrections, LLM BPM Comparison) preserved OUTSIDE the AUTOGEN
+    # markers. Title + timestamp live inside the markers so each refresh updates them.
+    companion_arg = args.companion
+    if companion_arg is None:
+        companion_arg = None if single_file else ""
+    elif companion_arg is False:
+        companion_arg = None
+    companion_target = resolve_companion_path(SCRIPT_NAME, companion_arg)
     if companion_target is not None:
         timestamp = datetime.now(timezone.utc).isoformat()
         title_block = (

@@ -124,7 +124,7 @@ class TestSanctumSeed(TempDirMixin, unittest.TestCase):
             assert rule.rstrip().endswith(f"`memory/incidents/{name}` (read it only when auditing or questioning the rule)._")
             assert story.startswith("# ") and "— the incident" in story.splitlines()[0]
         workshop = files["memory/disciplines/workshop-capture.md"]
-        assert "Append the text verbatim" in workshop and "fourth-instance" not in workshop
+        assert "capture-wip.py" in workshop and "fourth-instance" not in workshop
         assert "fourth-instance" in files["memory/incidents/workshop-capture.md"]
         # A discipline with no story gets no incident file and no pointer.
         assert "memory/incidents/research-discipline.md" not in files

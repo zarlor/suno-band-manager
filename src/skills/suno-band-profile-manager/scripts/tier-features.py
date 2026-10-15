@@ -9,8 +9,8 @@
 Maps each tier (free, pro, premier) to its available and unavailable features,
 helping the agent and user understand what profile options are valid.
 
-Authoritative for headless/script consumers. The human-readable twin is
-`references/tier-features.md` — the two must agree; update both together.
+The one maintained source of tier facts for this skill; the field
+consequences of each tier live in references/profile-schema.md "Tier gates".
 
 Last validated against Suno: 2026-09-12 (v6 family launched 2026-09-09 and
 retired every earlier model; v6 Controls panel; Studio 2.0; download caps

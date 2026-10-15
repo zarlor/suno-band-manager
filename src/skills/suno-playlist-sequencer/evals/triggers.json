@@ -1,0 +1,20 @@
+[
+  {"query": "sequence my playlist for the swamp band, twelve tracks", "should_trigger": true},
+  {"query": "order my album so it plays like a real record front to back", "should_trigger": true},
+  {"query": "where should this new song go in the album? I just published 'Low Water'", "should_trigger": true},
+  {"query": "I regenerated four tracks last week, re-check the order after my regens", "should_trigger": true},
+  {"query": "my album doesn't flow even though every song is strong on its own, fix it", "should_trigger": true},
+  {"query": "plan my tracklist: which song opens and which one closes?", "should_trigger": true},
+  {"query": "check whether swapping tracks 6 and 7 breaks the key or tempo flow", "should_trigger": true},
+  {"query": "build an encore run for the last five songs of the Iron Meridian playlist", "should_trigger": true},
+  {"query": "the jump from track 3 to track 4 is too loud, can you rework the running order?", "should_trigger": true},
+  {"query": "create a band profile for my new sludge-metal project", "should_trigger": false},
+  {"query": "add 'Low Water' to the band's playlist file and fix its filename", "should_trigger": false},
+  {"query": "give feedback on my Suno output, the chorus dragged and went ballad on me", "should_trigger": false},
+  {"query": "analyze this mp3: what's the BPM and where are the sections?", "should_trigger": false},
+  {"query": "build a style prompt for my midnight-echoes band profile", "should_trigger": false},
+  {"query": "turn this poem into Suno lyrics with section tags", "should_trigger": false},
+  {"query": "talk to Mac, I want to browse my songbook", "should_trigger": false},
+  {"query": "refine a song: the Suno take buries the vocals under the guitars", "should_trigger": false},
+  {"query": "reorder the verses in this song so the bridge lands earlier", "should_trigger": false}
+]

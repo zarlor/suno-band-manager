@@ -277,14 +277,14 @@ def validate_lyrics(text: str) -> list[dict]:
             "severity": "high",
             "category": "structure",
             "issue": f"Total character count ({char_count}) exceeds Suno's {SUNO_LYRICS_HARD_LIMIT}-character limit. Suno will truncate your lyrics.",
-            "fix": "Trim lyrics to stay under 5,000 characters (hard limit). For best quality, aim for ~3,000 characters."
+            "fix": f"Trim lyrics to stay under {SUNO_LYRICS_HARD_LIMIT:,} characters (hard limit). For best quality, aim for ~{SUNO_LYRICS_QUALITY_BUDGET:,} characters."
         })
     elif char_count > SUNO_LYRICS_QUALITY_BUDGET:
         findings.append({
             "severity": "medium",
             "category": "structure",
             "issue": f"Total character count ({char_count}) is approaching Suno's {SUNO_LYRICS_HARD_LIMIT}-character limit.",
-            "fix": "Consider trimming — quality degrades above ~3,000 characters. Hard limit is 5,000."
+            "fix": f"Consider trimming — quality degrades above ~{SUNO_LYRICS_QUALITY_BUDGET:,} characters. Hard limit is {SUNO_LYRICS_HARD_LIMIT:,}."
         })
 
     if lyric_count > MAX_LYRIC_LINES:
@@ -499,10 +499,11 @@ Exit codes: 0=pass, 1=fail/warning, 2=error
         text = sys.stdin.read()
     elif args.file:
         file_path = Path(args.file)
-        if not file_path.exists():
-            print(f"Error: File not found: {args.file}", file=sys.stderr)
+        try:
+            text = file_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            print(f"Error: cannot read {args.file}: {exc}", file=sys.stderr)
             sys.exit(2)
-        text = file_path.read_text()
     else:
         parser.print_help()
         sys.exit(2)

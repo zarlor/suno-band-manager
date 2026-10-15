@@ -313,5 +313,137 @@ class TestPlaylistSequencingData(unittest.TestCase):
         self.assertNotIn("compare", archived)
 
 
+class TestRunGuardsAndArtifacts(unittest.TestCase):
+    """main(): the archive is the re-eval baseline, so a run never erases it by accident."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.m = _load_module()
+        self.enterContext(contextlib.chdir(self.root))
+        self.audio = self.root / "docs" / "audio" / "band-a"
+        self.audio.mkdir(parents=True)
+        for n in ("A", "B", "C"):
+            (self.audio / f"{n}.mp3").write_bytes(b"x")
+        self.playlist = self.root / "docs" / "band-a-playlist.yaml"
+        self.write_playlist("A", "B", "C")
+        self.enterContext(mock.patch.object(
+            self.m, "analyze_track",
+            lambda path, reading=None: _track("x", 100.0, "8A", "8A", [-14] * 3) | {"tempo_source": "librosa"}))
+        self.enterContext(mock.patch.object(self.m, "require_audio_deps", lambda **kw: None))
+        self.enterContext(mock.patch.dict(sys.modules, {"librosa": type(sys)("librosa"),
+                                                        "numpy": type(sys)("numpy")}))
+        self.archive = self.root / "docs/audio-analysis/playlists/band-a.json"
+        self.companion = self.root / "docs/band-a-playlist-sequencing.md"
+
+    def write_playlist(self, *names, path=None, extra=""):
+        body = "".join(f'  - name: "{n}"\n    file: "{n}.mp3"\n' for n in names)
+        (path or self.playlist).write_text(f'album: "Band A"\n{extra}tracks:\n{body}')
+
+    def run_main(self, *extra, playlist="docs/band-a-playlist.yaml"):
+        """(exit code, stdout JSON) for one run."""
+        import io
+        import json
+        argv = ["x", "--playlist", playlist, "--tempo-source", "librosa", *extra]
+        out = io.StringIO()
+        code = 0
+        with mock.patch.object(sys, "argv", argv), contextlib.redirect_stdout(out), \
+                contextlib.redirect_stderr(io.StringIO()):
+            try:
+                self.m.main()
+            except SystemExit as exc:
+                code = exc.code
+        return code, json.loads(out.getvalue())
+
+    def test_nothing_analyzed_writes_nothing_and_exits_1(self):
+        code, _ = self.run_main()
+        self.assertEqual(code, 0)
+        archived, companion = self.archive.read_text(), self.companion.read_text()
+        for n in ("A", "B", "C"):
+            (self.audio / f"{n}.mp3").unlink()
+        code, out = self.run_main("--force-archive")
+        self.assertEqual(code, 1)
+        self.assertEqual(out["status"], "fail")
+        self.assertEqual([d["name"] for d in out["dropped"]], ["A", "B", "C"])
+        self.assertEqual(out["artifacts"]["archive"]["status"], "skipped")
+        self.assertEqual(self.archive.read_text(), archived)  # the baseline survives
+        self.assertEqual(self.companion.read_text(), companion)
+
+    def test_dropping_an_analyzed_track_keeps_the_prior_archive(self):
+        self.run_main()
+        archived = self.archive.read_text()
+        (self.audio / "B.mp3").unlink()
+        code, out = self.run_main()
+        self.assertEqual(code, 0)
+        self.assertEqual(out["artifacts"]["archive"]["status"], "kept-prior")
+        self.assertIn("B", out["artifacts"]["archive"]["reason"])
+        self.assertEqual(out["artifacts"]["companion"]["status"], "kept-prior")
+        self.assertEqual(self.archive.read_text(), archived)
+        code, out = self.run_main("--force-archive")
+        self.assertEqual(out["artifacts"]["archive"]["status"], "written")
+        self.assertNotEqual(self.archive.read_text(), archived)
+
+    def test_removing_a_track_from_the_playlist_is_not_a_loss(self):
+        self.run_main()
+        self.write_playlist("A", "C")
+        code, out = self.run_main()
+        self.assertEqual(out["artifacts"]["archive"]["status"], "written")
+        self.assertEqual(out["compare"]["removed_tracks"], ["B"])
+
+    def test_artifacts_name_the_written_paths(self):
+        code, out = self.run_main()
+        self.assertEqual(out["artifacts"]["archive"], {"path": os.path.join("docs", "audio-analysis", "playlists",
+                                                                            "band-a.json"), "status": "written"})
+        self.assertEqual(out["artifacts"]["companion"]["path"], os.path.join("docs", "band-a-playlist-sequencing.md"))
+        self.assertIsNone(out["tempo_source_note"])
+        code, out = self.run_main("--no-archive", "--no-companion")
+        self.assertEqual(out["artifacts"]["archive"], {"path": None, "status": "skipped"})
+
+    def test_outputs_land_beside_a_relocated_playlist(self):
+        data = self.root / "music"
+        (data / "audio" / "band-b").mkdir(parents=True)
+        (data / "audio" / "band-b" / "A.mp3").write_bytes(b"x")
+        self.write_playlist("A", path=data / "band-b-playlist.yaml")
+        (self.root / "elsewhere").mkdir()
+        os.chdir(self.root / "elsewhere")
+        code, out = self.run_main(playlist=str(data / "band-b-playlist.yaml"))
+        self.assertEqual(code, 0)
+        self.assertEqual(out["analyzed_count"], 1)  # audio/band-b/ beside the playlist
+        self.assertTrue((data / "audio-analysis" / "playlists" / "band-a.json").is_file())  # slug from album:
+        self.assertTrue((data / "band-a-playlist-sequencing.md").is_file())
+        self.assertFalse((self.root / "elsewhere" / "docs").exists())
+
+    def test_playlist_parse_errors_exit_1_with_a_reason(self):
+        self.playlist.write_text("album: [unclosed\n")
+        code, out = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("not valid YAML", out["error"])
+        self.playlist.write_text('album: X\ntracks:\n  - file: "A.mp3"\n')
+        code, out = self.run_main()
+        self.assertEqual((code, out["error"]), (1, "track 1 in docs/band-a-playlist.yaml has no `name:`"))
+        self.playlist.write_text("- just a list\n")
+        self.assertEqual(self.run_main()[0], 1)
+
+    def test_empty_file_entry_is_a_named_drop(self):
+        self.playlist.write_text('album: "Band A"\ntracks:\n  - name: A\n    file: A.mp3\n  - name: New\n    file: ""\n')
+        code, out = self.run_main()
+        self.assertEqual(code, 0)
+        self.assertEqual(out["dropped"], [{"position": 2, "name": "New", "file": None,
+                                           "reason": "no file: set in the playlist entry"}])
+
+    def test_tempo_source_note_says_why_beat_this_was_not_used(self):
+        def unavailable(paths, include_beats=False):
+            raise self.m.BeatThisUnavailable("PyTorch / Beat This! not installed")
+        self.enterContext(mock.patch.object(self.m, "run_beat_grid", unavailable))
+        code, out = self.run_main("--tempo-source", "beat-this")
+        self.assertIn("PyTorch / Beat This! not installed", out["tempo_source_note"])
+        self.enterContext(mock.patch.object(
+            self.m, "run_beat_grid", lambda paths, include_beats=False: [{"bpm": 100.0}, {"error": "too short"},
+                                                                        {"bpm": 100.0}]))
+        code, out = self.run_main("--tempo-source", "beat-this")
+        self.assertIn("B (too short)", out["tempo_source_note"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -26,8 +26,9 @@ UV = shutil.which("uv")
 TIMEOUT = 600
 
 
-def run_uv(args: list[str]) -> int:
-    return subprocess.run([UV, "run", SCRIPT, *args], capture_output=True, text=True, timeout=TIMEOUT).returncode
+def run_uv(args: list[str], cwd=None) -> int:
+    return subprocess.run([UV, "run", SCRIPT, *args], capture_output=True, text=True, timeout=TIMEOUT,
+                          cwd=cwd).returncode
 
 
 def load(name: str):
@@ -49,6 +50,20 @@ class AnalyzeAudioTest(unittest.TestCase):
 
     def test_empty_dir_exits_1(self):
         self.assertEqual(run_uv([str(self.tmp_path)]), 1)
+
+    def test_every_file_failing_exits_1_and_writes_nothing(self):
+        audio = self.tmp_path / "docs" / "audio" / "band-a"
+        audio.mkdir(parents=True)
+        (audio / "Broken.mp3").write_bytes(b"not audio at all")
+        code = run_uv([str(audio), "--tempo-source", "librosa"], cwd=self.tmp_path)
+        self.assertEqual(code, 1)
+        self.assertFalse((self.tmp_path / "docs" / "audio-analysis").exists())
+        self.assertFalse((self.tmp_path / "docs" / "audio-analysis-reference.md").exists())
+
+    def test_single_file_that_is_not_mp3_exits_1(self):
+        f = self.tmp_path / "notes.txt"
+        f.write_text("x")
+        self.assertEqual(run_uv([str(f)]), 1)
 
     def test_find_mp3s_recurses_and_labels_band_folders(self):
         m = load("analyze_audio")

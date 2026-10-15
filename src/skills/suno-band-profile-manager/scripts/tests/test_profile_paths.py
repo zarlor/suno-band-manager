@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from profile_paths import read_module_config, resolve_dirs  # noqa: E402
+from profile_paths import derive_slug, read_module_config, resolve_dirs  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fake_resolver import install_resolver  # noqa: E402
 
@@ -42,6 +42,21 @@ class TmpPathTestCase(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.tmp_path = Path(tmp.name).resolve()
+
+
+class TestDeriveSlug(unittest.TestCase):
+    def test_the_one_name_to_slug_rule(self):
+        cases = {
+            "Test Band": "test-band",
+            "Rosa's Voice": "rosas-voice",
+            "Ember Hollow - Redux": "ember-hollow-redux",
+            "  My   Cool  Band  ": "my-cool-band",
+            "already-kebab": "already-kebab",
+            "Rider's Hymn!": "riders-hymn",
+            "!!!": "",
+        }
+        for name, slug in cases.items():
+            self.assertEqual(derive_slug(name), slug, name)
 
 
 class TestProfilePaths(TmpPathTestCase):

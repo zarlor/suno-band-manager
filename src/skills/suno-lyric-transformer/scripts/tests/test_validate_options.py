@@ -14,9 +14,7 @@ from pathlib import Path
 
 SCRIPT = str(Path(__file__).parent.parent / "validate-options.py")
 
-# Canonical code -> meaning, mirrored from SKILL.md menu table
-# (Step 2: Select Transformations). This is the source of truth; both
-# validate-options.py and assemble-summary.py must agree with it.
+# The expected code -> name table (option_codes.py holds the live one).
 CANONICAL_CODE_DESCRIPTIONS = {
     "ST": "Structure Tagging",
     "CE": "Chorus Extraction",
@@ -132,16 +130,25 @@ class TestValidateOptions(unittest.TestCase):
         self.assertEqual(report["status"], "pass")
         self.assertEqual(set(report["validated_codes"]), {"ST", "RE", "CD"})
 
-    def test_code_descriptions_match_canonical(self):
-        # Guard against silent drift: validate-options.py CODE_DESCRIPTIONS must
-        # match the canonical SKILL.md menu-table mapping exactly.
-        module = _load_module()
-        self.assertEqual(module.CODE_DESCRIPTIONS, CANONICAL_CODE_DESCRIPTIONS)
-
-    def test_valid_codes_match_canonical_keys(self):
-        # The set of accepted codes must be exactly the canonical menu codes.
+    def test_valid_codes_come_from_the_shared_table(self):
         module = _load_module()
         self.assertEqual(module.VALID_CODES, set(CANONICAL_CODE_DESCRIPTIONS))
+
+    def test_list_prints_menu_and_rules(self):
+        report, code = run_script("--list")
+        self.assertEqual(code, 0)
+        self.assertEqual({o["code"]: o["name"] for o in report["options"]}, CANONICAL_CODE_DESCRIPTIONS)
+        self.assertTrue(all(o["effect"] for o in report["options"]))
+        self.assertEqual(len(report["rules"]), 3)
+
+    def test_exit_codes(self):
+        _, code = run_script("ST,RA")
+        self.assertEqual(code, 0)
+        report, code = run_script("FR,CE")  # CE auto-removed: warning, still usable
+        self.assertEqual(report["status"], "warning")
+        self.assertEqual(code, 0)
+        _, code = run_script("FR,WF")
+        self.assertEqual(code, 1)
 
 
 if __name__ == "__main__":

@@ -1,16 +1,16 @@
 # Create Profile
 
-The outcome is a saved band profile at `{band_profiles_folder}/{slug}.yaml`, a sibling decision log, and the band's empty playlist YAML. The profile's real readers are the Style Prompt Builder, Lyric Transformer and Feedback Elicitor: every field must be specific enough for the Style Prompt Builder to write a distinctive prompt from it. Vague profiles produce vague songs. The field list, types and limits are in `references/profile-schema.md`. Load it now, together with `references/tier-features.md`.
+The outcome is a saved band profile at `{band_profiles_folder}/{slug}.yaml`, a sibling decision log, and the band's empty playlist YAML. The profile's real readers are the Style Prompt Builder, Lyric Transformer and Feedback Elicitor: every field must be specific enough for the Style Prompt Builder to write a distinctive prompt from it. Vague profiles produce vague songs. The field list, types, limits and tier gates are in `references/profile-schema.md`, loaded with this file.
 
 All scripts run as `uv run {skill-root}/scripts/<name>.py … --project-root {project-root}`. They read `band_profiles_folder` and `songbook_folder` from module config themselves.
 
 ## Open the floor
 
-Invite the user to dump everything: the vibe, bands it should sound like, lyrics or poems lying around, links — and which Suno plan they are on (free / Pro / Premier), so you only offer what they can use. Ask for the plan up front because it gates half the later discovery (sliders, Voices, Custom Models, studio preferences). Once you know it, run `scripts/tier-features.py <tier>` and prune discovery to their reality. Extract what they give, then ask only about what is missing. Absorb volunteered details out of order; never force the user back into sequence.
+Invite the user to dump everything: the vibe, bands it should sound like, lyrics or poems lying around, links — and which Suno plan they are on (free / Pro / Premier), so you only offer what they can use. Ask for the plan up front because it gates half the later discovery (sliders, Voices, Custom Models, studio preferences). Once you know it, run `scripts/tier-features.py <tier>` (the JSON lists what the plan has and lacks) and prune discovery to their reality. Extract what they give, then ask only about what is missing. Absorb volunteered details out of order; never force the user back into sequence.
 
 ## Working state lives on disk
 
-- **Decision log.** Once the band is named (propose a kebab-case slug if they don't give one; a rename later is a logged decision, not a redo), start `{band_profiles_folder}/{slug}.decision-log.md`. It is canonical memory: load-bearing decisions, rejected references and descriptors, overrides. If a log already exists for this slug but no profile does, it belongs to an earlier band. Show it to the user and ask whether to continue it or start fresh (archive the old one first). Never silently append to it.
+- **Decision log.** Once the band is named (the slug is `scripts/validate-profile.py --derive-filename "Band Name"`'s `slug`; a rename later is a logged decision, not a redo), start `{band_profiles_folder}/{slug}.decision-log.md`. It is canonical memory: load-bearing decisions, rejected references and descriptors, overrides. If a log already exists for this slug but no profile does, it belongs to an earlier band. Show it to the user and ask whether to continue it or start fresh (archive the old one first); appending unasked would graft another band's reasoning onto this one.
 - **Draft profile.** As fields firm up, write them to `{band_profiles_folder}/drafts/{slug}.yaml` (a subfolder, so profile listings skip it), and re-read it when resuming. Conversation drops out of context; the draft does not. The draft is also the staging file you validate before saving.
 - **Parked ideas.** Song concepts, lyric fragments or production experiments that are not profile fields go into the decision log as parked ideas when they come up, not at session end.
 
@@ -26,7 +26,7 @@ Invite the user to dump everything: the vibe, bands it should sound like, lyrics
 
 ## Validate, present, save
 
-1. Run `scripts/validate-profile.py {band_profiles_folder}/drafts/{slug}.yaml --project-root {project-root}` for the structural checks (length, enums, exclusions cap, tier/model/slider consistency). `--derive-filename "Band Name"` gives the slug. Fix what it finds before judging quality.
+1. Run `scripts/validate-profile.py {slug} --staged {band_profiles_folder}/drafts/{slug}.yaml --project-root {project-root}` for the structural checks (length, enums, exclusions cap, tier/model/slider/Voice consistency, name-to-filename). Fix what it finds before judging quality.
 2. Judge what the validator cannot: is the style baseline specific, the vocal direction evocative, and do the exclusions fight the genre? Fix what you can; flag what needs the user.
 3. Present a **Band Identity Card** (3-4 sentences on who this band is), then the YAML.
 4. On approval, write it all in one batch:

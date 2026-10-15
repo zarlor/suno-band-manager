@@ -98,22 +98,43 @@ class MapAdjustmentsTest(unittest.TestCase):
         self.assertIn("Bridge", adj["lyrics"]["changes"][0])
 
     def test_unknown_dimension(self):
-        """Unknown dimension should produce a note, not fail."""
+        """Nothing mapped: status fail, exit 1, with the note and the unmapped entry."""
         data = {"dimensions": [{"dimension": "color", "direction": "too_blue"}]}
         code, output = run_script(data)
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 1)
+        self.assertEqual(output["status"], "fail")
         adj = output["adjustments"]
-        self.assertIn("notes", adj)
         self.assertTrue(any("Unknown dimension" in n for n in adj["notes"]))
+        self.assertEqual(adj["mapped"], 0)
+        self.assertEqual(adj["unmapped"], [{"dimension": "color", "direction": "too_blue",
+                                            "reason": "unknown dimension"}])
+        self.assertEqual(output["summary"]["medium"], 1)
 
     def test_unknown_direction(self):
-        """Unknown direction for valid dimension should produce a note."""
+        """Unknown direction for valid dimension should produce a note and fail when it's the only one."""
         data = {"dimensions": [{"dimension": "vocals", "direction": "too_purple"}]}
         code, output = run_script(data)
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 1)
+        self.assertEqual(output["status"], "fail")
         adj = output["adjustments"]
-        self.assertIn("notes", adj)
         self.assertTrue(any("Unknown direction" in n for n in adj["notes"]))
+
+    def test_partly_mapped_is_warning(self):
+        data = {"dimensions": [{"dimension": "vocals", "direction": "too_polished"},
+                               {"dimension": "color", "direction": "too_blue"}]}
+        code, output = run_script(data)
+        self.assertEqual(code, 0)
+        self.assertEqual(output["status"], "warning")
+        self.assertEqual(output["adjustments"]["mapped"], 1)
+        self.assertEqual([u["dimension"] for u in output["adjustments"]["unmapped"]], ["color"])
+        self.assertIn("raw vocal", output["adjustments"]["style_prompt"]["add_descriptors"])
+
+    def test_all_mapped_is_pass(self):
+        code, output = run_script({"dimensions": [{"dimension": "energy", "direction": "too_low"}]})
+        self.assertEqual(code, 0)
+        self.assertEqual(output["status"], "pass")
+        self.assertEqual(output["adjustments"]["unmapped"], [])
+        self.assertEqual(output["findings"], [])
 
     def test_deduplication(self):
         """Duplicate descriptors should be deduped."""
@@ -141,10 +162,12 @@ class MapAdjustmentsTest(unittest.TestCase):
         self.assertEqual(output["status"], "fail")
 
     def test_empty_dimensions(self):
-        """Empty dimensions array should pass with empty adjustments."""
+        """Empty dimensions array maps nothing: status fail, exit 1, empty adjustments."""
         data = {"dimensions": []}
         code, output = run_script(data)
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 1)
+        self.assertEqual(output["status"], "fail")
+        self.assertEqual(output["summary"]["high"], 1)
         adj = output["adjustments"]
         self.assertEqual(adj["style_prompt"]["add_descriptors"], [])
         self.assertEqual(adj["style_prompt"]["remove_patterns"], [])
@@ -325,6 +348,53 @@ class CheckFinalTest(unittest.TestCase):
         result = subprocess.run([sys.executable, SCRIPT, "--check-final"], capture_output=True, text=True)
         self.assertEqual(result.returncode, 2)
         self.assertIn("needs --style-prompt", result.stderr)
+
+
+def run_diff(*args: str) -> tuple[int, dict | str]:
+    result = subprocess.run([sys.executable, SCRIPT, "--diff", *args], capture_output=True, text=True)
+    try:
+        return result.returncode, json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return result.returncode, result.stderr
+
+
+class DiffTest(unittest.TestCase):
+    def test_added_removed_reworded_moved(self):
+        code, out = run_diff("--style-prompt", "indie rock, polished vocals, lush reverb, driving drums",
+                             "--new-style-prompt", "driving drums, indie rock, raw vocals, close mic")
+        self.assertEqual(code, 0)
+        self.assertEqual(out["mode"], "diff")
+        sp = out["style_prompt"]
+        self.assertEqual([a["text"] for a in sp["added"]], ["close mic"])
+        self.assertEqual([r["text"] for r in sp["removed"]], ["lush reverb"])
+        self.assertEqual(len(sp["reworded"]), 1)
+        rw = sp["reworded"][0]
+        self.assertEqual((rw["from"], rw["to"]), ("polished vocals", "raw vocals"))
+        self.assertEqual((rw["words_added"], rw["words_removed"]), (["raw"], ["polished"]))
+        self.assertEqual(len(sp["moved"]), 1)
+        self.assertEqual(sp["unchanged"], 1)
+        self.assertNotIn("exclusions", out)
+
+    def test_critical_zone_flags(self):
+        long_head = ", ".join(f"descriptor number {i}" for i in range(12))  # well past 200 chars
+        code, out = run_diff("--style-prompt", long_head,
+                             "--new-style-prompt", "fresh lead, " + long_head + ", tail texture")
+        added = {a["text"]: a for a in out["style_prompt"]["added"]}
+        self.assertTrue(added["fresh lead"]["in_critical_zone"])
+        self.assertFalse(added["tail texture"]["in_critical_zone"])
+        self.assertEqual(added["fresh lead"]["position"], 0)
+
+    def test_exclusions_diffed_when_given(self):
+        code, out = run_diff("--style-prompt", "a, b", "--new-style-prompt", "a, b",
+                             "--exclude", "no autotune", "--new-exclude", "No Autotune, no reverb")
+        self.assertEqual(out["style_prompt"]["unchanged"], 2)
+        self.assertEqual([a["text"] for a in out["exclusions"]["added"]], ["no reverb"])
+        self.assertEqual(out["exclusions"]["removed"], [])  # case-insensitive match
+
+    def test_diff_requires_both_prompts(self):
+        code, err = run_diff("--style-prompt", "a")
+        self.assertEqual(code, 2)
+        self.assertIn("--new-style-prompt", err)
 
 
 if __name__ == "__main__":

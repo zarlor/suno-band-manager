@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.12"
+# requires-python = ">=3.12"  # librosa>=1.0 requires Python 3.12
 # dependencies = ["librosa>=1.0", "numpy>=2.1", "pyloudnorm>=0.2", "pyyaml>=6.0"]
 # ///
 """
@@ -36,10 +36,25 @@ The JSON also reports, so nobody has to work them out by hand:
   - `runs[]`: same-key runs longer than 2, and tempo-bucket runs.
   - `compare`: what moved against the prior archive (read BEFORE the archive is
     overwritten): per-track deltas and per-seam label changes.
+  - `tempo_source_note`: why tempo fell back from Beat This! to librosa (all
+    tracks or some), or null.
+  - `artifacts`: where the archive and companion went, each {path, status},
+    status written / kept-prior / skipped / error (with a reason).
+
+Paths: with --playlist, the archive (audio-analysis/playlists/<album-slug>.json),
+the companion (<album-slug>-playlist-sequencing.md) and the per-band audio
+folder (audio/<band-slug>/) sit beside the playlist YAML, in its folder; without
+it, under docs/. The slug comes from the YAML's `album:`.
+
+The archive is the re-eval baseline, so a run never shrinks it by accident:
+  - nothing analyzed: no archive or companion is written, exit 1;
+  - a track the prior archive analyzed is dropped this run (still in the
+    playlist, but its audio is missing or failed): the prior archive and
+    companion are kept (status kept-prior) unless --force-archive is given.
 
 Exit codes:
-  0 = analysis completed successfully
-  1 = invalid arguments or no audio files found
+  0 = analysis completed (check `dropped[]` and `artifacts`)
+  1 = invalid arguments, an unreadable playlist, or no track analyzed
   2 = missing dependencies (librosa/numpy/pyloudnorm)
 """
 
@@ -51,11 +66,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from audio_deps import require_audio_deps
-from companion_writer import update_companion, resolve_companion_path
-from json_archiver import archive_path, resolve_archive_arg, write_archive
+from companion_writer import update_companion
+from json_archiver import _slugify, write_archive
 from loudness import load_native, seam_quality, seam_step, summarize as loudness_summary
-from tempo_source import (SOURCE_LABELS, add_tempo_source_arg, beat_this_readings, bpm_cell,
-                          librosa_tempo_pair, resolve_tempo_source, source_summary, usable)
+from tempo_source import (SOURCE_LABELS, BeatThisUnavailable, add_tempo_source_arg, bpm_cell,
+                          librosa_tempo_pair, resolve_tempo_source, run_beat_grid, source_summary, usable)
 
 SCRIPT_NAME = "playlist-sequencing-data"
 
@@ -299,60 +314,90 @@ def analyze_track(filepath, beat_reading=None):
     }
 
 
-DEFAULT_AUDIO_ROOT = "docs/audio"
+DEFAULT_DATA_ROOT = "docs"
+DEFAULT_AUDIO_ROOT = os.path.join(DEFAULT_DATA_ROOT, "audio")
+
+
+class PlaylistError(ValueError):
+    """The playlist YAML can't be used as given; the message names the entry and the fix."""
+
+
+def data_root(playlist_path=None):
+    """The folder the default audio, archive and companion paths hang off.
+
+    The playlist YAML lives in the project's data folder ({docs}, the parent of
+    the band-profiles folder), so its own folder is that root; without a
+    playlist, the legacy docs/ under the working directory."""
+    if playlist_path:
+        return os.path.dirname(playlist_path) or "."
+    return DEFAULT_DATA_ROOT
 
 
 def resolve_audio_dir(cli_audio_dir, playlist_path=None, yaml_audio_dir=None):
     """Pick the directory a playlist's `file:` entries are relative to.
 
     Precedence: the --audio-dir flag > the YAML's `audio_dir:` key > the
-    per-band folder docs/audio/{band-slug}/ derived from the playlist filename
-    docs/{band-slug}-playlist.yaml (only when that folder exists) > the legacy
-    flat docs/audio/.
+    per-band folder {docs}/audio/{band-slug}/ derived from the playlist filename
+    {docs}/{band-slug}-playlist.yaml (only when that folder exists) > the flat
+    {docs}/audio/. {docs} is the playlist's folder (docs/ without a playlist).
     """
     if cli_audio_dir:
         return cli_audio_dir
     if yaml_audio_dir:
         return yaml_audio_dir
+    audio_root = os.path.join(data_root(playlist_path), "audio")
     if playlist_path:
         stem = Path(playlist_path).stem
         if stem.endswith("-playlist"):
-            derived = os.path.join(DEFAULT_AUDIO_ROOT, stem[:-len("-playlist")])
+            derived = os.path.join(audio_root, stem[:-len("-playlist")])
             if os.path.isdir(derived):
                 return derived
-    return DEFAULT_AUDIO_ROOT
+    return audio_root
+
+
+def read_playlist(playlist_path):
+    """Parse and check the playlist YAML. Raises PlaylistError naming what is wrong."""
+    import yaml
+
+    try:
+        with open(playlist_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        raise PlaylistError(f"{playlist_path} is not valid YAML: {exc}") from exc
+    except OSError as exc:
+        raise PlaylistError(f"cannot read {playlist_path}: {exc}") from exc
+    if not isinstance(config, dict):
+        raise PlaylistError(f"{playlist_path} must be a mapping with a `tracks:` list")
+    tracks = config.get('tracks')
+    if not isinstance(tracks, list) or not tracks:
+        raise PlaylistError(f"{playlist_path} has no `tracks:` list (or it is empty)")
+    for i, t in enumerate(tracks, start=1):
+        if not isinstance(t, dict) or not str(t.get('name') or '').strip():
+            raise PlaylistError(f"track {i} in {playlist_path} has no `name:`")
+    return config
 
 
 def load_playlist(playlist_path):
     """Load playlist config from a YAML file.
 
-    Returns (album_name, track_list, audio_dir) — audio_dir is the YAML's
+    Returns (album_name, track_list, audio_dir). Each track is (name, file);
+    file is '' when the entry has no `file:` yet (the scaffold leaves it
+    empty), and the run reports that track as dropped. audio_dir is the YAML's
     optional `audio_dir:` key, or None when absent.
     """
-    import yaml
-
-    with open(playlist_path, 'r') as f:
-        config = yaml.safe_load(f)
-
-    album = config.get('album', 'Audio Analysis')
-    tracks = [
-        (t['name'], t['file'])
-        for t in config.get('tracks', [])
-    ]
-    return album, tracks, config.get('audio_dir')
+    config = read_playlist(playlist_path)
+    album = config.get('album') or 'Audio Analysis'
+    tracks = [(str(t['name']).strip(), str(t.get('file') or '').strip()) for t in config['tracks']]
+    return str(album), tracks, config.get('audio_dir')
 
 
 def load_felt_bpm(playlist_path):
     """{track name: felt_bpm} for tracks whose playlist entry records one."""
-    import yaml
-
-    with open(playlist_path, 'r') as f:
-        config = yaml.safe_load(f) or {}
     out = {}
-    for t in config.get('tracks', []):
+    for t in read_playlist(playlist_path)['tracks']:
         felt = t.get('felt_bpm')
-        if isinstance(felt, (int, float)) and felt > 0:
-            out[t['name']] = float(felt)
+        if isinstance(felt, (int, float)) and not isinstance(felt, bool) and felt > 0:
+            out[str(t['name']).strip()] = float(felt)
     return out
 
 
@@ -618,6 +663,49 @@ def load_prior(path):
         return None, f'unreadable: {exc}'
 
 
+def baseline_loss(prior, report):
+    """Names the prior archive analyzed that this run dropped while they are still in the playlist.
+
+    Writing this run's archive would erase their numbers from the re-eval baseline."""
+    if not prior:
+        return []
+    analyzed_before = {t.get('name') for t in prior.get('tracks', []) if t.get('status') != 'error'}
+    return [d['name'] for d in report.get('dropped', []) if d['name'] in analyzed_before]
+
+
+def archive_default(album_name, root):
+    return os.path.join(root, "audio-analysis", "playlists", f"{_slugify(album_name)}.json")
+
+
+def companion_default(album_name, root):
+    return os.path.join(root, f"{_slugify(album_name)}-playlist-sequencing.md")
+
+
+def resolve_target(arg_value, default):
+    """argparse `nargs="?", const=""` value: None = off, "" = the default path, else the path given."""
+    if arg_value is None:
+        return None
+    return arg_value or default
+
+
+def companion_body(album_name, results):
+    """The companion's AUTOGEN body: a fresh title + timestamp, then the text report's sections."""
+    from datetime import datetime, timezone
+    timestamp = datetime.now(timezone.utc).isoformat()
+    title_block = (
+        f"# {album_name} — Playlist Sequencing Data\n"
+        f"_Generated by `{SCRIPT_NAME}` on {timestamp}_\n\n"
+    )
+    body_lines = format_text(album_name, results).split("\n")
+    cut = 0
+    while cut < len(body_lines):
+        line = body_lines[cut]
+        if line.startswith("##") or (line.strip() and not line.startswith("#")):
+            break
+        cut += 1
+    return title_block + "\n".join(body_lines[cut:])
+
+
 def format_text(album_name, results):
     """Format results as a Markdown report."""
     lines = []
@@ -679,20 +767,53 @@ def format_text(album_name, results):
     return "\n".join(lines) + "\n"
 
 
+def fail(error, code=1, **extra):
+    """Print the failure as JSON on stdout (the caller reads it) and exit non-zero."""
+    print(json.dumps({"script": SCRIPT_NAME, "status": "fail", "error": error, **extra}, indent=2))
+    sys.exit(code)
+
+
+def write_artifacts(report, results, album_name, archive_target, companion_target, protect_reason):
+    """Write the archive and companion unless a guard holds them; report each one's path and status."""
+    artifacts = {}
+    for kind, target in (("archive", archive_target), ("companion", companion_target)):
+        if target is None:
+            artifacts[kind] = {"path": None, "status": "skipped"}
+            continue
+        if protect_reason:
+            artifacts[kind] = {"path": target, "status": "kept-prior", "reason": protect_reason}
+            print(f"  KEPT PRIOR {kind.upper()}: {target} ({protect_reason})", file=sys.stderr)
+            continue
+        try:
+            if kind == "archive":
+                res = write_archive(target, report)
+            else:
+                # Hand-curated sections live OUTSIDE the AUTOGEN markers and survive.
+                res = update_companion(target, SCRIPT_NAME, companion_body(album_name, results))
+        except OSError as exc:
+            artifacts[kind] = {"path": target, "status": "error", "reason": str(exc)}
+            continue
+        artifacts[kind] = {"path": target, "status": "written"}
+        print(f"  {kind.upper()}: {res['status']} {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
+    return artifacts
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Playlist sequencing analysis: keys, Camelot codes, energy, loudness, transitions."
+        description="Playlist sequencing analysis: keys, Camelot codes, energy, loudness, transitions.",
+        epilog="Exit codes: 0 analysis ran (check dropped[] and artifacts); 1 bad arguments, unreadable "
+               "playlist, or no track analyzed; 2 missing audio dependencies.",
     )
     parser.add_argument(
         "--playlist",
-        help="Path to YAML playlist config file (for ordered analysis with album metadata).",
+        help="Path to the playlist YAML ({docs}/{band-slug}-playlist.yaml): track order, album name, felt_bpm.",
     )
     parser.add_argument(
         "--audio-dir", default=None,
         help=(
             "Directory the playlist's `file:` entries are relative to. Default: the "
-            "playlist YAML's `audio_dir:` key, else docs/audio/{band-slug}/ when that "
-            "folder exists, else docs/audio."
+            "playlist YAML's `audio_dir:` key, else audio/{band-slug}/ beside the playlist "
+            "when that folder exists, else audio/ beside the playlist (docs/audio without one)."
         ),
     )
     parser.add_argument(
@@ -706,8 +827,8 @@ def main():
     parser.add_argument(
         "--archive", nargs="?", const="", default="",
         help=(
-            "Persist full JSON output to a per-playlist archive. "
-            "With no path: writes to docs/audio-analysis/playlists/<album>.json. "
+            "Persist the JSON report as the re-eval baseline. With no path: "
+            "audio-analysis/playlists/<album-slug>.json beside the playlist. "
             "Pass an explicit path to override. Default: ON."
         ),
     )
@@ -718,15 +839,18 @@ def main():
     parser.add_argument(
         "--companion", nargs="?", const="", default="",
         help=(
-            "Refresh the canonical Markdown companion file. "
-            "With no path: writes the per-band companion docs/{band-slug}-playlist-sequencing.md "
-            "(slug derived from the album/band name). "
-            "Pass an explicit path to override. Default: ON."
+            "Refresh the Markdown companion. With no path: <album-slug>-playlist-sequencing.md "
+            "beside the playlist. Pass an explicit path to override. Default: ON."
         ),
     )
     parser.add_argument(
         "--no-companion", dest="companion", action="store_const", const=None,
         help="Skip refreshing the Markdown companion file.",
+    )
+    parser.add_argument(
+        "--force-archive", action="store_true",
+        help=("Write the archive and companion even when this run dropped tracks the prior archive "
+              "analyzed (by default the prior ones are kept, so a missing file can't erase the baseline)."),
     )
     parser.add_argument(
         "--compare-to", nargs="?", const="", default="",
@@ -750,70 +874,77 @@ def main():
     # Build track list from playlist config or auto-discovery
     if args.playlist:
         if not os.path.isfile(args.playlist):
-            print(json.dumps({
-                "script": "playlist-sequencing-data",
-                "status": "fail",
-                "error": f"Playlist config not found: {args.playlist}",
-            }), file=sys.stderr)
-            sys.exit(1)
-        album_name, track_list, yaml_audio_dir = load_playlist(args.playlist)
-        felt_bpm = load_felt_bpm(args.playlist)
+            fail(f"Playlist config not found: {args.playlist}")
+        try:
+            album_name, track_list, yaml_audio_dir = load_playlist(args.playlist)
+            felt_bpm = load_felt_bpm(args.playlist)
+        except PlaylistError as exc:
+            fail(str(exc))
         audio_dir = resolve_audio_dir(args.audio_dir, args.playlist, yaml_audio_dir)
     else:
         felt_bpm = {}
         audio_dir = resolve_audio_dir(args.audio_dir)
 
     if not os.path.isdir(audio_dir):
-        print(json.dumps({
-            "script": "playlist-sequencing-data",
-            "status": "fail",
-            "error": f"Audio directory not found: {audio_dir}",
-        }), file=sys.stderr)
-        sys.exit(1)
+        fail(f"Audio directory not found: {audio_dir}")
 
     if not args.playlist:
         album_name, track_list = discover_tracks(audio_dir)
 
     if not track_list:
-        print(json.dumps({
-            "script": "playlist-sequencing-data",
-            "status": "fail",
-            "error": "No tracks found.",
-        }), file=sys.stderr)
-        sys.exit(1)
+        fail(f"No tracks found (no .mp3 under {audio_dir}).")
 
     print(f"Analyzing playlist sequencing data for: {album_name} (audio: {audio_dir})\n", file=sys.stderr)
 
-    # Read the prior report now: the archive step below overwrites the default path.
+    root = data_root(args.playlist)
+    canonical_archive = archive_default(album_name, root)
+    archive_target = resolve_target(args.archive, canonical_archive)
+    companion_target = resolve_target(args.companion, companion_default(album_name, root))
+
+    # Read the prior reports now: the archive step below overwrites them.
     prior, prior_status, prior_path = None, None, None
     if args.compare_to is not None:
-        prior_path = args.compare_to or args.archive or archive_path("playlists", album_name)
+        prior_path = args.compare_to or args.archive or canonical_archive
         prior, prior_status = load_prior(prior_path)
+    baseline = None
+    if archive_target is not None:
+        baseline = prior if prior_path == archive_target else load_prior(archive_target)[0]
 
-    readings = {}
+    def audio_file(filename):
+        path = os.path.join(audio_dir, filename) if filename else None
+        return path if path and os.path.isfile(path) else None
+
+    readings, tempo_note = {}, None
     if resolve_tempo_source(args.tempo_source) == "beat-this":
-        present = list(dict.fromkeys(
-            os.path.join(audio_dir, f) for _, f in track_list if os.path.exists(os.path.join(audio_dir, f))
-        ))
+        present = list(dict.fromkeys(p for p in (audio_file(f) for _, f in track_list) if p))
         print(f"  Tempo: Beat This! ({len(present)} tracks)", file=sys.stderr)
-        got = beat_this_readings(present)
-        if got:
-            readings = dict(zip(present, got))
+        try:
+            readings = dict(zip(present, run_beat_grid(present)))
+        except BeatThisUnavailable as exc:
+            tempo_note = f"Beat This! unavailable ({exc}); tempo is librosa's for every track."
+            print(f"  NOTE: {tempo_note}", file=sys.stderr)
 
-    results = []
+    results, unread = [], []
     for track_name, filename in track_list:
-        filepath = os.path.join(audio_dir, filename)
-        if not os.path.exists(filepath):
+        filepath = audio_file(filename)
+        if not filename:
+            print(f"  NO FILE: {track_name}", file=sys.stderr)
+            results.append({'name': track_name, 'file': None, 'error': 'no file: set in the playlist entry'})
+            continue
+        if filepath is None:
             print(f"  MISSING: {filename}", file=sys.stderr)
             results.append({'name': track_name, 'file': filename, 'error': 'missing audio file'})
             continue
         print(f"  {track_name}...", end="", flush=True, file=sys.stderr)
+        reading = readings.get(filepath)
         try:
-            data = analyze_track(filepath, readings.get(filepath))
+            data = analyze_track(filepath, reading)
         except Exception as exc:  # one bad file must not sink the whole playlist
             print(f" ERROR: {exc}", file=sys.stderr)
             results.append({'name': track_name, 'file': filename, 'error': f'analysis error: {exc}'})
             continue
+        if readings and not usable(reading):
+            unread.append(f"{track_name} ({(reading or {}).get('error') or 'no tempo read'})")
         data['name'] = track_name
         data['felt_bpm'] = felt_bpm.get(track_name)
         results.append(data)
@@ -823,23 +954,42 @@ def main():
             f"| E:{data['energy_level']} | {_fmt(data['loudness']['integrated_lufs'])} LUFS",
             file=sys.stderr,
         )
+    if unread:
+        tempo_note = f"Beat This! could not read {len(unread)} track(s), librosa used for: {'; '.join(unread)}."
 
     # Compute transition data for JSON output
     compute_transitions(results)
 
     report = build_report(album_name, results)
+    report['tempo_source_note'] = tempo_note
     if report['dropped']:
         names = ", ".join(f"{d['name']} ({d['reason']})" for d in report['dropped'])
         print(f"\n  DROPPED {len(report['dropped'])} of {report['track_count']}: {names}", file=sys.stderr)
+
+    if report['analyzed_count'] == 0:
+        skipped = {"status": "skipped", "reason": "no track analyzed; the prior files are untouched"}
+        fail("No track was analyzed: every playlist entry was dropped (see dropped[]). Nothing was written.",
+             album=album_name, audio_dir=audio_dir, track_count=report['track_count'], dropped=report['dropped'],
+             artifacts={"archive": {"path": archive_target, **skipped},
+                        "companion": {"path": companion_target, **skipped}})
 
     compare = None
     if args.compare_to is not None:
         compare = compare_runs(prior, report) if prior else {'status': prior_status}
         compare['prior'] = prior_path
 
+    lost = baseline_loss(baseline, report)
+    protect_reason = None
+    if lost and not args.force_archive:
+        protect_reason = (f"this run dropped {', '.join(lost)}, which the prior archive analyzed; writing would "
+                          "erase them from the re-eval baseline. Fix the files, or re-run with --force-archive "
+                          "once the user accepts the shorter list.")
+    artifacts = write_artifacts(report, results, album_name, archive_target, companion_target, protect_reason)
+
     # Format output
     if args.format == "json":
-        output = json.dumps({**report, 'compare': compare} if compare else report, indent=2)
+        output = json.dumps({**report, **({'compare': compare} if compare else {}), 'artifacts': artifacts},
+                            indent=2)
     else:
         output = format_text(album_name, results)
         if compare:
@@ -852,38 +1002,6 @@ def main():
         print(f"\nReport saved to: {args.output}", file=sys.stderr)
     else:
         print(output)
-
-    # JSON archive (default ON unless --no-archive)
-    archive_target = resolve_archive_arg("playlists", album_name, args.archive)
-    if archive_target is not None:
-        res = write_archive(archive_target, report)
-        print(f"  ARCHIVED: {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
-
-    # Companion .md refresh (default ON unless --no-companion).
-    # The body includes its own title + timestamp at the top so each refresh
-    # updates them. Hand-curated sections live OUTSIDE the AUTOGEN markers
-    # in the companion file and are preserved across refreshes.
-    # Per-album companion path: docs/{album-slug}-playlist-sequencing.md so
-    # multiple bands don't overwrite each other's companions.
-    companion_target = resolve_companion_path(SCRIPT_NAME, args.companion, album=album_name)
-    if companion_target is not None:
-        from datetime import datetime, timezone as _tz
-        timestamp = datetime.now(_tz.utc).isoformat()
-        title_block = (
-            f"# {album_name} — Playlist Sequencing Data\n"
-            f"_Generated by `{SCRIPT_NAME}` on {timestamp}_\n\n"
-        )
-        # Drop the script's built-in title (first 2 lines) and keep the rest
-        body_lines = format_text(album_name, results).split("\n")
-        cut = 0
-        while cut < len(body_lines):
-            line = body_lines[cut]
-            if line.startswith("##") or (line.strip() and not line.startswith("#")):
-                break
-            cut += 1
-        md_body = title_block + "\n".join(body_lines[cut:])
-        res = update_companion(companion_target, SCRIPT_NAME, md_body)
-        print(f"  COMPANION: {res['status']} {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
 
 
 if __name__ == "__main__":

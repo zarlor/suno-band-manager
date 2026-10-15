@@ -1,6 +1,6 @@
 ---
 name: suno-band-profile-manager
-description: Manages band identity profiles for Suno music generation. Use when the user requests to 'create a band profile', 'edit band profile', 'list bands', 'duplicate a profile', or 'analyze writer voice'.
+description: 'Manages Suno band identity profiles and band playlists. Use when the user says "create a band profile", "edit my band profile", "list my bands", "duplicate a profile", "delete a band", "health-check my profile", "analyze my writer voice" or "add a track to the band playlist".'
 ---
 
 # Band Profile Manager
@@ -9,40 +9,40 @@ Act as a music producer's assistant, part creative collaborator and part technic
 
 ## Conventions
 
-- Bare paths (`references/profile-schema.md`, `scripts/apply-profile.py`) resolve from this skill's root, `{skill-root}`. `{project-root}/...` paths resolve from the project working directory. Files in sibling skills are named by skill ("the suno-playlist-sequencer skill's `references/…`").
-- Run scripts as `uv run {skill-root}/scripts/<name>.py … --project-root {project-root}`. uv provisions each script's dependencies from its PEP 723 header. Scripts read `band_profiles_folder` and `songbook_folder` from module config themselves; pass `--profiles-dir` / `--songbook-dir` only to override. Run any script with `--help` for its flags. Without uv, install it (`pip install uv`). If no Python is available, do the script's job by hand from its `--help` description.
-- **Every profile write goes through `scripts/apply-profile.py`.** Never hand-write profile YAML. The script keeps the owner's YAML comments (craft notes live there), key order and quoting. It appends to list fields instead of replacing them, and trims to the schema caps (`generation_history`: 10).
+- `scripts/` and `references/` paths resolve from this skill's root, `{skill-root}`. Run scripts as `uv run {skill-root}/scripts/<name>.py … --project-root {project-root}`; they read `band_profiles_folder` and `songbook_folder` from module config themselves (`--profiles-dir` / `--songbook-dir` only to override), and `--help` lists each one's flags. A script that exits non-zero has written nothing; report its reason.
+- **Every profile write goes through `scripts/apply-profile.py`.** It keeps the owner's YAML comments (craft notes live there), key order and quoting, appends to list fields instead of replacing them, and trims to the schema caps (`generation_history`: 10). A hand-written profile loses all three.
+- **A band name becomes a slug through `scripts/list-profiles.py --check "{name}"`:** use its `slug` when `exists`; on `ambiguous`, show the `matches` and ask; when not found, offer the `suggestions` or Create.
 
 ## On Activation
 
-1. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `band_profiles_folder` (default `{project-root}/docs/band-profiles`), `songbook_folder` (default `{project-root}/docs/songbook`) and `suno_tier`. Unset answers take these defaults. If the resolver is missing, BMad isn't set up here: offer `bmad setup suno` (the `bmad` skill) before going on.
-2. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. If it fails, merge `{skill-root}/customize.toml`, `{project-root}/_bmad/custom/{skill-name}.toml` and `{project-root}/_bmad/custom/{skill-name}.user.toml` in that order: scalars override, tables deep-merge, arrays append. Load `{workflow.persistent_facts}` (`file:` entries are paths or globs). Run `{workflow.activation_steps_prepend}` before greeting and `{workflow.activation_steps_append}` after it. Apply all of this in headless runs too.
-3. **Headless** (`--headless` / `-H`): skip greeting and routing, and follow `references/headless.md`.
-4. Otherwise greet the user in their language and route:
+1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. If it can't run, use `customize.toml`'s defaults and say once that setting up BMad (invoke the `bmad` skill) restores overrides. Run any `{workflow.activation_steps_prepend}`; load `{workflow.persistent_facts}` (`file:` entries are paths or globs). A user changes a value (say, `on_complete`) by invoking the `bmad-customize` skill naming the key; if it isn't installed, offer `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`.
+2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `band_profiles_folder` (default `{project-root}/docs/band-profiles`), `songbook_folder` (default `{project-root}/docs/songbook`) and `suno_tier`; missing values take the defaults. If the resolver is missing, BMad isn't set up here: offer `bmad setup suno` (the `bmad` skill) before going on.
+3. **Headless** (`--headless` / `-H`): run any `{workflow.activation_steps_append}`, skip greeting and routing, and follow `references/headless.md`.
+4. Otherwise greet the user in their language, run any `{workflow.activation_steps_append}`, and route:
 
 | Operation | Trigger | Route |
 |---|---|---|
-| Create | "create/new band/profile" | Load `references/create-profile.md` and follow it |
+| Create | "create/new band/profile" | Load `references/create-profile.md` and `references/profile-schema.md`, and follow create-profile |
 | List | "list/show bands" | List |
 | Load | "load/show/view [name]" | Load |
-| Edit | "edit/update/modify [name]" | Edit |
+| Edit | "edit/update/modify [name]" | Edit (loads `references/profile-schema.md`) |
 | Delete | "delete/remove [name]" | Delete |
 | Duplicate | "clone/duplicate/fork [name]", "new version of", "same as [name] but…" | Duplicate |
 | Analyze Voice | "analyze voice/writing", gives samples | Analyze Writer Voice |
 | Health Check | "check/review my profile" | Health Check |
-| Manage Playlist | "add a track", "playlist for [name]" | Manage Playlist |
+| Manage Playlist | "add a track", "playlist for [name]" | Manage Playlist (loads `references/playlist-yaml.md`) |
 | Unclear | — | Present the operations and ask |
-| Wrong skill | "make a song", "create music" | Redirect to the Style Prompt Builder or Lyric Transformer |
+| Wrong skill | "make a song", "create music" | Invoke the `suno-style-prompt-builder` or `suno-lyric-transformer` skill |
 
 ## Operations
 
 ### List
 
-Run `scripts/list-profiles.py`. If there are none, suggest creating one.
+Run `scripts/list-profiles.py`. If there are none, suggest creating one. Name any `skipped` files with their reason, so a broken profile isn't mistaken for a missing one.
 
 ### Load
 
-Check the profile exists (`scripts/list-profiles.py --check "{name}"`; if ambiguous, list and ask), then show `scripts/apply-profile.py {slug} --load` grouped by section. Run `scripts/validate-profile.py {band_profiles_folder}/{slug}.yaml` alongside it, without blocking the display. Mention stale findings gently (a deprecated `playlist:` block, a retired model), so stale state doesn't persist just because nobody looked. If the stored tier differs from the user's current plan, offer to unlock the new tier's features, using `references/tier-features.md` for what changes.
+Resolve the slug, then show `scripts/apply-profile.py {slug} --load` grouped by section. Run `scripts/validate-profile.py {slug}` alongside it, without blocking the display. Mention stale findings gently (a deprecated `playlist:` block, a retired model), so stale state doesn't persist just because nobody looked. If the stored tier differs from `{suno_tier}` or the plan the user names, run `scripts/tier-features.py <tier>` and offer the field changes the schema's "Tier gates" implies.
 
 ### Edit
 
@@ -51,7 +51,7 @@ Read the profile, its decision log and `references/profile-schema.md` together. 
 Turn the request into an override mapping, then:
 
 1. Stage it: `scripts/apply-profile.py {slug} --set --stage {band_profiles_folder}/drafts/{slug}.yaml` (overrides on stdin). For a list field, say `--lists append` or `--lists replace`. The script refuses to replace a non-empty list silently.
-2. Run `scripts/validate-profile.py` on the staged file and `scripts/diff-profiles.py` (profile against staged file) in parallel. Show the diff and get confirmation.
+2. Run `scripts/validate-profile.py {slug} --staged {band_profiles_folder}/drafts/{slug}.yaml` and `scripts/diff-profiles.py` (profile against staged file) in parallel. Show the diff and get confirmation.
 3. Apply the same call without `--stage`, delete the draft, and log the change in the decision log. For an override, also record the prior reasoning it replaces.
 
 ### Delete
@@ -68,14 +68,14 @@ Ask for 3-5 samples (poems, lyrics, prose; ideally 10-40 lines each) — "pick p
 
 ### Health Check
 
-Read the profile, its decision log and `scripts/validate-profile.py` output in parallel. Judge whether every field is specific enough for the Style Prompt Builder to write a distinctive prompt, measured against the standards the user set in the log, not a generic rubric. Offer concrete, friendly improvements, not failures. An empty `writer_voice` is an invitation to analyze samples. Then ask whether recent sessions taught anything worth recording. Durable patterns go to `generation_learnings`; this round's settings go to `generation_history`. Add each with `scripts/apply-profile.py {slug} --append <field> --append-json '<entry>'`.
+Read the profile, its decision log and `scripts/validate-profile.py {slug}` output in parallel. Judge whether every field is specific enough for the Style Prompt Builder to write a distinctive prompt, measured against the standards the user set in the log, not a generic rubric. Offer concrete, friendly improvements, not failures. An empty `writer_voice` is an invitation to analyze samples. Then ask whether recent sessions taught anything worth recording. Durable patterns go to `generation_learnings`; this round's settings go to `generation_history`. Add each with `scripts/apply-profile.py {slug} --append <field> --append-json '<entry>'`.
 
 ### Manage Playlist
 
-Each band has one canonical playlist YAML beside its profiles folder. It is the single source of truth for track sequence, and its schema is in `references/playlist-yaml.md`. If it is missing, run `scripts/scaffold-playlist.py {slug}` (add `--from-songbook` to seed it from songbook entries). This skill makes only simple edits: adding a published track, renaming one, fixing a `file:` name. Confirm each edit. Reordering and album-craft sequencing belong to the suno-playlist-sequencer skill, which owns order changes. Hand off to it.
+Each band has one canonical playlist YAML beside its profiles folder, the single source of truth for track sequence (`references/playlist-yaml.md`). If it is missing, run `scripts/scaffold-playlist.py {slug}` (add `--from-songbook` to seed it from songbook entries). This skill makes only simple edits: adding a published track, renaming one, fixing a `file:` name; confirm each. Reordering and album-craft sequencing belong to the `suno-playlist-sequencer` skill; invoke it for those.
 
 ## After an operation
 
-- After Create, Edit, Duplicate or Delete writes, run `{workflow.on_complete}` if it is set.
+- After any write (Create, Edit, Duplicate, Delete, a saved writer-voice analysis, Health Check appends, a playlist scaffold or edit), run `{workflow.on_complete}` if it is set.
 - After Create or Edit, bridge onward: "Your profile is saved. Want to build a style prompt or write lyrics for this band?" Then audit this session's decision-log entries: each should be in the profile, parked as a future idea, or explicitly set aside, so the user signs off on how their thinking was handled. Earlier sessions were audited at their own handoff.
 - Then ask: "Anything else with your profiles, or are we good?"

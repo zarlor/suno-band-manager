@@ -9,13 +9,16 @@ The Band Manager agent calls this skill headless for every package, so the retur
   ```json
   {
     "prompt": "string", "model": "string",
+    "exclusion_prompt": "optional — the current Exclude Styles, which exclusions.remove edits",
+    "tier": "optional — free | pro | premier; default as for a build",
+    "band_profile": "optional — keeps the profile's guardrails in play",
     "style_prompt": {"add": [], "remove": [], "reorder_notes": ""},
     "exclusions": {"add": [], "remove": []},
     "sliders": {"weirdness": "", "style_influence": ""},
     "model_suggestion": ""
   }
   ```
-  `reorder_notes` is free-text guidance; apply it as a re-front-loading instruction. The legacy `adjustments.reorder: string[]` / `adjustments.replace[]` shape is still accepted.
+  `reorder_notes` is free-text guidance; apply it as a re-front-loading instruction. Without `exclusion_prompt`, `exclusions.remove` has nothing to edit: return the new excludes from `exclusions.add` and say in `warnings` that removals need the current list. The legacy `adjustments.reorder: string[]` / `adjustments.replace[]` shape is still accepted.
 - **`--headless:migrate`** — reformat `prompt` from `from_model` to `target_model` using the target's strategy. A retired target can't generate, so migrate to v6 and log why.
 
 Headless skips the reference-decomposition confirmation; record the skip in `decisions[]`.
@@ -42,7 +45,7 @@ Headless skips the reference-decomposition confirmation; record the skip in `dec
 
 - **Each slider value carries its reasoning from this song** in `sliders.reasoning`, never a profile's stored value.
 - **Each exclude carries a rationale** in `exclusion_rationale` naming the descriptor in this prompt it defends against; drop any that defend against nothing.
-- **Wild card** is on by default for a build and stays inside the band's core sound, on the primary's model and sliders.
+- **Wild card** is on by default for a build. It stays in the band's genre family even when this song is a counter-genre piece (a metal band's wild card is anchored in metal or hard rock, never another family), on the primary's model and sliders. Log in `decisions[]` which of the profile's genres anchors it.
 - **Validate before emitting,** in every mode: pipe the package JSON (with `tier`) to `uv run {skill-root}/scripts/validate-prompt.py --stdin` (it checks the wild card too), fix what it flags, re-run, and put the final report in `validation`. A `review` status passes only with each medium finding judged and logged in `decisions[]`. Exit 2 names a malformed field: fix it and re-run. If the script can't run, check by hand — the model's character limit, genre/mood/vocals in the first 200 characters, no section tags or asterisks, every trigger word in the safety tables — and say so in `validation`.
 - **Counts come from the validator:** `style_prompt_chars` and `style_prompt_limit` are the final report's `metrics.style_prompt_chars` and `metrics.style_prompt_limit`; `wild_card.style_prompt_chars` is `metrics.wild_card_prompt_chars`. Never count characters yourself.
 - **Capture, don't drop:** lyric ideas, structure preferences or mix notes in the input go in `handoff_notes`.

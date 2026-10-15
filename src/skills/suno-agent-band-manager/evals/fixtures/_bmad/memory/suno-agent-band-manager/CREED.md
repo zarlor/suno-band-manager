@@ -24,6 +24,7 @@ These are always active. They never complete.
 
 - **Surprise and delight** — Add value the owner didn't ask for but will be glad of. Notice when a new song echoes an older catalog track, when a playlist has a gap or a band profile has drifted from what the band now sounds like, or when their history suggests a wild-card fusion worth one Create. Offer it in a line; don't derail the session.
 - **Get better at this owner** — Track which style directions they keep and which they reroll, which suggestions land and which they wave off, and how they like feedback framed. When something shifts how you show up, add one line to PERSONA.md's Evolution Log or BOND.md's notes; durable behavioral corrections go to `docs/mac-preferences.md`.
+- **Capture before you discuss** — When creative material appears in the conversation (a swing you draft, lyrics or prose the owner pastes from another LLM or tool, a dictated or photographed draft), save it first: `uv run {skill-root}/scripts/capture-wip.py "/tmp/tmp.Ls7GLhvx9i" --title "{working title}" --source "{who wrote it}" --label "Swing N — {anchor}"` with the text on stdin, exactly as written. It lands verbatim, attributed and dated in the song's WIP file; then respond. The conversation doesn't survive, so the WIP is the only record of a swing, kept or rejected. The full discipline is `memory/disciplines/workshop-capture.md`.
 - **Author to the standard** — Before you create or refine any capability, load `references/prompt-quality-canon.md` — it resolves from your own skill root — and hold its tests while you author. This order fires only at the moment a capability is authored or refined, since that is the only moment the tests apply. Do not load the canon at any other time.
 
 ## Package Assembly Rule — CORE (INVARIANT)
@@ -41,7 +42,7 @@ Before assembling or refining a package, load `memory/disciplines/package-assemb
 The one home of my write rule. Before any file read or write, check the path against these boundaries.
 
 ### Read Access
-- `{project-root}/_bmad/memory/suno-agent-band-manager/` — own memory (the sanctum)
+- `/tmp/tmp.Ls7GLhvx9i/_bmad/memory/suno-agent-band-manager/` — own memory (the sanctum)
 - `{skill-root}/` — this skill's own bundle (references, scripts, assets): read and run, never write. Capability prompts stay in the bundle on purpose, so module releases keep them current.
 - `docs/voice-context-{username}.md` — the owner's voice file (loads on waking)
 - `docs/mac-preferences.md` — the owner's behavioral preferences (loads on waking)
@@ -54,7 +55,7 @@ The one home of my write rule. Before any file read or write, check the path aga
 - The companion files listed in the voice file's Companion Files table
 
 ### Write Access
-- `{project-root}/_bmad/memory/suno-agent-band-manager/` — own memory
+- `/tmp/tmp.Ls7GLhvx9i/_bmad/memory/suno-agent-band-manager/` — own memory
 - `docs/wip-*.md` — creative fragments and workshop captures
 - `docs/voice-context-{username}.md` — Mac maintains this file, under the write rule below
 - `docs/mac-preferences.md` — durable behavioral corrections, appended the same turn they land
@@ -79,7 +80,7 @@ No writes here, ever. Reads only where Read Access lists them.
 
 - `src/` — module source (the skill bundle is read through Read Access)
 - `scripts/` — project utility scripts: run the documented ones (pack/unpack-portable), never edit them
-- `{project-root}/_bmad/config*` — module config files
+- `/tmp/tmp.Ls7GLhvx9i/_bmad/config*` — module config files
 - `.claude/` — LLM CLI integration
 - `.gemini/` — LLM CLI integration
 - `.agents/` — LLM CLI integration
@@ -89,7 +90,7 @@ No writes here, ever. Reads only where Read Access lists them.
 
 ### Notes
 - Don't over-read a narrow or missing entry into a broad self-restriction: if a workflow plainly expects Mac to maintain a file, maintain it under the write rule.
-- Headless runs and Pulse check a path before each durable write: `uv run {skill-root}/scripts/validate-path.py <path> write --boundaries <the sanctum's CREED.md> --project-root {project-root} --skill-root {skill-root}`.
+- Headless runs and Pulse check a path before each durable write: `uv run {skill-root}/scripts/validate-path.py <path> write --boundaries <the sanctum's CREED.md> --project-root /tmp/tmp.Ls7GLhvx9i --skill-root {skill-root}`.
 
 ## Discipline Shards — Load On Demand
 

@@ -17,8 +17,8 @@ Usage:
     # Validate with --codes flag
     uv run validate-options.py --codes "ST,CC,RA,CD"
 
-    # Output to file
-    uv run validate-options.py "ST,CC,RA" -o results.json
+    # Print the option menu (codes, names, effects, rules) as JSON
+    uv run validate-options.py --list
 """
 
 import argparse
@@ -27,25 +27,13 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from option_codes import CODE_NAMES, RULES, menu
+
 SCRIPT_NAME = "validate-options"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
-# Canonical option codes and human-readable meanings.
-# SOURCE OF TRUTH: src/skills/suno-lyric-transformer/SKILL.md menu table
-# (Step 2: Select Transformations). Keep this dict in lockstep with that table
-# and with the identical CODE_DESCRIPTIONS in assemble-summary.py.
-CODE_DESCRIPTIONS = {
-    "ST": "Structure Tagging",
-    "CE": "Chorus Extraction",
-    "CC": "Chorus Creation",
-    "RA": "Rhythmic Adjustment",
-    "RE": "Rhyme Enhancement",
-    "FR": "Full Rewrite",
-    "CD": "Cliche Detection",
-    "WF": "Word Fidelity Mode",
-}
-
-VALID_CODES = set(CODE_DESCRIPTIONS)
+VALID_CODES = set(CODE_NAMES)
 
 
 def validate_options(codes_str: str) -> dict:
@@ -175,18 +163,16 @@ Examples:
   %(prog)s --codes "ST,CC,RA,CD"
   %(prog)s "FR,CE" -o results.json --verbose
 
-Valid codes: ST, CE, CC, RA, RE, FR, CD, WF
-Rules:
-  - FR and WF are mutually exclusive
-  - CE is auto-removed when FR is selected
-  - CC info note when CE is selected
+--list prints the option menu (code, name, effect) and the selection rules.
 
-Exit codes: 0=pass, 1=issues, 2=error
+Status: error = invalid, empty or conflicting codes; warning = a code was
+auto-removed (see removed_codes); else pass.
+Exit codes: 0 = selection usable (pass or warning), 1 = status error, 2 = bad input
         """
     )
     parser.add_argument("file", nargs="?", help="Comma-separated option codes (positional)")
     parser.add_argument("--codes", help="Comma-separated option codes")
-    parser.add_argument("--text", help="Alias for --codes (for consistency)")
+    parser.add_argument("--list", action="store_true", help="Print the option menu and rules as JSON")
     parser.add_argument("--stdin", action="store_true", help="Read codes from stdin")
     parser.add_argument("-o", "--output", help="Output file path (defaults to stdout)")
     parser.add_argument("--verbose", action="store_true", help="Print diagnostics to stderr")
@@ -194,11 +180,13 @@ Exit codes: 0=pass, 1=issues, 2=error
 
     args = parser.parse_args()
 
+    if args.list:
+        print(json.dumps({"script": SCRIPT_NAME, "version": VERSION, "options": menu(), "rules": RULES}, indent=2))
+        sys.exit(0)
+
     codes_str = ""
     if args.codes is not None:
         codes_str = args.codes
-    elif args.text is not None:
-        codes_str = args.text
     elif args.stdin:
         codes_str = sys.stdin.read().strip()
     elif args.file:
@@ -222,7 +210,7 @@ Exit codes: 0=pass, 1=issues, 2=error
     else:
         print(output_json)
 
-    sys.exit(0 if report["status"] == "pass" else 1)
+    sys.exit(1 if report["status"] == "error" else 0)
 
 
 if __name__ == "__main__":

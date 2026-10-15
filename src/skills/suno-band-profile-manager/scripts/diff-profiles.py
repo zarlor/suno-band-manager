@@ -17,16 +17,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Graceful degradation: pyyaml is required to parse profiles. If missing,
-# emit a clear JSON error so the caller can diff the two YAMLs by hand rather
-# than crashing on an uncaught ImportError.
+# pyyaml is required to parse profiles; without it, exit 2 with the reason.
 try:
     import yaml
 except ImportError:
     print(json.dumps({
         "script": "diff-profiles",
         "status": "error",
-        "error": "pyyaml is not installed. Run with `uv run`, or compare the two YAML files directly.",
+        "error": "pyyaml is not installed. Run this script with `uv run`, which installs it.",
     }))
     sys.exit(2)
 

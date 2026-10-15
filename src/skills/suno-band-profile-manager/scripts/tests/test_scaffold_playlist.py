@@ -209,6 +209,53 @@ class TestMain(TmpPathTestCase):
         self.assertTrue(target.exists())
         self.assertIn("Moved Song", target.read_text())
 
+    def test_titles_with_yaml_specials_round_trip(self):
+        import yaml
+        titles = ['She Said "Run"', "Back\\slash: a #1 song", "It's 3 A.M."]
+        out = render_playlist_yaml('The "Quoted" Band', [{"name": t} for t in titles],
+                                   from_songbook=True, band_slug="quoted-band")
+        data = yaml.safe_load(out)
+        self.assertEqual(data["album"], 'The "Quoted" Band')
+        self.assertEqual([t["name"] for t in data["tracks"]], titles)
+        self.assertEqual(data["audio_dir"], "docs/audio/quoted-band")
+
+    def test_album_name_comes_from_the_band_profile(self):
+        tmp_path = self.tmp_path
+        profiles = tmp_path / "docs" / "band-profiles"
+        profiles.mkdir(parents=True)
+        (profiles / "rosas-voice.yaml").write_text("# craft note\nname: Rosa's Voice\ngenre: x\n")
+        proc = _run("rosas-voice", "--project-root", str(tmp_path))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(json.loads(proc.stdout)["album"], "Rosa's Voice")
+        self.assertIn('album: "Rosa\'s Voice"', (tmp_path / "docs" / "rosas-voice-playlist.yaml").read_text())
+
+    def test_album_name_flag_and_slug_fallback(self):
+        tmp_path = self.tmp_path
+        self.assertEqual(json.loads(_run("no-profile", "--project-root", str(tmp_path)).stdout)["album"],
+                         "No Profile")
+        proc = _run("other", "--project-root", str(tmp_path), "--album-name", "Given")
+        self.assertEqual(json.loads(proc.stdout)["album"], "Given")
+
+    def test_songbook_title_with_quotes_is_seeded_intact(self):
+        import yaml
+        tmp_path = self.tmp_path
+        entry = tmp_path / "docs" / "songbook" / "my-band" / "a.md"
+        entry.parent.mkdir(parents=True)
+        entry.write_text("---\ntitle: 'She Said \"Run\"'\nstatus: published\n---\nbody\n")
+        (entry.parent / "b.md").write_text("---\ntitle: Draft Song\nstatus: draft\n---\n")
+        proc = _run("my-band", "--project-root", str(tmp_path), "--from-songbook")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        data = yaml.safe_load((tmp_path / "docs" / "my-band-playlist.yaml").read_text())
+        self.assertEqual([t["name"] for t in data["tracks"]], ['She Said "Run"'])
+
+    def test_status_reports_created_vs_overwritten(self):
+        tmp_path = self.tmp_path
+        self.assertEqual(json.loads(_run("b", "--project-root", str(tmp_path), "--force").stdout)["status"],
+                         "created")
+        self.assertEqual(json.loads(_run("b", "--project-root", str(tmp_path)).stdout)["status"], "exists")
+        self.assertEqual(json.loads(_run("b", "--project-root", str(tmp_path), "--force").stdout)["status"],
+                         "overwritten")
+
     def test_template_documents_optional_sequencer_fields(self):
         out = render_playlist_yaml("My Band", [], from_songbook=False)
         self.assertIn("felt_bpm", out)

@@ -1,0 +1,21 @@
+[
+  {"query": "create a band profile for my new swamp-blues project", "should_trigger": true},
+  {"query": "edit my band profile for Ember Hollow, switch the tier to premier and add a known limitation", "should_trigger": true},
+  {"query": "list my bands", "should_trigger": true},
+  {"query": "duplicate the midnight-echoes profile as a v2 with a darker sound", "should_trigger": true},
+  {"query": "delete the Paper Lanterns band, we're not using it anymore", "should_trigger": true},
+  {"query": "health-check my band profile, is the style baseline specific enough?", "should_trigger": true},
+  {"query": "analyze my writer voice from these four poems and save it to my band", "should_trigger": true},
+  {"query": "add a track to the band playlist: 'Sightless Black' just got published", "should_trigger": true},
+  {"query": "set up the playlist file for Iron Meridian from the songbook", "should_trigger": true},
+  {"query": "show me what's in the velvet-haze band profile", "should_trigger": true},
+  {"query": "create a song for Suno about my grandfather's fishing boat", "should_trigger": false},
+  {"query": "talk to Mac, I want to start a new song for the swamp band", "should_trigger": false},
+  {"query": "build a style prompt for my midnight-echoes band profile", "should_trigger": false},
+  {"query": "set Exclude Styles and the sliders for this prompt", "should_trigger": false},
+  {"query": "turn this poem into Suno lyrics with section tags", "should_trigger": false},
+  {"query": "refine a song: the Suno take buries the vocals under the guitars", "should_trigger": false},
+  {"query": "sequence my playlist of twelve tracks into an album order", "should_trigger": false},
+  {"query": "where should this new song go in the album?", "should_trigger": false},
+  {"query": "fix the flow of my album, the middle sags", "should_trigger": false}
+]

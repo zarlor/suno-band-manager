@@ -28,7 +28,9 @@ with # are ignored; leading numbering ("3.", "3)") and "- " are stripped.
 Exit codes:
   0 = checks passed (and the YAML was written, with --write)
   1 = a check failed (nothing written)
-  2 = error: playlist or order file missing or unreadable
+  2 = error: playlist or order file missing or unreadable, the YAML has no
+      tracks or a track without a name, an empty order file, or a --locked
+      arc with fewer than two tracks
 """
 
 import argparse
@@ -46,12 +48,18 @@ def parse_arc(text):
 
 
 def yaml_arcs(config):
-    arcs = []
-    for item in config.get("locked_arcs") or []:
-        arc = [str(x).strip() for x in item] if isinstance(item, list) else parse_arc(item)
+    """(arcs, errors): each `locked_arcs:` item as a list of names; an item under two tracks is an error."""
+    arcs, errors = [], []
+    items = config.get("locked_arcs") or []
+    if not isinstance(items, list):
+        items = [items]  # a lone "A > B" string is one arc, not a list of characters
+    for i, item in enumerate(items, start=1):
+        arc = [str(x).strip() for x in item if str(x).strip()] if isinstance(item, list) else parse_arc(item)
         if len(arc) >= 2:
             arcs.append(arc)
-    return arcs
+        else:
+            errors.append(f"locked_arcs item {i} names fewer than two tracks: {item!r}")
+    return arcs, errors
 
 
 def read_order(text):
@@ -131,7 +139,7 @@ def render(original_text, tracks, new_order):
     end = next((i for i in range(start + 1, len(lines)) if re.match(r"^[A-Za-z_]", lines[i])), len(lines))
     by_name = {}
     for t in tracks:
-        by_name.setdefault(t["name"], t)
+        by_name.setdefault(str(t["name"]).strip(), t)
     body = yaml.safe_dump([by_name[n] for n in new_order], allow_unicode=True, sort_keys=False,
                           default_flow_style=False, width=10_000)
     block = "".join(f"  {l}\n" for l in body.splitlines())
@@ -162,20 +170,39 @@ def main(argv=None):
 
     import yaml
 
+    def error(reason):
+        return emit({"script": SCRIPT, "status": "error", "error": reason}, 2)
+
     path = Path(args.playlist)
     try:
         original = path.read_text(encoding="utf-8")
         config = yaml.safe_load(original) or {}
-        tracks = [t for t in config.get("tracks") or [] if isinstance(t, dict) and t.get("name")]
         proposed = read_order(Path(args.order).read_text(encoding="utf-8")) if args.order else None
     except (OSError, yaml.YAMLError) as exc:
-        return emit({"script": SCRIPT, "status": "error", "error": str(exc)}, 2)
+        return error(str(exc))
     if args.write and proposed is None:
-        return emit({"script": SCRIPT, "status": "error", "error": "--write needs --order"}, 2)
+        return error("--write needs --order")
+    if not isinstance(config, dict):
+        return error(f"{path} must be a mapping with a `tracks:` list")
+    tracks = config.get("tracks")
+    if not isinstance(tracks, list) or not tracks:
+        return error(f"{path} has no `tracks:` list (or it is empty): nothing to check")
+    for i, t in enumerate(tracks, start=1):
+        # A nameless entry can't be matched to an order, and a rewrite would lose it.
+        if not isinstance(t, dict) or not str(t.get("name") or "").strip():
+            return error(f"track {i} in {path} has no `name:`; fix it before checking an order")
+    if proposed is not None and not proposed:
+        return error(f"{args.order} lists no track names")
+    cli_arcs = [parse_arc(x) for x in args.locked]
+    short = [x for x, a in zip(args.locked, cli_arcs) if len(a) < 2]
+    if short:
+        return error(f"--locked needs at least two tracks joined by '>': {', '.join(map(repr, short))}")
 
-    current = [t["name"] for t in tracks]
-    arcs = yaml_arcs(config) + [a for a in (parse_arc(x) for x in args.locked) if len(a) >= 2]
+    current = [str(t["name"]).strip() for t in tracks]
+    arcs, arc_errors = yaml_arcs(config)
+    arcs += cli_arcs
     errors, arc_report = check(current, proposed, arcs)
+    errors = arc_errors + errors
     report = {
         "script": SCRIPT,
         "status": "fail" if errors else "ok",
@@ -198,7 +225,7 @@ def main(argv=None):
         report.update(status="fail", errors=[f"rewrite failed, YAML left unchanged: {exc}"])
         return emit(report, 1)
     same_rest = {k: v for k, v in reparsed.items() if k != "tracks"} == {k: v for k, v in config.items() if k != "tracks"}
-    if [t.get("name") for t in reparsed.get("tracks") or []] != proposed or not same_rest:
+    if [str(t.get("name")).strip() for t in reparsed.get("tracks") or []] != proposed or not same_rest:
         report.update(status="fail", errors=["rewrite did not round-trip, YAML left unchanged"])
         return emit(report, 1)
     path.write_text(new_text, encoding="utf-8")

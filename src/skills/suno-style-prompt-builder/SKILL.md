@@ -57,7 +57,7 @@ Done when the Controls follow the build core, Weirdness and Style Influence come
 
 ### Step 4: Wild Card
 
-Unless the user asked for conservative only (headless: `include_wild_card` false), one experimental variant: a genre or subgenre shift inside the band's core sound, bounded by the profile's genres and reference tracks (a metal band's stays anchored in metal or hard rock, never another genre family), keeping the song's subject, mood arc and hook, on the primary's model and sliders unless a stated reason says otherwise. Give it a one-line pitch; offer the other in-lane twists and the unchanged primary on v6-wild as alternatives.
+Unless the user asked for conservative only (headless: `include_wild_card` false), one experimental variant: a genre or subgenre shift inside the band's core sound, bounded by the profile's genres and reference tracks (a metal band's stays anchored in metal or hard rock, never another genre family, even when this song is a counter-genre piece; log which profile genre anchors it), keeping the song's subject, mood arc and hook, on the primary's model and sliders unless a stated reason says otherwise. Give it a one-line pitch; offer the other in-lane twists and the unchanged primary on v6-wild as alternatives.
 
 ### Step 5: Validate and Present
 

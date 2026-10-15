@@ -32,7 +32,7 @@ When using multiple analysis sources, you'll often get different answers for the
 
 ### librosa and PyTorch Scripts
 
-The script catalog, the tempo source, and how to read the numbers (including librosa's genre-dependent BPM misreads and the hi-hat check) are in `references/audio-analysis-scripts.md`.
+The script catalog, the tempo source, and how to read the numbers (including librosa's genre-dependent BPM misreads and the hi-hat check) are in the audio-analysis-scripts reference, which the audio steps load beside this one.
 
 ### ChatGPT Audio Analysis
 

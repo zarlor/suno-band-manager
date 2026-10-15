@@ -6,6 +6,8 @@
 
 Resolution paths for technical and quality feedback: artifacts, editor and Studio tools, song length, and genre drift. Most of these are generation-specific, so regeneration or a post-generation edit usually beats a prompt change.
 
+**Contents** (read the section the issue needs): Generate → Inspect → Refine · Audio Quality & Artifacts (with v6 late-song degradation) · Editor and Studio Resolution Paths (Pro/Premier editor, Premier Studio) · Song Length & Pacing (Duration slider, ending repair, the near-keeper repair ladder) · Genre Drift & Consistency (Extend anti-drift).
+
 ## Generate → Inspect → Refine Workflow (v5.5 onward, including v6)
 
 Since v5.5, Suno has favored an iterative **generate -> inspect -> section replace -> refine** workflow over full regeneration. This preserves good material and spends fewer credits.
@@ -45,9 +47,9 @@ Common quality issues that cannot be resolved through style prompt changes alone
 | "Audio quality drops at the end" | On v6, see "Late-song degradation" below for how others describe it now and the repairs they report. *(Pre-v6, 2026-08 sweep, mild: vocals reported losing timbre in the 2-4 minute range; the advice was sub-2:00 segments stitched together, or Replace Section on the late material.)* |
 | "Weird artifacts/noise" | Regenerate; if persistent, remove problematic descriptors from style prompt |
 | "Pronunciation is wrong" | Add phonetic hints in lyrics, or use `[Spoken Word]` metatag for problem lines |
-| "Vocals sound auto-tuned" | Add "natural vocal, organic phrasing, imperfect delivery" to style prompt; add "auto-tune" to exclusions. On v6 with a stock male voice, see the "generic / autotuned" row in `references/model-controls.md` |
+| "Vocals sound auto-tuned" | Add "natural vocal, organic phrasing, imperfect delivery" to style prompt; add "auto-tune" to exclusions. On v6 with a stock male voice, the model-controls "generic / autotuned" row applies |
 | "Clipping/distortion (unwanted)" | Add "clean mix, headroom, dynamic range" to style prompt; reduce layering descriptors |
-| "Frequency mud / sounds muffled" | Suno's own EQ post (OFFICIAL, 2026-09-29, Studio) frames a muddy vocal as the band competing in the same frequency range, and fixes it at the mix stage (a low-mid cut, starting around −6 dB at 400 Hz). That's a mix fix, not a prompt lever, and Studio is Premier-only. On the prompt side, give the band room (see the vocal-space options in the suno-style-prompt-builder skill's "v6 prompt guidelines"). Older advice: add "crisp, clear mix, defined frequencies" to style prompt; Premier users can also work the mix in Studio (the 1.x "Remove FX" tool is archived — check the live UI), or export stems and EQ in a DAW |
+| "Frequency mud / sounds muffled" | Suno's own EQ post (OFFICIAL, 2026-09-29, Studio) frames a muddy vocal as the band competing in the same frequency range, and fixes it at the mix stage (a low-mid cut, starting around −6 dB at 400 Hz). That's a mix fix, not a prompt lever, and Studio is Premier-only. On the prompt side, give the band room with a band-side vocal-space clause such as "rhythm guitars leave midrange space for the lead vocal" (no phrase alone has lifted a vocal in testing; the arrangement decides). Older advice: add "crisp, clear mix, defined frequencies" to style prompt; Premier users can also work the mix in Studio (the 1.x "Remove FX" tool is archived — check the live UI), or export stems and EQ in a DAW |
 | "Timing drifts / feels off the grid" | Premier: fix it in Studio before regenerating (Warp Markers was the Studio 1.x tool and is not in current Studio 2.0 copy — check the live UI). Pro: Replace Section on the offending span, or export stems and correct timing in a DAW |
 | "An instrument bleeds into sections where it shouldn't be" | A fundamental Suno limitation: style-prompt instruments apply to the whole song. Generate with all instruments, then extract stems (Auto Split or, at Premier, Advanced Split) and remove the instrument per section in a DAW. One-way — finish all Suno editing first. From 2026-09-03 the whole stem set counts as that song's single download |
 
@@ -94,7 +96,6 @@ Studio 2.0 shipped 2026-08-13 and **nothing in it reaches Pro**. Current capabil
 
 **Time Signature:** documented for Studio 1.2 as grid/metronome alignment only, "not yet sent to generative models." That claim is now **unverified for Studio 2.0** — no 2.0 article restates or retracts it. Either way, prompt for the desired meter rather than relying on the picker.
 
-**For complete Studio & Editor workflows, tips, and troubleshooting:** see `references/STUDIO-EDITOR-REFERENCE.md` in the suno-agent-band-manager skill (the module's canonical Studio/Editor reference).
 
 ## Song Length & Pacing
 
@@ -125,7 +126,7 @@ Don't regenerate a whole song over a bad ending. Match the symptom (ANECDOTAL, b
 | Section repeats or stumbles mid-song | **Replace Section** |
 | Song has no ending at all — it just stops mid-idea | **Extend**, then Crop |
 
-Ending *tags* for the next generation are a separate lever: community consensus is `[Outro]` + `[End]` paired, `[End]` on the absolute last line with nothing beneath it, `[Fade Out]` never alone. See the suno-lyric-transformer skill's `references/metatag-reference.md` → "Ending Control."
+Ending *tags* for the next generation are a separate lever: community consensus is `[Outro]` + `[End]` paired, `[End]` on the absolute last line with nothing beneath it, `[Fade Out]` never alone. Ending-tag changes go to the suno-lyric-transformer skill in the lyric adjustment spec.
 
 ### Repair Ladder for a Near-Keeper — Things to Try Before a Full Re-Roll (v6, 2026-10-03)
 

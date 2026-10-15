@@ -1,0 +1,22 @@
+[
+  {"query": "give feedback on my Suno output, the chorus dragged and went ballad on me", "should_trigger": true},
+  {"query": "my Suno generation sounds off and I can't say why, help me figure out what to change", "should_trigger": true},
+  {"query": "diagnose this Suno take: the vocals sound robotic in the second verse", "should_trigger": true},
+  {"query": "the guitar buries the vocals on this Suno track, what should I change in the prompt?", "should_trigger": true},
+  {"query": "I love this take but want a darker version, what do I keep and what do I push?", "should_trigger": true},
+  {"query": "there's a weird glitch at 1:23 in the song Suno made, how do I fix it?", "should_trigger": true},
+  {"query": "measure the tempo, key and loudness of my render docs/audio/swamp-band/Bayou.mp3", "should_trigger": true},
+  {"query": "run the audio analysis on this mp3 and tell me the BPM and LUFS", "should_trigger": true},
+  {"query": "map this rendered song against its lyrics so I can see where each section starts", "should_trigger": true},
+  {"query": "I want it more energetic but also more chill — how do I tell Suno that?", "should_trigger": true},
+  {"query": "my Suno take came back, rework the package", "should_trigger": false},
+  {"query": "talk to Mac, I have a new take of the swamp song to go over", "should_trigger": false},
+  {"query": "create a song for Suno about my grandfather's fishing boat", "should_trigger": false},
+  {"query": "build a style prompt for my midnight-echoes band profile", "should_trigger": false},
+  {"query": "migrate this v5.5 Pro prompt to v6", "should_trigger": false},
+  {"query": "transform my lyrics and add section tags", "should_trigger": false},
+  {"query": "my lyrics are too long for Suno, tighten them", "should_trigger": false},
+  {"query": "edit my band profile's default exclusions and model preference", "should_trigger": false},
+  {"query": "sequence my playlist of twelve Suno tracks into an album order", "should_trigger": false},
+  {"query": "where should this new song go in the album?", "should_trigger": false}
+]

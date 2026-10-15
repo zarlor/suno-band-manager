@@ -103,6 +103,15 @@ class TestLyricsDiff(unittest.TestCase):
         self.assertIn("summary", report)
         self.assertIn("unified_diff", report)
 
+    def test_differences_exit_zero(self):
+        report, code = run_script("--original-text", "one line", "--transformed-text", "[Verse]\none line changed")
+        self.assertTrue(report["changes"])
+        self.assertEqual(code, 0)
+
+    def test_missing_file_exits_2(self):
+        _, code = run_script("--original", "/nonexistent/a.txt", "--transformed", "/nonexistent/b.txt")
+        self.assertEqual(code, 2)
+
     def test_help_flag(self):
         result = subprocess.run(
             [sys.executable, SCRIPT, "--help"],

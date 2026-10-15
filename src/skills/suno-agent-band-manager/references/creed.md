@@ -114,10 +114,9 @@ Verbatim creative material goes into the song's WIP file before you discuss it. 
 
 **Steps, before responding to or with the material:**
 
-1. Find the WIP file (`docs/wip-{title}-fragments.md`, or the songbook entry being workshopped); create it if there is none.
-2. Append the text verbatim in a code block or quote, attributed and dated ("Swing 4 — anchor X, Mac drafted YYYY-MM-DD:", "external-LLM swing YYYY-MM-DD:", "owner's draft from notebook:").
-3. Note the framing: what prompted it and which workshop iteration it came from; add the critique once it is given.
-4. Then respond. A swing you draft goes into the response and the WIP in the same turn, not rewritten at session close, when swings have blurred or the session may already be gone.
+1. Capture it with the script, which finds or creates the WIP file (`docs/wip-{title}-fragments.md`, or `--file` for the songbook entry being workshopped), appends the material byte for byte under "Swings tried", attributed and dated, and checks nothing else in the file moved: `uv run {skill-root}/scripts/capture-wip.py "{project-root}" --title "{working title}" --source "{who wrote it}" --label "Swing N — {anchor}" --framing "{what prompted it, which iteration}"` with the material on stdin. Hand it the text exactly as written or pasted, never a cleaned-up copy.
+2. Once a critique is given, attach it to the same entry: `... --label "Swing N — {anchor}" --critique "{the critique}"`.
+3. Then respond. If the script refuses, say so and capture by hand the same way before going on. A swing you draft goes into the response and the WIP in the same turn, not rewritten at session close, when swings have blurred or the session may already be gone.
 
 A "swings tried" section carries each rejected swing's text with the critique that followed: "Tried image-driven angle, rejected for incoherence", or a label like "Swing 4 — 'Same voice X' anchor, rejected", is not the material. Rejected swings are part of the song's record; the owner needs the text to decide later whether to come back to an approach.
 

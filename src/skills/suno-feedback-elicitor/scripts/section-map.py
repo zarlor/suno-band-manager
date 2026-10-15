@@ -91,7 +91,7 @@ from tempo_source import (SOURCE_LABELS, SHIFT_THRESHOLD, add_tempo_source_arg, 
 
 SCRIPT_NAME = "section-map"
 VERSION = "1.2.0"
-INSTALL_CMD = "pip install demucs torch faster-whisper librosa numpy pyloudnorm"
+INSTALL_CMD = f"uv run {Path(__file__).resolve()}  (provisions every dependency from the PEP 723 header)"
 DEMUCS_MODEL = "htdemucs"
 WHISPER_MODEL = "medium"
 WHISPER_PASSES = 3

@@ -230,7 +230,7 @@ Expected ranges (lines):
   Bridge=2-6, Breakdown=2-4, Build-Up=2-4, Outro=2-6,
   Hook=1-4, Refrain=2-6
 
-Exit codes: 0=pass, 1=issues, 2=error
+Exit codes: 0 = check ran (read status and sections), 2 = bad input
         """
     )
     parser.add_argument("file", nargs="?", help="Path to lyrics text file")
@@ -250,10 +250,11 @@ Exit codes: 0=pass, 1=issues, 2=error
         text = sys.stdin.read()
     elif args.file:
         file_path = Path(args.file)
-        if not file_path.exists():
-            print(f"Error: File not found: {args.file}", file=sys.stderr)
+        try:
+            text = file_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            print(f"Error: cannot read {args.file}: {exc}", file=sys.stderr)
             sys.exit(2)
-        text = file_path.read_text()
     else:
         parser.print_help()
         sys.exit(2)
@@ -273,7 +274,7 @@ Exit codes: 0=pass, 1=issues, 2=error
     else:
         print(output_json)
 
-    sys.exit(0 if report["status"] == "pass" else 1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

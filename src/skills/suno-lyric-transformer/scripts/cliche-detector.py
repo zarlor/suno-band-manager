@@ -28,6 +28,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
+from script_class import classify_script, latin_checkable
+
 SCRIPT_NAME = "cliche-detector"
 VERSION = "1.0.0"
 
@@ -143,8 +146,12 @@ CLICHES = {
 }
 
 
-def detect_cliches(text: str) -> list[dict]:
-    """Scan text for cliche phrases and return matches."""
+def detect_cliches(text: str, latin_only: bool = False, skipped: list | None = None) -> list[dict]:
+    """Scan text for cliche phrases and return matches.
+
+    With latin_only, lines holding non-Latin letters are not scanned; each one
+    is appended to `skipped` (when given) so the caller can report it.
+    """
     findings = []
     lines = text.split('\n')
 
@@ -152,6 +159,10 @@ def detect_cliches(text: str) -> list[dict]:
         stripped = line.strip()
         # Skip metatags
         if not stripped or re.match(r'^\[.*\]$', stripped):
+            continue
+        if latin_only and not latin_checkable(stripped):
+            if skipped is not None:
+                skipped.append({"line_number": i, "script": classify_script(stripped), "text": stripped})
             continue
 
         for pattern, info in CLICHES.items():
@@ -174,7 +185,8 @@ def detect_cliches(text: str) -> list[dict]:
     return findings
 
 
-def build_report(findings: list, text: str, skill_path: str = "") -> dict:
+def build_report(findings: list, text: str, skill_path: str = "",
+                 latin_only: bool = False, skipped: list | None = None) -> dict:
     """Build the standard output report."""
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
     for f in findings:
@@ -200,8 +212,11 @@ def build_report(findings: list, text: str, skill_path: str = "") -> dict:
         "status": status,
         "metrics": {
             "total_cliches_found": len(findings),
-            "categories": categories
+            "categories": categories,
+            "latin_only": latin_only,
+            "skipped_line_count": len(skipped or []),
         },
+        "skipped_lines": skipped or [],
         "findings": findings,
         "summary": {
             "total": len(findings),
@@ -221,7 +236,9 @@ Examples:
   %(prog)s --stdin < lyrics.txt
   %(prog)s lyrics.txt -o results.json --verbose
 
-Exit codes: 0=no cliches, 1=cliches found, 2=error
+--latin-only scans only Latin-script lines; the rest are listed in skipped_lines.
+
+Exit codes: 0 = scan ran (flags, if any, are in the JSON), 2 = bad input
         """
     )
     parser.add_argument("file", nargs="?", help="Path to lyrics text file")
@@ -230,6 +247,8 @@ Exit codes: 0=no cliches, 1=cliches found, 2=error
     parser.add_argument("-o", "--output", help="Output file path (defaults to stdout)")
     parser.add_argument("--verbose", action="store_true", help="Print diagnostics to stderr")
     parser.add_argument("--skill-path", default="", help="Skill path for report context")
+    parser.add_argument("--latin-only", action="store_true",
+                        help="Scan only Latin-script lines; list the others in skipped_lines")
 
     args = parser.parse_args()
 
@@ -240,10 +259,11 @@ Exit codes: 0=no cliches, 1=cliches found, 2=error
         text = sys.stdin.read()
     elif args.file:
         file_path = Path(args.file)
-        if not file_path.exists():
-            print(f"Error: File not found: {args.file}", file=sys.stderr)
+        try:
+            text = file_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            print(f"Error: cannot read {args.file}: {exc}", file=sys.stderr)
             sys.exit(2)
-        text = file_path.read_text()
     else:
         parser.print_help()
         sys.exit(2)
@@ -251,8 +271,9 @@ Exit codes: 0=no cliches, 1=cliches found, 2=error
     if args.verbose:
         print(f"Scanning for cliches ({len(text.splitlines())} lines)...", file=sys.stderr)
 
-    findings = detect_cliches(text)
-    report = build_report(findings, text, args.skill_path)
+    skipped = []
+    findings = detect_cliches(text, latin_only=args.latin_only, skipped=skipped)
+    report = build_report(findings, text, args.skill_path, latin_only=args.latin_only, skipped=skipped)
 
     output_json = json.dumps(report, indent=2)
 
@@ -263,7 +284,7 @@ Exit codes: 0=no cliches, 1=cliches found, 2=error
     else:
         print(output_json)
 
-    sys.exit(0 if len(findings) == 0 else 1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

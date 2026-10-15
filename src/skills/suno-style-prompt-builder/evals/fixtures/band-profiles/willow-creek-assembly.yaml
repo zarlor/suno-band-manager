@@ -1,0 +1,49 @@
+# Band Profile — Willow Creek Assembly (synthetic eval fixture; not a real band)
+# Created: 2026-10-15
+# Last modified: 2026-10-15
+
+name: "Willow Creek Assembly"
+version: 1
+instrumental: false
+
+genre: "acoustic Appalachian folk with string-band textures"
+mood: "tender, weathered, quietly hopeful"
+language: "English"
+reference_tracks:
+  - "front-porch string band recorded in one room"
+
+model_preference: "v6"
+tier: "pro"
+
+style_baseline: >
+  Acoustic Appalachian folk, intimate female lead vocal close to the mic,
+  fingerpicked acoustic guitar, upright bass walking softly, brushed snare,
+  fiddle answering the vocal between lines, warm wooden room sound.
+exclusion_defaults:
+  - "autotune"
+  - "electronic drums"
+
+vocal:
+  gender: "female"
+  tone: "clear, slightly smoky alto"
+  delivery: "conversational storytelling, gentle phrasing"
+  energy: "restrained, swelling on the last chorus"
+  diction: "clear"
+  persona_reference: ""
+  persona_source_song: ""
+  voice_id: ""
+
+creativity_default: "balanced"
+
+sliders:
+  weirdness: 62
+  style_influence: 58
+  audio_influence: null
+
+custom_model_id: ""
+custom_model_notes: ""
+known_working_patterns: []
+known_limitations: []
+generation_learnings:
+  - "'fiddle answering the vocal' keeps the fiddle out from under the lyric"
+generation_history: []

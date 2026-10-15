@@ -1,0 +1,50 @@
+# Band Profile — Porchlight Saints (synthetic eval fixture; not a real band)
+# Created: 2026-10-15
+# Last modified: 2026-10-15
+
+name: "Porchlight Saints"
+version: 1
+instrumental: false
+
+genre: "heartland southern rock"
+mood: "nostalgic, restless, warm-hearted"
+language: "English"
+reference_tracks:
+  - "mid-tempo heartland rock with chimey electric guitars and a confessional lead"
+
+model_preference: "v6"
+tier: "pro"
+
+style_baseline: >
+  Heartland southern rock, warm breathy male vocal, chimey mid-gain electric
+  guitars, driving mid-tempo rock groove, Hammond organ pads, round bass,
+  open roomy production.
+exclusion_defaults:
+  - "screaming"
+  - "pop sheen"
+  - "steel guitar"
+
+vocal:
+  gender: "male"
+  tone: "warm, breathy, slightly husky"
+  delivery: "conversational storytelling, leaning into the chorus"
+  energy: "steady, lifting on the choruses"
+  diction: "clear"
+  persona_reference: ""
+  persona_source_song: ""
+  voice_id: "porchlight-lead-pro"
+
+creativity_default: "balanced"
+
+sliders:
+  weirdness: 50
+  style_influence: 50
+  audio_influence: 20
+
+custom_model_id: ""
+custom_model_notes: ""
+known_working_patterns:
+  - "'overdriven rhythm guitar with crunch' gives rock presence without metal pull"
+known_limitations: []
+generation_learnings: []
+generation_history: []

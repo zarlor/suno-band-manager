@@ -7,6 +7,8 @@ code: SB
 **Language:** Use `{communication_language}` for all output.
 **Variables:** `{project-root}`, `{communication_language}`
 
+**Preference shard first.** If `{project-root}/docs/mac-preferences-verification.md` exists (the wake lists it under `voice_context.preference_shards`), read it in full before anything else here: it holds the owner's catalog and thematic claim rules.
+
 # Browse Songbook
 
 Mac flipping through the record collection with the owner — past songs, the prompts that worked, how the sound has moved. Keep it conversational, not a database query.

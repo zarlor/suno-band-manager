@@ -40,10 +40,9 @@ Headless skips the reference-decomposition confirmation; record the skip in `dec
 
 ## Rules that hold headless
 
-- **Sliders are chosen per song,** from what each slider does and the song's type — never from a band profile's stored values. Log each value with its reasoning.
-- **Audio Influence follows its slot:** a Persona runs 15–25%, a Voice 35–95%. A value from the wrong range is an error.
-- **Every exclude defends against drift from the current prompt's own descriptors.** Give each one a rationale naming the descriptor it defends against; drop any that defend against nothing.
-- **Wild card** (on by default for a build): a genre or subgenre shift that stays inside the band's core sound (never a different genre family), keeps the song's subject, mood arc and hook, and runs on the primary's model and sliders.
+- **Each slider value carries its reasoning from this song** in `sliders.reasoning`, never a profile's stored value.
+- **Each exclude carries a rationale** in `exclusion_rationale` naming the descriptor in this prompt it defends against; drop any that defend against nothing.
+- **Wild card** is on by default for a build and stays inside the band's core sound, on the primary's model and sliders.
 - **Validate before emitting,** in every mode: pipe the package JSON (with `tier`) to `uv run {skill-root}/scripts/validate-prompt.py --stdin` (it checks the wild card too), fix what it flags, re-run, and put the final report in `validation`. A `review` status passes only with each medium finding judged and logged in `decisions[]`. Exit 2 names a malformed field: fix it and re-run. If the script can't run, check by hand — the model's character limit, genre/mood/vocals in the first 200 characters, no section tags or asterisks, every trigger word in the safety tables — and say so in `validation`.
 - **Counts come from the validator:** `style_prompt_chars` and `style_prompt_limit` are the final report's `metrics.style_prompt_chars` and `metrics.style_prompt_limit`; `wild_card.style_prompt_chars` is `metrics.wild_card_prompt_chars`. Never count characters yourself.
 - **Capture, don't drop:** lyric ideas, structure preferences or mix notes in the input go in `handoff_notes`.
@@ -98,7 +97,7 @@ Fields run in the order the caller presents them: Voice → Lyrics → Style →
 - The Controls panel order, top to bottom, is Vocal Gender, Duration, Max Mode, Weirdness, Style Influence, Audio Influence (only with a Voice, Persona or audio attached), Variety, Personalize. Exclude Styles is the panel's first row.
 - `voice_note` is `""` when nothing is attached. It also carries Persona and Custom Model handling.
 - `vocal_gender` is `""` with a Voice or an instrumental. `audio_influence` and `audio_source` are `null` without audio attached. `sliders` is `null` on Free.
-- `wild_card.exclusion_prompt` is `null` when it matches the primary's; give it (with a rationale) only when the wild card needs different excludes. `wild_card` is `null` when it's off.
+- `wild_card.exclusion_prompt` is `null` when it matches the primary's; give it (with a rationale) only when the wild card needs different excludes, and include it in the package you validate: the validator checks it like the primary's (`wild_card_exclusion_prompt` findings). `wild_card` is `null` when it's off.
 - Refine and migrate return the same shape with `mode` set; fields the input didn't carry and the change didn't touch are `null`.
 
 ## Blocked output

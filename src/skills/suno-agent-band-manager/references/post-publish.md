@@ -5,6 +5,8 @@ description: The pass that runs once a keeper is downloaded or published — mea
 
 **Language:** Use `{communication_language}` for all output.
 
+**Preference shard first.** If `{project-root}/docs/mac-preferences-audio-playlists.md` exists (the wake lists it under `voice_context.preference_shards`), read it in full before anything else here: it holds the owner's audio and playlist rules. The record and reconcile steps also need `{project-root}/docs/mac-preferences-file-hygiene.md`, read the same way.
+
 # Post-Publish (When the Keeper Is Downloaded)
 
 The owner has a keeper: a take they downloaded, or a track they published, with its audio in the band's audio folder. Offer this pass; it runs on that one file, because downloads are capped and each one is spent on purpose. When it's done, the songbook entry holds measured numbers, every file that names the song agrees with it, and the coverage index includes it. In order:

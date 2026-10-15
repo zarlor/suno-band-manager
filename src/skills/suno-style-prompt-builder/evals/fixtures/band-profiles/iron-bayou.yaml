@@ -1,0 +1,55 @@
+# Band Profile — Iron Bayou (synthetic eval fixture; not a real band)
+# Created: 2026-10-15
+# Last modified: 2026-10-15
+
+name: "Iron Bayou"
+version: 2
+instrumental: false
+
+genre: "heavy southern swamp metal with sludge-groove riffs"
+mood: "dark, humid, defiant, brooding"
+language: "English"
+reference_tracks:
+  - "slow down-tuned southern groove with a melodic singer on top"
+
+model_preference: "v6"
+tier: "pro"
+
+style_baseline: >
+  Heavy swamp metal, raw melodic singing with a gritty male lead, down-tuned
+  rhythm guitars with a thick saturated tone, slow pounding drums with a
+  swinging backbeat, overdriven bass locked to the kick, humid spacious mix,
+  close-mic vocal in front of the band.
+exclusion_defaults:
+  - "screaming"
+  - "growled vocals"
+  - "synth pads"
+
+vocal:
+  gender: "male"
+  tone: "gritty, chesty baritone"
+  delivery: "raw melodic singing, sustained notes on the chorus"
+  energy: "brooding verses, full-voiced choruses"
+  diction: "clear"
+  persona_reference: ""
+  persona_source_song: ""
+  voice_id: ""
+
+creativity_default: "balanced"
+
+sliders:
+  weirdness: 45
+  style_influence: 70
+  audio_influence: null
+
+custom_model_id: ""
+custom_model_notes: ""
+
+known_working_patterns:
+  - "'heavy swamp metal, raw melodic singing' keeps the weight without screaming"
+known_limitations:
+  - "Bass-forward mixes don't land; the bass sits behind the guitars"
+generation_learnings:
+  - "'metal' or 'sludge' without a melodic vocal pairing pulls screaming"
+  - "'cinematic' pulled keyboards into the chorus"
+generation_history: []

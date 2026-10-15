@@ -1,88 +1,54 @@
 # Model-Specific Prompt Strategies
 
-> **Related skills:** Style prompts work with lyric metatags (section tags, vocal delivery, effects, production tags), which are the `suno-lyric-transformer` skill's job. Mapping listening feedback to style-prompt adjustments is the `suno-feedback-elicitor` skill's job.
->
-> **Last validated:** September 12, 2026 (Suno **v6 family** — v6, v6-wild, v6-mini — launched 2026-09-09, when Suno retired every earlier model; the v6 section below is **PREVIEW** guidance). The v6 guidelines and measured outside evidence were added from the 2026-09-23 and 2026-10-03 research sweeps; as of 2026-10-03 Suno had not changed the model since launch. The retired-model prompt strategies (v5.5 Pro, v5 Pro, v4.5-all, v4.5 Pro, v4.5+ Pro, v4 Pro) were last validated August 13, 2026 and live in `references/retired-model-strategies.md` for older records and `:migrate`. Suno updates models and prompt behavior frequently — use web search to verify strategies against current documentation when uncertain.
->
-> **Every pre-v6 model is retired (OFFICIAL, 2026-09-09).** "All models prior to v6 have been retired" — they can no longer generate; existing songs stay playable, and any new iteration of an older song (Extend, Cover, Remaster, remix) runs on v6 and may sound different. Custom Models were upgraded to v6 automatically. Suno has published nothing on how Voices and Personas built before v6 carry over. Sources: [v6 FAQ](https://help.suno.com/en/articles/13924481), [Current Models: v6](https://help.suno.com/en/articles/13924737), [What's new in v6](https://help.suno.com/en/articles/13924801).
+Conditional material for the v6 family: read only the section a song calls for (`grep -n '^## '` lists them). The every-build rules are in `references/v6-build-core.md`; sources and the evidence narrative are in `references/research-sources.md`. Every pre-v6 model was retired 2026-09-09 (OFFICIAL); their prompt styles are in `references/retired-model-strategies.md`. Suno changes behavior often, so web-search current documentation when uncertain.
+
+| When the song has | Read |
+|---|---|
+| A Voice attached | "Voices on v6"; "Voices, Custom Models, and My Taste" → "Voices" |
+| A Persona attached | "Persona Style Prompt Integration"; "Persona and Inspo Playlist Behavior" |
+| A Custom Model | "Voices, Custom Models, and My Taste" → "Custom Models"; "Persona Style Prompt Integration" → "Voices and Custom Models (v5.5)" |
+| A counter-genre lean (accessible inside heavy, slow inside driving, acoustic inside electric) | "Counter-Genre Prompting"; "Slider Guidelines" |
+| Uploaded audio, Extend or Replace Section | "Slider Guidelines" |
+| A reference track or "sounds like X" | "Reference Track Translation Guide" |
+| Distorted guitars masking the vocal | "Mix balance for heavy material" |
+| A real tempo change | "True tempo change" |
+| Brass-band genre words | "Brass-Band Gravity"; "Dynamic Control via Style Prompt" → "Brass-Out-At-Outro Limitation" |
+| A build, fade or quiet-loud-quiet arc | "Dynamic Control via Style Prompt" |
+| An instrument or vocal-behavior question | "Instrument-Specific Guidance"; "Vocal Behavior and Triggers"; "Descriptor Findings From the Retired Models" |
+| An exclude that keeps failing | "Exclude Styles Field" |
+| A set length | "Duration Slider" |
+| Iteration advice | "Iteration Best Practices"; "Cover Feature" |
+| A migrate | "Quick Reference"; "Universal Rules" |
 
 ## Quick Reference
 
 | Model | Status | Style | Notes |
 |-------|--------|-------|-------|
-| **v6** | Current — Pro/Premier | Ordered production direction (PREVIEW — see "Suno v6 Family") | Suno's "reliable, precise" model; the default for a fully specified package |
-| **v6-wild** | Current — Pro/Premier | Same prompt architecture as v6 | "Less predictable". An optional wild-card route: run the primary prompt unchanged on it. Don't also rewrite the prompt, since v6-wild already adds its own variation |
-| **v6-mini** | Current — all tiers (the Free model) | Same prompt architecture as v6 | Faster and cheaper to run; some experienced users rate it highly — test it rather than assuming it is simply weaker |
+| **v6** | Current — Pro/Premier | Ordered production direction | Suno's "reliable, precise" model (OFFICIAL); the default for a fully specified package |
+| **v6-wild** | Current — Pro/Premier | Same as v6 | "Less predictable" (OFFICIAL). A wild-card route: the primary prompt *unchanged* on it, since it adds its own variation. Said to carry more of the older models' character and to be the only v6 model that renders some grooves (COMMUNITY) |
+| **v6-mini** | Current — all tiers (the Free model) | Same as v6 | "Faster, more efficient" (OFFICIAL); some users rate it highly for following performance prompts and extending a song's back half (ANECDOTAL) — test it rather than assume it is weaker |
 | v5.5 Pro | Retired 2026-09-09 | Crisp film-brief (same as v5) | Its Voices, Custom Models, and My Taste notes still apply on v6 |
 | v5 Pro | Retired 2026-09-09 | Crisp film-brief, 5-8 descriptors | — |
 | v4.5-all / v4.5 Pro / v4.5+ Pro | Retired 2026-09-09 | Conversational sentences | — |
 | v4 Pro | Retired 2026-09-09 | Simple descriptors, 200-char limit | — |
 
-## How to Use This File
+Style field 1,000 characters, lyrics 5,000 (VENDOR); a generation runs up to 8 minutes; a Create costs 10 credits for two songs, Max Mode doubles it (OFFICIAL).
 
-Read the sections a step needs, not the whole file (find them with `grep -n '^## ' references/model-prompt-strategies.md`). The per-generation safety gotchas — scream triggers, the "live" family, keyboard-pull words, the Genre Term Behavior Table, the exclude rule and the song-type slider table — are in `references/safety-tables.md`, which is reread before every build and refine. Retired-model prompt styles are in `references/retired-model-strategies.md`; sources are in `references/research-sources.md`.
+## Suno v6 Family (current — PREVIEW guidance)
 
-| Step | Sections |
-|---|---|
-| Build the style prompt | "Suno v6 Family"; "Genre Keyword Ordering"; plus, when the song needs them: "Counter-Genre Prompting", "Dynamic Control via Style Prompt", "Instrument-Specific Guidance", "Vocal Behavior and Triggers", "Descriptor Findings From the Retired Models" |
-| Decompose a reference track | "Reference Track Translation Guide" |
-| Exclude Styles | "Exclude Styles Field" |
-| Sliders and Controls | "Suno v6 Family" → "The Controls panel"; "Slider Guidelines"; "Duration Slider" when length matters |
-| Voice, Persona or Custom Model active | "Voices, Custom Models, and My Taste"; "Persona Style Prompt Integration"; "Persona and Inspo Playlist Behavior" |
-| Migrate | "Quick Reference", "Universal Rules", and `references/retired-model-strategies.md` |
-| Iteration advice | "Iteration Best Practices"; "Cover Feature" |
+Grades: OFFICIAL (Suno-documented), VENDOR (guide sites' own tests), COMMUNITY (several independent users), ANECDOTAL (one report), LOCAL-OBSERVED (this module's own renders, measured). Where these sections conflict with the retired-model findings, they win for v6. The six habits, the Controls defaults, tempo as feel and the nine guidelines are in `references/v6-build-core.md`.
 
-## Suno v6 Family (current — PREVIEW guidance, 2026-09-12)
+### True tempo change
 
-> **Status: PREVIEW.** v6 launched 2026-09-09 and retired every earlier model. This section is compiled from Suno's v6 help articles, day-one vendor testing, and the first week of community reports. Items graded **LOCAL-OBSERVED** come from this module's own first v6 renders (small samples, one Professional Voice); everything else is still unconfirmed here. Grades: OFFICIAL (Suno-documented), VENDOR (guide sites reporting their own tests), COMMUNITY (several independent users), ANECDOTAL (one report), LOCAL-OBSERVED (this module's own renders, measured). Where this section conflicts with the retired-model findings (here and in `references/retired-model-strategies.md`), it wins for v6; where it is silent, the older findings are hypotheses to re-test on v6, not rules. **Treat anything dated before v6's 2026-09-09 launch — guides, community reports, this file's own retired-model findings — as a mild suggestion at best; v6 was a wholesale change, and pre-v6 evidence should never veto a v6 test.**
+A generation keeps one tempo grid (LOCAL-OBSERVED: lyric tags asking for 65 → 150 → 65 BPM came back on one flat grid; with Variety off, Max on and feel words in both fields the chorus lifted, but the fast verse never went double-time). Other v6 takes *have* switched half-time to double-time (owner report), so a feel switch is possible but unreliable.
 
-### The three models
+For a true tempo change, use one of these (VENDOR, mostly pre-v6):
 
-| Model | Tier | Suno's framing (OFFICIAL) | When to reach for it |
-|---|---|---|---|
-| `v6` | Pro/Premier | "reliable, precise"; "stronger control and precision" | The default for any fully specified package |
-| `v6-wild` | Pro/Premier | "built for experimentation… less predictable directions" | Exploratory takes. One wild-card route is the *unchanged* primary prompt run here; a rewritten wild-card prompt belongs on v6, with the same sliders. Several users say it carries more of the older models' character; it is the only v6 model reported to render some grooves at all (COMMUNITY) |
-| `v6-mini` | All tiers (Free) | "faster, more efficient" | Free-tier work. Some experienced users rate it highly for following performance prompts and for extending a song's back half (ANECDOTAL) |
+- Replace Section on that span (v6: the song's ⋯ More Actions → Edit → Replace Section opens the Create form with the song attached; the full Styles box is the lever, since there's no separate instruction box — write a short style prompt describing only that span at its new tempo; untested for tempo);
+- Extend from the section boundary with a new style;
+- generate the sections separately and splice them.
 
-The style field stays at 1,000 characters and lyrics at 5,000 (VENDOR, day-one test). A generation can run up to 8 minutes (OFFICIAL). A Create still costs 10 credits for two songs; Max Mode doubles it (OFFICIAL).
-
-### Prompt style: production direction, not a descriptor list
-
-v6 is reported to follow the style field more literally than v5.5 did — "it wants to be directed exactly what to do" — and to fill anything the prompt leaves unspecified with its safest default (COMMUNITY, many reports). A v5-style film-brief list ("big riffs, punchy drums") tends to deliver an intro that matches and then a band that thins out under the vocal. The prompts that work share six habits:
-
-1. **An order:** Genre → Vocals → Drums → Guitars → Bass → Other instruments → Arrangement/Energy → Production → Ending. Several users credit this order with fixing flat choruses. The mechanism is unproven, and the order costs nothing (COMMUNITY).
-2. **Each instrument gets a job per section, stated with verbs** — "the intro riff continues under the verse vocal, palm-muted and lower, never stops," not "big riffs." A section the prompt says nothing about is a section where the model drops out (COMMUNITY + VENDOR).
-3. **Place the vocal instead of praising it** — "vocal in front of the band, close-mic'd and dry, the loudest element; instruments sit behind and below the voice" beats "crisp, clear, professional mix." Thinning the arrangement under the verse vocal is the most-reported fix for a buried vocal (VENDOR + COMMUNITY).
-4. **State both edges, with lengths** — "4-bar guitar intro, instrumental only"; "ends on a hard stop after the final chorus." An unspecified intro tends to come back as humming or ad-libs; an unspecified ending vamps, or cuts off mid-lyric (VENDOR + COMMUNITY). One circulating form: "complete every written lyric before a short instrumental outro and final hard stop."
-5. **Positive text only; every negative goes in Exclude Styles.** Inline negation reads as inclusion — the model keeps the noun and drops the "no" (VENDOR ×2 + COMMUNITY). Say what you want instead ("dry, close-mic'd" rather than "no reverb").
-6. **A short production clause helps; mastering words don't.** "High-fidelity studio production, close-mic vocals, crisp transients, clear instrument separation" is the reported form (COMMUNITY). "Mastered, radio-ready, -14 LUFS" has no reported effect — master after generation.
-
-Front-loading and the critical zone still apply. The 5-8 descriptor sweet spot was a v5/v5.5 finding: the v6 prompts that work are longer, sentence-shaped, and specific.
-
-### The Controls panel (formerly More Options)
-
-| Control | What it does | Default for a pipeline-built package |
-|---|---|---|
-| **Variety** — notches *Exact style*, *Balanced variety*, *Distinct styles*, *Bold exploration*, *Unreasonably varied* | Above *Exact style* it **rewrites the style prompt before generating** — "adjusting and updating your style prompts… reduce the Variety slider to 0" to keep full control of your tags (OFFICIAL). Users who found their style box rewritten traced it here (COMMUNITY). **LOCAL-OBSERVED (2 songs):** the finished song's page shows the rewritten style, not what was typed. The rewrite turned sentences into production-term lists, stripped artist names, turned negatives into positives, dropped mood prose, invented arrangement details, and drifted (warm → raw, grit moved into the genre line, "metal" put at the head). It also appeared to pull terms from the lyric tags. The slider shows shorthand labels (reported: "High" = *Distinct styles*, "Extra" = *Bold exploration*) | **Exact style.** Anything higher means the validated prompt is not what generates. Raise it deliberately to explore — one careful tester found *Bold* better than 0 on a ballad (ANECDOTAL) |
-| **Max Mode** | "Uses more compute to maximize consistency throughout the song"; **2× credits**. Suno positions it for songs over two minutes, faithful covers, and style transfer (OFFICIAL) | **On for any generation you might keep** — it's applied at generation, so a finished take can't be upgraded to Max. Off only for throwaway style-feel sketches. Field report from this module's own v6 testing: Max was the difference between usable and unusable takes. Community reports on whether it fixes late-song degradation are mixed |
-| **Personalize** | Applies the account's My Taste profile | **Off** — keeps the package reproducible across accounts |
-| **Duration** | Auto, or a Custom target from 0:10 to 6:00 | **Auto** unless the length is a real requirement (see "Duration Slider"). **LOCAL-OBSERVED:** on short lyric sheets Auto pads the ending with a long instrumental tail — about a minute on one song, even with `[Hard Stop][End]` and no outro tag; 47 s on another with an outro tag. Auto stays the default. Custom is the lever when a take runs long: set it to about the sung length plus 15–20 s. An exact target can also sound forced on a sung track — the vocal rushing in, or the ending stretched (ANECDOTAL) — another reason Auto stays the default |
-| **Style Influence** | Loose ↔ Strong prompt adherence (OFFICIAL) | Reported to **default to 50** on v6 (VENDOR ×2) — check it before judging a prompt. Community settings for obedience converge on **Variety 0 · Weirdness ~20-50 · Style Influence 80-95** (COMMUNITY, 4+ reports) |
-| **Weirdness** | Safe ↔ Chaos, 50 = normal (OFFICIAL) | Chosen per song as always. The 60-75 counter-genre range and the ~80 cliff in the Slider Guidelines were v5.5 findings, untested on v6 |
-| **Audio Influence** | Appears only with audio attached — upload, Voice, or Persona (OFFICIAL) | Re-profile per voice on v6 rather than carrying a v5.5 number over |
-
-### Tempo and section contrast (PREVIEW)
-
-- **A generation tends to keep one tempo grid.** "Suno doesn't reliably support tempo changes within a single generation" (VENDOR, **pre-v6**). **LOCAL-OBSERVED, one render:** a song whose lyric tags asked for 65 → 150 → 65 → 150 → 85 BPM came back on one flat grid. That render had no feel language, and Variety was rewriting its style prompt at the time, so it's a hint, not a finding. **LOCAL-OBSERVED, clean test:** the same song rebuilt with Variety Off, Max Mode on, and BPM + feel figures and scene names word for word in both fields got its dynamics (the chorus lifted), but the fast verse never went double-time on that take. Other v6 generations *have* switched between half-time and double-time (owner report), so a feel switch is possible but unreliable. Make it as easy as you can: one stated BPM for the whole song, with the contrast carried by repeated half-time / double-time / standard-time feel words tied to drum jobs. Treat an edit or a splice as the fallback.
-- **Write the contrast as feel over one pulse.** Use half-time vs double-time drum feel, sparse vs dense arrangement, and each instrument's job per section ("a 140 BPM track can feel closer to 70", VENDOR, pre-v6). **LOCAL-OBSERVED:** reframing the same song this way was heard as "a LOT better", with some of the section changes landing.
-- **BPM is soft conditioning — pair every number with feel words,** e.g. "72 BPM feel with a slow heavy backbeat and double-time hi-hat grid" (COMMUNITY compiled v6 guide: "BPM is a hint, not a transport control"). A bare number is often ignored. The same guide treats bracket tags as soft conditioning too, so mirroring the style field's BPM figures in the matching lyric cues is a reasonable reinforcement to test.
-- **Reinforce with the same words in both fields, and name the scene.** The style prompt's section map and the lyric section cues should use identical phrases, and each phrase should say what the section *is* as well as how it moves: "closing time, the harbor wakes up: fast driving double-time build" rather than "fast section". v6 reads plain language and resolves contradictions between the fields by thinning the band (VENDOR + COMMUNITY). The payoff of naming the scene is under test here.
-- **For a true tempo change,** use one of these (VENDOR, mostly pre-v6):
-  - Replace section on that span (v6: the song's ⋯ More Actions → Edit → Replace Section opens the Create form with the song attached; the full Styles box is the lever, since there's no separate instruction box — write a short style prompt describing only that span at its new tempo; untested for tempo);
-  - Extend from the section boundary with a new style;
-  - generate the sections separately and splice them.
-
-  Studio's BPM-aware tools are Premier-only (OFFICIAL).
+Studio's BPM-aware tools are Premier-only (OFFICIAL).
 
 ### Voices on v6 (PREVIEW)
 
@@ -99,33 +65,6 @@ If distorted rhythm guitars mask the vocal on v6, one tested approach describes 
 > In-Your-Face Vocals, Tight Vocal Compression, Punchy Upfront Vocals, Vocal-Focused Midrange Space, Rhythm Guitars EQ-Carved Around Vocals, Reduced Guitar Midrange Masking, Distorted Compressed Rhythm Guitars Pushed Back, Tight Cohesive Rhythm Section, Punchy Bass Guitar, Strong Bass Attack, Tight Bass Compression, Punchy Kick and Bass Locked Together, Controlled Low-End, Defined Kick Attack, Clear Instrument Separation
 
 A shorter, partial version at the end of the style prompt fits a tight character budget.
-
-- **v6 takes mood from the prompt, not the lyrics** (COMMUNITY, 2+ reports: it "no longer improvises based on the emotional tone and imagery of the lyrics"). State the emotional direction explicitly — in the style field and in the section cues — instead of relying on the lyric to set it.
-
-### v6 prompt guidelines from production testing and the 2026-09 / 2026-10 research sweeps
-
-These are **guidelines, not laws**. Each carries its scope and its evidence grade. Some are just things to try: Suno doesn't always do what a prompt asks, so a song sometimes needs more than one way of asking. A song that wants otherwise wins.
-
-**Use generally** (2026-09-23; each still gives way when a song wants otherwise):
-1. **Describe the band's part instead of song-wide gravity words.** `heavy`, `doom`, `crushing`, `massive`, `oppressive`, `screaming`, `epic`, `cinematic` and `industrial` are reported to pull stock conventions (COMMUNITY). In production testing, songs with song-wide escalation words measured the vocal under the band. The one song that put weight only on specific moments had the vocal above it (LOCAL-OBSERVED, small n). Say what the instruments do, and put the weight on moments. Keep a gravity word when the song wants that pull.
-2. **Choose the era anchor for its production.** The decade word brings its production habits with it. One report: `80s hair metal` brought a gated snare that `70s hard rock` didn't (ANECDOTAL). Where the guitar sound matters, name the amp or the tone character rather than "distortion". Equipment and room words (a named mic, a vintage compressor) are reported to work the same way (ANECDOTAL ×3, "only a hypothesis").
-
-**Only where the song calls for it:**
-3. **A band-side vocal-space clause** when the vocal needs to get in front, e.g. *rhythm guitars leave midrange space for the lead vocal* (2026-09-23). A second option (2026-10-03) is *the band builds beneath the vocal without obscuring it*. It adapts phrasing from Suno's own caption writer (VENDOR-relayed) and is untested on songs. So far in production testing, no song-wide phrase has lifted the vocal by itself; the arrangement decides.
-4. **An ending written as the singer's action plus the band leaving**, with no instrumental figure at the close (2026-09-23). Use it for songs that call for the band leaving, or that need to avoid a long instrumental tail, not for every ending. In the first test (n=1) it shaped the last line, but a 24 s instrumental tail still followed and was the song's energy peak. So far it steers the line, not the tail.
-5. **Check the style field for a bare "vocal"** when a wordless "ooooh" intro would hurt (n=1 report). Open the lyrics on a lyric line when no long intro is wanted (2026-09-23).
-6. **Write a heavy chorus's job, not its feeling** (2026-10-03), e.g. *choruses stay rhythmically driving and hit harder than the verses*. Avoid "big", "emotional" or "epic" as the chorus instruction. Several rock and metal users report those words read as "slow everything down and make it dramatic", turning the chorus into a ballad (COMMUNITY). This extends guideline 1.
-7. **`key change` in Exclude Styles when the song has to hold its key** (2026-10-03). v6 is reported to insert unrequested key changes in some genres, "usually at 3rd verse", and to ignore an inline "no key changes" (ANECDOTAL, n=1). A late modulation also turned up in a heavy lane in production testing, so "never for metal" isn't absolute. Untested. Leave it out where a modulation would be welcome. For a *requested* change, "key change" alone is often ignored; putting it inside a labelled section is the vendor advice (VENDOR, generic, untested).
-8. **With a Voice attached, don't add vocal character the Voice doesn't naturally have** (e.g. "gritty") (2026-10-03). One outside user: *"remove anything that talks about your singer in styles, since style can influence how they sound"* (ANECDOTAL). This matches production testing, where grit and genre words pulled texture onto a Voice (see "Voices on v6"). Both things can be true, though. Words that reinforce character the Voice *does* have may help push it toward the singer's real sound when needed. Range and placement guards stay.
-
-**A thing to try:**
-9. **Carry "unresolved" as harmony, not as a mood** (2026-10-03), e.g. *ends off the home chord*. Keep emotion tags off a section meant to be bare. In production testing (n=1), a section tag reading "unresolved tension" on a final verse meant to be bare came out as the loudest section of the song: the mood word seems to have been read as intensity. Outside rule sets warn that "powerful, intense, bigger" may raise loudness (ANECDOTAL). Inference, untested. The lyric side (no emotion word in a bare section's tag) is the `suno-lyric-transformer` skill's job.
-
-**Measured outside evidence that bears on prompting** (2026-10-03 sweep; one note.com author with stems, pitch tracking and ≥4 takes per condition. ANECDOTAL-controlled, one channel, stock voices, Variety left at its default):
-- **Style Influence 100 tested no better than 85.** 6 of 12 vs 7 of 12 takes followed the instruction. An early 4-vs-4 had pointed the other way. This fits "Style Influence above ~80 plateaus" (see "Slider Guidelines"). One untested claim says the opposite (ANECDOTAL).
-- **Variety above Exact style rewrites each take differently.** The two takes of one submission showed the same style text in 4% of pairs on v6, against 100% on v5.5. Prohibitions and vague voice words dropped out ("no 16th cutting" 0 of 12; "moderately bright", "mature and elegant" 0 of 4). Concrete words survived ("warm clear", "behind the beat", 4 of 4). **Exclude came through unchanged in 155 of 156 pairs.** The author's hedge: whether the displayed text is what generated is unknown. This adds to the reasons for Variety at Exact style and for putting every negative in Exclude Styles.
-- **Level matters more than brightness.** "Moderately bright" in the style didn't brighten the vocal. The vocal sat about 2 dB further under the band on v6 than on v5.5, which matches production-testing readings.
-- **Take-to-take spread was bigger than the effect of rewording,** and the ranking of variants flipped between 2 and 4 takes (see "Iteration Best Practices").
 
 ### Known weak spots (COMMUNITY, launch week)
 
@@ -300,7 +239,7 @@ These descriptors produce consistent, predictable results across v5 generations:
 
 ## Universal Rules (All Models)
 
-*Written against the retired models. Where the v6 section above disagrees — negatives, descriptor count, prompt shape — the v6 section wins for v6.*
+*Written against the retired models. Where the v6 rules (`references/v6-build-core.md`) disagree — negatives, descriptor count, prompt shape — they win for v6.*
 
 1. **Character limits** — v4 Pro: 200-char hard limit. v4.5+/v5/v5.5: 1,000-char hard limit. All silently truncated at their respective limits.
 
@@ -314,7 +253,7 @@ These descriptors produce consistent, predictable results across v5 generations:
 6. **Genre and mood always go first** — they're the strongest signal (see rule 3)
 7. **Never put style cues inside lyrics** — style prompt and lyrics are separate inputs
 8. **No asterisks or special formatting** in style prompts
-9. **Never put artist names in style prompts** — Suno does not reliably replicate named artists. Decompose references into concrete sonic descriptors instead. **This is now backed by official policy, not just observed behavior** (OFFICIAL, [Building the future of music responsibly](https://suno.com/blog/building-the-future-of-music-responsibly), 2026-08-06): "We have never allowed prompts for specific artists or copyrighted songs"; artist names are **removed from prompts and redirected "toward descriptive musical characteristics"**; artist names are deliberately excluded from training metadata. So an artist name in the prompt does not merely fail — it is stripped, and the budget it occupied is wasted. Suno's Community Guidelines (updated 2026-08-06) separately prohibit reproducing existing songs and using a real person's voice or likeness without permission; stage names remain allowed.
+9. **Never put artist names in style prompts** — Suno strips them by policy (OFFICIAL); the rule and the decomposition check are in `references/safety-tables.md`.
 10. **On v6, every negative goes in the Exclude Styles field** — inline negation reads as inclusion (VENDOR ×2 + COMMUNITY). *Retired-model history:* negatives went at the END of the style prompt ("no [element]" was the most reliable in-prompt phrasing), and v5 handled in-prompt negatives better than v4.5.
 11. **Comma separation works across all models** — consistent delimiter
 12. **Describe, don't command** — "dreamy shoegaze with female vocals" over "Create a dreamy shoegaze song." (v4.5 examples use "Create a..." which matches Suno's own v4.5 docs, but descriptive style generally works better.)
@@ -351,25 +290,7 @@ A **Duration slider** now sits in the web Create form: "Drag the new Duration sl
 
 **Related: time-based instructions in the lyrics are not a duration control.** Lines like `lyrics begin at 0:00; instrumental only after 1:45` at the top of the lyrics field are **not reliably parsed** (COMMUNITY, and confirmed in our own use). They are harmless as an extra and must never be load-bearing — a short instrumental intro is Suno-standard, and post-generation crop is the only deterministic way to control where the vocal starts. Full treatment in the metatag reference under "Structural Timing in Lyrics."
 
-## Genre Keyword Ordering
-
-Front-loaded terms dominate the generation. Whatever genre term appears first in the style prompt sets the primary sound — Suno treats it as the anchor, and everything after it is progressively more "flavoring."
-
-When a genre should act as a secondary influence rather than the core sound, append qualifier words like "accents" or "undertones" to push it into the background. For example, `atmospheric swamp metal accents` tells Suno to use swamp metal as coloring rather than the main genre.
-
-**Practical rule:** Put your dominant genre first. Demote secondary genres with "accents," "undertones," "influences," or "elements."
-
-### First-Genre Dominance — Quantifying the Anchor
-
-Community research is sharper than "first matters": **genre and subgenre tags collectively determine ~60-70% of arrangement output, with the first-position term holding the strongest single signal** (HookGenius 1000+ prompt analysis, 2026). A three- or four-genre fusion prompt is not a balanced stew. It's a dominant anchor in position one with increasingly faint color pulls from each subsequent term.
-
-**Why this matters for counter-genre work:** When you're trying to push against a genre's gravity — accessible textures inside a heavy lane, slow pace inside a driving lane, acoustic framing under an electric identity — the counter-target genre has to occupy position one. Burying it at position 3 or 4 gives the counter-lane negligible arrangement influence, and Suno defaults to the first-position genre's conventions.
-
-**Example:** `progressive metal, heartland rock, acoustic singer-songwriter` will read as progressive metal with trace heartland influence — the acoustic anchor contributes almost nothing. To actually produce an acoustic-leaning track, the compound must open `acoustic singer-songwriter, ...` with metal and heartland demoted behind it.
-
-**Practical rule:** If you want genre X to drive the arrangement, X is position one. "Accents" / "undertones" / "influences" demote later terms but don't promote earlier ones — there is no way to get a buried genre to lead.
-
-### Brass-Band Gravity — Aggressive Counter-Emphasis Required
+## Brass-Band Gravity — Aggressive Counter-Emphasis Required
 
 When the prompt includes brass-band genre descriptors (`brass band`, `second-line`, `sousaphone`, `New Orleans funk-rock-brass fusion`, etc.), the brass gravity is exceptionally strong — strong enough that single-mention guitar or rhythm-section descriptors get buried in the gen output even when present in the critical zone.
 
@@ -386,44 +307,16 @@ When the prompt includes brass-band genre descriptors (`brass band`, `second-lin
 
 **Practical rule:** When prompting for brass-band-fusion genres where guitar (or any non-brass instrument) needs to surface in the mix, treat the counter-element as a genre-modifier first, then reinforce with multiple explicit instrument mentions in the critical zone. Do not assume single-mention promotion will work — it has been observed to fail repeatedly with brass-band gravity.
 
-**Counter-intuitive guidance:** This may LOOK like over-correction (three guitar mentions in 200 chars feels heavy-handed). Production testing confirms it's the right level for brass-band gravity specifically. The over-correction concern is wrong here — brass-band gravity requires it.
-
-The **Genre Term Behavior Table** is in `references/safety-tables.md`.
-
-### Era Tags as Sonic Targets
-
-Era-specific descriptors in the style prompt give Suno a production aesthetic target that single descriptors can't match. Use instead of artist names to evoke a period's sound.
-
-| Era Tag | What Suno Produces | Notes |
-|---|---|---|
-| `80s synth` | Analog synthesizers, gated reverb, drum machines | Pairs well with synthwave, new wave |
-| `90s grunge` | Distorted Seattle-sound guitars, raw production | Alternative rock territory |
-| `90s hip-hop` / `90s boom bap` | Golden age sampling, hard drums, vinyl texture | Classic hip-hop production |
-| `90s R&B` | New jack swing era production | Smooth, polished, Motown-adjacent |
-| `2000s emo` | MySpace-era emotional rock | Pop punk, confessional |
-| `2010s trap` | Atlanta trap wave, 808s, hi-hats | Modern hip-hop production |
-| `60s psychedelic` | Summer of love sound, analog warmth | Reverb-heavy, experimental |
-| `70s disco` / `70s soul` | Dance floor funk, Blaxploitation-era warmth | Groove-heavy, warm production |
-| `vintage` / `retro` | General throwback sound | Broad — pair with a decade for specificity |
-
-**Practical rule:** Era tags are stronger than individual production descriptors. `90s R&B` achieves more than listing "smooth, warm, polished, swing drums" individually. Combine era tags with genre for maximum precision: `90s boom bap, conscious rap` or `80s synth, darkwave`.
-
-**Reported v5.5 shift (ANECDOTAL, single publisher, 2026-08):** era tags are said to bias production **more aggressively on v5.5** than on v5 — "1980s" pulling gated reverb and period synths harder — while genre tags have become broader, so a term like `synthwave` now reportedly needs an era tag plus an instrument anchor to land where it used to. Single-source and unreplicated. If a v5.5 generation comes back more period-costumed than intended, this is a plausible first thing to test (drop or soften the era tag); do not pre-emptively strip era tags on its account.
-
-The **Dangerous Words and Keyboard Triggers** table is in `references/safety-tables.md`.
+Three guitar mentions in 200 characters looks like over-correction; for brass-band gravity it is the level that worked.
 
 ## Exclude Styles Field
 
 The Exclude Styles field (Pro/Premier only) is a separate input from the style prompt. Key behaviors:
 
 - **Functions as probability reduction, not a hard ban** — excluded elements are less likely but can still appear. Treat it as strong guidance, not a guarantee.
-- **v6: negatives belong only in this field.** Inline negatives read as inclusion on v6 (VENDOR ×2 + COMMUNITY), and users report Exclude is "far more necessary than previous versions" (COMMUNITY). Keep it to categories, keep it short, and pair each exclusion with a positive in the style prompt. *(Retired-model history: "no [element]" at the end of the style prompt worked as a supplement, more reliably on v5 than v4.5.)*
+- **v6 leans on it:** users report Exclude is "far more necessary than previous versions" (COMMUNITY). Keep it to categories.
 - **Length cap: 1,000 characters** (the live page markup, read in the 2026-10-03 sweep; the counter in the form is the final word). An earlier "no cap" claim doesn't hold for the web form.
-- **v6's rewrite leaves Exclude alone.** When Variety rewrote the style text, Exclude came through unchanged in 155 of 156 pairs (ANECDOTAL-controlled, 2026-10-03). That's one more reason negatives belong here.
-- **`key change` here when the song has to hold its key** (2026-10-03, where the song calls for it). See "v6 prompt guidelines" #7.
-- **Limit to 2-3 most important exclusions** — too many exclusions destabilize the arrangement and produce unpredictable results. Prioritize the exclusions that matter most for the song.
-- **Combine with positive instructions** — telling Suno what you DO want is more reliable than only excluding what you don't. Use Exclude Styles as a safety net alongside positive vocal/instrument guidance in the style prompt.
-- **Past ~5 exclude terms, output reportedly goes "sparse and thin"** (ANECDOTAL) — a documented ceiling on top of our 2-3 preference. If a list has grown past five, cut it rather than adding.
+- **Past 2-3 terms the arrangement destabilizes; past ~5, output reportedly goes "sparse and thin"** (ANECDOTAL). If a list has grown past five, cut it rather than adding.
 - **Hyphen-prefix syntax works** (ANECDOTAL leaning COMMUNITY): a minus sign per term — `-oohs, -aahs, -humming, -vocalise, -crowd chants` — is reported working in the Exclude Styles field, and matches the minus-prefix form already used in our own catalog.
 - **Weirdness above ~40 may override excludes** (ANECDOTAL, single user, who caps Weirdness at 40 to keep exclude integrity). This sits in direct tension with our production slider table, which routinely runs 50-75 and has not shown wholesale exclude failure — but it is a plausible partial explanation for the known "excludes are probability reduction, not a ban" behavior. **Practical reading:** if an exclusion keeps failing on a high-Weirdness song, try the same prompt at lower Weirdness before concluding the term is unexcludable. Do not lower Weirdness pre-emptively — the counter-genre work in this file depends on 60-70.
 - **Never put a negation in a standalone lyric bracket.** `[no vocals]` and its relatives act as *positive* prompts — the model reads the noun and drops the negation. Negatives belong in this field. See the metatag reference, "Negation Inside Standalone Brackets Backfires."
@@ -441,7 +334,7 @@ Unrequested ad-libs — improvised runs, "yeah"s, vocal fills — have two repor
 1. **Style Influence 80%+.** Tighter prompt adherence leaves less room for the model to add its own vocal decoration.
 2. **A denser style prompt with no empty space.** The reported contrast is stark: `Hard Rock, male vocal` is described as near-guaranteed ad-libs, while a ~20-descriptor prompt produces essentially none. The model appears to fill unspecified space with performance decoration.
 
-**Note the tension with our own guidance:** this file documents that Style Influence above ~80 plateaus for genre accuracy and can flatten vocal phrasing variation, and that 5-8 descriptors is our working density. Both can be true — SI 80+ buying ad-lib suppression at the cost of phrasing variety is a trade, not a free win, and a 20-descriptor prompt is well past our conflicting-signals threshold. Reach for the density lever first (more *specific* descriptors, not merely more), and treat SI 80+ as the targeted fix when ad-libs are the specific problem being solved. Parenthetical density in the lyrics is the third contributor — see the parentheses risk note in the metatag reference.
+SI 80+ buys ad-lib suppression at the cost of vocal phrasing variety, so reach for the density lever first (more *specific* descriptors, not merely more) and treat SI 80+ as the targeted fix when ad-libs are the problem being solved. Parenthetical density in the lyrics is the third contributor — see the parentheses risk note in the metatag reference.
 
 ### "Technical" as a Modifier
 
@@ -524,11 +417,9 @@ Two production tests on the same source song confirmed the failure:
 
 **The build-peak-elevated-settle dynamic archetype** is a direct consequence of this limitation — the outro can't return to bookend-sparse when brass keeps playing. That archetype emerges from the constraint rather than from a design choice, which is worth naming so it isn't mistaken for a stylistic preference.
 
-## Slider Guidelines
+## Slider Guidelines (counter-genre, uploaded audio, Extend)
 
-**On v6, start with the "Controls panel" table in the v6 section:** Variety at *Exact style* for pipeline-built prompts, Max Mode on for any generation you might keep (applied at generation, so it can't be added to a finished take), Personalize off, and Style Influence checked against its reported default of 50. The tables below were tuned on v5 and v5.5 — use them as a starting hypothesis for Weirdness and Style Influence, and note where v6 behaves differently.
-
-The **Weirdness and Style Influence by Song Type** table and the per-song anti-anchoring rule are in `references/safety-tables.md`.
+For counter-genre prompts, uploaded audio and Extend or Replace Section work. Tuned on v5 and v5.5: a starting hypothesis on v6. The song-type table and the per-song rule are in `references/safety-tables.md`.
 
 ### Goal-Based Slider Recipes (ANECDOTAL — single source, consistent with the song-type table)
 
@@ -553,8 +444,6 @@ Stated principle: "protect the most important result, run a controlled compariso
 
 **Weirdness is strongest during Extend and Bridge generation** — this is the primary cause of style drift in extended tracks. High Weirdness during Extend is more destabilizing than during initial generation. Keep Weirdness conservative during Extend operations; too-high Weirdness during Replace Section can also cause Persona/Voice identity shifts. Use callback phrasing ("continue same chorus energy") and re-inject genre/mood every 1-2 extends to prevent drift.
 
-**Style Influence above ~80 plateaus** — increasing further rarely improves genre accuracy, and can reduce vocal phrasing variation especially in vocals.
-
 ### Default Weirdness Normalizes Counter-Genre Prompts
 
 JG BeatsLab's v5.5 testing documents a default-Weirdness behavior that matters specifically for counter-genre work: _"v5.5 doesn't refuse niche genres — it reformats them. Give it a dungeon synth prompt and it will accept it, then quietly pull the output toward a polished, cinematic equilibrium."_ JG's practical guidance: _"Increase Weirdness for unusual fusions. The default Weirdness setting tries to normalize everything, which defeats the purpose of genre blending."_
@@ -575,7 +464,7 @@ Adding `clean guitars` to a heavy-rock prompt doesn't remove the power chords �
 |---|---|---|---|
 | Accessible guitar texture | Power chords | `clean guitars` | `fingerpicked arpeggiated voicings` |
 | Spacious feel | Wall-of-sound | `spacious mix` | `sparse instrumentation, single-guitar verses` |
-| Restrained dynamics | Full-band bombast | `controlled dynamics` | `subdued mid-range, no full-band payoff` |
+| Restrained dynamics | Full-band bombast | `controlled dynamics` | `subdued mid-range, arrangement stays sparse to the end` |
 
 Think of the descriptor budget as a **displacement budget**: each descriptor either crowds out its opposite or just sits next to it. Descriptors that occupy the same role-slot and can't structurally coexist are the ones that move the arrangement. Descriptors that name a quality without naming a form are weaker — Suno can honor `clean` while still deploying power chords.
 
@@ -615,14 +504,14 @@ A counter-genre prompt deploying all three techniques in their right slots looks
 
 ```
 acoustic singer-songwriter, heartland rock at 72 BPM halftime feel with patient southern slow-build dynamics,
-fingerpicked arpeggiated voicings, subdued mid-range, no full-band payoff, slow 6/8 lilt
+fingerpicked arpeggiated voicings, subdued mid-range, arrangement stays sparse to the end, slow 6/8 lilt
 
 Weirdness: 65 | Style Influence: 75
 ```
 
 - **Position 1 anchor** — `acoustic singer-songwriter` — the counter-lane, not the electric default
 - **Triple-signal tempo** — genre (heartland, slower default than prog or speed), BPM (72), rhythm noun (halftime feel) all aligned
-- **Displacement descriptors** — `fingerpicked arpeggiated voicings`, `subdued mid-range, no full-band payoff` — occupy role-slots that the unwanted qualities would need
+- **Displacement descriptors** — `fingerpicked arpeggiated voicings`, `subdued mid-range, arrangement stays sparse to the end` — occupy role-slots that the unwanted qualities would need
 - **One compound-meter signal** — `slow 6/8 lilt` — kept as a single aspirational nudge toward sway. **Expect 4/4 subdivision anyway**; it is here for the feel it reliably buys, not the meter it doesn't (see above). Two meter signals would be waste
 - **Elevated Weirdness (65)** — permission for Suno to honor the unusual combination instead of reformatting to polished cinematic defaults
 
@@ -681,8 +570,6 @@ Personas pull the overall sound toward the era of the source song used to create
 
 **Note on Voices (v5.5):** Voices is a separate feature that sits alongside Personas — it does **not** replace them (both live in the Voices menu; Personas still work). For era work, prefer a Voice: because Voices is actual voice cloning rather than style essence capture, it carries less era bias — the Voice contributes vocal tone without dragging production aesthetics from a source song.
 
-**When a Voice is active, drop timbre and gender descriptors that the Voice already defines** (COMMUNITY, sharpened 2026-08 from the earlier "they matter less"; pre-v6, so mild). Reclaim that budget for arrangement. **Delivery descriptors still matter** and should stay. On v6 (2026-10-03), the nuance is in "v6 prompt guidelines" #8: don't add character the Voice doesn't have, but reinforcing character it does have may help. The same logic applies to Custom Models: drop what the model already encodes, keep what directs this song.
-
 ### Audio Influence Slider Behavior
 
 The Audio Influence slider controls how strongly the persona's source audio shapes the generation. The effective range is **15-25%** — values outside this range are either too detached or produce diminishing returns.
@@ -701,22 +588,11 @@ The Audio Influence slider controls how strongly the persona's source audio shap
 - **Generate 3-5 versions** per prompt before modifying — v5 produces more varied results than v4.5, and the desired result often appears on the 2nd or 3rd generation
 - **One-change tests read better across more takes** (v6, 2026-10-03). In a measured outside series, take-to-take spread was bigger than the effect of rewording, and the ranking flipped between 2 and 4 takes (ANECDOTAL-controlled). Offer about 4 takes (two Creates) per variant as a suggestion, with that reason. How many takes to run is the user's call.
 - **Change only 1-2 variables** per iteration — isolate what works vs. what doesn't
-- **Style Influence above ~80 plateaus** — increasing further rarely improves genre accuracy
 - **For structural problems (wrong arrangement, bad section):** edit rather than re-prompt. At Pro that means the Song Editor's Replace Section plus Auto Split / Split from Mix stems; at Premier it additionally means Studio 2.0. Studio has always been Premier-only — do not offer it to a Pro user
 
 ## Reference Track Translation Guide
 
-When a user says "sounds like X meets Y," decompose into concrete attributes. **Never put artist names directly into the style prompt** — describe the sonic qualities of the era and style instead.
-
-### Confidence Check (Critical — Prevents Hallucination)
-
-Before decomposing any reference, honestly assess: **do you confidently know this artist/song well enough to accurately describe their distinctive sonic characteristics?**
-
-- **If confident** — proceed with decomposition using the extraction framework below
-- **If uncertain** (obscure artist, very recent release, regional/niche genre, or you're unsure of specific details) — **use web search first** (if a search tool is available) to research the artist's sound, genre, instrumentation, vocal style, and production approach. Then decompose from researched facts, not guesses.
-- **If uncertain and no search available** — tell the user honestly: "I'm not confident I know [artist] well enough to describe their sound accurately. Can you tell me what you like about their sound — the vibe, the instruments, the vocals?" Then decompose from the user's description instead.
-
-**Never fabricate sonic details for an artist you don't confidently know.** A wrong decomposition produces a style prompt that sounds nothing like what the user intended — and they won't know why until they hear the result.
+When a user says "sounds like X meets Y," decompose it into concrete attributes. The artist-name rule and the confidence check (know the artist, or web-search, or ask) are in `references/safety-tables.md`.
 
 ### What to Extract from a Reference
 
@@ -731,9 +607,3 @@ Before decomposing any reference, honestly assess: **do you confidently know thi
 
 - "Bon Iver meets Radiohead" → falsetto vocals, ambient electronics, acoustic guitar foundation, experimental song structures, melancholic beauty with electronic tension, lo-fi warmth with glitchy textures
 - "Dolly Parton meets Daft Punk" → country storytelling over electronic production, warm female vocals with robotic harmonies, acoustic meets synthesized, playful but polished
-
-Always show the user your decomposition before building the prompt so they can confirm or correct your interpretation.
-
-## Research Sources
-
-Provenance for the findings in this file is in `references/research-sources.md`.

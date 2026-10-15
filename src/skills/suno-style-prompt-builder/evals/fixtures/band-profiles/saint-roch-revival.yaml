@@ -1,0 +1,48 @@
+# Band Profile — Saint Roch Revival (synthetic eval fixture; not a real band)
+# Created: 2026-10-15
+# Last modified: 2026-10-15
+
+name: "Saint Roch Revival"
+version: 1
+instrumental: false
+
+genre: "New Orleans gospel-soul rock"
+mood: "joyful, testifying, bittersweet"
+language: "English"
+reference_tracks:
+  - "church-organ soul with a rock rhythm section and one preacher-style lead singer"
+
+model_preference: "v6"
+tier: "premier"
+
+style_baseline: >
+  New Orleans gospel-soul rock, one powerful lead singer in front of the band,
+  Hammond organ swells, churchy piano, tambourine backbeat, warm overdriven
+  guitar riffs, round bass groove, warm analog production.
+exclusion_defaults:
+  - "autotune"
+  - "synth pads"
+
+vocal:
+  gender: "female"
+  tone: "big, bright, gospel-trained"
+  delivery: "testifying, call-and-response with the organ"
+  energy: "builds to a shout-chorus feel without extra singers"
+  diction: "clear"
+  persona_reference: ""
+  persona_source_song: ""
+  voice_id: ""
+
+creativity_default: "balanced"
+
+sliders:
+  weirdness: 48
+  style_influence: 68
+  audio_influence: null
+
+custom_model_id: ""
+custom_model_notes: ""
+known_working_patterns: []
+known_limitations: []
+generation_learnings: []
+generation_history: []

@@ -174,7 +174,7 @@ def expected_identity(project_root: Path, sanctum: Path, skill_path: Path) -> tu
             notes.append(f"assets/{template} not found; {out_name} not checked.")
     csv_path = _seed.find_menu_csv(skill_path)
     if csv_path:
-        expected["CAPABILITIES.md"] = _seed.generate_capabilities_md(_seed.menu_rows(csv_path, [_seed.MODULE_CODE]))
+        expected["CAPABILITIES.md"] = _seed.generate_capabilities_md(_seed.menu_rows(csv_path))
     else:
         notes.append("assets/menu.csv not found; CAPABILITIES.md left as is.")
     return expected, notes

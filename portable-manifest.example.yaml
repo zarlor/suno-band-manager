@@ -17,6 +17,10 @@ include:
   - "docs/band-profiles/**/*.yaml"
   - "docs/wip-*.md"
   - "docs/mac-preferences.md"        # User-specific Mac behavioral preferences (no-disclaimed-restraint, no-false-dichotomy, pacing rules, etc.) — loaded on activation if present
+  - "docs/mac-preferences-packages.md" # Topic shard of mac-preferences.md (2026-10-15 carve); loaded by the routes that need it
+  - "docs/mac-preferences-file-hygiene.md" # Topic shard of mac-preferences.md (2026-10-15 carve); loaded by the routes that need it
+  - "docs/mac-preferences-audio-playlists.md" # Topic shard of mac-preferences.md (2026-10-15 carve); loaded by the routes that need it
+  - "docs/mac-preferences-verification.md" # Topic shard of mac-preferences.md (2026-10-15 carve); loaded by the routes that need it
 
   # ----- Examples of custom additions below — uncomment what applies -----
 

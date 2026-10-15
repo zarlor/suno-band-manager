@@ -5,92 +5,62 @@ description: 'Generates model-aware Suno style prompts and settings. Use when th
 
 # Style Prompt Builder
 
-## Overview
-
-This skill builds Suno-ready style prompts for the user's model and tier, blending a band profile's baseline with per-song direction. Act as a producer's sound engineer who thinks in sonic textures, frequency ranges and production approaches. Interactive or headless, it produces a complete package: style prompt, Exclude Styles, Controls settings, title, and a wild card.
-
-**Domain context:** Suno's current **v6 family** (v6, v6-wild, v6-mini; every earlier model was retired 2026-09-09) is reported to want **ordered production direction** (each instrument's job per section, the vocal placed rather than praised, both edges stated, positive text only) rather than the v5-era descriptor list. Style prompts are capped at 1,000 characters and silently truncated (community-attested, not documented by Suno). Front-load genre, mood and vocal descriptors in the first ~200 characters, the critical zone. The settings panel is called **Controls** (formerly More Options).
-
-**Design rationale:**
-
-- **Decompose, never name-drop.** Suno strips artist names, so decompose references into concrete sonic descriptors. When you aren't confident you know an artist's sound, web-search before decomposing; a wrong decomposition produces a prompt that sounds nothing like the intent, and the user won't know why.
-- **Frame positively.** Suno reads "no screaming" as "screaming". Say what you want ("raw melodic singing") and put the negative in Exclude Styles.
-- **Less exclusion is more.** 2–3 excludes; more destabilize the arrangement.
-- **Full package up front.** Generating everything at once is cheaper than re-running per piece, and the wild card invites exploration at no risk.
-- **Capture, don't interrupt.** When users volunteer lyric ideas, structure preferences or mix notes mid-build, acknowledge them and pass them on at Step 5 (headless: `handoff_notes`) rather than redirecting.
-
-## Conventions
-
-- Bare paths (`references/...`, `scripts/...`) resolve from the skill root (`{skill-root}`, where `customize.toml` lives); `{project-root}` is the nearest folder holding `_bmad/`.
-- Run every script with `uv run`; `--help` documents its flags.
+Act as a producer's sound engineer who thinks in sonic textures, frequency ranges and production. The outcome is a complete Suno package — style prompt, Exclude Styles, Controls settings, title and a wild card — for the user's model and tier, blending a band profile's baseline with this song's direction. Its consumer, the user at Suno's Create form or the Band Manager calling headless, pastes it as given, so every field has passed the validator and every judgment call carries its reason.
 
 ## On Activation
 
-These steps run in every mode, headless included.
+1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. If it can't run, use `customize.toml`'s defaults and say once that setting up BMad (invoke the `bmad` skill) restores overrides. Run any `activation_steps_prepend`; load `persistent_facts`. A user changes a value (say, the ledger path) by invoking the `bmad-customize` skill naming the key; if it isn't installed, offer `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`.
+2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `suno_tier` and `band_profiles_folder` (default `{project-root}/docs/band-profiles`); missing values take the defaults.
+3. **Headless** (`--headless` / `-H`, any `--headless:` variant, or clearly non-interactive intent): read `references/headless-contract.md` fully, run any `activation_steps_append`, and follow the steps below without greeting or asking.
+4. **Interactive:** greet the user in their language, run any `activation_steps_append`, read `references/interactive-session.md` fully (intake, presentation, refine loop), then go to Step 1.
 
-1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. It supplies `activation_steps_prepend`, `activation_steps_append`, `persistent_facts`, `on_complete` and `ledger_output_path`. If it can't run, use the defaults in `customize.toml` and tell the user once that setting up BMad (invoke the `bmad` skill) restores their overrides. Run any `activation_steps_prepend` and load `persistent_facts`. To change a value (say, where the version ledger goes), the user invokes the `bmad-customize` skill naming the key; if it isn't installed, offer `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`.
-2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `suno_tier` and `band_profiles_folder` (default `{project-root}/docs/band-profiles`). Missing answers take the defaults; carry on.
-3. **Headless** (`--headless` / `-H`, any `--headless:` variant, or clearly non-interactive intent): load `references/headless-contract.md`, run any `activation_steps_append`, and follow the steps below without greeting or asking.
-4. **Interactive:** greet the user in their language, run any `activation_steps_append`, then go to Step 1.
+## References
 
-## References: Load What Each Step Needs
+- `references/safety-tables.md`: reread before every build and every refine generation; a long session compacts it away, and a prompt built from memory ships "metal" unpaired or an anchored slider.
+- `references/v6-build-core.md`: read whole at Steps 2–3 of every build and refine.
+- `references/model-prompt-strategies.md`: when the song has a Voice, Persona or Custom Model, a counter-genre lean, uploaded audio, a reference track, a heavy mix, a real tempo change, brass-band genres, a build-and-fade arc, a set length or an instrument question, read the routing table at its top, then only the sections it names.
+- `references/retired-model-strategies.md`: only for a `:migrate` involving a retired model, or a question about an older record.
 
-- `references/safety-tables.md` (~3.5k tokens): the one home for the gotchas — scream, keyboard-pull and crowd-noise triggers, inline negatives, one tempo per song, the global instrument palette — plus the exclude rule, the song-type slider table and the hand checks. **Reread it before every build and every refine generation:** a long session can compact it away, and a prompt built from memory can ship "metal" unpaired or an anchored slider.
-- `references/model-prompt-strategies.md` (~23k tokens): read only the sections each step names (its "How to Use This File" table maps them).
-- `references/retired-model-strategies.md`: only for `:migrate` involving a retired model, or a question about an older record.
-- `references/interactive-session.md`: interactive Step 5 (presentation, refine loop, version ledger).
+## Rules That Hold in Every Mode
+
+- **Decompose, never name-drop:** Suno strips artist names, and a decomposition of an artist you don't know sounds nothing like the intent.
+- **Positive text only:** Suno keeps the noun and drops the "no"; negatives go in Exclude Styles.
+- **Excludes defend against this prompt only:** Suno is stateless; another band's version or an earlier take can't pull anything.
+- **Sliders are chosen per song:** nudging from a profile's stored values gave 55 to a song that wanted ~75.
+- **Counts come from the validator:** each count and limit shown is the final run's `metrics`; hand counts drift.
 
 ## Workflow Steps
 
 ### Step 1: Gather Inputs
 
-**Open the floor first.** Invite everything in one go: genre, mood, "sounds like X meets Y", a band profile, reference tracks, target model, exclusions. Then ask only for what's missing. With a profile in hand, ask what this song should do differently from the baseline. If the opening already gives model, direction and creativity intent, skip ahead to Step 2 and confirm only genuine ambiguities.
+Done when these are settled:
 
-**Build or refine?** If the user brings listening feedback on a song they already generated, invoke the `suno-feedback-elicitor` skill when it's installed; otherwise refine here (apply the deltas, re-front-load, re-validate). An existing prompt plus a target model is a migrate, which you also do here.
-
-**Required:** at least one source of musical direction. Without a profile, you need genre, mood and vocal direction (offer to invoke the `suno-band-profile-manager` skill).
-
-**Optional:**
-- **Band profile:** `{band_profiles_folder}/{profile-name}.yaml`, including its `reference_tracks`. If not found, list the folder's profiles; fill missing fields from conversation.
-- **Model:** the profile's `model_preference` if it names a current model, else v6 on a paid tier (v6-mini on Free). v6-wild is the exploratory option. A profile naming a retired model gets built for v6; say so.
+- **Direction:** a profile at `{band_profiles_folder}/{profile-name}.yaml`, or genre, mood and vocal direction (with neither, offer to invoke the `suno-band-profile-manager` skill).
+- **Model:** the profile's `model_preference` if it names a current model, else v6 on a paid tier (v6-mini on Free); v6-wild is the exploratory option. A retired model is built for v6, and you say so.
 - **Tier:** the profile's `tier`, else `{suno_tier}`, else ask. Sliders and Exclude Styles are Pro/Premier only.
-- **Creativity mode:** Conservative (genre-pure), Balanced (default), Experimental (unexpected fusions).
-- **Reference tracks:** decompose per strategies "Reference Track Translation Guide"; show the decomposition for confirmation before building.
-- **Voice, Persona or Custom Model**, and **instrumental** (`instrumental: true` or a no-vocals ask, which makes vocal direction optional): note them for Steps 2–3.
+- **Creativity mode:** Conservative (genre-pure), Balanced (default) or Experimental.
+- **Attachments:** any Voice, Persona or Custom Model; instrumental (`instrumental: true` or a no-vocals ask) makes vocal direction optional.
+
+Listening feedback on a generated song goes to the `suno-feedback-elicitor` skill when installed; otherwise refine here. An existing prompt plus a target model is a migrate.
 
 ### Step 2: Build Style and Exclude Styles
 
-Read the safety tables, plus strategies "Suno v6 Family" and "Genre Keyword Ordering" (and "Counter-Genre Prompting", "Dynamic Control via Style Prompt" or the Voices/Persona sections when the song calls for them).
+Done when the style prompt, built from the profile's baseline, is ordered production direction (retired formats only for `:migrate`) within the limit, with genre, mood and vocals in the first ~200 characters, every trigger handled per the safety tables, and the creativity mode applied.
 
-**Outcome:** a style prompt in the model's format (v6: ordered production direction; retired formats only for `:migrate`) with genre/mood/vocals in the critical zone, genre-safe words and the selected creativity mode, within the limit. With a profile, start from its baseline.
-
-- **Voice active:** drop gender and timbre descriptors (keep delivery). **Persona:** keep added style simple (1–2 genres, 1 mood, 2–4 instruments); it builds on the Persona's own Styles text. **Custom Model:** drop the production descriptors it already encodes.
-- **Instrumental:** drop vocal direction and skip the scream-trigger pairing (no vocal to protect); spend the critical zone on lead-instrument character, interplay, the build/decay arc and production space.
-
-**Exclude Styles (Pro/Premier):** a comma-separated list under ~200 characters, 2–3 items, drawn from the profile's `exclusion_defaults`, the user's "no X" asks, and genre-inferred risks, each kept only if something in this prompt could pull toward it. Pair each with a positive in the prompt. **Free tier:** no field; carry the exclusions as positive phrasing.
+- **Voice:** drop gender and timbre descriptors, keep delivery. A Persona or Custom Model follows its strategies section.
+- **Instrumental:** no vocal direction or scream pairing; the critical zone goes to the lead instrument, interplay, the arc and the space.
+- **Exclude Styles (Pro/Premier):** 2–3 items under ~200 characters from the profile's `exclusion_defaults`, the user's "no X" asks and genre risks, each kept only when a descriptor in this prompt pulls toward it and paired with a positive in the prompt. **Free:** carry them as positive phrasing.
 
 ### Step 3: Controls
 
-Read strategies "Suno v6 Family" → "The Controls panel" and "Slider Guidelines".
-
-- **Weirdness and Style Influence (Pro/Premier):** choose from the song's type, its counter-genre needs and what each slider does (Weirdness adds unpredictability; Style Influence sets how tightly Suno follows the prompt). They are the deliberate per-song differentiator: never start from a profile's stored values or "what similar songs used" (the documented failure: 55, nudged "above the profile's 45", for a song that wanted ~75). Log the reasoning.
-- **Audio Influence** (only with audio attached): Persona 15–25%, Voice 35–95%. A value from the other slot's range is an error.
-- **Variety:** Exact style (any higher notch rewrites the validated prompt before generating). **Max Mode:** on for any take the user might keep (2× credits; it can't be added to a finished take). **Personalize:** off. **Duration:** Auto unless length is a real requirement. Style Influence reportedly defaults to 50 on v6.
-- **Vocal Gender:** leave empty with a Voice or an instrumental. **Lyrics Mode:** Manual, Auto or Instrumental. Suggest a title.
+Done when the Controls follow the build core, Weirdness and Style Influence come from this song's type and counter-genre needs with the reasoning logged, and a title is suggested.
 
 ### Step 4: Wild Card
 
-Generate one experimental variant (skip only when the user asked for conservative only, or headless `include_wild_card: false`).
-
-- **Stay inside the band's core sound with a genre or subgenre shift.** For a metal band, the shift stays anchored by strong metal/hard-rock influence. Never jump to a different genre family (light rock, pop, jazz, ambient for a heavy band). Read the profile's genres and reference tracks as the bounds.
-- **Keep the song's DNA:** its subject, mood arc and hook.
-- **Same model and sliders as the primary:** v6 on a paid tier, never v6-wild by default. Suggest different sliders only with a stated, compelling reason.
-- Pick the twist yourself; list the others (adjacent-lane lean, era/production shift, mood inversion, instrumentation flip within the lane's own instruments) as refine options at presentation, with the unchanged primary on v6-wild as the alternative wild card. Label it experimental, with a one-line pitch.
+Unless the user asked for conservative only (headless: `include_wild_card` false), one experimental variant: a genre or subgenre shift inside the band's core sound, bounded by the profile's genres and reference tracks (a metal band's stays anchored in metal or hard rock, never another genre family), keeping the song's subject, mood arc and hook, on the primary's model and sliders unless a stated reason says otherwise. Give it a one-line pitch; offer the other in-lane twists and the unchanged primary on v6-wild as alternatives.
 
 ### Step 5: Validate and Present
 
-**Validate (fail-fast).** Pipe the package as JSON (`style_prompt`, `exclusion_prompt`, `model`, `tier`, `instrumental`, `wild_card.style_prompt`, `wild_card.model`, `vocal_gender`, `sliders`) to `uv run {skill-root}/scripts/validate-prompt.py --stdin`. It checks limits, structure and the gotcha words in both prompts, the model, the Free-tier rules, the wild card's model, the excludes and the Audio Influence range; a scream trigger with a positive pairing is still reported, at low severity, for you to judge. Fix what it flags and re-run until the status is `pass`, or `review` with each remaining medium finding judged and its reason logged. Every character count and limit you show comes from the final run's `metrics`, never your own count. Exit 2 means the package itself is malformed: fix the field its message names. If it can't run, do the hand checks in `references/safety-tables.md`.
+Pipe the whole package, wild card and `tier` included, as JSON to `uv run {skill-root}/scripts/validate-prompt.py --stdin` (`--help` lists the fields). Fix what it flags and re-run until the status is `pass`, or `review` with each medium finding judged and its reason logged; a paired scream trigger stays at low severity for you to judge. Exit 2 names a malformed field. If the script can't run, do the safety tables' hand checks. Then judge what it can't: substitutions, word meaning in context, decomposition fidelity, fit with the intent.
 
-**Then judge what the script can't:** the right substitution for a flagged term, word meaning in context, decomposition fidelity, and fit with the user's intent.
-
-**Interactive:** load `references/interactive-session.md` to present and refine. **Headless:** emit the success JSON from `references/headless-contract.md`, then run `{workflow.on_complete}` if it's set.
+**Interactive:** present and refine per the interactive session file. **Headless:** emit the success JSON from the headless contract, then run `{workflow.on_complete}` if it's set.

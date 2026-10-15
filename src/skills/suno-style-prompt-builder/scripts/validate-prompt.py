@@ -478,13 +478,15 @@ def _tag(findings: list, field: str) -> list:
 def build_report(style_findings: list, exclusion_findings: list, style_text: str, exclusion_text: str,
                  skill_path: str = "", *, model: str = "", wild_card_findings: list | None = None,
                  wild_card_text: str = "", control_findings: list | None = None,
-                 package_findings: list | None = None, wild_card_model: str = "") -> dict:
+                 package_findings: list | None = None, wild_card_model: str = "",
+                 wild_card_exclusion_findings: list | None = None, wild_card_exclusion_text: str = "") -> dict:
     """Build the standard output report."""
     all_findings = (
         _tag(package_findings or [], "package")
         + _tag(style_findings, "style_prompt")
         + _tag(exclusion_findings, "exclusion_prompt")
         + _tag(wild_card_findings or [], "wild_card_prompt")
+        + _tag(wild_card_exclusion_findings or [], "wild_card_exclusion_prompt")
         + _tag(control_findings or [], "controls")
     )
 
@@ -509,6 +511,8 @@ def build_report(style_findings: list, exclusion_findings: list, style_text: str
         "exclusion_recommended_max": EXCLUSION_RECOMMENDED_MAX,
         "exclusion_item_count": len(exclusion_items(exclusion_text)),
     }
+    if wild_card_exclusion_text:
+        metrics["wild_card_exclusion_chars"] = len(wild_card_exclusion_text)
     if wild_card_text:
         wild = wild_card_model or model
         metrics["wild_card_prompt_chars"] = len(wild_card_text)
@@ -579,6 +583,9 @@ def validate_package(package: dict, skill_path: str = "") -> dict:
     exclusion_key = "exclusion_prompt" if package.get("exclusion_prompt") is not None else "exclude_styles"
     exclusion_text = _text_field(package, exclusion_key)
     wild_text, wild_model = _wild_card(package)
+    wc = package.get("wild_card")
+    # The wild card's own Exclude Styles (null = it reuses the primary's) is checked like the primary's.
+    wild_exclusion = _text_field(wc, "exclusion_prompt", "wild_card.") if isinstance(wc, dict) else ""
     sliders = package.get("sliders")
     if sliders is None:
         sliders = {}
@@ -612,6 +619,8 @@ def validate_package(package: dict, skill_path: str = "") -> dict:
             _text_field(package, "vocal_gender"),
         ),
         package_findings=package_findings,
+        wild_card_exclusion_findings=validate_exclusion_prompt(wild_exclusion) if wild_exclusion else [],
+        wild_card_exclusion_text=wild_exclusion,
     )
 
 

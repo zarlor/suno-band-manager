@@ -67,7 +67,7 @@ def builtin_roster(project_root: Path, skill_path: Path) -> list[dict]:
     csv_path = _seed.find_menu_csv(skill_path)
     if csv_path is None:
         return []
-    return _seed.menu_rows(csv_path, [_seed.MODULE_CODE])
+    return _seed.menu_rows(csv_path)
 
 
 def scaffold(project_root: Path, skill_path: Path) -> dict:

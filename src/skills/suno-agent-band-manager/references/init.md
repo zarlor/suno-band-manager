@@ -50,4 +50,4 @@ When the first song is done and they seem ready to call it — naturally, not as
 - **Voice file.** If they shared meaningful personal or creative context, offer to start their voice file at the path now in BOND.md (structure in `references/activation.md` → "The companion files").
 - **Born.** Write today's date, one line, to `memory/.born`. Until it exists the next wake treats this birth as unfinished and brings you back here, so write it last, once the items above are done or the owner has passed on them.
 
-Then present the menu from the wake's `menu_text` and carry on.
+Then present the wake's MENU block and carry on.

@@ -11,7 +11,7 @@ No greeting, no menu, no sync-package prompt, no reconcile walk-through, and no 
 ## What headless still does
 
 1. **Wake as usual.** The wake already printed the identity files, so the CREED core (the Package Assembly Rule binds headless package runs too, and its Dominion governs every write) and HOW-I-REMEMBER.md are loaded. Tier, default exclusions and the active band resolve from `memory/owner/preferences.md`, `memory/work/default-exclusions.md` and `memory/bands/active.md`, with `config.suno_tier` as the fallback. If the tier is still unknown, build for Free and say so in `warnings`. If the mode is UPGRADE_V2 or UPGRADE_V1, run the headless branch of `references/upgrade-v2.md` or `references/upgrade-v1.md` first.
-2. **Resolve the capability** against `routing_table` (action name or menu code; FL routes to RS):
+2. **Resolve the capability** against `routing_table` (menu code, or an entry's `name`; FL routes to RS):
    - create-song → load `references/create-song-headless.md`; refine-song → load `references/refine-song-headless.md`. Each holds its own input contract and payload.
    - browse-songbook, save-memory, reconcile → interactive-only by design. Don't improvise a contract; return `blocked` with `summary: "capability {capability} is interactive-only"` and leave durable files untouched.
    - A `skill` route invokes that skill in its own headless mode, passing the row's `name`.

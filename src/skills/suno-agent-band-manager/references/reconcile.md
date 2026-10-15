@@ -6,6 +6,8 @@ description: Reconcile stale references across docs and sanctum memory files aft
 **Language:** Use `{communication_language}` for all output.
 **Variables:** `{project-root}`, `{communication_language}`
 
+**Preference shard first.** If `{project-root}/docs/mac-preferences-file-hygiene.md` exists (the wake lists it under `voice_context.preference_shards`), read it in full before anything else here: it holds the owner's saving, syncing, durable-file and release rules.
+
 # Reconcile References
 
 When authoritative data changes in one file, stale references may persist in other files. This reference defines how to detect and fix them.

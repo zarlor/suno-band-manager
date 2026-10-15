@@ -9,7 +9,7 @@ sibling folder at install time. Each skill whose scripts import a helper carries
 copy in scripts/_shared/: exactly the helpers its scripts import, plus the helpers
 those import, plus __init__.py. src/_shared/ is the single place to edit them. Run
 this after editing a helper or changing a script's imports; with --check it only
-reports, and src/_shared/tests/test-vendored-copies.py fails on drift.
+reports, and src/_shared/tests/test_vendored_copies.py fails on drift.
 
 Usage: uv run dev-tools/sync-shared.py [--check]
 """

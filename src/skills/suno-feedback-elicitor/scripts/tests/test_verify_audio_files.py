@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["pyyaml>=6.0"]
+# ///
+"""Tests for verify-audio-files.py.
+
+verify-audio-files.py is the receiving-machine half of the multi-machine
+audio-drift pair: it compares local audio files against a canonical
+audio-files-manifest.yaml and classifies each as matched / missing /
+size_mismatch / extra. These tests round-trip with the manifest generator and
+pin the three mismatch classes, the size-tolerance behavior, and the exit-code
+contract (0 = clean, 1 = mismatches, 2 = error).
+"""
+
+import json
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+SCRIPTS = Path(__file__).parent.parent
+MANIFEST_SCRIPT = str(SCRIPTS / "audio-files-manifest.py")
+VERIFY_SCRIPT = str(SCRIPTS / "verify-audio-files.py")
+
+
+def run(script: str, args: list[str]) -> tuple[int, dict]:
+    result = subprocess.run([sys.executable, script, *args], capture_output=True, text=True)
+    try:
+        out = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        out = {"raw_stdout": result.stdout, "raw_stderr": result.stderr}
+    return result.returncode, out
+
+
+class VerifyAudioFilesTest(unittest.TestCase):
+    def make_tempdir(self) -> Path:
+        td = tempfile.TemporaryDirectory()
+        self.addCleanup(td.cleanup)
+        return Path(td.name)
+
+    def make_project(self, files: dict[str, int]) -> Path:
+        root = self.make_tempdir()
+        audio = root / "docs" / "audio"
+        audio.mkdir(parents=True)
+        for name, size in files.items():
+            (audio / name).parent.mkdir(parents=True, exist_ok=True)
+            (audio / name).write_bytes(b"x" * size)
+        return root
+
+    def test_verify_clean_round_trip_exits_0(self):
+        root = self.make_project({"Song A.mp3": 1000, "Song B.mp3": 2000})
+        run(MANIFEST_SCRIPT, [str(root)])
+        code, out = run(VERIFY_SCRIPT, [str(root)])
+        self.assertEqual(code, 0)
+        self.assertEqual(out["status"], "ok")
+        self.assertEqual(out["summary"]["missing"], 0)
+        self.assertEqual(out["summary"]["size_mismatch"], 0)
+        self.assertEqual(out["summary"]["extra"], 0)
+
+    def test_verify_detects_missing_and_extra_and_mismatch(self):
+        root = self.make_project({"Song A.mp3": 1000, "Song B.mp3": 2000})
+        run(MANIFEST_SCRIPT, [str(root)])
+        audio = root / "docs" / "audio"
+        (audio / "Song B.mp3").unlink()              # missing
+        (audio / "Song A.mp3").write_bytes(b"x" * 50000)  # size_mismatch
+        (audio / "Song C.mp3").write_bytes(b"x" * 3000)   # extra
+        code, out = run(VERIFY_SCRIPT, [str(root)])
+        self.assertEqual(code, 1)
+        self.assertEqual(out["status"], "mismatch")
+        self.assertEqual(out["summary"]["missing"], 1)
+        self.assertEqual(out["summary"]["size_mismatch"], 1)
+        self.assertEqual(out["summary"]["extra"], 1)
+
+    def test_verify_missing_manifest_exits_2(self):
+        root = self.make_project({"Song A.mp3": 1000})
+        code, out = run(VERIFY_SCRIPT, [str(root)])
+        self.assertEqual(code, 2)
+        self.assertEqual(out["status"], "error")
+        self.assertEqual(out["error"], "manifest-not-found")
+
+    def test_verify_size_tolerance_absorbs_id3_variance(self):
+        root = self.make_project({"Song A.mp3": 100000})
+        run(MANIFEST_SCRIPT, [str(root)])
+        (root / "docs" / "audio" / "Song A.mp3").write_bytes(b"x" * 100512)  # +512, within 1024
+        code, out = run(VERIFY_SCRIPT, [str(root)])
+        self.assertEqual(code, 0)
+        self.assertEqual(out["summary"]["size_mismatch"], 0)
+
+    def test_verify_filename_variant_matches(self):
+        """A -v2 variant of the canonical name still matches by normalized identity."""
+        root = self.make_project({"Song A.mp3": 100000})
+        run(MANIFEST_SCRIPT, [str(root)])
+        audio = root / "docs" / "audio"
+        (audio / "Song A.mp3").rename(audio / "Song A-v2.mp3")
+        code, out = run(VERIFY_SCRIPT, [str(root)])
+        self.assertEqual(code, 0)
+        self.assertEqual(out["summary"]["matched"], 1)
+
+    def test_verify_band_folders_round_trip(self):
+        """Same title in two band folders: both tracked separately and both match."""
+        root = self.make_project({"band-a/Song.mp3": 100000, "band-b/Song.mp3": 200000})
+        run(MANIFEST_SCRIPT, [str(root)])
+        code, out = run(VERIFY_SCRIPT, [str(root)])
+        self.assertEqual(code, 0)
+        self.assertEqual(out["summary"]["matched"], 2)
+
+    def test_verify_same_title_in_other_band_does_not_cross_match(self):
+        """A band folder is part of the identity: band-b/Song never satisfies band-a/Song."""
+        root = self.make_project({"band-a/Song.mp3": 100000})
+        run(MANIFEST_SCRIPT, [str(root)])
+        audio = root / "docs" / "audio"
+        (audio / "band-b").mkdir()
+        (audio / "band-a" / "Song.mp3").rename(audio / "band-b" / "Song.mp3")
+        code, out = run(VERIFY_SCRIPT, [str(root)])
+        self.assertEqual(code, 1)
+        self.assertEqual([m["name"] for m in out["missing"]], ["band-a/Song.mp3"])
+        self.assertEqual([e["name"] for e in out["extra"]], ["band-b/Song.mp3"])
+
+    def test_verify_legacy_flat_manifest_matches_band_layout(self):
+        """A manifest generated before the per-band move still verifies after it."""
+        root = self.make_project({"Song.mp3": 100000})
+        run(MANIFEST_SCRIPT, [str(root)])
+        audio = root / "docs" / "audio"
+        (audio / "band-a").mkdir()
+        (audio / "Song.mp3").rename(audio / "band-a" / "Song.mp3")
+        code, out = run(VERIFY_SCRIPT, [str(root)])
+        self.assertEqual(code, 0)
+        self.assertEqual(out["summary"]["matched"], 1)
+
+    def test_verify_manifest_outside_project_root(self):
+        """--manifest may point outside the project (e.g. a saved copy) without crashing."""
+        root = self.make_project({"Song.mp3": 100000})
+        run(MANIFEST_SCRIPT, [str(root)])
+        outside = self.make_tempdir() / "saved-manifest.yaml"
+        outside.write_text((root / "docs" / "audio-files-manifest.yaml").read_text())
+        code, out = run(VERIFY_SCRIPT, [str(root), "--manifest", str(outside)])
+        self.assertEqual(code, 0)
+        self.assertEqual(out["manifest_path"], str(outside))
+
+    def test_verify_legacy_flat_manifest_root_variant_does_not_block_band_file(self):
+        """Flat manifest with Song.mp3 + Song (1).mp3; after the move only Song.mp3 goes
+        into a band folder. The root-level variant must not shadow the moved file."""
+        root = self.make_project({"Song.mp3": 100000, "Song (1).mp3": 150000})
+        run(MANIFEST_SCRIPT, [str(root)])
+        audio = root / "docs" / "audio"
+        (audio / "band-a").mkdir()
+        (audio / "Song.mp3").rename(audio / "band-a" / "Song.mp3")
+        code, out = run(VERIFY_SCRIPT, [str(root)])
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out["summary"]["matched"], 2)
+
+
+if __name__ == "__main__":
+    unittest.main()

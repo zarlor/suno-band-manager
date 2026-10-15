@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
+"""Tests for _shared/loudness.py.
+
+The gating, percentile, and seam logic is pure Python and runs anywhere. The
+BS.1770 measurement itself is checked against a known reference (a 997 Hz sine
+at 0.1 peak in mono reads -23.0 LUFS) via `uv run --with numpy --with
+pyloudnorm`, so it skips when uv is unavailable.
+"""
+
+import importlib.util
+import shutil
+import subprocess
+import sys
+import unittest
+from pathlib import Path
+
+SHARED = Path(__file__).resolve().parent.parent
+spec = importlib.util.spec_from_file_location("loudness", SHARED / "loudness.py")
+loudness = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(loudness)
+UV = shutil.which("uv")
+
+
+class TestLoudness(unittest.TestCase):
+    def test_percentile_matches_linear_interpolation(self):
+        vals = [1.0, 2.0, 3.0, 4.0, 5.0]
+        self.assertEqual(loudness._percentile(vals, 0), 1.0)
+        self.assertEqual(loudness._percentile(vals, 100), 5.0)
+        self.assertEqual(loudness._percentile(vals, 50), 3.0)
+        self.assertAlmostEqual(loudness._percentile(vals, 95), 4.8)
+
+    def test_loudness_range_constant_curve_is_zero(self):
+        self.assertEqual(loudness.loudness_range([-14.0] * 20), 0.0)
+
+    def test_loudness_range_gates_silence_and_quiet_outliers(self):
+        curve = [None, -90.0] + [-20.0] * 10 + [-10.0] * 10 + [-45.0]  # -45 is > 20 LU below the power mean
+        self.assertEqual(loudness.loudness_range(curve), 10.0)
+
+    def test_loudness_range_needs_five_values(self):
+        self.assertIsNone(loudness.loudness_range([-14.0, -13.0, None]))
+
+    def test_seam_step_and_quality(self):
+        loud_end = {"thirds_lufs": [-16.0, -13.0, -10.0]}
+        quiet_open = {"thirds_lufs": [-19.0, -14.0, -12.0]}
+        self.assertEqual(loudness.seam_step(loud_end, quiet_open), -9.0)
+        self.assertEqual(loudness.seam_quality(-9.0), "big jump (quieter)")
+        self.assertEqual(loudness.seam_quality(4.2), "noticeable (louder)")
+        self.assertEqual(loudness.seam_quality(-2.9), "smooth")
+        self.assertIsNone(loudness.seam_quality(None))
+
+    def test_seam_step_tolerates_missing_data(self):
+        self.assertIsNone(loudness.seam_step(None, {"thirds_lufs": [-10, -10, -10]}))
+        self.assertIsNone(loudness.seam_step({"thirds_lufs": [-10, -10, None]}, {"thirds_lufs": [-10, -10, -10]}))
+
+    @unittest.skipIf(UV is None, "uv not available to provision numpy/pyloudnorm")
+    def test_bs1770_reference_sine_and_build(self):
+        code = f"""
+import sys, numpy as np
+sys.path.insert(0, {str(SHARED)!r})
+import loudness
+sr = 48000
+t = np.arange(sr * 12) / sr
+sine = 0.1 * np.sin(2 * np.pi * 997 * t)
+s = loudness.summarize(sine, sr)
+assert abs(s["integrated_lufs"] - (-23.0)) < 0.2, s
+assert s["lra_lu"] is not None and s["lra_lu"] < 0.5, s
+ramp = sine * np.repeat([0.5, 1.0, 2.0], sr * 4)
+b = loudness.summarize(ramp, sr)["build_lu"]
+assert abs(b - 12.04) < 0.3, b  # x4 amplitude from first third to last = +12 dB
+print("ok")
+"""
+        proc = subprocess.run([UV, "run", "--quiet", "--no-project", "--with", "numpy", "--with", "pyloudnorm",
+                               "python", "-c", code], capture_output=True, text=True, timeout=600)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout.strip(), "ok")
+
+    def test_seam_step_prefers_entry_exit_over_thirds(self):
+        prev = {"thirds_lufs": [-16.0, -13.0, -10.0], "exit_lufs": -22.0}
+        nxt = {"thirds_lufs": [-19.0, -14.0, -12.0], "entry_lufs": -12.5}
+        self.assertEqual(loudness.seam_step(prev, nxt), 9.5)           # exit/entry used
+        del nxt["entry_lufs"]
+        self.assertEqual(loudness.seam_step(prev, nxt), -9.0)          # falls back to thirds
+
+    @unittest.skipIf(UV is None, "uv not available to provision numpy/pyloudnorm")
+    def test_entry_exit_trim_silence_and_measure_edges(self):
+        code = f"""
+import sys, numpy as np
+sys.path.insert(0, {str(SHARED)!r})
+import loudness
+sr = 48000
+t = np.arange(sr * 40) / sr
+sig = 0.1 * np.sin(2 * np.pi * 997 * t)
+sig[: sr * 20] *= 0.25                      # quiet first half (-12 dB), loud second half
+song = np.concatenate([np.zeros(sr * 3), sig, np.zeros(sr * 5)])   # silence both ends
+s = loudness.summarize(song, sr)
+assert abs(s["entry_lufs"] - (-35.0)) < 0.4, s   # silence trimmed; quiet opening measured
+assert abs(s["exit_lufs"] - (-23.0)) < 0.4, s    # loud ending measured
+print("ok")
+"""
+        proc = subprocess.run([UV, "run", "--quiet", "--no-project", "--with", "numpy", "--with", "pyloudnorm",
+                               "python", "-c", code], capture_output=True, text=True, timeout=600)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout.strip(), "ok")
+
+
+if __name__ == "__main__":
+    unittest.main()

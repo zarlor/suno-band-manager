@@ -395,9 +395,9 @@ def substitute_vars(content: str, variables: dict) -> str:
 # ---------------------------------------------------------------------------
 
 AGENT_SKILL_NAME = "suno-agent-band-manager"
-MODULE_CODE = "Suno Band Manager"
-# BMad v7 has no module help CSV; Mac's menu rows ship in his own skill, in the
-# old CSV columns so the menu, routing and CAPABILITIES.md share one source.
+# BMad v7 has no module help CSV; Mac's menu rows ship in his own skill, so the
+# menu, the routing table and CAPABILITIES.md share one source. Columns:
+# code, name, description (the menu line) and skill, action (the route).
 MENU_CSV_REL = ("assets", "menu.csv")
 
 # Rows the menu file keeps for standalone use but Mac's own menu leaves out.
@@ -414,54 +414,43 @@ def find_menu_csv(skill_dir: Path) -> Path | None:
     return candidate if candidate.is_file() else None
 
 
-def menu_rows(csv_path: Path, include_modules: list[str] | None = None) -> list[dict]:
-    """Rows for Mac's menu: this module's rows minus the folded-in FL."""
+def menu_rows(csv_path: Path) -> list[dict]:
+    """Rows for Mac's menu, in menu order, minus the folded-in FL."""
     rows: list[dict] = []
     with open(csv_path, encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
-            skill = (row.get("skill") or "").strip()
-            action = (row.get("action") or "").strip()
-            if (skill, action) in MAC_MENU_EXCLUDE:
-                continue
-            if include_modules is not None and (row.get("module") or "").strip() not in include_modules:
+            row = {k: (v or "").strip() for k, v in row.items() if k}
+            if (row.get("skill", ""), row.get("action", "")) in MAC_MENU_EXCLUDE:
                 continue
             rows.append(row)
     return rows
 
 
 def route_for(row: dict) -> dict:
-    """Routing entry for a CSV row: `type` + `target` (no `./` prefix)."""
-    skill = (row.get("skill") or "").strip()
-    action = (row.get("action") or "").strip()
+    """Routing entry for a menu row: `name`, `type` and `target` (no `./` prefix)."""
+    skill, action = row.get("skill", ""), row.get("action", "")
     if skill == AGENT_SKILL_NAME:
         return {"name": action, "type": "prompt", "target": f"references/{action}.md"}
     return {"name": action, "type": "skill", "target": skill}
 
 
 def generate_capabilities_md(rows: list[dict]) -> str:
-    """CAPABILITIES.md: the built-in roster from assets/menu.csv + the Learned table."""
+    """CAPABILITIES.md: a pointer to the menu for the built-ins, then the Learned table.
+
+    The built-in roster is not copied here: the wake prints it as the menu.
+    """
     lines = ["# Capabilities", "", "## Built-in", ""]
     if rows:
-        lines += [
-            "_Generated from Mac's `assets/menu.csv` (the same source as the menu)._",
-            "",
-            "| Code | Name | What it does | Runs |",
-            "|------|------|--------------|------|",
-        ]
-        for row in rows:
-            route = route_for(row)
-            runs = f"`{route['target']}`" if route["type"] == "prompt" else f"skill: `{route['target']}`"
-            lines.append(
-                f"| [{(row.get('menu-code') or '').strip()}] | {(row.get('display-name') or '').strip()} | "
-                f"{(row.get('description') or '').strip()} | {runs} |"
-            )
-        lines += ["", "Typing FL or \"feedback loop\" routes to [RS] Refine Song, which runs the feedback skill inside it."]
+        lines.append(
+            "The menu the wake prints is my built-in roster (from my skill's `assets/menu.csv`); "
+            "FL or \"feedback loop\" routes to [RS] Refine Song."
+        )
     else:
-        lines += [
-            "_assets/menu.csv was not found, so the roster could not be generated. "
-            "Reinstall the suno-agent-band-manager skill, then regenerate this section with "
+        lines.append(
+            "_assets/menu.csv was not found, so there is no built-in menu. "
+            "Reinstall the suno-agent-band-manager skill, then refresh this section with "
             "`uv run {skill-root}/scripts/upgrade-sanctum.py`._"
-        ]
+        )
     lines += [
         "",
         "## Learned",
@@ -516,6 +505,8 @@ def write_access_boundaries(out_dir: Path, assets_dir: Path, variables: dict) ->
 # ---------------------------------------------------------------------------
 
 SECTION_SPLIT_RE = re.compile(r"(?m)^(?=##\s)")
+# Within a creed section, the rule sits above this heading and its story below it.
+INCIDENT_MARKER_RE = re.compile(r"(?m)^### Why — the incident\s*$")
 
 # Source creed "## " headings -> shard destinations (prefix match).
 SHARD_ROUTING = {
@@ -558,7 +549,7 @@ def shard_creed(creed_text: str) -> dict[str, str]:
     """Slice the source creed into shard files by heading prefix.
 
     Returns {shard_filename: content}, plus a `creed-incident-log.md` that
-    gathers the "Recurring failure pattern" narratives. A heading that no shard
+    gathers the sections carrying a `### Why — the incident` story. A heading that no shard
     takes (and that the core does not carry) raises a UserWarning, so a new
     discipline added to creed.md cannot silently miss a freshly born sanctum.
     """
@@ -584,7 +575,7 @@ def shard_creed(creed_text: str) -> dict[str, str]:
                 break
         if not routed:
             continue
-        if "Recurring failure pattern" in section or "instance" in heading_body.lower():
+        if INCIDENT_MARKER_RE.search(section) or "instance" in heading_body.lower():
             incident_sections.append(section.rstrip() + "\n")
 
     out: dict[str, str] = {}
@@ -699,11 +690,21 @@ def discipline_file(heading: str) -> str:
     return _slug(heading.split("—")[0]) + ".md"
 
 
+def split_rule_and_story(body: str) -> tuple[str, str]:
+    """(rule, story) of one creed section body; story is "" when it has no incident."""
+    match = INCIDENT_MARKER_RE.search(body)
+    if not match:
+        return body.strip(), ""
+    return body[: match.start()].strip(), body[match.end():].strip()
+
+
 def discipline_files(creed_text: str) -> dict[str, str]:
     """{sanctum-relative path: content} for every routed creed section.
 
-    Each routed section becomes memory/disciplines/<file>; a section carrying a
-    "Recurring failure pattern" narrative also seeds memory/incidents/<slug>.md.
+    Each routed section becomes memory/disciplines/<file>: the rule, its
+    triggers, its steps and one clause of why. A section with a
+    `### Why — the incident` subsection also seeds memory/incidents/<file> with
+    the story, and its discipline file ends with a one-line pointer to it.
     Unrouted headings warn, as shard_creed does.
     """
     for heading in unrouted_headings(creed_text):
@@ -721,10 +722,12 @@ def discipline_files(creed_text: str) -> dict[str, str]:
         if not any(heading.startswith(p) for prefixes in SHARD_ROUTING.values() for p in prefixes):
             continue
         body = section.split("\n", 1)[1].strip() if "\n" in section else ""
+        rule, story = split_rule_and_story(body)
         name = discipline_file(heading)
-        out[f"memory/disciplines/{name}"] = f"# {heading}\n\n{body}\n"
-        if "Recurring failure pattern" in section:
-            out[f"memory/incidents/{name}"] = f"# {heading}\n\n{body}\n"
+        if story:
+            rule += f"\n\n_The incident behind this rule: `memory/incidents/{name}` (read it only when auditing or questioning the rule)._"
+            out[f"memory/incidents/{name}"] = f"# {heading} — the incident\n\n{story}\n"
+        out[f"memory/disciplines/{name}"] = f"# {heading}\n\n{rule}\n"
     return out
 
 

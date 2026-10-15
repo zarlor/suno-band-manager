@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
+"""Tests for beat-grid.py (Beat This! beat tracking).
+
+The model needs PyTorch, which is too heavy to provision in the suite, so these
+pin the pure logic (tempo and bar grouping from beat times, the librosa
+relation labels, input discovery) and the exit-code contract. The path guard
+runs before the dependency check, so a missing input exits 1 under any Python.
+"""
+
+import importlib.util
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+SCRIPT = Path(__file__).parent.parent / "beat-grid.py"
+spec = importlib.util.spec_from_file_location("beat_grid", SCRIPT)
+bg = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(bg)
+
+
+def grid(bpm, beats_per_bar, bars):
+    ibi = 60.0 / bpm
+    beats = [i * ibi for i in range(beats_per_bar * bars)]
+    return beats, beats[::beats_per_bar]
+
+
+class BeatGridTest(unittest.TestCase):
+    def setUp(self):
+        td = tempfile.TemporaryDirectory()
+        self.addCleanup(td.cleanup)
+        self.tmp_path = Path(td.name)
+
+    def test_beat_stats_four_four(self):
+        beats, downbeats = grid(120, 4, 16)
+        s = bg.beat_stats(beats, downbeats)
+        self.assertEqual(s["bpm"], 120.0)
+        self.assertEqual(s["beats_per_bar"], 4)
+        self.assertEqual(s["beats_per_bar_hist"], {"4": 15})
+        self.assertEqual(s["bars_per_minute"], 30.0)
+
+    def test_beat_stats_three_four(self):
+        beats, downbeats = grid(90, 3, 12)
+        s = bg.beat_stats(beats, downbeats)
+        self.assertEqual(s["bpm"], 90.0)
+        self.assertEqual(s["beats_per_bar"], 3)
+
+    def test_beat_stats_too_few_beats(self):
+        s = bg.beat_stats([0.0, 0.5], [0.0])
+        self.assertIsNone(s["bpm"])
+        self.assertIsNone(s["beats_per_bar"])
+
+    def test_tempo_relation_labels(self):
+        self.assertEqual(bg.tempo_relation(76.9, 152.0), "librosa_double")
+        self.assertEqual(bg.tempo_relation(200.0, 99.4), "librosa_half")
+        self.assertEqual(bg.tempo_relation(96.8, 97.5), "agree")
+        self.assertEqual(bg.tempo_relation(80.0, 120.0), "librosa_1.5x")
+        self.assertEqual(bg.tempo_relation(120.0, 80.0), "librosa_2/3x")
+        self.assertEqual(bg.tempo_relation(100.0, 130.0), "disagree")
+        self.assertIsNone(bg.tempo_relation(None, 120.0))
+
+    def test_collect_inputs_recurses_and_filters(self):
+        tmp_path = self.tmp_path
+        (tmp_path / "band-a").mkdir()
+        (tmp_path / ".hidden").mkdir()
+        (tmp_path / "band-a" / "Song.mp3").write_bytes(b"")
+        (tmp_path / "Root.WAV").write_bytes(b"")
+        (tmp_path / "notes.txt").write_text("x")
+        (tmp_path / ".hidden" / "Skip.mp3").write_bytes(b"")
+        found = bg.collect_inputs(str(tmp_path))
+        self.assertEqual([bg.rel_label(f, str(tmp_path)) for f in found], ["Root.WAV", "band-a/Song.mp3"])
+
+    def test_missing_input_exits_1(self):
+        proc = subprocess.run([sys.executable, str(SCRIPT), "/nonexistent-audio-xyz", "--no-archive"],
+                              capture_output=True, text=True, timeout=60)
+        self.assertEqual(proc.returncode, 1)
+
+    def test_empty_dir_exits_1(self):
+        proc = subprocess.run([sys.executable, str(SCRIPT), str(self.tmp_path), "--no-archive"],
+                              capture_output=True, text=True, timeout=60)
+        self.assertEqual(proc.returncode, 1)
+
+    def test_format_text_handles_errors_and_missing_values(self):
+        text = bg.format_text([
+            {"file": "a.mp3", "duration_s": 200.0, "bpm": 76.9, "beats_per_bar": 4, "librosa_bpm": 152.0,
+             "tempo_relation": "librosa_double"},
+            {"file": "b.mp3", "duration_s": 5.0, "bpm": None, "beats_per_bar": None},
+            {"file": "c.mp3", "error": "RuntimeError: bad file"},
+        ])
+        self.assertIn("double-time read", text)
+        self.assertIn("ERROR: RuntimeError", text)
+
+    def test_format_text_shows_the_slow_prior_librosa_reading(self):
+        text = bg.format_text([
+            {"file": "a.mp3", "duration_s": 239.0, "bpm": 60.2, "beats_per_bar": 4, "librosa_bpm": 117.5,
+             "tempo_relation": "librosa_double", "librosa_bpm_slow_prior": 60.1, "librosa_prior_relation": "double"},
+        ])
+        self.assertIn("lib@80", text)
+        self.assertIn(" 117.5    60.1  ", text)
+        self.assertIn("start_bpm=80", text)
+        self.assertNotIn("start_bpm=80", bg.format_text([{"file": "b.mp3", "duration_s": 5.0, "bpm": None,
+                                                          "beats_per_bar": None}]))
+
+    def test_edge_bpms_reads_first_and_last_windows(self):
+        # 60 s at 120 BPM, then 60 s at 90 BPM.
+        beats = [i * 0.5 for i in range(120)] + [60 + i * (60 / 90) for i in range(90)]
+        self.assertEqual(bg.edge_bpms(beats, 120.0), (120.0, 90.0))
+
+    def test_edge_bpms_short_track_uses_overall(self):
+        beats, _ = grid(100, 4, 12)
+        self.assertEqual(bg.edge_bpms(beats, 30.0), (100.0, 100.0))
+
+    def test_edge_bpms_sparse_edges_fall_back_to_overall(self):
+        beats = [30 + i * 0.5 for i in range(100)]  # nothing in the first or last 30 s of 120
+        self.assertEqual(bg.edge_bpms(beats, 120.0), (120.0, 120.0))
+
+    def test_several_inputs_with_one_missing_exits_1(self):
+        (self.tmp_path / "a.mp3").write_bytes(b"")
+        proc = subprocess.run([sys.executable, str(SCRIPT), str(self.tmp_path / "a.mp3"), "/nonexistent-audio-xyz",
+                               "--no-archive"], capture_output=True, text=True, timeout=60)
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("nonexistent", proc.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()

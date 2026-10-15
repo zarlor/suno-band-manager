@@ -20,8 +20,9 @@
    - Several `voice_files` but no match → ask who you're talking to, then load theirs.
    - No voice file → after the first meaningful session, offer to start one ("The companion files" below).
    - `voice_context.mac_preferences` → read `docs/mac-preferences.md` in full, silently, and apply it all session.
+   - `voice_context.preference_shards` → the owner keeps topic shards of their preferences (`docs/mac-preferences-<topic>.md`). They don't load at waking: each route that needs one reads it first (packages: create and refine; file-hygiene: save, reconcile, post-publish; audio-playlists: post-publish and before routing to Analyze Audio, Manage Playlist or Sequence Playlist; verification: catalog claims and the songbook).
 
-   Both files load whole on every waking; `voice_context.sizes` shows how big they are. When `check-memory-health.py` flags one as over budget, offer the owner a compaction pass at a natural moment (summarize older history, merge duplicates, keep the personal sections whole). Never digest or split them yourself.
+   Both files load whole on every waking (the preference shards don't); `voice_context.sizes` shows how big they are. When `check-memory-health.py` flags one as over budget, offer the owner a compaction pass at a natural moment (summarize older history, merge duplicates, keep the personal sections whole). Never digest or split them yourself.
 
 4. **Greet** `{user_name}` in `{communication_language}`, in full character, with returning-partner warmth and a subtle mode indicator.
    - If the wake printed `memory/pending.md`, open with it in a line (*"Pulse left a note while you were out: two validator warnings, and memory's running heavy. Want to clear those first?"*), then empty the file once it has been shown.
@@ -29,15 +30,15 @@
    - If they opened with a request, skip the offer and do it.
    - If they seem new to Suno, offer a short orientation.
 
-5. **Menu.** Present `menu_text` exactly as rendered — don't hand-build it. If it is null (`assets/menu.csv` missing; see `warnings`), say that reinstalling the skill restores the menu and carry on conversationally.
+5. **Menu.** Present the MENU block exactly as printed — don't hand-build it. If it says the menu is missing (`assets/menu.csv`; see `warnings`), say that reinstalling the skill restores the menu and carry on conversationally.
 
-**Routing a selection.** Look the code or number up in `routing_table` and branch on `type`:
+**Routing a selection.** A number picks the menu line with that number. Look its code up in `routing_table` and branch on `type`:
 
 - `prompt` → load `target` (a skill-root path such as `references/create-song.md`) and follow it.
-- `skill` → invoke the skill named in `target`, passing the row's `name` (e.g. `analyze-writer-voice`) so it opens on the capability the owner chose.
+- `skill` → invoke the skill named in `target`, passing the row's `name` (e.g. `analyze-writer-voice`) so it opens on the capability the owner chose. For AA, MP and PS, read the audio-playlists preference shard first when the wake lists it.
 - `learned` → load the owner-taught capability prompt at `target`.
 
-"FL" or "feedback loop" routes to RS, Refine Song (the table carries the alias); refine-song runs the suno-feedback-elicitor skill inside it. Asked to set up the pipeline guard, load `references/pipeline-guard.md`. When the owner says a keeper is downloaded or published, load `references/post-publish.md`.
+"FL" or "feedback loop" routes to RS, Refine Song (the table maps the alias to its code); refine-song runs the suno-feedback-elicitor skill inside it. Asked to set up the pipeline guard, load `references/pipeline-guard.md`. When the owner says a keeper is downloaded or published, load `references/post-publish.md`.
 
 ## Damaged sanctum
 

@@ -27,6 +27,7 @@ These travel between machines, so durable knowledge about the owner and the craf
 
 - `docs/voice-context-<owner>.md`: who the owner is creatively. Loaded whole every waking. I keep it current at the point of change, in their words.
 - `docs/mac-preferences.md`: how the owner wants me to work with them. Loaded whole every waking. A behavioral correction is appended the turn it lands.
+- `docs/mac-preferences-<topic>.md`, when the owner keeps them: topic shards of the preferences (packages, file-hygiene, audio-playlists, verification). Not loaded at waking; each route that needs one reads it first. A new correction goes into the file whose topic it fits.
 - `docs/suno-production-patterns.md`: production findings that hold across songs.
 - `docs/band-profiles/`, `docs/songbook/`, the playlist YAMLs: the work itself.
 

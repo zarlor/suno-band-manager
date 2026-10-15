@@ -7,6 +7,8 @@ code: RS
 **Language:** Use `{communication_language}` for all output.
 **Variables:** `{project-root}`, `{communication_language}`
 
+**Preference shard first.** If `{project-root}/docs/mac-preferences-packages.md` exists (the wake lists it under `voice_context.preference_shards`), read it in full before anything else here: it holds the owner's package, prompt, slider and pipeline rules. The pipeline guard blocks a package presented without it.
+
 # Refine Song
 
 The owner has tried a package on Suno and is back with a take. This is the one place that handles it: diagnose what's off, then rebuild only the parts that change, through the same pipeline that built the package. "FL", "feedback loop" and "give feedback on a take" all land here — the suno-feedback-elicitor skill is the diagnosis step inside this flow, not a separate stop on Mac's menu.
@@ -37,7 +39,7 @@ Then apply **Transparency**: tell the owner what the diagnosis found and which c
 
 ## Step 3: Rebuild Only What Changed
 
-> **Load the Package Assembly discipline** `{project-root}/_bmad/memory/suno-agent-band-manager/memory/disciplines/package-assembly.md`. Re-running the pipeline is a package-assembly path; the shard's **Refinement presentation scope** and **Tool Choice** sections govern this step and Step 4.
+Load the sanctum's `memory/disciplines/package-assembly.md`: re-running the pipeline is package assembly, and its "Running the pipeline" and "Presenting a refinement" govern this step and Step 4.
 
 Offer each rebuild the recommendations call for ("Want me to rebuild the style prompt with these changes?"):
 
@@ -50,7 +52,7 @@ Offer each rebuild the recommendations call for ("Want me to rebuild the style p
 
 ## Step 4: Present the Update
 
-Present only what changed, per the shard's Refinement presentation scope, under a "What Changed" list:
+Present only what changed, as the discipline's "Presenting a refinement" says, under a "What Changed" list:
 
 ```
 ## {band-name} Refinement Update
@@ -58,7 +60,7 @@ Present only what changed, per the shard's Refinement presentation scope, under 
 ### What Changed
 - {Bullet list of adjustments and why}
 
-{Only the sections that changed, in Step 5 package order}
+{Only the sections that changed, in the package's Create-screen order (create-song Step 5)}
 ```
 
 Then: "Give this version a spin on Suno — listen in the browser, and come back with what you hear. That's how records get made."

@@ -1,6 +1,14 @@
-# Interactive Session: Present and Refine
+# Interactive Session: Intake, Present and Refine
 
-Loaded at Step 5 of an interactive run. Headless runs return JSON instead (`references/headless-contract.md`).
+Read at the start of an interactive run. Headless runs return JSON instead (`references/headless-contract.md`).
+
+## Intake (Step 1)
+
+**Open the floor first.** Invite everything in one go: genre, mood, "sounds like X meets Y", a band profile, reference tracks, target model, exclusions. Then ask only for what's missing. With a profile in hand, ask what this song should do differently from the baseline. If the opening already gives model, direction and creativity intent, go straight to building and confirm only genuine ambiguities. If the profile isn't found, list the profiles folder and fill missing fields from the conversation.
+
+**Show a reference decomposition before building on it,** so the user can confirm or correct your read of the artist.
+
+**Capture, don't interrupt.** When the user volunteers lyric ideas, structure preferences or mix notes mid-build, acknowledge them and carry them to the presentation (below) rather than redirecting.
 
 ## Present
 

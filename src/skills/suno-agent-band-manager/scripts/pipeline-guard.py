@@ -501,6 +501,8 @@ class Session:
         self.agent_names: dict[str, str] = {}  # Agent tool_use id -> teammate name
         # Content the pipeline skills returned anywhere in the session, normalized.
         self.returned: dict[str, set[str]] = {STYLE_SKILL: set(), LYRIC_SKILL: set()}
+        # Files the main conversation read in the session (any turn).
+        self.reads: set[str] = set()
 
     def note_returns(self, text: str) -> set[str]:
         skills = set()
@@ -535,6 +537,8 @@ def scan_session(transcript_path: str) -> Session:
                 continue
             turn.skills |= _skill_from_skill_tool(tool_use)
             tool_input = tool_use.get("input") or {}
+            if tool_use.get("name") == "Read" and tool_input.get("file_path"):
+                session.reads.add(str(tool_input["file_path"]).replace("\\", "/"))
             use_id = tool_use.get("id")
             if tool_use.get("name") in ("Agent", "Task") and use_id:
                 turn.agents[use_id] = (use_id, None, None)
@@ -688,6 +692,21 @@ def build_violations(
     return missing, check_package_order(message)
 
 
+PACKAGES_SHARD = "docs/mac-preferences-packages.md"
+
+
+def unread_preferences_shard(input_data: dict, session: "Session | None") -> str | None:
+    """The packages shard's path when it exists in the project and the session never read it."""
+    if session is None:
+        return None
+    root = find_project_root(input_data)
+    if root is None or not (root / PACKAGES_SHARD).is_file():
+        return None
+    if any(path.endswith(PACKAGES_SHARD) for path in session.reads):
+        return None
+    return PACKAGES_SHARD
+
+
 def run_stop_hook(input_data: dict) -> dict | None:
     """The Stop-hook decision, or None to stay silent."""
     if input_data.get("stop_hook_active", False):
@@ -718,6 +737,13 @@ def run_stop_hook(input_data: dict) -> dict | None:
         missing = []
 
     reasons = []
+    shard = unread_preferences_shard(input_data, session if skills is not None else None)
+    if shard:
+        reasons.append(
+            f"PREFERENCES NOT LOADED: read `{shard}` in full before presenting a package. "
+            "It holds the owner's package rules (moved out of docs/mac-preferences.md so it "
+            "loads when a package is built), and this session hasn't read it."
+        )
     if missing:
         changed = sorted({sec for s in missing for sec in (changed_sections(message, s, approved or {}) or [])})
         where = f" (changed or new: {', '.join(changed)})" if changed else ""

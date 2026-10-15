@@ -7,6 +7,8 @@ code: CS
 **Language:** Use `{communication_language}` for all output.
 **Variables:** `{project-root}`, `{communication_language}`
 
+**Preference shard first.** If `{project-root}/docs/mac-preferences-packages.md` exists (the wake lists it under `voice_context.preference_shards`), read it in full before anything else here: it holds the owner's package, prompt, slider and pipeline rules. The pipeline guard blocks a package presented without it. Before a fresh, never-done or variety claim about the catalog, read `{project-root}/docs/mac-preferences-verification.md` the same way, if it exists.
+
 # Create Song
 
 The main creative workflow. Guide the user from initial inspiration to a complete Suno-ready package: structured lyrics with metatags + model-specific style prompt + exclusion prompt + parameter recommendations.
@@ -76,11 +78,9 @@ After Steps 3 and 4 return, apply **Transparency**: compare skill output against
 
 ## Steps 3 & 4: Run Skills in Parallel (Headless Mode)
 
-> **Load the Package Assembly discipline** `{project-root}/_bmad/memory/suno-agent-band-manager/memory/disciplines/package-assembly.md` before assembling. The always-loaded `CREED.md` core carries the Package Assembly Rule core; the discipline file carries the rest (Violation Tells, Agent-vs-Skill tool choice, highest-risk contexts, refinement presentation scope).
->
 > Section tags: only recognized tags (a custom tag gets sung as a lyric), and Bridge means something new where Breakdown means something less; the Lyric Transformer holds the full tag catalog.
 
-**Run both skills in parallel and headless, and say nothing until Step 5.** They are independent — the Style Prompt Builder doesn't need the lyrics. Send both calls in a single message as two Agent subagent invocations, each running one skill headless; Agent keeps the skill's JSON as a tool result rather than a visible turn (the shard's "Tool Choice" section). Narrating the run or showing a raw return leaves the owner with partial packages and JSON instead of one pasteable package.
+Load the sanctum's `memory/disciplines/package-assembly.md` first; it says how to run them. The two skills are independent — the Style Prompt Builder doesn't need the lyrics — so they run in parallel, and the owner hears nothing until Step 5.
 
 ### Step 3: Lyric Transformer (headless)
 
@@ -99,7 +99,7 @@ Skip it for an instrumental or when the user supplied finished lyrics they want 
 
 Invoke `suno-style-prompt-builder --headless` with the band profile, tier and model, song direction (genre, mood, reference tracks, vocal direction), creativity mode (same mapping as Step 3), the user's exclusions and specific requests ("no piano," "acoustic only"), any attached Voice / Persona / Custom Model, and a working title. The wild card is on by default.
 
-**Expected return:** the builder's success JSON, already in Step 5 order: style prompt and character count, exclusions with rationales, model, vocal gender, the v6 options and sliders with reasoning, title suggestion, wild card, validation report, and `handoff_notes`. Route each `handoff_notes` item to the song's workshop or WIP file — they are mid-build ideas the owner shouldn't lose.
+**Expected return:** the builder's success JSON: style prompt and character count, exclusions with rationales, model, vocal gender, the v6 options and sliders with reasoning, title suggestion, wild card, validation report, and `handoff_notes`. Route each `handoff_notes` item to the song's workshop or WIP file — they are mid-build ideas the owner shouldn't lose.
 
 **Prompt adjustments to ask for:**
 - The **v6 prompt architecture** (PREVIEW guidance the builder carries): ordered production direction, each instrument's job per section, the vocal placed rather than praised, both edges stated, positive text only with every negative in Exclude Styles. When lyrics are transformed too, pass the key per-section instructions to the Lyric Transformer so its section cues restate the style map word-for-word.
@@ -107,101 +107,25 @@ Invoke `suno-style-prompt-builder --headless` with the band profile, tier and mo
 - **Custom Model** → no generic production descriptors the model already handles (if it encodes "lo-fi tape warmth," don't repeat it); spend the prompt on what's new.
 - **Specificity pays** — "fingerpicked nylon guitar with room reverb" beats "acoustic guitar."
 
-## Step 5: Present the Complete Package
+## Step 5: Present the Package
 
-Assemble everything into a single, copy-paste-ready output. **Present items in the order they appear in Suno's Create screen**, so the user can work top to bottom without jumping around:
+One copy-paste-ready package, in the order the fields sit on Suno's Create screen, so the owner fills it top to bottom:
 
-**Voice (or Audio / Inspo) → Lyrics → Style Prompt → Exclude Styles → Settings (Model, then the Controls panel top to bottom) → Title → Save to (band folder) → Wild Card**
+**Voice (or Audio / Inspo) → Lyrics → Style Prompt → Exclude Styles → Settings (Model, then the Controls panel) → Title → Save to → Wild Card**
 
-*(Panel layout observed 2026-09-17, v6: model picker top right; a "Describe your song" box at the top — leave it empty for a custom package, the Lyrics and Styles fields carry everything; then the optional chips Audio / Voices / Inspo; then Lyrics; then Styles; then the **Controls** panel, which replaced "More Options"; then Song Title; then Save to.)*
+The values are the skills' returns, unchanged: the transformer's `transformed_lyrics` (the writer's spacing intact), and the builder's style prompt with its character count and limit, excludes, model, settings with their reasons, title and wild card. What the returns don't settle:
 
-- **Never lead with the Title, and never put the Style Prompt ahead of the Lyrics.** The Title is the last field filled in.
-- **Settings follow the Controls panel top to bottom:** Vocal Gender, Duration, Max Mode, Weirdness, Style Influence, Audio Influence (shown only once a Voice or Audio is added), Variety, Personalize. Exclude Styles is the panel's first row, which is why it comes straight after the Style Prompt.
-- **Save to** comes after the Title: name the band's Suno folder (the panel's "Save to…" row), so the take lands in the right workspace.
-- **Every pasteable field goes in its own code block:** Lyrics, Style Prompt, Exclude Styles, Title and the wild-card prompt.
-- **Don't repeat the wild card's Exclude Styles when they match the primary's** (owner, 2026-09-17) — say they're the same in a short line. List them in a code block only when the wild card needs different excludes, and say why.
-- A short "what's in it" or "what changed" note may go above the package. "Listen for" notes go after the wild card — **at most about three, and only things with an observable answer** (what a running test needs, or a plain fact like brass/high notes/a tail). Never ask the owner to grade a rendering against the package's intent, and never ask what a script can measure after download. See `docs/mac-preferences.md` → the listening-question pre-flight check.
+- Each pasteable field — Lyrics, Style Prompt, Exclude Styles, Title, the wild-card prompt — goes in its own code block. A flat copy of the lyrics, when the transformer returned one, is a second block labelled "Flat copy — paste aid only".
+- No lyrics block: say "Lyrics: Auto-generated by Suno — set Lyrics Mode to Auto" or "Lyrics: Instrumental (no vocals)".
+- Under a Voice, note that gender descriptors were left out of the prompt; under a Custom Model, that the production descriptors it encodes were. A Persona (Pro/Premier, now inside the Voices menu) fills Styles itself, so keep style edits light; how pre-v6 Personas and Voices behave on v6 is undocumented, and one short test generation settles it. Inspo (Pro/Premier, unverified on v6) gets 3–5 reference tracks.
+- Free tier has no Exclude Styles and no sliders. In the Exclude Styles slot, say the exclusions are carried by the style prompt's positive phrasing; under Settings, give the model (v6-mini), Vocal Gender and Lyrics Mode, and note that the sliders are Pro/Premier (whether Free shows Variety, Max Mode, Duration or Personalize is unverified).
+- Settings follow the Controls panel top to bottom — Vocal Gender, Duration, Max Mode, Weirdness, Style Influence, Audio Influence (only once a Voice or Audio is added), Variety, Personalize — with Lyrics Mode beside the model. Exclude Styles is the panel's first row, which is why it follows the Style Prompt.
+- Save to names the band's Suno folder, so the take lands in the right workspace.
+- When the wild card's excludes match the primary's, say so in a line rather than repeating them (owner, 2026-09-17); different excludes go in a code block with the reason.
+- A style prompt over its limit gets a warning that Suno silently truncates the end, and an offer to trim.
+- A short "what's in it" note may go above the package. "Listen for" notes go after the wild card: at most about three, each with an observable answer (what a running test needs, or a plain fact like brass, high notes, a tail). Never ask the owner to grade a take against the package's intent, or to judge what a script can measure after download (`docs/mac-preferences.md` → the listening-question pre-flight check).
 
-```
-## Your Suno Package
-
-{If a Voice applies:}
-### Voice
-{voice_name}
-Note: Voice handles vocal identity — gender descriptors have been omitted from the style prompt below.
-
-{If a Custom Model applies:}
-### Custom Model
-{custom_model_name}
-Note: Production descriptors covered by this model have been omitted from the style prompt below. Prompt focuses on song-specific direction.
-
-{If Pro/Premier and Persona applies:}
-### Persona
-{persona_name} (from: {source_song})
-Note: This auto-populates the Styles field. Keep style modifications simple below.
-Note: Personas still work and are found inside the Voices menu — they were relocated, not removed. A Voice is the stronger tool for locking vocal identity; a Persona captures style essence instead. How Personas and Voices made before v6 behave on v6 is undocumented — one short test generation settles it.
-
-{If Pro/Premier and Inspo applies (availability on v6 unverified):}
-### Inspo
-Recommended Inspo playlist: {list of 3-5 reference tracks}
-Note: Use Inspo to channel this vibe before setting other parameters.
-
-### Lyrics
-{Complete transformed lyrics with metatags from Lyric Transformer, the writer's spacing intact}
-{If a flat copy was needed: a second block labelled "Flat copy — paste aid only"}
-{Or: "Lyrics: Auto-generated by Suno — set Lyrics Mode to Auto" if no lyrics created}
-{Or: "Lyrics: Instrumental (no vocals)" if instrumental mode}
-
-### Style Prompt ({model_name})
-{character_count}/{limit} characters
-
-{style_prompt}
-
-{If character_count > limit: "⚠ This prompt exceeds Suno's {limit}-character limit and will be silently truncated. The last {overage} characters will be lost. Want me to trim it?"}
-
-### Exclude Styles
-{If Pro/Premier:}
-{comma-separated list, e.g.: screaming vocals, steel guitar, autotune, heavy distortion}
-
-{If Free tier:}
-Not available on Free tier — exclusions are handled through positive phrasing in the style prompt above.
-
-### Settings
-{If free tier:}
-- Model: v6-mini
-- Vocal Gender: {recommendation}
-- Lyrics Mode: {Manual or Auto}
-- Note: Weirdness, Style Influence, and Audio Influence sliders are available on Pro/Premier plans; whether Free shows Variety, Max Mode, Duration, or Personalize is not verified
-
-{If paid tier:}
-- Model: {v6 | v6-wild} — {reasoning} (the model picker at the top of the Create form)
-- Lyrics Mode: {Manual or Auto}
-- Controls panel, in order (Exclude Styles, the panel's first row, is covered above):
-  - Vocal Gender: {recommendation}
-  - Duration: {Auto | m:ss} — {reasoning}
-  - Max Mode: {On for any take you might keep | Off only for throwaway style-feel sketches} — 2× credits; buys consistency through the whole song, and it's applied at generation, so it can't be added to a finished take
-  - Weirdness: {value}% — {reasoning} (controls creative deviation: lower = safer, higher = more experimental)
-  - Style Influence: {value}% — {reasoning} (controls prompt adherence: lower = looser interpretation, higher = tighter to your style prompt)
-  - Audio Influence: {value}% — {reasoning}
-    {If Persona selected:} Persona slot: 15-25% effective range (25% default, reduce for era mismatch)
-    {If Voice selected:} Voice slot: runs much higher and is per-voice — use the value the Style Prompt Builder returned (it holds the canonical ranges and Suno's raise-then-rebuild escalation); don't recite a scale from memory
-  - Variety: Off (the leftmost notch, Exact style) — keeps this style prompt exactly as written (any higher notch rewrites it before generating)
-  - Personalize: Off — keeps your My Taste profile from reshaping this package
-
-### Song Title
-{suggested_title} — in its own code block, like the other pasteable fields
-
-### Save to
-{band's Suno workspace, e.g. the band's display name}
-
-### Wild Card Variant — The Unexpected Take
-{wild_card_style_prompt}
-{One-line pitch for why this twist could work, staying inside the band's core sound: "What if we took this country ballad into a stripped 1970s outlaw arrangement? Same song, same lane — rawer production, and the fiddle carries the hook instead of the band."}
-```
-
-**First-use Suno walkthrough (the first song only, or when asked):** show it once, then note `Suno panel walkthrough: shown` in `memory/owner/preferences.md` so it doesn't repeat. A returning user can ask for it again.
-
-"**How to use this in Suno:** Work top to bottom, in the package's order. Pick the model at the top right (v6 unless the package says otherwise). Leave 'Describe your song' empty — the Lyrics and Styles fields carry everything. Add your Voice, Audio or Inspo from the chips if the package names one. Paste the Lyrics, then the Style Prompt into Styles. Open the Controls panel: Exclude Styles first, then Vocal Gender, Duration, Max Mode, Weirdness, Style Influence, Audio Influence, Variety and Personalize as listed. Add the Song Title, pick the Save to folder, and hit Create. Generate a few takes — Suno reads the same inputs differently each time — and listen in the browser before you download anything."
+**First-use Suno walkthrough (the first song only, or when asked):** show it once, then note `Suno panel walkthrough: shown` in `memory/owner/preferences.md`. In plain words: pick the model at the top right; leave "Describe your song" empty, since the Lyrics and Styles fields carry everything; add a Voice, Audio or Inspo from the chips if the package names one; fill the rest top to bottom in the package's order; generate a few takes — Suno reads the same inputs differently each time — and listen in the browser before downloading anything.
 
 **Contextual Suno tip (vary by context, max 1 per package):**
 - If lyrics include `[Intro]`: "Tip: Suno's [Intro] tag is notoriously unreliable. If the intro sounds off, try regenerating just the first 10 seconds."

@@ -7,6 +7,8 @@ menu-code: SM
 **Language:** Use `{communication_language}` for all output.
 **Variables:** `{project-root}`, `{communication_language}`
 
+**Preference shard first.** If `{project-root}/docs/mac-preferences-file-hygiene.md` exists (the wake lists it under `voice_context.preference_shards`), read it in full before anything else here: it holds the owner's saving, syncing, durable-file and release rules.
+
 # Save Memory
 
 The tending pass. Mac captures as he goes (Persistent Memory), so this is where memory gets tended the way the sanctum's `HOW-I-REMEMBER.md` says, and the session gets its note. Run it when session notes or raw material have built up, when the session is winding down after real work, or when the owner asks — it is not a sign-off ritual.

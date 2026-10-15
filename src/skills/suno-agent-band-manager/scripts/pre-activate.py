@@ -13,12 +13,12 @@ One script decides the mode and gathers what activation needs:
     markers; an incomplete identity set is damaged). The v7 sanctum is
     `_bmad/memory/suno-agent-band-manager/`; a v1/v2 store at the legacy
     `_bmad/_memory/band-manager-sidecar/` routes to its conversion
-  - the dynamic menu and routing table from assets/menu.csv (null with a
-    warning when the CSV is missing — the sanctum still wakes)
+  - the dynamic menu and a code-keyed routing table from assets/menu.csv
+    (null with a warning when the CSV is missing — the sanctum still wakes)
   - the voice file and docs/mac-preferences.md, with their sizes
 
 Default output is JSON (headless callers, tests). `--wake` prints a MODE line,
-the state JSON, the identity files in load order and a generated map of
+the state as compact JSON, the menu as its own block, the identity files in load order and a generated map of
 memory/ and raw/ (plus memory/pending.md when it has content) in one pass, so
 the agent becomes itself in a single read. `--pulse` adds PULSE.md.
 
@@ -57,7 +57,6 @@ def _load_sanctum_seed():
 _seed = _load_sanctum_seed()
 
 AGENT_SKILL_NAME = _seed.AGENT_SKILL_NAME
-MODULE_CODE = _seed.MODULE_CODE
 SANCTUM_LOAD_ORDER = _seed.SANCTUM_LOAD_ORDER
 PULSE_LOAD_ORDER = _seed.PULSE_LOAD_ORDER
 MENU_ALIASES = _seed.MENU_ALIASES
@@ -91,6 +90,7 @@ def detect_voice_files(project_root: Path, user_name: str | None) -> dict:
         "matched_file": None,
         "expected_filename": None,
         "mac_preferences": None,
+        "preference_shards": [],
         "sizes": {},
     }
     if user_name:
@@ -104,6 +104,11 @@ def detect_voice_files(project_root: Path, user_name: str | None) -> dict:
     prefs = project_root / PREFERENCES_FILE
     if prefs.is_file():
         result["mac_preferences"] = PREFERENCES_FILE
+    if docs_dir.is_dir():
+        result["preference_shards"] = [
+            str(p.relative_to(project_root)) for p in sorted(docs_dir.glob("mac-preferences-*.md"))
+            if p.stem != "mac-preferences-archive"
+        ]
     for rel in (result["matched_file"], result["mac_preferences"]):
         if rel:
             result["sizes"][rel] = file_size(project_root / rel)
@@ -238,47 +243,37 @@ def resolve_customization(project_root: Path, skill_dir: Path) -> tuple[dict, st
     return {key: list(agent.get(key) or []) for key in empty}, None
 
 
-def render_menu(csv_path: Path, include_modules: list[str] | None = None, learned: list[dict] | None = None) -> str:
-    """Mac's menu: assets/menu.csv rows (minus FL) + learned capabilities."""
-    rows = _seed.menu_rows(csv_path, include_modules)
-    lines = ["What would you like to do today?\n"]
-    codes = set()
-    for i, row in enumerate(rows, 1):
-        code = (row.get("menu-code") or "??").strip()
-        codes.add(code)
-        display = (row.get("display-name") or "").strip()
-        desc = (row.get("description") or "No description").strip()
-        lines.append(f"{i}. [{code}] {display} — {desc}")
-    n = len(rows)
+def _menu_entries(csv_path: Path, learned: list[dict] | None) -> list[tuple[str, str, str, dict]]:
+    """(code, name, description, route) per menu line, in menu order: built-ins then learned."""
+    entries = [(r.get("code", "??"), r.get("name", ""), r.get("description", ""), _seed.route_for(r))
+               for r in _seed.menu_rows(csv_path)]
+    codes = {e[0] for e in entries}
     for cap in learned or []:
         if cap["code"] in codes:
             continue
-        n += 1
-        lines.append(f"{n}. [{cap['code']}] {cap['name']} — {cap['description']} (learned)")
+        codes.add(cap["code"])
+        entries.append((cap["code"], cap["name"], f"{cap['description']} (learned)",
+                        {"name": cap["name"], "type": cap["type"], "target": cap["target"]}))
+    return entries
+
+
+def render_menu(csv_path: Path, learned: list[dict] | None = None) -> str:
+    """Mac's menu: assets/menu.csv rows (minus FL) + learned capabilities, one numbered line each."""
+    lines = ["What would you like to do today?\n"]
+    for i, (code, name, desc, _) in enumerate(_menu_entries(csv_path, learned), 1):
+        lines.append(f"{i}. [{code}] {name} — {desc or 'No description'}")
     return "\n".join(lines)
 
 
-def build_routing_table(
-    csv_path: Path, include_modules: list[str] | None = None, learned: list[dict] | None = None
-) -> dict:
-    """Menu code / position -> {name, type, target}. Aliases (FL -> RS) included."""
-    rows = _seed.menu_rows(csv_path, include_modules)
-    table: dict = {}
-    for i, row in enumerate(rows, 1):
-        entry = _seed.route_for(row)
-        table[(row.get("menu-code") or "").strip()] = entry
-        table[str(i)] = entry
-    n = len(rows)
-    for cap in learned or []:
-        if cap["code"] in table:
-            continue
-        n += 1
-        entry = {"name": cap["name"], "type": cap["type"], "target": cap["target"]}
-        table[cap["code"]] = entry
-        table[str(n)] = entry
+def build_routing_table(csv_path: Path, learned: list[dict] | None = None) -> dict:
+    """Menu code -> {name, type, target}; an alias (FL) maps to its target code.
+
+    Keyed by code only: a number the owner types is the menu line with that number.
+    """
+    table: dict = {code: route for code, _, _, route in _menu_entries(csv_path, learned)}
     for alias, code in MENU_ALIASES.items():
         if code in table and alias not in table:
-            table[alias] = dict(table[code], alias_of=code)
+            table[alias] = code
     return table
 
 
@@ -327,9 +322,9 @@ def build_state(args, project_root: Path, skill_dir: Path) -> dict:
             "tell the owner that reinstalling the suno-agent-band-manager skill restores the menu."
         )
     else:
-        menu_text = render_menu(csv_path, [MODULE_CODE], learned)
-        routing_table = build_routing_table(csv_path, [MODULE_CODE], learned)
-        builtin = {(r.get("menu-code") or "").strip() for r in _seed.menu_rows(csv_path, [MODULE_CODE])}
+        menu_text = render_menu(csv_path, learned)
+        routing_table = build_routing_table(csv_path, learned)
+        builtin = {r.get("code", "") for r in _seed.menu_rows(csv_path)}
         warnings.extend(learned_warnings(sanctum, builtin | set(MENU_ALIASES)))
 
     customization, customization_warning = resolve_customization(project_root, skill_dir)
@@ -355,7 +350,6 @@ def build_state(args, project_root: Path, skill_dir: Path) -> dict:
         "sync_package": detect_sync_package(project_root),
         "menu_text": menu_text,
         "routing_table": routing_table,
-        "menu_aliases": dict(MENU_ALIASES),
         "customization": customization,
         "voice_context": detect_voice_files(project_root, user_name),
         "sanctum_path": str(sanctum),
@@ -414,7 +408,12 @@ def render_wake(state: dict) -> str:
     if mode == "SCAFFOLD_FAILED":
         scaffold = state.get("scaffold") or {}
         out.append(f"Reason: {scaffold.get('message') or scaffold.get('init_result') or 'unknown'}")
-    out += ["", "===== STATE =====", json.dumps(state, indent=2, ensure_ascii=False)]
+    # The menu prints as its own block, so the state JSON stays compact and the
+    # menu reads exactly as it should be shown.
+    shown = {k: v for k, v in state.items() if k != "menu_text"}
+    out += ["", "===== STATE =====", json.dumps(shown, separators=(",", ":"), ensure_ascii=False)]
+    if mode in ("WAKING", "DAMAGED") or (mode == "FIRST_BREATH" and (state.get("scaffold") or state.get("resume"))):
+        out += ["\n===== MENU =====", state.get("menu_text") or "(no menu: assets/menu.csv is missing; see warnings)"]
     sanctum = Path(state["sanctum_path"])
     newborn = mode == "FIRST_BREATH" and (state.get("scaffold", {}).get("scaffolded") or state.get("resume"))
     if mode in ("WAKING", "PULSE", "DAMAGED", "UPGRADE_V2") or newborn:

@@ -1,8 +1,12 @@
-# Safety Tables — Reload Before Every Build and Refine
+# Safety Tables
 
-This file is the one home for the style-prompt gotchas, kept short so it can be reread before every build and every refine generation. A long session or refine loop can compact them out of context, and a prompt built from memory of them can ship "metal" without a vocal pairing, a keyboard-pulling word, a crowd-noise word, an inline negative, a mid-song tempo change, an exclude that defends against nothing, or a slider anchored to a profile default. `scripts/validate-prompt.py` flags the enumerable words (its lists match this file); the substitution and every judgment call come from here.
+The one home for the style-prompt gotchas: artist names, the vocal and arrangement triggers, prompt-wide rules, the exclude rule and the per-song slider rule. `scripts/validate-prompt.py` flags the enumerable words (its lists match this file); the substitution and every judgment call come from here.
 
-When the validator can't run, check by hand: the model's character limit (1,000; 200 on the retired v4 Pro), genre, mood and vocal essentials in the first 200 characters, no section tags or asterisks, and every word in the trigger lists below.
+When the validator can't run, check by hand: the model's character limit (1,000; 200 on the retired v4 Pro), genre, mood and vocal essentials in the first 200 characters, no section tags or asterisks, no artist names, and every word in the trigger lists below.
+
+## Artist and Song Names
+
+Suno strips artist names from prompts by policy (OFFICIAL) and redirects them to generic characteristics, so a name, an album or a song title spends budget and steers nothing. Decompose the reference into concrete sonic descriptors: genre, era and production, vocal character, signature instruments, energy, emotional tone. Decompose only an artist you confidently know; otherwise web-search their sound first, or, with no search, ask the user what they like about it. A wrong decomposition produces a prompt that sounds nothing like the intent, and the user can't tell why. A decomposition can carry a trigger of its own ("thrash", "doom", "anthemic"), so check its words against the lists below.
 
 ## Vocal Triggers
 
@@ -17,9 +21,9 @@ Certain words reliably trigger unwanted screaming or harsh vocals, even when the
 
 ### The "live" Word Family Triggers Crowd Noise (LOCAL-CONFIRMED, recurring)
 
- Module production testing has hit this repeatedly on v5.5: **any** form of the word — `live-band drums`, `live recording`, `live energy`, `live in the room` — pulls audience-noise rendering, crowd texture, and crowd-vocal bleed, even when the intent is plainly band-in-a-room performance energy rather than a concert. The word appears to carry "live album" as its dominant training association, and a single instance is enough. The v5-era descriptor-effects table (in `references/model-prompt-strategies.md`) used to recommend `raw live recording` as a production descriptor; that recommendation was wrong and has been replaced.
+**Any** form of the word — `live-band drums`, `live recording`, `live energy`, `live in the room` — pulls audience noise, crowd texture and crowd-vocal bleed, even when the intent is band-in-a-room energy: the word carries "live album" as its dominant association, and one instance is enough.
 
-**Say the quality, not the venue.** `unpolished room sound`, `natural room ambience`, `single-take band performance`, `minimal overdubs`, `dry close-mic drums with room bleed` all get the intended texture without the word. External sources do not list "live" among crowd-risk terms — this is our own finding, and it is one of the more reliable ones we have.
+**Say the quality, not the venue.** `unpolished room sound`, `natural room ambience`, `single-take band performance`, `minimal overdubs`, `dry close-mic drums with room bleed` all get the intended texture without the word.
 
 ### Crowd, Choir, and Extra-Vocal Avoidance
 
@@ -27,7 +31,7 @@ When the song needs **one singer** and nothing else, three layers work together.
 
 1. **Positive solo-singer language in the style prompt** — "solo lead vocal, one singer only," and where the energy is supposed to come from instead: "chorus energy from instruments and arrangement, not extra voices." Filling the role is stronger than forbidding the filler.
 2. **Excludes covering the whole family** — `choir, backing vocals, gang vocals, layered vocals, crowd chants`. Excluding "choir" alone leaves gang vocals and stacked doubles untouched; they are different arrangement conventions and Suno reaches for whichever one the genre suggests.
-3. **Avoid the trigger words entirely** — `anthemic`, `festival`, `stadium`, `concert`, `crowd`, `audience`, and **the whole "live" family** (see the section above) invite group vocals and audience texture by association. Excludes cannot reliably override a prompt that is asking for group energy in its adjectives.
+3. **Avoid the trigger words entirely** — `anthemic`, `festival`, `stadium`, `concert`, `crowd`, `audience`, and **the whole "live" family** invite group vocals and audience texture by association. Excludes cannot reliably override a prompt that is asking for group energy in its adjectives.
 
 The lyric side of this stack — section-tag wording that invites choirs, and the anti-choir tag forms — is the `suno-lyric-transformer` skill's job; when one singer matters, say so in the handoff notes.
 
@@ -57,13 +61,13 @@ Certain words reliably pull Suno into unwanted instrumental territory — typica
 | `orchestral`, `orchestral accents` | Defaults to light/cinematic strings, not heavy | Specify HEAVY orchestral instruments explicitly: `cello, heavy strings, kettle drums` — these live in metal's frequency range |
 | `cinematic` | Pulls keyboard/synth-heavy arrangements | Use `dynamic shifts`, `building from gentle to crushing` instead |
 | `rock opera` | Pulls keyboard/synth-heavy, theatrical arrangements | Use `power ballad`, `dynamic shifts`, `building from gentle to crushing` instead |
-| `big`, `emotional`, `epic` as the **chorus** instruction (v6) | Rock and metal choruses reported slowing into a dramatic ballad (COMMUNITY, 2026-10-03 sweep) | Write the chorus's job: `choruses stay rhythmically driving and hit harder than the verses`. Where a heavy chorus has to hit |
+| `big`, `emotional`, `epic` as the **chorus** instruction (v6) | Rock and metal choruses slow into a dramatic ballad (COMMUNITY) | Write the chorus's job: `choruses stay rhythmically driving and hit harder than the verses` |
 
 **"Baroque" workaround in detail:** If the song concept calls for Baroque-influenced metal, never use the word. Instead, describe the specific qualities you want — `intricate interlocking guitar and bass melodies` for counterpoint, `dark minor key, precise and ornate` for ornamentation. For orchestral weight, specify instruments that live in metal's frequency range: `cello, heavy strings, kettle drums`. Avoid `orchestral` as a standalone descriptor.
 
 ### Genre Term Behavior Table
 
-Specific genre terms produce specific results. This table documents what Suno actually generates for common genre keywords, based on production testing.
+What Suno generates for common genre keywords, from production testing.
 
 | Genre Term(s) | What Suno Produces | Notes |
 |---|---|---|
@@ -86,35 +90,23 @@ Specific genre terms produce specific results. This table documents what Suno ac
 
 ## Exclude Styles
 
-### Excludes Defend Against Drift From the CURRENT Prompt ONLY
+### Excludes Defend Against Drift From the Current Prompt Only
 
-**Suno is stateless. It has zero knowledge of:**
-- Prior generations of this song (regen iterations, earlier versions, previous Creates)
-- Other bands' renderings of the same lyrics (e.g. if the user keeps both a metal-lane version and a folk-lane version of the same poem, Suno generating one knows nothing about the other)
-- The user's broader catalog, band profiles, genre lanes, or historical patterns
-- Any context that isn't in the style prompt, Exclude Styles, lyrics, sliders, voice selection, or persona/audio input for this specific generation
+Suno is stateless: a Create knows only what is submitted with it — the style prompt, Exclude Styles, lyrics, sliders and any Voice, Persona or audio. It knows nothing of earlier takes of this song, another band's rendering of the same lyrics, or the user's catalog and profiles. So an exclude earns its place only by defending against a pull from this prompt's own descriptors.
 
-**The ONLY inputs that influence Suno's output are the ones submitted with the current Create.** The Exclude Styles list should defend against drift risks that the CURRENT style prompt's own descriptors might introduce. Nothing else.
+**The test for every candidate:** what in this style prompt could plausibly pull Suno toward it? If nothing does, the exclude defends against a ghost and wastes the field.
 
-**Common violations to avoid when building exclusion lists:**
-
-- ❌ "Defend against the metal band's DNA drifting into this folk version" — Suno doesn't know the metal version exists. If metal-coded words aren't in the folk style prompt, metal won't creep in from the parallel rendering.
-- ❌ "The earlier generation drifted toward X, so exclude X in the next attempt" — Suno doesn't remember prior generations. If the current prompt still contains descriptors that pull toward X, excluding X is valid. If the current prompt doesn't contain those descriptors, the exclusion is defending against a ghost.
-- ❌ "The user's Band A catalog never uses instrument Y, so exclude Y on Band B's version of this song" — Suno doesn't know about Band A. Only exclude Y if the CURRENT prompt might pull it in.
-
-**Genre defaults count as a pull from the current prompt.** For example, v6 is reported to add unrequested key changes in some genres (ANECDOTAL, 2026-10-03). So `key change` in Exclude passes this test when the song has to hold its key: the genre named in this prompt is the pull. Leave it out where a modulation would be welcome.
-
-**The correct question for every exclude candidate:** *"What in my current style prompt could plausibly pull Suno toward this element?"* If the answer is "nothing in this prompt pulls that way," the exclude is wasted exclusion-field budget.
-
-**Parallel-band-rendering work is the highest-risk context for this error.** When a song exists in two band catalogs (same poem, different genre/voice rendering), the temptation is to frame excludes as "defense against the other band's version." That framing is always wrong — Suno cannot be influenced by a version it has no knowledge of. Build excludes fresh for each rendering based on that specific prompt's descriptors.
+- **Genre defaults count as a pull from this prompt.** A genre that habitually brings an element (a modulation, steel guitar, a choir) justifies excluding it, because the genre is named here; leave it out where the element would be welcome.
+- **Parallel-band renderings** (the same song in two bands' catalogs) are where this goes wrong most: an exclude framed as defense against the other band's version defends against something Suno never sees. Build each rendering's excludes fresh from its own prompt.
+- **Refine after drift:** "the last take drifted toward X" justifies excluding X only while this prompt still holds a descriptor, or names a genre, that pulls toward X; changing that descriptor is often the better fix. If nothing in the prompt pulls toward X, take-to-take variance is the likelier cause and the exclude is a ghost.
 
 ## Sliders
 
 ### Weirdness and Style Influence by Song Type
 
-These are starting-point ranges based on production testing. Adjust per song, but these give a reliable baseline.
+Choose Weirdness and Style Influence fresh for every song, from this table, the song's type and its counter-genre needs, reasoning from what each slider does. Never start from a band profile's stored `sliders:` values or "what similar songs used", not even for a quick demo: the sliders are the deliberate per-song differentiator that gives songs with similar prompts distinct feels, and the owner's standing direction is to use them. The failure this prevents: Weirdness 55, reasoned as "above the profile's 45", for a dissonant counter-genre song that wanted ~75.
 
-**Do NOT anchor slider values to a band profile's stored `sliders:` defaults, nor to "what similar catalog songs used."** A band profile's stored slider values (if present) are not a baseline to nudge up or down from — not even for a quick Demo. For every song, CHOOSE Weirdness and Style Influence fresh from this table + the song's type + counter-genre needs, reasoning from what each slider actually DOES. **The sliders are the deliberate per-song differentiator** — the mechanism for giving distinct feels to songs whose prompts are otherwise similar — so each is a fresh per-song decision, never a band default; the owner's standing direction is to use them. (Audio Influence follows its slot instead: a Persona runs 15–25%, a Voice 35–95%.) A documented failure (2026-06-07): the builder recommended Weirdness 55 by anchoring "above the profile's 45 default" instead of reasoning from behavior — for a dissonant/locked/counter-genre song that actually wanted ~75.
+Starting-point ranges from production testing:
 
 | Song Type | Weirdness | Style Influence | Notes |
 |---|---|---|---|

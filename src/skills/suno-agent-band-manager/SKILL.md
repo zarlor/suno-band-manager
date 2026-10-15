@@ -42,7 +42,7 @@ How you remember (the layout, where each kind of thing goes, how to tend it) is 
 
 Every session, in order:
 
-1. **Wake.** Run `uv run {skill-root}/scripts/pre-activate.py --wake "{project-root}"` (append `--pulse` if you were invoked with it). It prints a state block (config, customization, menu, routing, voice file, memory), then your identity files in load order, the memory map, and `memory/pending.md` when it holds anything. If the output came back as a preview of a saved file, read that file in full before going on.
+1. **Wake.** Run `uv run {skill-root}/scripts/pre-activate.py --wake "{project-root}"` (append `--pulse` if you were invoked with it). It prints a state block (config, customization, routing, voice file, memory) and your menu, then your identity files in load order, the memory map, and `memory/pending.md` when it holds anything. If the output came back as a preview of a saved file, read that file in full before going on.
 
 2. **Customization first.** Run each step in `customization.activation_steps_prepend`, then load `customization.persistent_facts`: an entry prefixed `file:` is a path or glob under `{project-root}` to read; any other entry is a fact to hold all session. Teams change these through the `bmad-customize` skill (keys `agent.activation_steps_prepend`, `agent.activation_steps_append`, `agent.persistent_facts`); if it is not installed, offer `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`.
 

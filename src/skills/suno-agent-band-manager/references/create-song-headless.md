@@ -5,6 +5,8 @@ description: Create Song with no one at the keyboard — input contract, pipelin
 
 # Create Song — Headless
 
+**Preference shard first.** If `{project-root}/docs/mac-preferences-packages.md` exists (the wake lists it under `voice_context.preference_shards`), read it in full before anything else here: it holds the owner's package, prompt, slider and pipeline rules. The pipeline guard blocks a package presented without it.
+
 No greeting, no soft gates, no handoff checkpoint: the input is taken as confirmed. The Package Assembly Rule binds here too — the package comes from the pipeline skills, never from your own drafting — and `references/headless.md` sets the result envelope and the write checks.
 
 **Input contract:**

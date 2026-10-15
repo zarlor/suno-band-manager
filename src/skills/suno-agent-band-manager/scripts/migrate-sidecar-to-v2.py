@@ -412,7 +412,7 @@ def migrate(project_root: Path, sanctum_path: Path, out_dir: Path, skill_path: P
 
     # --- CAPABILITIES.md (built-in roster from assets/menu.csv) ---
     csv_path = _seed.find_menu_csv(skill_path)
-    roster = _seed.menu_rows(csv_path, [_seed.MODULE_CODE]) if csv_path else []
+    roster = _seed.menu_rows(csv_path) if csv_path else []
     (out_dir / "CAPABILITIES.md").write_text(_seed.generate_capabilities_md(roster), encoding="utf-8")
     produced.append("CAPABILITIES.md")
 

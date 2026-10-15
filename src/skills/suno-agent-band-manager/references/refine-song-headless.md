@@ -5,6 +5,8 @@ description: Refine Song with no one at the keyboard — diagnose feedback and r
 
 # Refine Song — Headless
 
+**Preference shard first.** If `{project-root}/docs/mac-preferences-packages.md` exists (the wake lists it under `voice_context.preference_shards`), read it in full before anything else here: it holds the owner's package, prompt, slider and pipeline rules. The pipeline guard blocks a package presented without it.
+
 No handoff checkpoints, no "want me to rebuild…?" offers, no conversational loop: the input is taken as confirmed. The Package Assembly Rule binds here too — load the sanctum's `memory/disciplines/package-assembly.md` — and `references/headless.md` sets the result envelope and the write checks.
 
 **Input contract:**

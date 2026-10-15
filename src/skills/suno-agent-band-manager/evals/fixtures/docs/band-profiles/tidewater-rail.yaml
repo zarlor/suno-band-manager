@@ -1,0 +1,55 @@
+# Band Profile — Tidewater Rail
+# Synthetic eval fixture (not a real band).
+# Created: 2026-09-20
+# Last modified: 2026-10-01
+
+name: "Tidewater Rail"
+version: 1
+instrumental: false
+
+genre: "gritty Americana folk-rock"
+mood: "weathered, late-night, stubbornly hopeful"
+language: "English"
+reference_tracks:
+  - "harmonica-led roadhouse folk with a swampy rhythm section"
+  - "Gulf Coast porch blues played by a full rock band"
+
+model_preference: "v6"
+tier: "pro"
+
+style_baseline: >
+  Gritty Americana folk-rock, fingerpicked steel-string acoustic over a loose
+  swampy rhythm section, brushed snare and upright bass, harmonica answering
+  the vocal, warm room reverb, live-in-a-roadhouse mix.
+exclusion_defaults:
+  - "autotune"
+  - "EDM drops"
+
+vocal:
+  gender: "male"
+  tone: "gravelly baritone"
+  delivery: "conversational, half-spoken verses that open up in the chorus"
+  energy: "restrained, building"
+  diction: "clear, Gulf Coast drawl"
+  persona_reference: ""
+  persona_source_song: ""
+  voice_id: ""
+
+creativity_default: "balanced"
+
+sliders:
+  weirdness: 45
+  style_influence: 70
+  audio_influence: null
+
+writer_voice:
+  vocabulary: "plain working words, rail and river terms"
+  rhythm: "short lines, hard stops at line ends"
+  imagery: "lanterns, tides, ledgers, rail yards"
+  emotional_tone: "wry grief"
+  metaphor_style: "one concrete object carries the whole feeling"
+  repetition_patterns: "the last line of each verse returns changed"
+  sample_quotes:
+    - "the river keeps the books we never balanced"
+
+generation_history: []

@@ -1,0 +1,16 @@
+# Catalog Verification Discipline — Grep Before Asserting Catalog State
+
+Verify catalog state from disk before characterizing it: what is or isn't in a band's catalog (genres, subgenres, style anchors, artist influences, voice-clone behavior across songs), any "fresh / new territory / unique for [band] / hasn't been done / the first Y" claim, and any "already covered / used N times" claim. Confidence from memory has been wrong here repeatedly — treat it as the signal to check; the project files are the authority.
+
+**Triggers:** any claim about what the catalog, a band profile, a playlist, a voice clone or the songbooks contain or lack; any claim of novelty, uniqueness or non-overlap with existing work; any genre-direction recommendation compared with the existing catalog — the most-missed trigger, because a "what would fit?" question becomes a catalog-state claim the moment you say "X hasn't been done".
+
+**Steps, before building a candidates list, recommendation or comparison for a band:**
+
+1. Check the band's coverage index: `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --band {band-slug} --check`. On exit 1 (stale or missing) regenerate it with `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --band {band-slug} --timestamp "{today's date}"`, then read `docs/{band-slug}-genre-coverage.md`. It is built from the profile's curated fields, labelled "Reference territory:" lines and every songbook style prompt, so it catches a genre filed under an artist name rather than a genre string.
+2. Before any negative claim — never done, new territory, unrepresented — grep the band's songbook, profile and playlist as well: the index extracts and doesn't infer, so a hit settles "this has been done" but a miss never settles "this is fresh". Grep multi-term: the genre label and its variants ("groove metal", "groove-metal", "progressive groove", "post-metal", "stoner-doom"); related artists from the voice file or the profile's influences; characteristic descriptors (instrumentation, tempo character, production register: "down-tuned", "halftime groove", "atmospheric prog"); and recorded findings in songbook generation logs. If the script can't run, the grep is the whole check.
+3. Build the candidates from what that turned up, not from memory. A hit means the direction isn't fresh: refine to what is actually new (a fusion, a subgenre variant, a register shift) or drop it. A recorded finding that ruled a direction out (e.g. "industrial fights call-and-response") applies to every song that shares the trait it names.
+4. For a claim about what voice clones, band profiles or playlists contain, re-read the YAML or playlist file rather than recalling it.
+
+**Self-check before asserting:** index checked (regenerated if stale) and read — and, for an absent-or-fresh claim, the catalog grepped for each genre, artist and descriptor you're about to characterize? If not, verify first. If the index or grep returned hits, rebuild the claim from what is there rather than pushing on with the original framing.
+
+_The incident behind this rule: `memory/incidents/catalog-verification-discipline.md` (read it only when auditing or questioning the rule)._

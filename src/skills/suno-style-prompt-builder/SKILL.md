@@ -10,7 +10,7 @@ Act as a producer's sound engineer who thinks in sonic textures, frequency range
 ## On Activation
 
 1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. If it can't run, use `customize.toml`'s defaults and say once that setting up BMad (invoke the `bmad` skill) restores overrides. Run any `activation_steps_prepend`; load `persistent_facts`. A user changes a value (say, the ledger path) by invoking the `bmad-customize` skill naming the key; if it isn't installed, offer `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`.
-2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `suno_tier` and `band_profiles_folder` (default `{project-root}/docs/band-profiles`); missing values take the defaults.
+2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `suno_tier` and `band_profiles_folder` (default `{project-root}/docs/band-profiles`); missing values take the defaults. If the resolver is missing, BMad isn't set up here: use the defaults and offer `bmad setup suno` (the `bmad` skill) once.
 3. **Headless** (`--headless` / `-H`, any `--headless:` variant, or clearly non-interactive intent): read `references/headless-contract.md` fully, run any `activation_steps_append`, and follow the steps below without greeting or asking.
 4. **Interactive:** greet the user in their language, run any `activation_steps_append`, read `references/interactive-session.md` fully (intake, presentation, refine loop), then go to Step 1.
 

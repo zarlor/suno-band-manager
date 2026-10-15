@@ -101,13 +101,14 @@ class TestTempoSource(TmpPathTestCase):
             self.assertEqual(ts.read_config_flag(tmp_path), "off")
         self.assertIn("unreadable", err.getvalue())
 
-    def test_no_resolver_is_a_reasoned_warning(self):
+    def test_no_resolver_means_unset_quietly(self):
+        # A standalone install: _bmad/ holds only Mac's memory, so the flag is unset.
         tmp_path = self.tmp_path
         (tmp_path / "_bmad").mkdir()
         err = io.StringIO()
         with redirect_stderr(err):
-            self.assertEqual(ts.read_config_flag(tmp_path), "off")
-        self.assertIn("bmad setup suno", err.getvalue())
+            self.assertIsNone(ts.read_config_flag(tmp_path))
+        self.assertEqual(err.getvalue(), "")
 
     def test_legacy_yaml_config_is_not_read(self):
         tmp_path = self.tmp_path

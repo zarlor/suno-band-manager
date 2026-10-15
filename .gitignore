@@ -9,7 +9,8 @@ portable-sync.tar.gz
 docs/
 
 # LLM CLI tool directories (populated by link-skills, BMad install)
-.agents/
+.agents/*
+!.agents/plugins/
 .claude/
 .gemini/
 

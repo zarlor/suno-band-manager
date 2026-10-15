@@ -7,9 +7,11 @@ those layers is the resolver's job, so scripts ask
 reading the TOML themselves. It runs with this interpreter (it is stdlib-only
 and needs Python 3.11+, which every script here declares).
 
-Config values hold `{project-root}`; it is filled in here. A project with no
-`_bmad/` gives no answers (scripts fall back to their flags and defaults); a
-broken one raises ConfigError with the resolver's reason, never a silent {}.
+Config values hold `{project-root}`; it is filled in here. A project without
+BMad's resolver gives no answers (scripts fall back to their flags and defaults):
+that covers no `_bmad/` at all and a `_bmad/` holding only Mac's memory, which a
+standalone install creates. A resolver that runs and fails raises ConfigError
+with its reason, never a silent {}.
 """
 
 from __future__ import annotations
@@ -30,11 +32,9 @@ class ConfigError(RuntimeError):
 def resolve(project_root, *keys: str) -> dict:
     """{key: value} for the dotted keys resolve_config.py finds. Missing keys are absent."""
     root = Path(project_root)
-    if not (root / "_bmad").is_dir():
-        return {}
     script = root.joinpath(*RESOLVER_REL)
     if not script.is_file():
-        raise ConfigError(f"BMad is not set up in {root} (no {'/'.join(RESOLVER_REL)}); run `bmad setup suno`.")
+        return {}
     cmd = [sys.executable, str(script), "--project-root", str(root)]
     for key in keys:
         cmd += ["--key", key]

@@ -1,9 +1,16 @@
 {
   "name": "suno-band-manager",
-  "version": "3.0.0",
-  "description": "AI-powered music production assistant for creating Suno-ready song packages — a BMad Method module",
+  "version": "4.0.0",
+  "description": "AI-powered music production assistant for creating Suno-ready song packages — a BMad Method module, created with BMad",
   "main": "src/skills/bmod-suno/bmod.toml",
-  "keywords": ["bmad", "bmad-method", "suno", "ai-music", "music-production", "song-creation"],
+  "keywords": [
+    "bmad",
+    "bmad-method",
+    "suno",
+    "ai-music",
+    "music-production",
+    "song-creation"
+  ],
   "author": "zarlor",
   "license": "MIT",
   "repository": {

@@ -23,3 +23,7 @@ The script's `runs[]` lists same-key runs longer than two and tempo-bucket runs 
 ## Catalog pass
 
 When energy shape informs the arc, run `uv run {skill-root}/scripts/batch-full-analysis.py --audio-dir {docs}/audio/{band-slug}` for energy shifts, section boundaries and dynamic character. A `partial` status lists `failed[]`; name them.
+
+## Publishing as a Suno album
+
+Suno's Albums (2026-10-05, OFFICIAL) can publish a sequence on the platform: own songs only, LP or EP is just a label, and track order stays editable afterwards. **Publishing an album publishes every unpublished song in it at once**, and the publish screen says this can't be undone (VENDOR). So the sequence and the track list are settled here first; tell the user which tracks are still private before they publish, since publishing makes them public.

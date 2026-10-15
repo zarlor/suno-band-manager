@@ -835,3 +835,7 @@ If you are not sure what to do:
 | **FL** | Feedback Loop | Feedback Elicitor | Standalone diagnosis only (not on Mac's menu -- through Mac, use RS) |
 | **AA** | Analyze Audio | Feedback Elicitor | Measure a render's tempo, key, loudness (and section map with the PyTorch tools on) |
 | **PS** | Sequence Playlist | Playlist Sequencer | Album-craft track ordering with per-move rationale |
+
+---
+
+Created with the [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/). The suno module is a BMad module, built and reviewed with BMad's Toolsmith and measured with `bmad-eval`.

@@ -2,7 +2,7 @@
 
 Comprehensive reference for Suno's post-generation editing tools. This covers **Suno Studio 2.0** (Premier-only generative DAW), the **Song Editor / Legacy Editor** (Pro/Premier section-level editor), and all related features. Companion to the [Suno Reference](SUNO-REFERENCE.md), which covers prompting, models, and generation.
 
-> **Last validated:** August 14, 2026 for the body of this file (Suno Studio **2.0**, Song Editor / Legacy Editor, v5.5 Pro; day-one primary-source field reports folded in), plus **Suno's September 2026 Studio release notes, added 2026-09-17** — see "Studio updates since 2.0 shipped" below. **Since 2026-09-09 every generation — including edits and extends of older songs — runs on the v6 family**; see "Editing Workflow Paradigm" for what v6 adds. Suno updates Studio features frequently — use web search to verify capabilities against current documentation when uncertain.
+> **Last validated:** August 14, 2026 for the body of this file (Suno Studio **2.0**, Song Editor / Legacy Editor, v5.5 Pro; day-one primary-source field reports folded in), plus **Suno's September and October 2026 Studio release notes (latest added 2026-10-15)** and a v6 Remaster community note — see "Studio updates since 2.0 shipped" below. **Since 2026-09-09 every generation — including edits and extends of older songs — runs on the v6 family**; see "Editing Workflow Paradigm" for what v6 adds. Suno updates Studio features frequently — use web search to verify capabilities against current documentation when uncertain.
 
 > **READ THIS FIRST — Studio 2.0 shipped 2026-08-13 and this file is split accordingly.** Suno "totally overhauled" Studio on 2026-08-13 ([release note](https://suno.com/release-notes/studio-2), [blog](https://suno.com/blog/studio-2) — OFFICIAL). Suno's own help centre now splits into a **"Studio 2.0"** category (11 articles) and a **"Studio Archive"** (14 articles) — [help.suno.com/en/categories/1708865](https://help.suno.com/en/categories/1708865). This file mirrors that split: the **Studio 2.0** section below is current; the **Studio 1.x Archive** section that follows it documents features (Warp Markers, Remove FX, Alternates, Quick Replace, EQ, Context Window, Sounds Mode, Stem Cover, Heal Edits, MILO-1080, 12-track stem export) that **no longer appear in current official Suno copy**. **Take Lanes and comping are the exception — they survived into the current docs and are safe to recommend**; only the *Alternates* / *Quick Replace* names went away. Do not present archived features as available without re-verifying in the live UI. **Field evidence is day-one only** — a primary-source pass on 2026-08-14 captured first user reports (see "Day-one field reports" below), but the software was hours old. Re-verify in a few weeks; this remains the highest-value open question in the module's Suno knowledge.
 
@@ -206,7 +206,16 @@ MusicTech's 6/10 review of the Studio 1.x beta (2026-01-13) reported smeared tra
 
 ## Studio updates since 2.0 shipped (OFFICIAL release notes; not testable here)
 
-**Read this as vendor copy, not field evidence.** Both entries below come from [Suno's release notes](https://suno.com/release-notes). **The owner is on Pro, not Premier, so Studio cannot be tested in this project** — nothing here has been verified in a live session, and no Studio claim should be presented to a user as confirmed. Suno's blog carries no Studio post after the 2026-08-13 Studio 2.0 launch.
+**Read this as vendor copy, not field evidence.** The entries below come from [Suno's release notes](https://suno.com/release-notes). **The owner is on Pro, not Premier, so Studio cannot be tested in this project** — nothing here has been verified in a live session, and no Studio claim should be presented to a user as confirmed. Suno's blog carries no Studio post after the 2026-08-13 Studio 2.0 launch.
+
+### "Tighter timing, clip stretching and fade curves" — 2026-10-08 (Improvement / Bug Fix; Studio, Performance, Web)
+
+- **Downbeat detection** is better, so clip timing is more accurate — including on a cappella vocals.
+- **Clip stretching:** Shift-click-drag time-stretches a clip to the project tempo.
+- **Fade curves:** fades can now be exponential or logarithmic; drag the node on the fade icon.
+- **Pop-out windows** for the wavetable synth, the musical typing keyboard and expanded plug-in views.
+
+**Why it matters for this module:** time-stretch to project tempo and shaped fades are the Studio route for a drum-only intro spliced in front of a take, or a tail that needs a gentler or faster fade than the Song Editor's — the prompt can't reliably produce either on v6 (see the feedback elicitor's technical resolution).
 
 ### "Suno Studio: Improved MIDI and more" — 2026-09-17 (New Feature / Improvement / Bug Fix; Studio, Web, Performance)
 
@@ -572,6 +581,7 @@ Click three-dot menu on any clip → Create → **Remaster**.
 - **Stacking** (remastering remastered tracks): Helpful for instrumentals and ambient/cinematic music. Hurts lead vocal clarity, emotional phrasing, and lyrical intelligibility.
 - **Genre softening**: Aggressive styles (metal, punk) may lose their edge after remastering. Minor tonal drift after multiple passes.
 - **One pass is usually sufficient.** 'Always trust the version that resonates' — don't chase fidelity at the expense of emotional feel.
+- **On v6, Remaster is reported to make songs worse** (COMMUNITY, five or more users, 2026-10-12 to 10-14): added artifacts or noise, a washed-out sound, or lost crispness — "Every combination of remaster options made it sound worse." One user says it was never good in any version, and one says the mobile apps don't show the strength options. The suggested replacement is a **Cover with the same Voice**, but the settings offered conflict (Weirdness 20–30, Style Influence 0, Audio Influence 15–30 with an empty style box, versus Max Mode on, Weirdness 20, Style Influence 20–40, Audio Influence 80), and others say a Cover changes too much. Treat Remaster as the last thing to try on a v6 take, not the first.
 
 Sources: [Suno Remaster Guide — Jack Righteous](https://jackrighteous.com/en-us/blogs/guides-using-suno-ai-music-creation/suno-ai-remaster-guide-v4)
 

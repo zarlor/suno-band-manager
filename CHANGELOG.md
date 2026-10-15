@@ -4,6 +4,64 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [4.0.0] - 2026-10-15
+
+A major release: the module moves to **BMad v7**. The v6 installer, BMad Builder and the module's own setup skill are gone; the module now ships as a v7 module record (`bmod-suno`), set up by BMad's `bmad` skill, and Mac lives in the v7 memory-agent layout. Every skill was then reviewed with BMad's Toolsmith and the leanness cuts were measured with `bmad-eval` before they landed. It also carries the sixth Suno v6 research sweep and new Custom Models guidance.
+
+**Built on an early v7.** 4.0.0 targets BMad v7 as published under the version string `6.13.0-next`, the preview BMad itself calls alpha (v7 GA is expected around 2026-10-16). It's in good shape and fully usable; expect a small follow-up release if v7 changes before or at GA. BMad v6 (6.12 and earlier) is no longer supported — stay on module 3.0.0 for v6.
+
+### Upgrade at a glance (existing installs)
+
+1. **Install BMad v7's `bmad` skill** if the project doesn't have it: `npx skills add bmad-code-org/BMAD-METHOD --skill bmad` (or BMad's `bmad-core-tools` plugin). Skip this to run the module standalone — see *Install and setup*.
+2. **Update the module:** `git pull` and rerun `./link-skills.sh` (it links `bmod-suno` and drops the old `suno-setup` link), or `npx skills update`.
+3. **Run `bmad setup suno`.** It asks the five questions again (the old `_bmad/config.yaml` answers aren't read any more), writes them to `_bmad/config.toml` under `[modules.suno]`, and offers to remove the retired `suno-setup` skill and other v6 leftovers.
+4. **Wake Mac.** On his first waking he finds his old memory at `_bmad/_memory/band-manager-sidecar/`, backs it up to `_bmad/backups/`, shows the conversion plan, and converts it to `_bmad/memory/suno-agent-band-manager/` on your yes. The old folder stays as the rollback until you say to remove it. Do this on each machine.
+5. **Nothing in your `docs/` changes.** Profiles, songbooks, playlists, voice files and audio stay as they are.
+
+### Breaking changes
+
+- **BMad v6 support dropped.** `suno-setup`, `module.yaml` and `module-help.csv` are retired; `bmad setup suno` replaces them, and config lives in `_bmad/config.toml` (`[modules.suno]`), read through BMad's `resolve_config.py`. Folder answers hold `{project-root}`.
+- **Mac's memory moved and changed shape** (converted on first waking, above): five identity files loaded at waking (PERSONA, CREED with the Dominion, BOND, HOW-I-REMEMBER, CAPABILITIES), small subject files under `memory/`, write-once `raw/`, and `memory/pending.md`. No INDEX.md or MEMORY.md; the wake prints a generated memory map.
+- **Shared helpers moved** from `src/skills/_shared/` to `src/_shared/` (every folder under `src/skills` must be a skill or a module record); each skill vendors only the helpers it imports.
+- **Scripts need Python 3.11+** (the librosa scripts still need 3.12+).
+- **Skills never run each other's scripts by path any more.** The feedback elicitor rebuilds prompts through `suno-style-prompt-builder --headless:refine` and writes profiles through the profile manager's `--headless:append`; it gains a measure-only `--headless:audio` route for Mac's Analyze Audio.
+
+### Install and setup
+
+- **Three ways to install, two setups.** As a BMad module (the standard) or standalone, from a clone, with `npx skills add zarlor/suno-band-manager`, or as a plugin: the repository is now a Claude Code plugin marketplace (`/plugin install suno-band-manager --marketplace zarlor/suno-band-manager`, validated) and a Codex marketplace (`codex plugin marketplace add zarlor/suno-band-manager`, manifest in BMad's format, untested so far). README and INSTALLATION list what installing with BMad adds — answers asked once, team and personal overrides, help and next steps from `bmad`, managed updates — and the steps for each method.
+- **Standalone really works now.** With BMad not set up, every skill runs on its defaults — including after Mac creates `_bmad/memory/`, which used to make the profile manager's scripts stop with "BMad is not set up". A resolver that's present but fails is still reported.
+- **Created with BMad.** README, INSTALLATION, USAGE, the module's help and the package descriptions credit the BMad Method.
+
+### Mac
+
+- **v7 memory agent:** wake modes for waking, First Breath (resumable if interrupted), the v1/v2 upgrades, a damaged sanctum, Pulse and a failed scaffold; `migrate-sanctum-to-v7.py` backs up and verifies its own conversion; `upgrade-v2` brings carried-over text up to the templates.
+- **Capture before you discuss:** `capture-wip.py` and a creed standing order save a workshop idea verbatim, dated, before it's critiqued (eval: 3/3 runs).
+- **Pipeline guard:** a skill counts as run on structural evidence (Skill calls, SKILL.md reads, the skill's JSON return), never a keyword match; packages detected by structure; an optional Dominion hook asks before writes outside Mac's boundaries; a package needs the owner's packages-preferences shard read first.
+- **Leaner wakes:** waking ~12.1k → ~10.3k tokens and an interactive create-song ~8k → ~5.5k, with eval quality unchanged (49/54 both versions). The owner's preferences file can be carved into a core plus topic shards that load only on the routes that need them.
+- **Custom Models:** when a band has a settled sound and 10+ finished songs, or the owner keeps calling v6 generic, Mac mentions a Custom Model once after the package.
+
+### The other skills
+
+Each was reviewed through the Toolsmith's five lenses (bugs, v7 conformance, determinism, leanness, triggers), and each leanness cut was measured with a `bmad-eval` variant run (3 runs per case) before landing — every skill tied or improved:
+
+| Skill | What changed | Eval (new vs prior) |
+|---|---|---|
+| Style prompt builder | SKILL.md ~2.6k → ~1.6k tokens, headless build ~15.5k → ~8k; every-build v6 material in `v6-build-core.md`; the wild card's own Exclude is validated; wild cards stay in the band's genre family | 170/174 vs 159/174 |
+| Band profile manager | staged drafts no longer fail validation falsely; unreadable profiles reported, not dropped; name lookup with ambiguity; three schema rules now enforced; Create ~8k → ~4.2k tokens | 84/90 vs 84/90 |
+| Lyric transformer | takes Mac's creativity mode and section cues headless; experimental mode keeps the writer's words (structural liberties only); headless transform ~17.5k → ~13.6k | 83/96 vs 78/96 |
+| Feedback elicitor | parameter map split by dimension and routed per complaint; analyze-audio fails loudly; headless complaint ~18.5k → ~8k | 87/93 vs 85/93 |
+| Playlist sequencer | an analyze-nothing run no longer overwrites the re-eval baseline; the headless gate enforces every locked arc; full re-sequence ~8.7k → ~6.2k | 117/120 vs 118/120 |
+
+Every skill: two-part trigger descriptions with `evals/triggers.json`, no paths into sibling skills, `{skill-root}` script calls, `uv run` everywhere. Tests moved to `unittest` module-wide (1,118 pass).
+
+### Suno v6 — research
+
+- **Sixth sweep (2026-10-15):** no model change. New in the reference docs: Studio's 2026-10-08 update (downbeat detection, clip time-stretch, fade curves); Workspace and Custom Model sharing (2026-10-15; "2x the inputs" is undefined); Albums (publishing an album publishes every unpublished song in it). Community findings, each graded: Remaster makes v6 songs worse (now last in the repair ladder); a one-note opening swell and unpromptable drum-only intros; Exclude misses some elements on v6 ("guidance, not a mute", with a fallback path); Extend ending songs near 6:00 (a low-confidence watch item); v6-wild on covers (a contradiction, not a rule).
+- **Custom Models:** how to make one (the model picker's "Create Custom Model", 6+ tracks; your own Suno songs are eligible but must be downloaded and re-uploaded, which spends downloads) and when it's worth it (a settled sound in one lane, 10–15 consistent finished mixes; the most-reported fix for v6's generic sound; watch for copying from the training songs).
+- **Earlier:** the Instrumental toggle may be missing on the reworked Create sidebar; the fallback is an empty Lyrics box with Exclude carrying the anti-vocal load.
+
+---
+
 ## [3.0.0] - 2026-10-03
 
 A major release. The whole module was reviewed against **BMad Builder v2.2.2** — every skill through the builder's own Analyze lenses, the agent through all seven agent lenses, and the module through Validate Module — and every critical and high finding was fixed. It also carries a full Suno v6 research sweep (the fifth since launch), a fix for the tempo tool that read slow songs at double speed, and the v6 prompting guidelines from two sweeps.

@@ -4,6 +4,32 @@ Mac follows the [Agent Skills](https://agentskills.io) open standard. The same S
 
 > **Requirement: `uv`.** The module's Python scripts run via `uv run`, which reads each script's [PEP 723](https://peps.python.org/pep-0723/) inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`) — no virtualenv or manual `pip install` to manage. Install it once: `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux/WSL) or `pip install uv`. Dependency-free scripts can fall back to plain `python3` (3.11+) if `uv` is unavailable. (BMad v7 runs its own skill scripts with `uv run` too.)
 
+## Choose your setup
+
+The module installs one of two ways. **As a BMad module is the standard** and the one this project uses; **standalone** works too.
+
+| | As a BMad module (standard) | Standalone |
+|---|---|---|
+| What you install | The six `suno-*` skills, `bmod-suno` (the module record) and BMad's `bmad` skill | The six `suno-*` skills (add `bmod-suno` too if you might add BMad later) |
+| Setup answers (plan, mode, folders, audio tools) | Asked once by `bmad setup suno`, saved to `_bmad/config.toml`, read by every skill | Every skill uses its defaults (see [Configuration](#configuration)); tell Mac your plan and mode in conversation and he remembers them |
+| Team and personal overrides | `_bmad/custom/config.toml` (shared) and `config.user.toml` (personal); per-skill behaviour through `bmad-customize` | Not available; each skill's `customize.toml` defaults apply |
+| Help and next steps | Ask `bmad` "what can the suno module do?" or "what next?"; it answers from the module's help files | Ask Mac or read [USAGE.md](USAGE.md) |
+| Updates | `bmad` checks for module updates and installs them; retired skills are cleaned up | `git pull` and rerun `./link-skills.sh`, `npx skills update`, or your plugin marketplace's update |
+| Mac's memory | `_bmad/memory/suno-agent-band-manager/` | The same folder; it doesn't need BMad |
+| Switching later | — | Install the `bmad` skill and run `bmad setup suno`; nothing moves |
+
+**Advantages of installing with BMad:** your answers are asked once and every skill reads the same values; teams can share settings while each person keeps their own overrides; `bmad` explains the module and suggests the next step from its help files; and updates (including skills a release retires) are handled for you. The module was created with BMad and is tested as a BMad module.
+
+**Install methods** — each works for either setup:
+
+| Method | As a BMad module | Standalone |
+|---|---|---|
+| From a clone (recommended; brings the multi-machine sync scripts and the standing-order files) | Steps 1–4 below | Steps 1, 2 and 4 below (skip step 3) |
+| `npx skills` (no clone) | `npx skills add bmad-code-org/BMAD-METHOD --skill bmad`, then `npx skills add zarlor/suno-band-manager`, then `bmad setup suno` | `npx skills add zarlor/suno-band-manager` only |
+| Plugin marketplace (Claude Code, Codex) | Install the `suno-band-manager` plugin and BMad (`bmad-core-tools` from `bmad-code-org/bmad-plugins`), then `bmad setup suno` — see [Installation as a plugin](#installation-as-a-plugin-claude-code-codex) | The `suno-band-manager` plugin only |
+
+---
+
 ## Installation from a Clone (Recommended)
 
 Works with any LLM CLI that supports Agent Skills: Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, OpenCode.
@@ -11,8 +37,8 @@ Works with any LLM CLI that supports Agent Skills: Claude Code, Gemini CLI, Code
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/zarlor/bmad-suno-band-manager.git
-cd bmad-suno-band-manager
+git clone https://github.com/zarlor/suno-band-manager.git
+cd suno-band-manager
 ```
 
 ### 2. Link skills
@@ -31,7 +57,7 @@ This links the six Suno skills and `bmod-suno`, the module record BMad's setup r
 
 > **Windows note:** Symlinks require either Developer Mode (Settings → Update & Security → For developers → Developer Mode) or running PowerShell as Administrator. The script will print a clear error if neither is enabled.
 
-### 3. Configure with BMad
+### 3. Configure with BMad (standard setup; skip for standalone)
 
 Install BMad's `bmad` skill if the project doesn't have it (BMad v7; the skill's version string is 6.13.0-next or later):
 
@@ -45,7 +71,7 @@ Then ask it, in your LLM CLI:
 bmad setup suno
 ```
 
-It asks the five questions described under [Configuration](#configuration) and writes the answers to `_bmad/config.toml`. You can skip this step: every skill runs on the default answers until you set them.
+It asks the five questions described under [Configuration](#configuration) and writes the answers to `_bmad/config.toml`. Standalone: skip this step, and every skill runs on the default answers. You can come back to it any time.
 
 ### 4. First run
 
@@ -73,13 +99,44 @@ Tell Mac what kind of song you want. See the [Usage Guide](USAGE.md) for all fea
 BMad v7 installs modules with the `skills` CLI instead of the old `npx bmad-method install` installer. To install the module straight from GitHub:
 
 ```bash
-npx skills add bmad-code-org/BMAD-METHOD --skill bmad   # if the project doesn't have BMad's bmad skill yet
+npx skills add bmad-code-org/BMAD-METHOD --skill bmad   # BMad module setup: if the project doesn't have BMad's bmad skill yet
 npx skills add zarlor/suno-band-manager
 ```
 
-Select the six `suno-*` skills and `bmod-suno` (the module record; `bmad setup` can't find the module without it), then ask `bmad setup suno`. This route installs the skills only. The top-level `scripts/` folder (multi-machine sync) and the `CLAUDE.md` / `GEMINI.md` / `AGENTS.md` standing orders don't come with it; see [Multi-Machine Sync](#multi-machine-sync-optional) and [Pipeline Guard](#pipeline-guard-recommended).
+**As a BMad module:** select the six `suno-*` skills and `bmod-suno` (the module record; `bmad setup` can't find the module without it), then ask `bmad setup suno`.
+
+**Standalone:** skip the first command and select the six `suno-*` skills (adding `bmod-suno` costs nothing and lets you add BMad later). This route installs the skills only. The top-level `scripts/` folder (multi-machine sync) and the `CLAUDE.md` / `GEMINI.md` / `AGENTS.md` standing orders don't come with it; see [Multi-Machine Sync](#multi-machine-sync-optional) and [Pipeline Guard](#pipeline-guard-recommended).
 
 BMad v6 installs (6.12 and earlier, `npx bmad-method install`) are not supported from module 4.0.0.
+
+---
+
+## Installation as a plugin (Claude Code, Codex)
+
+The repository is also a plugin marketplace, the way BMad ships its own modules (`bmad-code-org/bmad-plugins`).
+
+**Claude Code** (one step on Claude Code 2.1.275 or later):
+
+```
+/plugin install suno-band-manager --marketplace zarlor/suno-band-manager
+```
+
+On older versions, add the marketplace first: `/plugin marketplace add zarlor/suno-band-manager`, then `/plugin install suno-band-manager`.
+
+**Codex** (from your terminal):
+
+```bash
+codex plugin marketplace add zarlor/suno-band-manager
+```
+
+Then install the `suno-band-manager` plugin. The Codex manifest follows BMad's own plugin format but hasn't been tested against Codex yet; if it gives you trouble, use `npx skills` instead.
+
+**As a BMad module:** also install BMad. Through its marketplace, add `bmad-code-org/bmad-plugins` and install `bmad-core-tools`, which includes the `bmad` hub (or use `npx skills add bmad-code-org/BMAD-METHOD --skill bmad`). Then ask `bmad setup suno`. **Standalone:** the plugin alone is enough.
+
+**Notes:**
+- Use one installation method per skill. Installing the module both as a plugin and with `npx skills` gives you duplicate commands.
+- Update through your marketplace's update flow, then run `bmad setup`. Its update check looks at this repository and may suggest `npx skills update`; for a plugin install, use the marketplace instead.
+- Like `npx skills`, a plugin install doesn't put the top-level `scripts/` folder (multi-machine sync) or the `CLAUDE.md` / `GEMINI.md` / `AGENTS.md` standing orders in your project.
 
 ---
 
@@ -112,7 +169,7 @@ To override them without touching that file, put a `[modules.suno]` table in `_b
 
 **Your name and language** are not config keys. Mac takes them from his memory (the Owner Summary in `_bmad/memory/suno-agent-band-manager/BOND.md`), or, before that exists, from your `docs/voice-context-<name>.md` file; if neither exists he asks. The other skills reply in the language you write in.
 
-**Without BMad:** with no `_bmad/` directory, every skill uses the defaults in the table above. Mac mentions once that `bmad setup suno` sets the tier, mode and folders, and carries on. Tier and mode preferences you give Mac in conversation ("I'm on Pro", "switch to Studio mode") are saved to his memory either way.
+**Without BMad (standalone):** with BMad not set up (no `_bmad/scripts/resolve_config.py`), every skill uses the defaults in the table above. That holds even after Mac creates `_bmad/memory/` for his memory; that folder alone doesn't need BMad. The standard install is still the BMad module; adding BMad later and running `bmad setup suno` needs no other change. Mac mentions once that `bmad setup suno` sets the tier, mode and folders, and carries on. Tier and mode preferences you give Mac in conversation ("I'm on Pro", "switch to Studio mode") are saved to his memory either way.
 
 **Help:** ask `bmad` what to do next, or about the module ("what can the suno module do?"); it answers from the module's help files in `src/skills/bmod-suno/help/`.
 
@@ -346,3 +403,7 @@ Without `uv` and without these deps, the audio scripts return JSON with install 
 **A `suno-setup` skill still shows up:** it was retired in 4.0.0. Rerun `./link-skills.sh` to drop the dangling link, and let `bmad setup suno` delete any installed copy.
 
 **Symlinks not working (Windows):** Run `link-skills.ps1` from an elevated PowerShell, or enable Developer Mode (Settings → Update & Security → For developers → Developer Mode) and re-run from a normal PowerShell. As a last resort, copy the `src/skills/suno-*` and `src/skills/bmod-suno` directories into `.agents/skills/` manually — but you'll need to re-copy after every `git pull`.
+
+---
+
+Created with the [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/). The suno module is a BMad module, built and reviewed with BMad's Toolsmith and measured with `bmad-eval`.

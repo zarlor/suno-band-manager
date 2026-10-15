@@ -32,7 +32,7 @@ v6 follows the style field literally and fills whatever it leaves unsaid with it
 | Variety | Exact style | Any higher notch rewrites the prompt before generating (OFFICIAL; LOCAL: negatives flipped, details invented) |
 | Personalize | Off | My Taste makes the package irreproducible across accounts |
 
-Exclude Styles, the panel's first row, survives the Variety rewrite intact (155 of 156 pairs, ANECDOTAL, controlled).
+Exclude Styles, the panel's first row, survives the Variety rewrite intact (155 of 156 pairs, ANECDOTAL, controlled). It still steers rather than mutes: on v6, users report the bass kick, vocal gender, vocal repeats, synth loops and the opening swell coming through anyway (COMMUNITY, 2026-10). Keep negatives there, and for an element the song can't have, also say in the style what plays instead.
 
 ## Guidelines from testing
 

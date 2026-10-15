@@ -862,6 +862,7 @@ lyrics begin at 0:15; instrumental only after 1:45
 - **Never load-bearing.** If the song's structure depends on vocals starting at a specific moment, this line will not deliver it.
 - **A short instrumental intro is Suno-standard.** Asking for vocals at 0:00 is asking the model to skip something it does by default in most genres — expect the default to win.
 - **Post-generation crop is the only deterministic fix** for an intro that is too long, exactly as with endings.
+- **Two v6 intro habits the lyric sheet can't override (COMMUNITY, 2026-10):** most v6 songs open with the same one-note synth or string swell, and Exclude or "no intro" doesn't reliably stop it; and a drum-only opening (drums alone for the first bars) isn't reliably promptable — other instruments join anyway, even when excluded. Don't build a song whose opening depends on either. A hard-start line at the top of the lyrics (`[Hit beat one immediately, no intro, no synth pad]`) and a bracket naming when each instrument enters are untested suggestions; the reliable routes are cropping the swell and building a drum-only intro in Studio or a DAW.
 
 ### Line Density as Tempo Control
 This is the **PRIMARY mechanism** for controlling perceived tempo in Suno-generated vocals.

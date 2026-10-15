@@ -71,6 +71,7 @@ A shorter, partial version at the end of the style prompt fits a tight character
 - **Late-song degradation** — the mix muffles, cymbals turn tinny, drums go synthetic in the back half, worst in rock/metal and past ~2-4 minutes. Reported mitigations: Max Mode (mixed results), shorter songs, extending the back half with v6-mini (ANECDOTAL), and Song Editor section re-rolls.
 - **Narrower genre reach** — metal and high-gain guitar, DnB/EDM, reggae skank, Italo disco, and glam are the most-reported failures; pop, lighter rock, and folk the strongest. High-gain metal users report that any Persona or Voice pulls guitars and drums toward a synthetic timbre.
 - **Take-to-take variance can exceed the effect of a prompt edit** (VENDOR). Judge both takes, and change one control per generation.
+- **v6-wild on covers — contradiction, not a rule** (ANECDOTAL, 2026-10-14): one user's cover recipe (v6-wild, Weirdness 50, Variety 25, My Taste off, plain-language style box) says wild "seems to follow instructions better" than v6, and two or three others prefer wild for covers or first drafts. Suno describes wild as pushing "further from the prompt." Nobody confirmed the numbers; a reasonable thing to try on a cover that v6 keeps ignoring, not a default.
 - **Voices** — reports are split between clones that stay themselves and clones that "sound like another artist." LOCAL-OBSERVED (one Professional clone, 2026-09-12): the clone blended into mixes better on v6 than it had on v5.5, including in a heavier band's lane.
 
 Lyric-side v6 findings (section cues, `[Silence]`, comma placement, edge templates) belong to the `suno-lyric-transformer` skill.
@@ -146,8 +147,20 @@ v5.5 Voice cloning trains on the user's vocal samples and captures **vocal chara
 
 ### Custom Models
 
-- Train on 6+ original tracks, 2-5 min training time, up to 3 custom models per account
-- Pro/Premier only
+**How to make one (OFFICIAL unless marked; checked 2026-10-15):**
+- Pro/Premier only, up to 3 models per account. In Create, open the model picker (top right) and choose **Create Custom Model**; add at least 6 tracks (Bulk Upload takes several at once), name the model, and create it. Training takes about 2–5 minutes; the model then appears in the model picker. Existing models were upgraded so that "v6 powers your model".
+- **Which tracks:** audio you own the rights to, and Suno says that "includes your Suno library" — the user's own Suno songs are allowed. But library songs can't be picked directly: users download and re-upload them (COMMUNITY, 3+), which **spends the monthly download allowance** (Pro 20, Premier 60). Re-uploaded Suno songs are sometimes flagged as copyrighted and sometimes pass (reports conflict). No other person's voice on any upload (Terms).
+- **Not documented:** credit cost to train (two unverified reports say 100 credits), a track maximum (one user saw "Upload 24+ songs for best results" and a 100-track cap, unverified), file-format rules, and whether a model runs on v6-wild or v6-mini or with Covers and Extend.
+- **Changing one:** you can't add tracks to a trained model; delete it (trash icon in the picker, VENDOR) and train a new one. With three slots, keep one style lane per slot.
+- **Sharing (OFFICIAL, release note 2026-10-15):** Premier users can share a Custom Model with collaborators, "Now, with 2x the inputs." Nothing official says what "2x the inputs" means, and the help page still says models "cannot be shared" — don't quote a new training limit.
+
+**When to use one:**
+- **Use it** when a band has a settled sound and enough finished tracks in that one lane to train on — 10–15 consistent finished mixes is the common advice; 6 is only the floor. It suits continuity work (the next song on an album, more songs in an established sound) better than exploration: a tightly trained model pulls other genres back toward its own (ANECDOTAL).
+- **On v6 it is the most-recommended fix for v6's generic default sound** (COMMUNITY, about 7 users, 2026-09/10): a model trained on the user's own pre-v6 Suno songs got them "genuinely close" to their old sound, usually not all the way.
+- **Skip it** while a band is still finding its sound, for a one-off song, or for a catalog that mixes unrelated styles (a mixed 8-track set gave "mush", ANECDOTAL). A strong style prompt plus a Voice is the lighter route there.
+- **Watch for copying:** three users report a model reproducing recognizable melodies or chord progressions from its training songs (one estimates about 1 in 5 tracks); smaller sets copy more. Listen for it before publishing.
+- **Heavy genres on v6:** one report keeps the musical identity but turns high-gain guitars into "a distorted synth or keyboard patch"; the same shift is reported with Personas and Voices. Results elsewhere are split (positive for emo/orchestral and symphonic rock, failure reported for indie rock).
+- Whether a model learns vocals, and whether it adds creativity or only recombines, is contested; a Voice is still the tool for who sings.
 - Drop generic production descriptors your model already knows -- if your Custom Model was trained on lo-fi indie tracks, you don't need "lo-fi warmth" in every prompt
 - Think of Custom Model as "producer" and the prompt as "songwriter" -- the model brings the sonic palette, the prompt brings the creative direction
 - Train separate models for separate styles -- mixing genres in training data confuses the model
@@ -313,7 +326,7 @@ Three guitar mentions in 200 characters looks like over-correction; for brass-ba
 
 The Exclude Styles field (Pro/Premier only) is a separate input from the style prompt. Key behaviors:
 
-- **Functions as probability reduction, not a hard ban** — excluded elements are less likely but can still appear. Treat it as strong guidance, not a guarantee.
+- **Functions as probability reduction, not a hard ban** — excluded elements are less likely but can still appear. Treat it as strong guidance, not a guarantee. On v6, users report specific misses: the bass kick, vocal gender, vocal repeats, synth loops and the opening swell (COMMUNITY, 2026-10).
 - **v6 leans on it:** users report Exclude is "far more necessary than previous versions" (COMMUNITY). Keep it to categories.
 - **Length cap: 1,000 characters** (the live page markup, read in the 2026-10-03 sweep; the counter in the form is the final word). An earlier "no cap" claim doesn't hold for the web form.
 - **Past 2-3 terms the arrangement destabilizes; past ~5, output reportedly goes "sparse and thin"** (ANECDOTAL). If a list has grown past five, cut it rather than adding.

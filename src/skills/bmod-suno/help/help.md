@@ -1,6 +1,6 @@
 # Suno Band Manager knowledge
 
-This document covers the skills of the `suno` module: what each one gives the user, when to recommend it, and what to offer next. The module turns a user's creative ideas (a poem, a feeling, a genre mashup) into Suno-ready song packages: a style prompt, structured lyrics and generation settings, built around reusable band identities.
+This document covers the skills of the `suno` module: what each one gives the user, when to recommend it, and what to offer next. The module turns a user's creative ideas (a poem, a feeling, a genre mashup) into Suno-ready song packages: a style prompt, structured lyrics and generation settings, built around reusable band identities. It is a BMad module, created with the BMad Method, and also runs standalone on its defaults.
 
 ## The skills
 

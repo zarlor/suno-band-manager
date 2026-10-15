@@ -1,5 +1,7 @@
 # Suno Agent — Mac, the Band Manager
 
+> **Created with the [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/).** A BMad module, built and reviewed with BMad's Toolsmith and measured with `bmad-eval` — see [Credits](#credits).
+
 An AI-powered music production assistant that helps you create professional Suno-ready song packages through guided creative conversation. Mac orchestrates five specialized skills into a seamless workflow: from initial inspiration to a complete package — style prompt, lyrics, and parameter recommendations — that you can paste directly into Suno.
 
 ## Features
@@ -87,7 +89,7 @@ For multi-machine projects, `audio-files-manifest.py` generates a small `docs/au
 ## Prerequisites
 
 - **An LLM CLI with skill support** — Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, or OpenCode
-- **[`uv`](https://docs.astral.sh/uv/)** — the module's Python scripts run via `uv run`, which reads each script's [PEP 723](https://peps.python.org/pep-0723/) inline metadata and auto-provisions dependencies (no virtualenv or manual `pip install`). Install with `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`. Dependency-free scripts can fall back to plain `python3` (3.10+) if needed.
+- **[`uv`](https://docs.astral.sh/uv/)** — the module's Python scripts run via `uv run`, which reads each script's [PEP 723](https://peps.python.org/pep-0723/) inline metadata and auto-provisions dependencies (no virtualenv or manual `pip install`). Install with `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`. Dependency-free scripts can fall back to plain `python3` (3.11+) if needed.
 - **Suno account** (free tier works; Pro/Premier unlocks additional features). The module targets Suno's **v6 family** (v6, v6-wild, v6-mini).
 
 ### Requirements at a glance
@@ -95,11 +97,11 @@ For multi-machine projects, `audio-files-manifest.py` generates a small `docs/au
 | Component | Requirement | Notes |
 |---|---|---|
 | `uv` | Any recent release (tested on 0.12) | Provisions every script's dependencies from its PEP 723 header. Keeping it current helps: `uv self update` |
-| Python — core scripts | 3.10+ | Most scripts are dependency-free or need only `pyyaml` ≥ 6.0 |
+| Python — core scripts | 3.11+ | Most scripts are dependency-free or need only `pyyaml` ≥ 6.0 |
 | Python — audio analysis | **3.12+** | Required by librosa 1.0; `uv run` downloads a suitable Python on its own if your system one is older |
 | Audio libraries | `librosa` ≥ 1.0, `numpy` ≥ 2.1, `pyloudnorm` ≥ 0.2 | Optional — only for the audio-analysis and playlist-sequencing scripts; auto-provisioned by `uv run` |
 | Optional heavy tools | PyTorch ≥ 2.1 with `beat-this` ≥ 1.1 (`beat-grid.py`) `demucs` ≥ 4.0.1 (`vocal-placement.py`), or `demucs` plus `faster-whisper` ≥ 1.1 (`section-map.py`) | Opt-in only — nothing else pulls them in. First run provisions 1–3 GB plus the model weights; a CUDA GPU helps (Demucs on CPU takes minutes per track) |
-- **BMad Method v7** (recommended) — BMad's `bmad` skill, version 6.13.0-next or later (v7 is published under that version string), sets the module's answers (`bmad setup suno`), checks for updates, and answers "what next?" questions. Without it every skill runs on its default answers. BMad v6 (6.12 and earlier) is not supported from module 4.0.0
+- **BMad Method v7** (the standard setup) — BMad's `bmad` skill, version 6.13.0-next or later (v7 is published under that version string; this release is built on that early v7 build), sets the module's answers (`bmad setup suno`), checks for updates, and answers "what next?" questions. The skills also run without it, on their default answers — see [Standalone, without BMad](#standalone-without-bmad). BMad v6 (6.12 and earlier) is not supported from module 4.0.0
 
 ### Optional: Audio Analysis
 
@@ -127,6 +129,16 @@ These are all optional — the full song creation and refinement workflow works 
 
 ## Installation
 
+**Two setups.** The standard is to install it **as a BMad module**: BMad's `bmad` skill asks your setup answers once (plan, mode, folders) and every skill reads them, teams and individuals can layer their own overrides, `bmad` explains the module and suggests next steps from its help files, and it handles updates. The skills also run **standalone**, on their default answers, without BMad. Either setup installs from a clone, with `npx skills`, or as a plugin:
+
+| | As a BMad module (standard) | Standalone |
+|---|---|---|
+| From a clone | Clone, `./link-skills.sh`, install the `bmad` skill, `bmad setup suno` | Clone, `./link-skills.sh` |
+| `npx skills` | `npx skills add bmad-code-org/BMAD-METHOD --skill bmad`, `npx skills add zarlor/suno-band-manager`, `bmad setup suno` | `npx skills add zarlor/suno-band-manager` |
+| Plugin (Claude Code, Codex) | The `suno-band-manager` plugin plus BMad's `bmad-core-tools` plugin, then `bmad setup suno` | The `suno-band-manager` plugin |
+
+The full comparison, with what each setup gives you, is in [INSTALLATION.md → Choose your setup](INSTALLATION.md#choose-your-setup).
+
 ### From a clone (any supported LLM CLI)
 
 ```bash
@@ -137,7 +149,7 @@ cd suno-band-manager
 
 The link script creates symlinks in `.claude/skills/`, `.agents/skills/` and `.gemini/skills/` — `.agents/skills/` is the portable [Agent Skills](https://agentskills.io) standard supported by Claude Code, Gemini CLI, Codex CLI, GitHub Copilot, Windsurf, and OpenCode. It links the six skills and the `bmod-suno` module record. A clone also gives you the top-level `scripts/` folder that multi-machine sync needs.
 
-### Configure with BMad
+### Configure with BMad (standard setup; standalone skips this)
 
 Setup belongs to BMad's `bmad` skill. Install it if your project doesn't have it yet:
 
@@ -173,9 +185,23 @@ BMad v7 installs modules with the `skills` CLI. To install the module straight f
 npx skills add zarlor/suno-band-manager
 ```
 
-Select the six `suno-*` skills and `bmod-suno`, then run `bmad setup suno` as above. This route doesn't bring the top-level `scripts/` folder; see [INSTALLATION.md](INSTALLATION.md) "Multi-Machine Sync" if you need it.
+As a BMad module, install the `bmad` skill first (above), select the six `suno-*` skills and `bmod-suno`, then run `bmad setup suno`. Standalone, select the six `suno-*` skills and skip setup. This route doesn't bring the top-level `scripts/` folder; see [INSTALLATION.md](INSTALLATION.md) "Multi-Machine Sync" if you need it.
 
 For per-tool notes, the pipeline guard, and troubleshooting, see [INSTALLATION.md](INSTALLATION.md).
+
+### As a plugin (Claude Code, Codex)
+
+The repository is also a plugin marketplace, the way BMad ships its own modules. In Claude Code (2.1.275 or later):
+
+```
+/plugin install suno-band-manager --marketplace zarlor/suno-band-manager
+```
+
+In Codex: `codex plugin marketplace add zarlor/suno-band-manager`, then install `suno-band-manager` (the Codex manifest is untested so far). For the BMad module setup, also install BMad's `bmad-core-tools` plugin from `bmad-code-org/bmad-plugins` and run `bmad setup suno`. Use one installation method per skill, and update plugins through the marketplace. Details in [INSTALLATION.md → Installation as a plugin](INSTALLATION.md#installation-as-a-plugin-claude-code-codex).
+
+### Standalone, without BMad
+
+The standard install is as a BMad module, above. The skills also run on their own: install them (clone and `./link-skills.sh`, or `npx skills add zarlor/suno-band-manager`) and skip the `bmad` skill. Every skill then uses the defaults in the setup table, and Mac keeps his memory in `_bmad/memory/suno-agent-band-manager/` all the same (that folder alone doesn't need BMad). Tell Mac your plan and preferred mode in conversation and he remembers them. What you give up: saved setup answers, team and personal overrides (`bmad-customize`), and module help and updates through `bmad`. You can add BMad later and run `bmad setup suno`; nothing needs moving.
 
 ### Start using Mac
 
@@ -314,4 +340,4 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ## Credits
 
-Built with the [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) — Build More, Architect Dreams. Mac's agent architecture, skill structure, and module system are powered by BMad's framework and its Toolsmith (`bmad-toolsmith`) and `bmad-eval` tools. The skills run on their defaults without BMad, but the module owes its DNA to BMad's approach to outcome-driven AI agent design.
+Created with the [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD/) — Build More, Architect Dreams. Mac's agent architecture, skill structure, and module system are powered by BMad's framework and its Toolsmith (`bmad-toolsmith`) and `bmad-eval` tools. The skills run on their defaults without BMad, but the module owes its DNA to BMad's approach to outcome-driven AI agent design.

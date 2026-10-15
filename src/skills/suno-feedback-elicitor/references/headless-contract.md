@@ -6,7 +6,7 @@
 - `--headless:analyze` — triage only: classify the feedback and return `feedback_analysis` and the `decision_log`. No adjustments, no durable writes, no audio measurement.
 - `--headless:audio` — measure only: run the audio scripts on a render and return their JSON (see "Audio mode" below). No feedback, triage or recommendations.
 
-When the input carries `feedback_type` / `dimensions`, trust them and skip re-triage; otherwise triage as the interactive route does and record the inferred type in `decision_log`.
+When the input carries `feedback_type` / `dimensions` (parse-feedback returns them as `pre_categorized`), trust them and skip re-triage; otherwise triage as the interactive route does and record the inferred type in `decision_log`.
 
 ## Input
 
@@ -22,7 +22,7 @@ When the input carries `feedback_type` / `dimensions`, trust them and skip re-tr
 | `--iteration-log` | Optional | File path to the song's iteration log |
 | `--no-write` | Optional | Write nothing durable (see below) |
 
-Pass the flags straight to `uv run {skill-root}/scripts/parse-feedback.py` — it does the flag-to-JSON translation and reads the lyrics file, so there is no mapping to do by hand. Feed its `parsed.context` plus your `dimensions` (and `tier` from `{suno_tier}`) to `uv run {skill-root}/scripts/map-adjustments.py --stdin`. A `warning` or `fail` status lists the `unmapped` dimensions: map each by judgment from the parameter map and log it in `decision_log` with medium or low confidence.
+Pass the flags straight to `uv run {skill-root}/scripts/parse-feedback.py` — it does the flag-to-JSON translation and reads the lyrics file, so there is no mapping to do by hand. Feed its `parsed.context` plus your `dimensions` (and `tier` from `{suno_tier}`) to `uv run {skill-root}/scripts/map-adjustments.py --stdin`. A `warning` or `fail` status lists the `unmapped` dimensions: map each by judgment from the map reference you read and log it in `decision_log` with medium or low confidence.
 
 ## Durable writes
 

@@ -1,0 +1,25 @@
+album: "Copper Lantern"
+
+tracks:
+  - name: "Kerosene Morning"
+    file: "Kerosene Morning.mp3"
+  - name: "Switchyard"
+    file: "Switchyard.mp3"
+  - name: "Tin Roof Psalm"
+    file: "Tin Roof Psalm.mp3"
+    felt_bpm: 84
+  - name: "Copperhead"
+    file: "Copperhead.mp3"
+  - name: "Widow's Porch"
+    file: "Widows Porch.mp3"
+  - name: "Rust Belt Waltz"
+    file: "Rust Belt Waltz.mp3"
+  - name: "Night Freight"
+    file: "Night Freight.mp3"
+  - name: "Last Call at Dutch's"
+    file: "Last Call at Dutchs.mp3"
+  - name: "Gravel Road Hymn"
+    file: "Gravel Road Hymn.mp3"
+
+locked_arcs:
+  - "Widow's Porch > Rust Belt Waltz"

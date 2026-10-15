@@ -710,7 +710,7 @@ Example:
         findings.append({
             "severity": "medium", "category": "unmapped",
             "issue": f"{miss['dimension']}/{miss['direction']}: {miss['reason']}",
-            "fix": "Use a listed dimension/direction, or map this one by judgment from the parameter map",
+            "fix": "Use a listed dimension/direction, or map this one by judgment from the map references",
         })
     if adjustments["mapped"] == 0:
         status = "fail"

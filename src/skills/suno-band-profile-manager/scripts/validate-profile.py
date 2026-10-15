@@ -486,7 +486,7 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None,
             })
 
     # Deprecated: an in-profile `playlist:` block (track order lives in the playlist YAML).
-    if "playlist" in profile and isinstance(profile["playlist"], dict):
+    if "playlist" in profile and isinstance(profile["playlist"], (dict, list)):
         findings.append({
             "severity": "medium",
             "category": "deprecation",

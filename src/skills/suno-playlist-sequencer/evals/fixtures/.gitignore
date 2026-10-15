@@ -1,0 +1,2 @@
+# This folder mirrors an eval workspace (a project root): keep what the repo root .gitignore drops.
+!docs/

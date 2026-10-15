@@ -285,14 +285,15 @@ src/skills/
 │   │                               # research-sources, interactive-session, headless-contract
 │   └── scripts/                    # validate-prompt, _shared/
 ├── suno-lyric-transformer/    # Poem/text to Suno-ready lyrics
-│   ├── references/                 # metatag-reference, section-jobs, present-and-handoff, headless-contract
+│   ├── references/                 # metatag-reference, section-jobs, interactive-session, headless-contract
 │   └── scripts/                    # validate-lyrics, cliche-detector, syllable-counter, analyze-input,
 │                                   # section-length-checker, lyrics-diff, spacing-check,
 │                                   # validate-options, assemble-summary, _shared/
 ├── suno-feedback-elicitor/    # Post-generation feedback refinement + audio analysis
-│   ├── references/                 # feedback-triage-guide, suno-parameter-map, model-controls,
-│   │                               # technical-resolution, audio-analysis-scripts, gemini-audio-analysis,
-│   │                               # output-template, durable-writes, headless-contract
+│   ├── references/                 # feedback-triage-guide, map-vocals, map-arrangement, map-energy-structure,
+│   │                               # map-production-mood, controls, technical-resolution, audio-analysis-scripts,
+│   │                               # gemini-audio-analysis, output-template, durable-writes, headless-contract,
+│   │                               # retired-models, research-sources
 │   └── scripts/                    # parse-feedback, map-adjustments, feedback-log, analyze-audio,
 │                                   # audio-deep-analysis, chord-progression, tempo-detail, beat-grid,
 │                                   # vocal-placement, section-map, audio-files-manifest,

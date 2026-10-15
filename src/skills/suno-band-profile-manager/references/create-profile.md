@@ -1,6 +1,6 @@
 # Create Profile
 
-The outcome is a saved band profile at `{band_profiles_folder}/{slug}.yaml`, a sibling decision log, and the band's empty playlist YAML. The profile's real readers are the Style Prompt Builder, Lyric Transformer and Feedback Elicitor: every field must be specific enough for the Style Prompt Builder to write a distinctive prompt from it. Vague profiles produce vague songs. The field list, types, limits and tier gates are in `references/profile-schema.md`, loaded with this file.
+The outcome is a saved band profile at `{band_profiles_folder}/{slug}.yaml`, a sibling decision log, and the band's empty playlist YAML. The profile's real readers are the Style Prompt Builder, Lyric Transformer and Feedback Elicitor: every field must be specific enough for the Style Prompt Builder to write a distinctive prompt from it. Vague profiles produce vague songs. The field list, caps, tier gates and Voice rules are in the profile schema, loaded with this file.
 
 All scripts run as `uv run {skill-root}/scripts/<name>.py … --project-root {project-root}`. They read `band_profiles_folder` and `songbook_folder` from module config themselves.
 
@@ -17,8 +17,8 @@ Invite the user to dump everything: the vibe, bands it should sound like, lyrics
 ## What only you can bring
 
 - **References.** Break each "sounds like" down into instrumentation, production style, vocal approach, energy and era. Use web search to check the sound when you have it; if you don't, say so and work from the user's description. Confirm the breakdown matches what they hear.
-- **Vocals** (skip if instrumental). Push for evocative specifics ("warm, breathy female vocal with indie folk phrasing", not "female vocals"). When a Voice (`voice_id`) is set, leave gender and timbre out of the style baseline: the Voice already defines them. A band that uses several cloned Voices for different track types records them in `voices:`, with `vocal.voice_id` as the primary.
-- **Style baseline.** Front-load the essentials in the first ~200 characters, where they influence generation most. Show the draft: "Read this like a recipe for your sound — does every ingredient belong?"
+- **Vocals** (skip if instrumental). Push for evocative specifics ("warm, breathy female vocal with indie folk phrasing", not "female vocals"). A band with a Voice follows the schema's "A band with a Voice".
+- **Style baseline.** Show the draft: "Read this like a recipe for your sound — does every ingredient belong?"
 - **Exclusions.** Capture them as given. Suno handles negatives poorly, so the Style Prompt Builder turns them into positive language later.
 - **Writer voice.** Offer to analyze samples now or later.
 - **Accumulated learnings.** If the user already knows what works or fails for this sound, record durable patterns in `generation_learnings` / `known_working_patterns` and dead ends in `known_limitations`. Most first-timers have none; don't push.
@@ -26,7 +26,7 @@ Invite the user to dump everything: the vibe, bands it should sound like, lyrics
 
 ## Validate, present, save
 
-1. Run `scripts/validate-profile.py {slug} --staged {band_profiles_folder}/drafts/{slug}.yaml --project-root {project-root}` for the structural checks (length, enums, exclusions cap, tier/model/slider/Voice consistency, name-to-filename). Fix what it finds before judging quality.
+1. Run `scripts/validate-profile.py {slug} --staged {band_profiles_folder}/drafts/{slug}.yaml --project-root {project-root}` for the structural checks. Fix what it finds before judging quality.
 2. Judge what the validator cannot: is the style baseline specific, the vocal direction evocative, and do the exclusions fight the genre? Fix what you can; flag what needs the user.
 3. Present a **Band Identity Card** (3-4 sentences on who this band is), then the YAML.
 4. On approval, write it all in one batch:

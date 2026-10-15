@@ -1,173 +1,50 @@
 # Feedback Triage Guide
 
-> **Last validated:** August 2026 (parameter mappings re-checked against the 2026-08-13 platform sweep). Elicitation techniques are craft-based (not Suno-specific) and do not require frequent re-validation. The Suno parameter mappings in the opposing pairs table should be verified via web search if Suno model behavior has changed since this date.
+Classify the feedback, then work it by its type. Mixed feedback can carry several types; each complaint is worked by its own.
 
-## Classification Rules
+## Types
 
-### Clear Feedback
-**Signals:** Specific nouns (guitar, vocals, bass, drums, tempo), comparative statements ("too much," "not enough," "louder," "softer"), direct requests ("add," "remove," "change").
+**Clear** — specific nouns (guitar, vocals, drums, tempo), comparatives ("too much", "louder"), direct requests ("add", "remove"). *"The electric guitar is too prominent." "I need a bridge before the outro." "The drums overpower everything."*
+Map directly, no elicitation, and explain each move concretely: "To pull the guitar back, I'd add 'subtle guitar, background guitar' and put 'guitar solo, heavy guitar' in Exclude Styles."
 
-**Examples:**
-- "The electric guitar is too prominent"
-- "I need a bridge between the second chorus and the outro"
-- "The vocals sound too autotuned"
-- "It's too fast — slow it down"
-- "The drums overpower everything"
+**Positive** — approval ("love it", "nailed it"), evolution asks ("can we try", "now make it"), preservation ("keep the..."). *"Love the vocals — can we try a darker instrumental?"*
+Lead with the win, not a manufactured problem. Satisfied with no evolution ask: celebrate, offer to bank the winning settings to the band profile, and hand off; pushing "change one thing" on someone who's happy costs their trust. Wants to evolve: ask what to keep and what to push, lock the keepers as the anchor, map the rest.
 
-**Action:** Map directly, no elicitation: style wording, exclusions, sliders, lyric structure and metatags from the parameter map (and model controls when a v6 control, Voice or Custom Model is in play). Explain each move concretely ("To reduce guitar prominence, I'd add 'subtle guitar, background acoustic' and exclude 'no heavy guitar, no guitar solo'").
+**Vague** — feeling words without specifics ("off", "something's missing", "the vibe is off"), hedging ("hard to explain"), negation without an alternative ("that's not it"). *"It doesn't feel like what I imagined." "It's close but not there yet."*
+Narrow from broad dimensions to one concrete anchor with the techniques below, starting wherever the user's awareness already is, one question at a time. Zero awareness ("all of it is off") goes straight to a reference: "Point me at anything that sounds like what you wanted — a song, an artist, a movie scene, or just a feeling." Propose no changes until a dimension and direction are confirmed; summarize the anchor and confirm it before mapping.
 
-### Positive Feedback
-**Signals:** Approval language ("love it," "great," "perfect," "nailed it"), evolution requests ("can we try," "what if," "now make it"), preservation language ("keep the," "don't change").
+**Contradictory** — opposing descriptors ("more energetic but more relaxed", "raw and lo-fi but radio-ready"), reversals, wanting everything changed and nothing changed.
+First check for dynamic contrast: "Sounds like you might want quiet verses building to powerful choruses — is that it?" If yes, it's section work (`[Energy: Low]` verse, `[Energy: High]` chorus). If it's genuinely contradictory, name the tension without judgment and use the first-principles fallback. When it spans arrangement, lyrics and delivery at once, change in three passes rather than all together, so each pass shows what it fixed or broke: (1) concept, mood and genre in the style prompt; (2) lyrics with structural and section tags and arrangement cues; (3) performance — inline delivery cues, energy tags, dynamics metatags.
 
-**Examples:**
-- "This is exactly what I wanted!"
-- "Love the vocals — can we try a darker instrumental?"
-- "Perfect energy. What about a version with more acoustic guitar?"
-- "Keep everything but make the chorus hit harder"
+**Technical** — quality words ("glitchy", "robotic", "clipping", "cuts off", "muffled", "tinny"), timestamps ("at 1:23"), mispronunciations: generation-specific issues distinct from creative direction.
+Set expectations first: "Audio artifacts are usually specific to a particular generation, not the prompt itself." Then resolve each issue by the technical paths: regeneration first, editor or Studio by tier, and the prompt-fixable part of a dual-path issue mapped alongside.
 
-**Action:** Lead with the win, not a manufactured problem. **Satisfied, no evolution ask:** celebrate and offer to bank the winning settings to the band profile, then go to handoff; pushing "change one thing" on someone who's happy costs their trust. **Wants to evolve:** ask what to keep and what to push further, lock what they keep as the anchor, then map the rest.
+## Elicitation techniques
 
-### Vague Feedback
-**Signals:** Feeling-based language without specifics ("off," "not right," "something's missing," "doesn't feel like"), hedging ("I don't know," "hard to explain," "it's just"), negation without alternative ("I don't like it," "that's not it").
+**Binary narrowing** — quick A/B questions that find the dimension in under five: music and production versus vocals; energy (too high, too low, right); structure (sections, flow, length); lyrics (content, delivery, phrasing); overall mood (right neighborhood or wrong direction). One question at a time; "kind of both" is signal; once it's down to one dimension, move to anchoring.
 
-**Examples:**
-- "Something about it just isn't right"
-- "It doesn't feel like what I imagined"
-- "I don't know, it's missing something"
-- "It's close but not there yet"
-- "The vibe is off"
+**Comparative anchoring** — reference points the user already knows: a song with the feel they want; where it sits now and where they want it between two named extremes; two contrasting descriptions to choose between; "the last song that made you feel the way this one should". No musical knowledge required ("a movie scene" or "a feeling" works). Decompose a reference into concrete audio traits: instrumentation, tempo, vocal style, production, energy. A reference is often easier for a non-musician than dimensional questions, so pivot to one when narrowing stalls.
 
-**Action:** Guided elicitation — narrow from broad dimensions to a concrete anchor with the techniques below, starting wherever the user's awareness already is. Zero awareness ("all of it is off") goes straight to a reference: "Point me at anything that sounds like what you wanted — a song, an artist, a movie scene, or just a feeling." If it doesn't converge, use the variants fallback under the Emotional Vocabulary Bridge rules. Summarize and confirm before mapping.
+**Emotional vocabulary bridge** — map the feeling to Suno words. Offer only the pairs relevant to the narrowed dimension, and ask where the take sits now and where they want it; the gap sets the size of the change.
 
-### Contradictory Feedback
-**Signals:** Opposing descriptors in same feedback ("more X but also more Y" where X and Y conflict), sequential reversals ("actually no, I want..."), wanting everything changed but nothing changed.
-
-**Examples:**
-- "Make it more energetic but also more relaxed"
-- "I want it raw and lo-fi but also radio-ready"
-- "The vocals should be more prominent but also blend in more"
-- "It needs to be simpler but also more interesting"
-
-**Action:** First check for dynamic contrast: "It sounds like you might want quiet verses building to powerful choruses — is that it?" If yes, route to section metatags (`[Energy: Low]` verse, `[Energy: High]` chorus). If it's genuinely contradictory, acknowledge the tension without judgment and run the First Principles Fallback below: find the one anchor, rebuild from there one dimension at a time, and reframe leftover contradictions as structural insights (verse vs. chorus contrast). Non-convergence takes the same variants fallback as vague feedback. When the contradiction spans multiple dimensions (arrangement + lyrics + delivery), use **three-pass layered prompting** to isolate changes: adjust concept/mood first, then lyrics/structure, then performance cues — never all at once. The parameter map's "Three-Pass Layered Prompting" has the workflow.
-
-**When feedback touches both vocal identity and style:** If the user wants to change the singing voice AND the musical direction simultaneously, apply the **one-variable-at-a-time rule** — adjust either the Persona/vocal identity OR the style prompt, not both in the same generation. Changing both creates compounding unpredictability. Persona controls artist identity (vocals, character); style prompt controls the producer brief (genre, mood, arrangement).
-
-### Technical/Quality Feedback
-**Signals:** Quality-specific language ("glitchy," "robotic," "artifact," "clipping," "distortion," "cuts off"), timestamp references ("at 1:23"), pronunciation complaints, audio fidelity terms ("muffled," "compressed," "tinny"), generation-specific issues distinct from creative direction.
-
-**Examples:**
-- "There's a weird glitch at 1:23"
-- "The vocals sound robotic in the second verse"
-- "The audio quality drops toward the end"
-- "It mispronounces the word 'ethereal'"
-- "There's clipping in the chorus"
-
-**Action:** Set expectations first: "Audio artifacts are usually specific to a particular generation, not the prompt itself." Then route each issue through the technical-resolution reference ("Audio Quality & Artifacts", "Editor and Studio Resolution Paths"), v6 vocal symptoms through model controls, and deeper listening analysis through the Gemini audio-analysis reference. Route to post-generation tools — Replace Section at Pro or Premier, Studio 2.0 at Premier — or to regeneration; Free relies on regeneration. Gate every editor or Studio path on `{suno_tier}` and ask only when it's unset. (Name outcomes rather than Studio 1.x tools: Warp Markers and Remove FX are archived and no longer appear in official Studio 2.0 copy.) These issues are typically generation-specific, not prompt-specific — try regenerating 3-5 times before modifying the prompt. **Dual-path issues** (e.g. "robotic vocals"): send the prompt-fixable part to mapping alongside the technical fix; a pure regeneration or editor recommendation skips mapping and goes to presenting.
-
-**Recommended approach (v5.5 onward, including v6):** Use the **generate -> inspect -> refine** workflow rather than regenerating from scratch. If the structure and melody are good, use section replacement for the problem area instead of full regeneration. Only regenerate fully when the structure or emotional direction is fundamentally wrong. The technical-resolution reference's "Generate → Inspect → Refine Workflow" has the full decision framework.
-
-#### Voice & Custom Model Feedback Patterns
-
-When the user has a Voice or Custom Model active, technical feedback often maps to these specific issues:
-
-| Feedback | Root Cause | Resolution Path |
-|----------|-----------|----------------|
-| "Vocals don't sound like me" (Voice active) | Audio Influence too low, poor source recording quality, or style prompt overriding Voice identity | 1. Increase Audio Influence — raising it first is also Suno's official escalation for this exact complaint. The sweet spot is per-voice: start a Voice around 50% (a Persona works in a narrow 15-25% band) and move in 5-10% steps rather than jumping to a fixed number. If raising it doesn't recover identity, Suno's next official step is rebuilding the voice profile from a clean acapella. 2. Re-record a cleaner voice sample (less background noise, consistent mic distance). 3. Use delivery metatags (`[Whispered]`, `[Belted]`) instead of style prompt vocal descriptors — the Voice provides identity, metatags shape performance. |
-| "Production doesn't match my style" (Custom Model active) | Generic prompt descriptors being absorbed by the model's trained defaults | 1. Use more specific prompt overrides — name the exact elements to change rather than broad descriptors. 2. If the model consistently misses the target, retrain with a better-curated catalog that more accurately represents the desired production style. |
-| "Voice sounds right but delivery is wrong" (Voice active) | Style prompt vocal descriptors conflicting with Voice identity | Remove vocal descriptors from the style prompt. Use delivery metatags in the lyrics field instead: `[Whispered]`, `[Belted]`, `[Tender]`, `[Aggressive]`. The Voice handles identity; metatags handle performance. |
-| "Changed multiple things and now it's worse" (Voice + Custom Model) | Multiple simultaneous changes making it impossible to isolate the cause | Apply the one-variable-at-a-time rule: adjust delivery metatags first, then Audio Influence, then style prompt. Regenerate after each single change. |
-
-### Production Diagnostic Patterns
-
-Common feedback patterns with non-obvious root causes. When you hear these, check the indicated sources before adjusting the style prompt.
-
-| Feedback Pattern | Check First | Root Cause & Fix |
-|-----------------|-------------|-----------------|
-| "Guitar dominates / bass not prominent enough" | Genre context (rock/metal?) + instrumental sections | Bass prominence is a known Suno limitation in rock/metal. Try: remove "guitar" mentions from style prompt, add guitar to exclusions, use `[Instrument: bass]` tags (unreliable but worth trying). Bass-forward rock/metal is currently not achievable reliably. |
-| "Ending is too loud / song doesn't come down" | Style prompt for unidirectional build language ("crescendo dynamics", "build to crushing climax") | The style prompt must describe the full arc, not just the build. Replace with `slow build then fade` or `dynamic shifts loud to quiet`. |
-| "Wrong bass tone" | Whether "funk" appears in style prompt | "Funk" triggers slap/pop bass (Flea/Claypool style). For overdriven fingerstyle bass (Geddy Lee style), remove "funk" entirely. |
-| "Song sounds too modern / wrong era" | Whether a Persona is loaded | Personas anchor sound to the era of the source song. Reduce Audio Influence to 10-15% or generate without Persona for era-specific pieces. |
-| "Vocals are screaming when they shouldn't be" | Style prompt for `metal`, `sludge`, `doom`; lyrics for `!` or ALL CAPS | These are scream triggers. Fix: add explicit positive vocal instructions (e.g., "clean vocals, melodic singing"), remove triggers, use `[Vocal Style: whispered]` to reset after aggressive sections. |
-| "Song loops / too much instrumental" | Source text length (under 15 lines?) + style prompt for `instrumental breaks` | Short lyrics cause looping and filler instrumentals. Suggest: double the delivery (repeat verses with variation), extract and repeat chorus, or place a hard `[End]` tag. |
-| "Sound is too theatrical / too many keyboards" | Style prompt for `baroque`, `rock opera`, `cinematic`, or `orchestral` | These keywords trigger keyboard-heavy theatrical arrangements. Fix: describe desired qualities without those words; specify heavy orchestral instruments by name (cello, heavy strings, kettle drums); use "power ballad" instead of "rock opera" for dynamic range. |
-| "Song doesn't come back down / ending stays loud" | Whether the dynamic arc is stated TWICE in the style prompt | A single mention of descent isn't enough — Suno latches onto the loudest directive. Both `building from gentle to crushing then returning to gentle` AND `dynamic arc quiet to massive to quiet` are needed to reliably produce a full arc. |
-| "The song page says X, but it doesn't sound like X" | What actually plays | **What plays isn't always what was asked for.** The style text on a song page shows the input, or Variety's rewrite, not what landed. In one outside series, every take's page said "99 bpm", including takes that ran at 117 (ANECDOTAL-controlled, n=24). Trust the audio, and the user's ear, over the displayed text. |
-| "It's way off the tempo I asked for" | First rule out a halftime double-read (analyze-audio's `librosa_prior_relation: double`, or Beat This! and librosa apart by a clean ratio) | After that check, a big stated-vs-measured tempo miss is a cue to **listen for a dropped instrument job**. Suggest it when you find one. In one outside series, every off-tempo take had also dropped a requested instrument; the misses ran 13–24% fast, not double (ANECDOTAL-controlled, n=24, one song). |
-| "One section sounds wrong but the rest is fine" | Whether the issue is section-specific or global | Use **parameterized section tags** for per-section fixes: `[Verse: whispered vocals, acoustic guitar only]`, `[Chorus: full band, powerful vocals]`. This targets the problem section without changing the overall style prompt. The parameter map's "Parameterized Section Tags" has the forms. |
-
----
-
-## Elicitation Techniques
-
-### Binary Narrowing
-Rapid yes/no or A/B questions to reduce the problem space. Goal: identify which dimension(s) need adjustment in under 5 questions.
-
-**Dimension checklist:**
-1. Music/production vs. vocals/singing
-2. Energy level (too high / too low / right)
-3. Structure (sections, flow, length)
-4. Lyrics (content, delivery, phrasing)
-5. Overall vibe/mood (right neighborhood or wrong direction)
-
-For an instrumental track, drop items 1 (vocals half), 4 (lyrics), and any vocal sub-questions entirely — don't burn a narrowing question confirming there are no vocals.
-
-**Rules:**
-- Ask one question at a time
-- Accept partial answers — "kind of both" is useful signal
-- If they narrow to a single dimension in 2 questions, move on to anchoring
-
-### Comparative Anchoring
-Use reference points the user knows to triangulate what they want.
-
-**Techniques:**
-- **Artist/song reference:** "Name a song that has the feel you're going for"
-- **Spectrum placement:** "If 1 is [extreme A] and 10 is [extreme B], where is it now and where do you want it?"
-- **A/B contrast:** Suggest two contrasting descriptions and ask which is closer to their vision
-- **Temporal reference:** "Think of the last song that made you feel the way this one should — what was it?"
-
-**Rules:**
-- Don't require musical knowledge — "a movie scene" or "a feeling" works too
-- If they give a reference, decompose it into concrete audio characteristics (instrumentation, tempo, vocal style, production quality, energy)
-
-### Emotional Vocabulary Bridge
-Map subjective feelings to Suno-actionable parameters.
-
-**Core opposing pairs and their Suno parameter mappings:**
-
-| Pair | Low End → Suno | High End → Suno |
+| Pair | Toward the first → Suno | Toward the second → Suno |
 |------|----------------|-----------------|
 | Heavy ↔ Light | Dense instrumentation, layered, bass-heavy, thick | Sparse arrangement, airy, minimal, delicate |
 | Fast ↔ Slow | Driving rhythm, uptempo, energetic beat | Slow tempo, laid-back groove, gentle pace |
 | Polished ↔ Raw | Radio-ready mix, clean production, crisp | Lo-fi, organic, rough edges, imperfect |
-| Familiar ↔ Weird | Classic genre conventions, traditional | Experimental, unexpected, genre-bending (↑ Weirdness slider) |
+| Familiar ↔ Weird | Classic genre conventions, traditional | Experimental, unexpected, genre-bending (↑ Weirdness) |
 | Warm ↔ Cold | Analog warmth, rich tones, close mics | Crystalline, digital, distant, sterile |
 | Intimate ↔ Epic | Close, quiet, small room, whispered | Wide stereo, big reverb, anthemic, soaring |
 | Smooth ↔ Gritty | Clean vocals, flowing melody, polished | Raspy, distorted, textured, rough |
 | Bright ↔ Dark | Major key feel, uplifting, shimmering | Minor key feel, moody, deep, shadowy |
 | Tight ↔ Loose | Precise timing, quantized, controlled | Swing, human feel, organic timing, relaxed |
-| Simple ↔ Complex | Minimal arrangement, few instruments, straightforward | Layered, intricate arrangement, multiple textures (↑ Weirdness slider) |
-| Organic ↔ Synthetic | Live instruments, acoustic, natural, analog warmth | Electronic, digital, synthesized, programmed beats |
-| Atmospheric ↔ Punchy | Reverb, space, ambient pads, "atmospheric" | Low-end presence, tight transients, "punchy" |
-| Lo-fi Warmth ↔ Polished Radio-Ready | Vintage character, low-pass filtering, "lo-fi warmth" | Clean, modern, commercial mix, "polished radio-ready" |
-| Driving ↔ Lush | Forward momentum, energetic basslines, "driving" | Layered pads, dense production, "lush" |
-| Unpolished ↔ Produced | Less processed, room sound, "unpolished room sound", "single-take band performance" (avoid the word "live" — it pulls crowd noise) | Spatial separation, "wide stereo", processed |
+| Simple ↔ Complex | Minimal arrangement, few instruments | Layered, intricate arrangement, multiple textures (↑ Weirdness) |
+| Organic ↔ Synthetic | Acoustic instruments, natural, analog warmth | Electronic, digital, synthesized, programmed beats |
+| Atmospheric ↔ Punchy | "atmospheric": reverb, space, ambient pads | "punchy": low-end presence, tight transients |
+| Lo-fi warmth ↔ Polished radio-ready | "lo-fi warmth": vintage character, low-pass filtering | "polished radio-ready": clean, modern, commercial mix |
+| Driving ↔ Lush | "driving": forward momentum, energetic basslines | "lush": layered pads, dense production |
+| Unpolished ↔ Produced | "unpolished room sound", "natural room ambience", "single-take band performance": less processed | "wide stereo", spatial separation, processed |
 
-**Rules:**
-- Only present pairs relevant to the narrowed dimension
-- Ask them to place the current output AND their desired target on the spectrum
-- The gap between "where it is" and "where they want it" determines adjustment magnitude
-- If binary narrowing does not converge after 4 questions, pivot to reference-first: "Name a song that sounds like what you wanted — I'll work backwards from there." Reference decomposition is often easier than dimensional analysis for non-musicians.
-- If elicitation still does not converge, suggest generating 2-3 variants with different parameter profiles and letting the user compare (turns an elicitation problem into a selection problem).
+Never use the word "live" in any form (`live recording`, `live-band drums`, `live energy`): it pulls crowd and audience noise (LOCAL-CONFIRMED, recurring). Use the room-sound phrases above.
 
-### First Principles Fallback
-When feedback is contradictory or elicitation isn't converging.
-
-**The anchor question:** "If you could only keep ONE thing about this song exactly as it is, what would it be?"
-
-**Rebuild sequence:**
-1. Lock the anchor — this does not change
-2. For each remaining dimension, offer two options anchored to the keeper
-3. Build up layer by layer, checking for contradiction at each step
-4. If a new contradiction emerges, reframe as structural contrast (verse vs. chorus, intro vs. drop)
-
-**Borrowed from:** Socratic Questioning, 5 Whys, First Principles Analysis (BMad Advanced Elicitation methods).
+**First-principles fallback** — for contradictory feedback, or elicitation that isn't converging. Ask: "If you could only keep one thing about this song exactly as it is, what would it be?" Lock that anchor; for each remaining dimension offer two options built around it, layer by layer, checking for contradiction at each step; reframe a new contradiction as structural contrast (verse versus chorus, intro versus drop).

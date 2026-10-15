@@ -1,0 +1,467 @@
+{
+  "script": "playlist-sequencing-data",
+  "status": "ok",
+  "album": "Salt Hollow",
+  "track_count": 8,
+  "analyzed_count": 8,
+  "dropped": [],
+  "tempo_source": "librosa",
+  "runs": [
+    {
+      "kind": "same-key",
+      "value": "5A",
+      "tracks": [
+        "Tidewater",
+        "Lamp Oil",
+        "Brine"
+      ]
+    },
+    {
+      "kind": "tempo",
+      "value": "mid",
+      "tracks": [
+        "Tidewater",
+        "Lamp Oil",
+        "Brine"
+      ],
+      "felt_verified": false
+    }
+  ],
+  "tracks": [
+    {
+      "position": 1,
+      "name": "Tidewater",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 96.0,
+      "entry_bpm": 96.0,
+      "exit_bpm": 96.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 96.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "C minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "5A",
+        "entry": "C minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "5A",
+        "exit": "C minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "5A"
+      },
+      "energy": {
+        "level": 6,
+        "intro_pct": 40,
+        "outro_pct": 55
+      },
+      "loudness": {
+        "integrated_lufs": -11.0,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -12.5,
+          -11.0,
+          -11.1
+        ],
+        "build_lu": 1.4,
+        "entry_lufs": -12.0,
+        "exit_lufs": -11.4
+      },
+      "transition_to_next": {
+        "to": "Lamp Oil",
+        "camelot_distance": 0,
+        "key_relation": "same",
+        "key_compat": "compatible",
+        "bpm_from": 96.0,
+        "bpm_to": 100.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 4.0,
+        "bpm_quality": "ok",
+        "pulse_pair": false,
+        "loudness_step_lu": 0.2,
+        "loudness_quality": "smooth"
+      }
+    },
+    {
+      "position": 2,
+      "name": "Lamp Oil",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 100.0,
+      "entry_bpm": 100.0,
+      "exit_bpm": 100.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 100.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "C minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "5A",
+        "entry": "C minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "5A",
+        "exit": "C minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "5A"
+      },
+      "energy": {
+        "level": 6,
+        "intro_pct": 45,
+        "outro_pct": 50
+      },
+      "loudness": {
+        "integrated_lufs": -10.8,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -11.7,
+          -10.8,
+          -10.7
+        ],
+        "build_lu": 1.0,
+        "entry_lufs": -11.2,
+        "exit_lufs": -11.0
+      },
+      "transition_to_next": {
+        "to": "Brine",
+        "camelot_distance": 0,
+        "key_relation": "same",
+        "key_compat": "compatible",
+        "bpm_from": 100.0,
+        "bpm_to": 92.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 8.0,
+        "bpm_quality": "jump (8%)",
+        "pulse_pair": false,
+        "loudness_step_lu": -1.0,
+        "loudness_quality": "smooth"
+      }
+    },
+    {
+      "position": 3,
+      "name": "Brine",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 92.0,
+      "entry_bpm": 92.0,
+      "exit_bpm": 92.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 92.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "C minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "5A",
+        "entry": "C minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "5A",
+        "exit": "C minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "5A"
+      },
+      "energy": {
+        "level": 5,
+        "intro_pct": 35,
+        "outro_pct": 45
+      },
+      "loudness": {
+        "integrated_lufs": -11.6,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -12.5,
+          -11.6,
+          -11.9
+        ],
+        "build_lu": 0.6,
+        "entry_lufs": -12.0,
+        "exit_lufs": -12.2
+      },
+      "transition_to_next": {
+        "to": "Signal Flare",
+        "camelot_distance": 2.5,
+        "key_relation": "distant",
+        "key_compat": "distant",
+        "bpm_from": 92.0,
+        "bpm_to": 138.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 46.0,
+        "bpm_quality": "jump (50%)",
+        "pulse_pair": false,
+        "loudness_step_lu": 3.4,
+        "loudness_quality": "noticeable (louder)"
+      }
+    },
+    {
+      "position": 4,
+      "name": "Signal Flare",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 138.0,
+      "entry_bpm": 138.0,
+      "exit_bpm": 138.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 138.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "F major",
+        "overall_confidence": 0.81,
+        "overall_camelot": "7B",
+        "entry": "F major",
+        "entry_confidence": 0.74,
+        "entry_camelot": "7B",
+        "exit": "F major",
+        "exit_confidence": 0.77,
+        "exit_camelot": "7B"
+      },
+      "energy": {
+        "level": 9,
+        "intro_pct": 75,
+        "outro_pct": 85
+      },
+      "loudness": {
+        "integrated_lufs": -8.2,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -9.3,
+          -8.2,
+          -7.7
+        ],
+        "build_lu": 1.6,
+        "entry_lufs": -8.8,
+        "exit_lufs": -8.0
+      },
+      "transition_to_next": {
+        "to": "Undertow",
+        "camelot_distance": 3.5,
+        "key_relation": "parallel",
+        "key_compat": "distant",
+        "bpm_from": 138.0,
+        "bpm_to": 70.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 68.0,
+        "bpm_quality": "jump (49%)",
+        "pulse_pair": true,
+        "loudness_step_lu": -10.0,
+        "loudness_quality": "big jump (quieter)"
+      }
+    },
+    {
+      "position": 5,
+      "name": "Undertow",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 70.0,
+      "entry_bpm": 70.0,
+      "exit_bpm": 70.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 70.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "F minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "4A",
+        "entry": "F minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "4A",
+        "exit": "F minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "4A"
+      },
+      "energy": {
+        "level": 3,
+        "intro_pct": 15,
+        "outro_pct": 20
+      },
+      "loudness": {
+        "integrated_lufs": -17.0,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -18.5,
+          -17.0,
+          -17.3
+        ],
+        "build_lu": 1.2,
+        "entry_lufs": -18.0,
+        "exit_lufs": -17.6
+      },
+      "transition_to_next": {
+        "to": "Breakwater",
+        "camelot_distance": 2,
+        "key_relation": "two-step",
+        "key_compat": "near",
+        "bpm_from": 70.0,
+        "bpm_to": 150.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 80.0,
+        "bpm_quality": "jump (114%)",
+        "pulse_pair": false,
+        "loudness_step_lu": 9.2,
+        "loudness_quality": "big jump (louder)"
+      }
+    },
+    {
+      "position": 6,
+      "name": "Breakwater",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 150.0,
+      "entry_bpm": 150.0,
+      "exit_bpm": 150.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 150.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "G minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "6A",
+        "entry": "G minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "6A",
+        "exit": "G minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "6A"
+      },
+      "energy": {
+        "level": 9,
+        "intro_pct": 80,
+        "outro_pct": 85
+      },
+      "loudness": {
+        "integrated_lufs": -8.0,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -8.9,
+          -8.0,
+          -7.9
+        ],
+        "build_lu": 1.0,
+        "entry_lufs": -8.4,
+        "exit_lufs": -8.2
+      },
+      "transition_to_next": {
+        "to": "Driftwood Psalm",
+        "camelot_distance": 0.5,
+        "key_relation": "relative",
+        "key_compat": "compatible",
+        "bpm_from": 150.0,
+        "bpm_to": 72.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 78.0,
+        "bpm_quality": "jump (52%)",
+        "pulse_pair": true,
+        "loudness_step_lu": -10.6,
+        "loudness_quality": "big jump (quieter)"
+      }
+    },
+    {
+      "position": 7,
+      "name": "Driftwood Psalm",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 72.0,
+      "entry_bpm": 72.0,
+      "exit_bpm": 72.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 72.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "A# major",
+        "overall_confidence": 0.81,
+        "overall_camelot": "6B",
+        "entry": "A# major",
+        "entry_confidence": 0.74,
+        "entry_camelot": "6B",
+        "exit": "A# major",
+        "exit_confidence": 0.77,
+        "exit_camelot": "6B"
+      },
+      "energy": {
+        "level": 2,
+        "intro_pct": 12,
+        "outro_pct": 10
+      },
+      "loudness": {
+        "integrated_lufs": -18.5,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -19.3,
+          -18.5,
+          -19.2
+        ],
+        "build_lu": 0.1,
+        "entry_lufs": -18.8,
+        "exit_lufs": -19.5
+      },
+      "transition_to_next": {
+        "to": "Searchlight",
+        "camelot_distance": 2,
+        "key_relation": "two-step",
+        "key_compat": "near",
+        "bpm_from": 72.0,
+        "bpm_to": 120.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 48.0,
+        "bpm_quality": "jump (67%)",
+        "pulse_pair": false,
+        "loudness_step_lu": 8.9,
+        "loudness_quality": "big jump (louder)"
+      }
+    },
+    {
+      "position": 8,
+      "name": "Searchlight",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 120.0,
+      "entry_bpm": 120.0,
+      "exit_bpm": 120.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 120.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": false,
+      "key": {
+        "overall": "C major",
+        "overall_confidence": 0.81,
+        "overall_camelot": "8B",
+        "entry": "C major",
+        "entry_confidence": 0.74,
+        "entry_camelot": "8B",
+        "exit": "C major",
+        "exit_confidence": 0.77,
+        "exit_camelot": "8B"
+      },
+      "energy": {
+        "level": 7,
+        "intro_pct": 50,
+        "outro_pct": 65
+      },
+      "loudness": {
+        "integrated_lufs": -10.0,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -11.1,
+          -10.0,
+          -9.9
+        ],
+        "build_lu": 1.2,
+        "entry_lufs": -10.6,
+        "exit_lufs": -10.2
+      }
+    }
+  ],
+  "tempo_source_note": null
+}

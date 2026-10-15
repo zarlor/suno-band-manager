@@ -10,7 +10,7 @@ Read at the start of an interactive run. Headless runs return JSON instead (`ref
 
 **Intent check.** This skill transforms existing text. No text and they want a whole song: invoke the `suno-agent-band-manager` skill. They want only the sound, or an instrumental: invoke the `suno-style-prompt-builder` skill, or offer to turn text into descriptor tags.
 
-**After the analysis,** present structure, arc, hooks, syllable patterns and character count against the budget. Then soft-gate: "Anything else I should know (a dual-vocalist band, a theatrical-horror vibe, a line you refuse to lose), or shall we pick transformations?" These asides often decide which tag rules apply.
+**After the analysis,** present structure, arc, hooks, syllable patterns and character count against the budget. If the source has a spatial layout, tell the writer their indents and spacing will stay exactly. Latin-script non-English text: offer to skip the syllable, rhyme and cliche checks or proceed with caveats. Over the 5,000 hard limit: offer to split it into songs or focus on the strongest section now, not after transforming. Then soft-gate: "Anything else I should know (a dual-vocalist band, a theatrical-horror vibe, a line you refuse to lose), or shall we pick transformations?" These asides often decide which tag rules apply.
 
 ## Choosing Transformations (Step 2)
 

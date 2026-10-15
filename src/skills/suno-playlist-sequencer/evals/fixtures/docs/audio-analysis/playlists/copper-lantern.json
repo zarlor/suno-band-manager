@@ -1,0 +1,513 @@
+{
+  "script": "playlist-sequencing-data",
+  "status": "ok",
+  "album": "Copper Lantern",
+  "track_count": 9,
+  "analyzed_count": 9,
+  "dropped": [],
+  "tempo_source": "librosa",
+  "runs": [
+    {
+      "kind": "tempo",
+      "value": "slow",
+      "tracks": [
+        "Widow's Porch",
+        "Rust Belt Waltz"
+      ],
+      "felt_verified": false
+    }
+  ],
+  "tracks": [
+    {
+      "position": 1,
+      "name": "Kerosene Morning",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 126.0,
+      "entry_bpm": 126.0,
+      "exit_bpm": 126.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 126.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": false,
+      "key": {
+        "overall": "A minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "8A",
+        "entry": "A minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "8A",
+        "exit": "A minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "8A"
+      },
+      "energy": {
+        "level": 7,
+        "intro_pct": 45,
+        "outro_pct": 70
+      },
+      "loudness": {
+        "integrated_lufs": -9.8,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -12.0,
+          -9.8,
+          -9.9
+        ],
+        "build_lu": 2.1,
+        "entry_lufs": -11.5,
+        "exit_lufs": -10.2
+      },
+      "transition_to_next": {
+        "to": "Switchyard",
+        "camelot_distance": 1,
+        "key_relation": "adjacent",
+        "key_compat": "compatible",
+        "bpm_from": 126.0,
+        "bpm_to": 132.1,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 6.1,
+        "bpm_quality": "ok",
+        "pulse_pair": false,
+        "loudness_step_lu": 0.4,
+        "loudness_quality": "smooth"
+      }
+    },
+    {
+      "position": 2,
+      "name": "Switchyard",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 132.1,
+      "entry_bpm": 132.1,
+      "exit_bpm": 132.1,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 132.1,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "E minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "9A",
+        "entry": "E minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "9A",
+        "exit": "E minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "9A"
+      },
+      "energy": {
+        "level": 8,
+        "intro_pct": 60,
+        "outro_pct": 72
+      },
+      "loudness": {
+        "integrated_lufs": -9.0,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -10.3,
+          -9.0,
+          -9.1
+        ],
+        "build_lu": 1.2,
+        "entry_lufs": -9.8,
+        "exit_lufs": -9.4
+      },
+      "transition_to_next": {
+        "to": "Tin Roof Psalm",
+        "camelot_distance": 2,
+        "key_relation": "two-step",
+        "key_compat": "near",
+        "bpm_from": 132.1,
+        "bpm_to": 84.1,
+        "bpm_basis": "exit/entry+felt",
+        "bpm_change": 48.0,
+        "bpm_quality": "jump (36%)",
+        "pulse_pair": false,
+        "loudness_step_lu": -4.6,
+        "loudness_quality": "noticeable (quieter)"
+      }
+    },
+    {
+      "position": 3,
+      "name": "Tin Roof Psalm",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 168.2,
+      "entry_bpm": 168.2,
+      "exit_bpm": 168.2,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 84.1,
+      "librosa_prior_relation": "double",
+      "felt_bpm": 84,
+      "felt_bpm_check": false,
+      "key": {
+        "overall": "D minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "7A",
+        "entry": "D minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "7A",
+        "exit": "D minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "7A"
+      },
+      "energy": {
+        "level": 5,
+        "intro_pct": 30,
+        "outro_pct": 40
+      },
+      "loudness": {
+        "integrated_lufs": -12.5,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -14.5,
+          -12.5,
+          -12.7
+        ],
+        "build_lu": 1.8,
+        "entry_lufs": -14.0,
+        "exit_lufs": -13.0
+      },
+      "transition_to_next": {
+        "to": "Copperhead",
+        "camelot_distance": 3.5,
+        "key_relation": "distant",
+        "key_compat": "distant",
+        "bpm_from": 84.1,
+        "bpm_to": 152.0,
+        "bpm_basis": "exit/entry+felt",
+        "bpm_change": 67.9,
+        "bpm_quality": "jump (81%)",
+        "pulse_pair": false,
+        "loudness_step_lu": 4.0,
+        "loudness_quality": "noticeable (louder)"
+      }
+    },
+    {
+      "position": 4,
+      "name": "Copperhead",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 152.0,
+      "entry_bpm": 152.0,
+      "exit_bpm": 152.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 152.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "B minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "10A",
+        "entry": "B minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "10A",
+        "exit": "B minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "10A"
+      },
+      "energy": {
+        "level": 9,
+        "intro_pct": 70,
+        "outro_pct": 80
+      },
+      "loudness": {
+        "integrated_lufs": -8.4,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -9.5,
+          -8.4,
+          -8.5
+        ],
+        "build_lu": 1.0,
+        "entry_lufs": -9.0,
+        "exit_lufs": -8.8
+      },
+      "transition_to_next": {
+        "to": "Widow's Porch",
+        "camelot_distance": 1,
+        "key_relation": "adjacent",
+        "key_compat": "compatible",
+        "bpm_from": 152.0,
+        "bpm_to": 74.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 78.0,
+        "bpm_quality": "jump (51%)",
+        "pulse_pair": true,
+        "loudness_step_lu": -8.7,
+        "loudness_quality": "big jump (quieter)"
+      }
+    },
+    {
+      "position": 5,
+      "name": "Widow's Porch",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 74.0,
+      "entry_bpm": 74.0,
+      "exit_bpm": 74.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 74.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "F# minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "11A",
+        "entry": "F# minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "11A",
+        "exit": "F# minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "11A"
+      },
+      "energy": {
+        "level": 3,
+        "intro_pct": 20,
+        "outro_pct": 25
+      },
+      "loudness": {
+        "integrated_lufs": -16.5,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -18.0,
+          -16.5,
+          -17.7
+        ],
+        "build_lu": 0.3,
+        "entry_lufs": -17.5,
+        "exit_lufs": -18.0
+      },
+      "transition_to_next": {
+        "to": "Rust Belt Waltz",
+        "camelot_distance": 1,
+        "key_relation": "adjacent",
+        "key_compat": "compatible",
+        "bpm_from": 74.0,
+        "bpm_to": 78.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 4.0,
+        "bpm_quality": "ok",
+        "pulse_pair": false,
+        "loudness_step_lu": 1.0,
+        "loudness_quality": "smooth"
+      }
+    },
+    {
+      "position": 6,
+      "name": "Rust Belt Waltz",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 78.0,
+      "entry_bpm": 78.0,
+      "exit_bpm": 78.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 78.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "C# minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "12A",
+        "entry": "C# minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "12A",
+        "exit": "C# minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "12A"
+      },
+      "energy": {
+        "level": 4,
+        "intro_pct": 25,
+        "outro_pct": 30
+      },
+      "loudness": {
+        "integrated_lufs": -15.8,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -17.5,
+          -15.8,
+          -16.1
+        ],
+        "build_lu": 1.4,
+        "entry_lufs": -17.0,
+        "exit_lufs": -16.4
+      },
+      "transition_to_next": {
+        "to": "Night Freight",
+        "camelot_distance": 3.5,
+        "key_relation": "distant",
+        "key_compat": "distant",
+        "bpm_from": 78.0,
+        "bpm_to": 124.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 46.0,
+        "bpm_quality": "jump (59%)",
+        "pulse_pair": false,
+        "loudness_step_lu": 5.9,
+        "loudness_quality": "noticeable (louder)"
+      }
+    },
+    {
+      "position": 7,
+      "name": "Night Freight",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 124.0,
+      "entry_bpm": 124.0,
+      "exit_bpm": 124.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 124.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": false,
+      "key": {
+        "overall": "E minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "9A",
+        "entry": "E minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "9A",
+        "exit": "E minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "9A"
+      },
+      "energy": {
+        "level": 7,
+        "intro_pct": 50,
+        "outro_pct": 75
+      },
+      "loudness": {
+        "integrated_lufs": -9.6,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -11.0,
+          -9.6,
+          -8.9
+        ],
+        "build_lu": 2.1,
+        "entry_lufs": -10.5,
+        "exit_lufs": -9.2
+      },
+      "transition_to_next": {
+        "to": "Last Call at Dutch's",
+        "camelot_distance": 1,
+        "key_relation": "adjacent",
+        "key_compat": "compatible",
+        "bpm_from": 124.0,
+        "bpm_to": 126.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 2.0,
+        "bpm_quality": "smooth",
+        "pulse_pair": false,
+        "loudness_step_lu": 0.6,
+        "loudness_quality": "smooth"
+      }
+    },
+    {
+      "position": 8,
+      "name": "Last Call at Dutch's",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 126.0,
+      "entry_bpm": 126.0,
+      "exit_bpm": 126.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 126.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": false,
+      "key": {
+        "overall": "A minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "8A",
+        "entry": "A minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "8A",
+        "exit": "A minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "8A"
+      },
+      "energy": {
+        "level": 8,
+        "intro_pct": 65,
+        "outro_pct": 60
+      },
+      "loudness": {
+        "integrated_lufs": -9.0,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -9.1,
+          -9.0,
+          -10.5
+        ],
+        "build_lu": -1.4,
+        "entry_lufs": -8.6,
+        "exit_lufs": -10.8
+      },
+      "transition_to_next": {
+        "to": "Gravel Road Hymn",
+        "camelot_distance": 1,
+        "key_relation": "adjacent",
+        "key_compat": "compatible",
+        "bpm_from": 126.0,
+        "bpm_to": 76.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 50.0,
+        "bpm_quality": "jump (40%)",
+        "pulse_pair": false,
+        "loudness_step_lu": -6.4,
+        "loudness_quality": "big jump (quieter)"
+      }
+    },
+    {
+      "position": 9,
+      "name": "Gravel Road Hymn",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 76.0,
+      "entry_bpm": 76.0,
+      "exit_bpm": 76.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 76.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "E minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "9A",
+        "entry": "E minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "9A",
+        "exit": "E minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "9A"
+      },
+      "energy": {
+        "level": 4,
+        "intro_pct": 22,
+        "outro_pct": 18
+      },
+      "loudness": {
+        "integrated_lufs": -17.0,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -17.7,
+          -17.0,
+          -17.7
+        ],
+        "build_lu": 0.0,
+        "entry_lufs": -17.2,
+        "exit_lufs": -18.0
+      }
+    }
+  ],
+  "tempo_source_note": null
+}

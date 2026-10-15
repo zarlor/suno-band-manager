@@ -657,3 +657,13 @@ class TestSchemaRules16To19(TmpPathTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDeprecatedPlaylistBlock(TmpPathTestCase):
+    def test_playlist_block_flagged_as_mapping_or_list(self):
+        for block in ({"tracks": ["a", "b"]}, ["a", "b"]):
+            with self.subTest(block=type(block).__name__):
+                path = write_profile(self.tmp_path, {**VALID_PROFILE, "playlist": block})
+                result = validate_profile(path)
+                deprecations = [f for f in result["findings"] if f["category"] == "deprecation"]
+                self.assertTrue(deprecations, result["findings"])

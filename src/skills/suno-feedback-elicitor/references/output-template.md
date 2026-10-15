@@ -1,43 +1,58 @@
-# Feedback Elicitor Output Template
+# Presenting Recommendations (interactive)
+
+## Rebuild and check first
+
+Invoke the `suno-style-prompt-builder` skill with `--headless:refine`, passing its refine shape:
+
+```json
+{"prompt": "<current style prompt>", "model": "<model>", "style_prompt": {"add": [], "remove": [], "reorder_notes": ""}, "exclusions": {"add": [], "remove": []}, "sliders": {"weirdness": "", "style_influence": ""}, "model_suggestion": ""}
+```
+
+It returns the refined prompt, Exclude Styles and sliders with its validator's report, so artist-name, character-budget and exclusion checks have all run. Then run `uv run {skill-root}/scripts/map-adjustments.py --check-final --style-prompt <refined> --exclude <refined excludes>` and fix any descriptor an exclusion cancels. A `blocked` return means the prompt wasn't rebuilt: present the adjustments as recommendations and say so. Whether the sliders contradict the prompt, and whether a change risks a liked element, stays your judgment.
+
+Build "What Changed and Why" from `uv run {skill-root}/scripts/map-adjustments.py --diff --style-prompt <before> --new-style-prompt <after>` (add `--exclude` / `--new-exclude` when the exclusions changed), giving each item its one-line why.
+
+## Template
+
+Open with a vivid before and after ("Right now: arena rock with polished vocals. Target: coffee-shop acoustic, rawer and intimate"). Omit sections that don't apply. Comparing generations: what each does well or poorly, what to carry forward, which changes mattered most. Close with "Does this capture what you're after?" and loop back if needed.
 
 ```
 ## Feedback Summary
-{One-paragraph summary of what the user wants changed and why}
+{One paragraph: what the user wants changed and why}
 
 ## Before/After Preview
-**Current sound:** {vivid description of what the current output likely sounds like}
-**Target sound:** {vivid description of what the adjusted version should sound like}
+**Current sound:** {vivid description of the current output}
+**Target sound:** {vivid description of the adjusted version}
 
 ## What Changed and Why
-{From `map-adjustments.py --diff`: each added, removed, reworded and moved descriptor (and exclusion) with a one-line why, noting what entered or left the first-200-character critical zone. Turns each round into a prompt-engineering micro-lesson.}
+{From the --diff: each added, removed, reworded and moved descriptor (and exclusion) with a one-line why, noting what entered or left the first-200-character critical zone, so each round is a small prompt-engineering lesson.}
 
 ## Style Prompt Adjustments
 **Current:** {original style prompt if available}
-**Recommended:** {modified style prompt}
-**Changes:** {bullet list of what changed and why}
+**Recommended:** {the builder's refined prompt}
 **Confidence:** {High -- direct from your feedback / Medium -- interpreted from our conversation / Experimental -- worth trying}
 
 ## Exclusion Prompt Adjustments
 **Current:** {original exclusions if available}
-**Recommended:** {modified exclusions}
+**Recommended:** {the builder's refined exclusions}
 
 ## Slider Adjustments
-{If applicable -- Weirdness and Style Influence recommendations with reasoning}
+{If applicable -- Weirdness and Style Influence with reasoning}
 
 ## Lyric Adjustments
-{If applicable -- specific changes recommended in LT adjustment spec format (below)}
+{If applicable -- the Lyric Transformer adjustment spec below}
 
 ## Studio Features
-{If applicable -- recommended Studio workflows}
+{If applicable -- editor or Studio workflows the user's tier has}
 
 ## Strategy Note
-{When applicable: "For this type of issue, try generating 3-5 versions with the adjusted prompt -- Suno's randomness means one may nail it without further changes." Or: "Since only the chorus needs work, consider Replace Section (Pro or Premier) instead of full regeneration."}
+{When applicable: how many takes to try with the adjusted prompt, or "Since only the chorus needs work, consider Replace Section (Pro or Premier) instead of full regeneration."}
 
 ## Additional Notes
-{Model suggestions, creative context that influenced recommendations}
+{Model suggestions, creative context that shaped the recommendations}
 ```
 
-## Lyric Transformer Adjustment Spec
+## Lyric Transformer adjustment spec
 
 Lyric changes go to the `suno-lyric-transformer` skill's `--headless:refine` in its refine shape, which carries the current lyrics and the context beside the adjustments:
 

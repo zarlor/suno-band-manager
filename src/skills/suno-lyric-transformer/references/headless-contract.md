@@ -25,9 +25,7 @@ Read this when the skill runs with `--headless` / `-H`. The Band Manager agent c
 
 ## The Writer's Spacing
 
-The spacing contract in `SKILL.md` holds without a user to catch a slip. `transformed_lyrics` carries the writer's indentation, internal spacing, line breaks and blank lines verbatim. The transformer adds metatags, section tags and blank lines at section breaks, plus the edits it reports in `changes`; every other character stays as given.
-
-Before returning, `spacing-check.py` must show no high findings, and every line edit it lists must appear in `changes`. If Suno's lyrics field needs a flat copy (for example, spacing pushes the text over the budget), return it in `flat_copy_lyrics` from `spacing-check.py --flatten` and add a caveat. `transformed_lyrics` stays the spaced, canonical version.
+No user is there to catch a slip, so `transformed_lyrics` carries the writer's indentation, internal spacing, line breaks and blank lines verbatim; only tags, blank lines at section breaks and the edits reported in `changes` are added. Before returning, `spacing-check.py` must show no high findings, and every line edit it lists must appear in `changes`. If Suno's lyrics field needs a flat copy (for example, spacing pushes the text over the budget), return it in `flat_copy_lyrics` from `spacing-check.py --flatten` and add a caveat. `transformed_lyrics` stays the spaced, canonical version.
 
 ## Defaults That Replace Questions
 
@@ -42,7 +40,7 @@ Record each one you apply in `decision_log`.
   | `experimental` | The defaults, with ST taking structural liberties using the writer's own lines: reorder sections, repeat or split lines, call-and-response, unconventional forms (the Band Manager's Jam mode). The writer's words stay theirs: add FR or RE only when `direction` asks for a rewrite or new rhymes (owner, 2026-10-15) |
 
   The input-size rules still hold after the mode: a short input takes a short-poem strategy instead of CC, and over ~2,500 characters drops CC. Log the mode and the resulting codes in `decision_log`.
-- **Non-Latin or mixed script** (`analyze-input.py` `script_type`): non-Latin lines get structure and arc work only; no syllable, rhyme or cliche checks (`--latin-only`). Add a caveat.
+- **Non-Latin or mixed script** (`analyze-input.py` `script_type`): non-Latin lines get structure and arc work only; no syllable, rhyme or cliche checks (`--latin-only`). Add a caveat. Latin-script non-English text: run the checks and caveat that they are tuned for English.
 - **Oversized input:** focus on the single strongest section that fits the budget and return `complete_with_caveats`. Block only if even that section is over the 5,000 hard limit.
 - **Band profile:** record which state applied (not found, malformed, or no voice fields) and proceed without what's missing.
 - **Narrative section labels:** translate them to Suno direction and record the original labels.
@@ -101,7 +99,7 @@ Copy `transformation_summary` as is from `assemble-summary.py`'s JSON; don't com
 
 The decision log is `{song-title}.decision-log.md` beside the songbook entry, append-only, one `## Session YYYY-MM-DD (transform | refine)` heading per run with one bullet per structural decision and intentional keep.
 
-- **`song_path` given:** append this run's session to the log beside it and return the path in `decision_log_path`.
+- **`song_path` given:** if a log already sits beside it, read it before transforming and leave its intentional keeps standing (record each in `intentional_keeps`); then append this run's session and return the path in `decision_log_path`.
 - **No `song_path`** (for example, the pipeline before the song is saved): write nothing. Return `decision_log` and `intentional_keeps`; the caller appends them as a session when it saves the songbook entry.
 
 ## Refinement

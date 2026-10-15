@@ -15,10 +15,10 @@ No user is in the room: every call a user would make is made here, recorded in `
 3. Run `uv run {skill-root}/scripts/playlist-sequencing-data.py --playlist {playlist}`.
    - Exit 1 (unreadable playlist, or no track analyzed): return blocked with the script's `error`.
    - Exit 2 (no audio dependencies): with an archive on disk, sequence from it and log that; without one, return blocked with `missing: ["audio_analysis"]`.
-   - `artifacts.archive.status` `kept-prior`: the drops would have shrunk the baseline. Leave it kept, and log it; never pass `--force-archive` headless.
+   - `artifacts.archive.status` `kept-prior`: the drops would have shrunk the baseline. Leave it kept and log it: `--force-archive` needs a user to accept the shorter list.
 4. With no user to confirm by ear, take tempo from `felt_bpm:` where the YAML records it. Where `felt_bpm_check` is true, sequence on the measured tempo and log it as an assumption.
 5. Do the thematic read yourself (methodology, "Thematic Verification"), or leave out thematic claims and log that you did.
-6. Write the recommended order to a scratch file, one name per line, and check it with `uv run {skill-root}/scripts/validate-sequence.py {playlist} --order <file>`, passing every `--locked` arc again. Fix and re-check until it exits 0: never return an order that fails it. Never pass `--write`. The playlist YAML stays unchanged, and the caller decides whether to apply the order.
+6. Write the recommended order to a scratch file, one name per line, and check it with `uv run {skill-root}/scripts/validate-sequence.py {playlist} --order <file>`, passing every `--locked` arc again. Fix and re-check until it exits 0, so the order returned is one that passed. Leave out `--write`: the playlist YAML stays unchanged, and the caller decides whether to apply the order.
 
 ## Success
 
@@ -38,7 +38,7 @@ No user is in the room: every call a user would make is made here, recorded in `
 ```
 
 - `locked_arcs_respected[]`: from the final step-6 check's `locked_arcs`, each `intact` arc joined with " > ".
-- `dropped_tracks[]`: copy the sequencing script's `dropped[]` names and reasons. Never sequence a short list without saying so.
+- `dropped_tracks[]`: copy the sequencing script's `dropped[]` names and reasons, so a short list is never mistaken for the whole playlist.
 - `flagged_transitions[]`: the seams the methodology judged jarring or degraded, worst first. On a re-eval, the script's `compare.seam_changes` marked `worse` go here too.
 - `artifacts`: copy the sequencing script's `artifacts` block as it came.
 - `decision_log[]`: one entry for every call made without the user. That includes any locked-arc break you declined (recorded, not acted on), any seam sequenced on measured tempo with no ear check, any thematic claim you left out, a non-null `tempo_source_note`, and a `kept-prior` archive.

@@ -1,0 +1,33 @@
+# Band Profile — Kiso River Lights (synthetic eval fixture; not a real band)
+# Created: 2026-10-15
+# Note: deliberately carries no writer_voice block (the "parses but has no voice fields" state).
+
+name: "Kiso River Lights"
+version: 1
+instrumental: false
+
+genre: "ambient folk with soft city-pop keys"
+mood: "wistful, tender, unhurried"
+language: "English and Japanese"
+reference_tracks:
+  - "hushed bilingual folk with fingerpicked guitar and Rhodes"
+
+model_preference: "v6"
+tier: "pro"
+
+style_baseline: >
+  Ambient folk, gentle female vocal, fingerpicked nylon guitar, soft Rhodes
+  chords, brushed drums, warm close-mic production.
+exclusion_defaults:
+  - "trap hi-hats"
+
+vocal:
+  gender: "female"
+  tone: "soft, airy"
+  delivery: "intimate, unhurried"
+  energy: "low, swelling on the refrain"
+  diction: "clear"
+
+creativity_default: "balanced"
+known_working_patterns: []
+known_limitations: []

@@ -1,145 +1,26 @@
-# Section Job Framework
+# Poem-to-Song Strategies
 
-> **Last validated:** March 2026. Section job definitions are songwriting craft principles, not Suno-specific — they do not require re-validation with Suno updates.
+What Suno does with a poem's shape, and the structures that work around it. Section line ranges live in `section-length-checker.py`.
 
-Every song section has a specific job in the emotional arc. Understanding these jobs is critical for deciding where to place lyrics and how to structure a poem-to-song transformation.
+## Let the Words Set the Length
 
-## Section Roles
+A short song can be the right song: a 90-second track that lands every line hits harder than three minutes with filler, and short tracks give a playlist contrast. Don't pad for runtime, because Suno fills thin content with looping instrumental and the song turns aimless.
 
-| Section | Job | Emotional Function | Typical Lines |
-|---------|-----|--------------------|---------------|
-| **Intro** | Set the stage | Create atmosphere, establish mood before words | 0-4 (often instrumental) |
-| **Verse** | Setup / Tell the story | Deliver narrative, build context, paint scenes | 4-8 |
-| **Pre-Chorus** | Lift / Create tension | Transitional energy rise, prepare for payoff | 2-4 |
-| **Chorus** | Payoff / Emotional anchor | Deliver the hook, the core feeling, the thing that sticks | 2-6 |
-| **Bridge** | Something NEW / Contrast | New chords, new melody, new perspective. Introduces harmonic content the song hasn't heard yet | 2-6 |
-| **Breakdown** | Something LESS / Strip back | Subtractive — strips instruments to spotlight vocals or a motif. In metal, forces tempo drop and heavy rhythm. Creates maximum contrast before high-energy sections | 2-4 |
-| **Build-Up** | Escalate / Rising tension | Increasing energy leading to climax | 2-4 |
-| **Outro** | Resolve / Close | Bring it home — resolution, fade, final statement | 2-6 |
+## Short Poem (`estimated_structure: short`, under 16 content lines)
 
-## Transformation Decision Guide
+Use one of these in place of Chorus Creation, since new padding lines become instrumental filler:
 
-When converting raw text to song structure, ask these questions:
+- **Split delivery:** the first half as Verse 1, an extracted chorus, the second half as Verse 2, the chorus again.
+- **Double delivery:** the whole poem twice with different energy (clean first, heavy second) around an extracted chorus: `Verse 1 (full poem, clean)` → `Chorus` → `Verse 2 (full poem, heavy)` → `Final Chorus`. Works when the words change meaning under a different emotional lens.
+- **Chorus extraction:** pull the strongest, most repeatable lines into a standalone chorus, so Suno has enough repetition to build a song on.
+- **Thesis isolation:** build through the poem, then a solo or instrumental break, then only the thesis line in its own section: `Verse 1` → `Verse 2` → `Guitar Solo` → `Outro (thesis line only)` → `[End]`. For a poem with one line that deserves to land alone.
 
-### "Where's the hook?"
-- The most emotionally resonant, imagistic, or rhythmic line(s)
-- This becomes the chorus or chorus seed
-- If no obvious hook exists, derive one from the poem's central image or feeling
+Name the strategy in the decision log. Keep `[Instrumental Break]` tags out of a short poem's lyrics: the tag asks Suno to noodle, and the song comes back mostly instrumental.
 
-### "Where's the turn?"
-- The moment the perspective shifts, deepens, or surprises
-- This becomes the bridge
-- Poems without a turn may need a bridge written to provide contrast
+## Poems Without a Chorus (Through-Composed)
 
-### "What's the story arc?"
-- Lines that set scenes or provide context → verses
-- Lines that build tension → pre-chorus
-- Lines that release/resolve → chorus or outro
+A single sustained meditation, or a poem whose power is in its progression, can stay continuous (`Verse 1` → `Verse 2` → `Bridge` → `Verse 3` → `Outro` → `[End]`). Carry the energy changes with descriptor tags and line density, and back the dynamic range in the style prompt. Put a hard `[End]` right after the final delivery: with no chorus to signal the structure repeating, Suno otherwise loops or trails off into instrumental.
 
-### "What should repeat?"
-- Repetition = emphasis = memorability
-- The chorus repeats. What phrase deserves to be heard 3+ times?
-- Consider also: anaphora (repeated line openings), callbacks (later sections echoing earlier phrases)
+## Structural Metaphor (Meter as Meaning)
 
-## Common Poem-to-Song Structures
-
-### Song Duration — Let the Words Decide
-Not all songs need to be 3-4 minutes. A short duration (e.g., 1:49) can be a feature when it matches the emotional content. Don't pad short poems just for runtime — let the song be the length the words demand. Short tracks create contrast in a playlist between longer epic tracks and short punches. A 90-second song that lands every line hits harder than a 3-minute song with filler.
-
-### Short Poem (`estimated_structure: short`, under 16 content lines)
-`analyze-input.py` marks these. A short poem needs special handling — Suno fills short content with looping instrumental, producing a song that feels empty or aimless. Use one of these strategies instead of Chorus Creation, since padding becomes instrumental filler:
-
-**Split delivery:** first half of the poem as Verse 1, an extracted chorus, the second half as Verse 2, the chorus again.
-
-**Double delivery:** Deliver the poem twice with different energy. Clean/quiet first pass, then heavy/intense second pass. The repetition is intentional — the same words change meaning through musical recontextualization. This works when the poem's meaning deepens or shifts under a different emotional lens.
-```
-Verse 1 (full poem, clean delivery)
-Chorus (extracted hook)
-Verse 2 (full poem, heavy delivery)
-Final Chorus
-```
-
-**Chorus extraction:** Pull the poem's strongest, most repeatable lines into a standalone chorus. This gives Suno enough structural repetition to build a full song around limited source text.
-
-**Thesis isolation:** Build through the poem, add a guitar solo or instrumental break, then deliver ONLY the final thesis statement as its own section. Powerful when the poem has a clear thesis line that deserves to land in isolation.
-```
-Verse 1
-Verse 2
-Guitar Solo
-Outro (thesis line only)
-[End]
-```
-
-**What NOT to do:** Do not pad short poems with `[Instrumental break]` tags in the lyrics — this literally asks Suno to noodle and produces a song that is mostly instrumental filler.
-
-### Medium Poem (16-30 lines)
-```
-Verse 1
-Pre-Chorus
-Chorus
-Verse 2
-Pre-Chorus
-Chorus
-Bridge (the "turn" or a new perspective)
-Final Chorus
-```
-
-### Long Poem (30+ lines)
-```
-Verse 1
-Chorus
-Verse 2
-Chorus
-Bridge
-Verse 3 (or shortened recap)
-Final Chorus
-Outro
-```
-
-### Poem That Doesn't Need a Chorus
-Some poems are genuinely better as continuous narrative. Signs:
-- The poem is a single sustained meditation with no natural hook
-- Adding repetition would break the flow
-- The emotional power is in the progression, not a single moment
-
-In this case, structure as:
-```
-Verse 1
-Verse 2
-Bridge
-Verse 3
-Outro
-[End]
-```
-Use descriptor metatags to guide energy changes instead of relying on chorus repetition.
-
-### Through-Composed Structure — Production Notes
-Through-composed (no repeating chorus) works well when:
-- The poem has a clear arc: building tension, climax, resolution.
-- Word density naturally drives dynamic shifts — dense lines for intensity, sparse lines for breathing room.
-- The style prompt supports the dynamic range needed (e.g., a style prompt that includes both quiet and heavy descriptors).
-
-Critical requirement: always place a hard `[End]` tag after the final delivery to prevent Suno from looping or generating trailing instrumental. Without `[End]`, through-composed songs are especially prone to meandering because Suno has no chorus to signal "this is the structure repeating."
-
-## Structural Metaphor in Song Design
-
-Different time signatures for different section types can serve as a form-serves-content technique — the musical structure itself becomes a storytelling device. Suno moves feel and tempo but not meter (production-tested), so offer a structural metaphor as aspiration only: at most one meter signal, the rest in feel words that land, and a song that still works in 4/4.
-
-### Examples
-
-| Lyrical Theme | Musical Treatment | Effect |
-|---|---|---|
-| Chaos, instability, disorientation | Odd time signatures (5/4, 7/8) in verses | The listener feels off-balance, mirroring the content |
-| Resolution, arrival, clarity | Straight 4/4 in choruses | Landing on solid ground after rhythmic instability |
-| Freedom, looseness | NOLA funk groove, swung rhythms | The music breathes and moves freely |
-| Confinement, rigidity, control | Rigid tempo, pounding metronomic drums | Mechanical precision creates a trapped feeling |
-| Building dread | Accelerating tempo or increasing rhythmic density | Tension ratchets up through the music itself |
-
-### Application Guidance
-
-This technique is most powerful for prog and through-composed structures where the musical journey parallels the lyrical journey. Mention the opportunity when:
-- The poem has contrasting emotional states across sections (e.g., turmoil in verses, peace in choruses)
-- The poem's themes include concepts that have natural musical analogs (freedom/confinement, chaos/order, tension/release)
-- The target genre supports rhythmic experimentation (prog, post-metal, NOLA funk — less applicable to straightforward rock/pop)
-
-Never build a song whose structural point depends on the meter actually changing.
+Odd meter for unstable verses against 4/4 for the resolving chorus is a strong idea for prog and through-composed songs, but Suno moves feel and tempo, not meter: production testing (2026-07, three takes) got the sway and the slower pulse while the subdivision stayed 4/4. Offer it as aspiration only: at most one meter signal (`[Verse 1: 7/8]`), the rest in feel words that land (swung, rigid, accelerating, half-time), and a song whose point still works in 4/4. Style-side meter wording is the `suno-style-prompt-builder` skill's.

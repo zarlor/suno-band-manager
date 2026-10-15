@@ -1,0 +1,503 @@
+{
+  "script": "playlist-sequencing-data",
+  "status": "ok",
+  "album": "Bramble Union",
+  "track_count": 9,
+  "analyzed_count": 9,
+  "dropped": [],
+  "tempo_source": "librosa",
+  "runs": [],
+  "tracks": [
+    {
+      "position": 1,
+      "name": "Saturday Payday",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 98.0,
+      "entry_bpm": 98.0,
+      "exit_bpm": 98.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 98.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "D major",
+        "overall_confidence": 0.81,
+        "overall_camelot": "10B",
+        "entry": "D major",
+        "entry_confidence": 0.74,
+        "entry_camelot": "10B",
+        "exit": "D major",
+        "exit_confidence": 0.77,
+        "exit_camelot": "10B"
+      },
+      "energy": {
+        "level": 8,
+        "intro_pct": 65,
+        "outro_pct": 75
+      },
+      "loudness": {
+        "integrated_lufs": -9.2,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -10.3,
+          -9.2,
+          -9.1
+        ],
+        "build_lu": 1.2,
+        "entry_lufs": -9.8,
+        "exit_lufs": -9.4
+      },
+      "transition_to_next": {
+        "to": "Mill Town Sparrows",
+        "camelot_distance": 0.5,
+        "key_relation": "relative",
+        "key_compat": "compatible",
+        "bpm_from": 98.0,
+        "bpm_to": 104.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 6.0,
+        "bpm_quality": "jump (6%)",
+        "pulse_pair": false,
+        "loudness_step_lu": -2.4,
+        "loudness_quality": "smooth"
+      }
+    },
+    {
+      "position": 2,
+      "name": "Mill Town Sparrows",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 104.0,
+      "entry_bpm": 104.0,
+      "exit_bpm": 104.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 104.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": false,
+      "key": {
+        "overall": "B minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "10A",
+        "entry": "B minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "10A",
+        "exit": "B minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "10A"
+      },
+      "energy": {
+        "level": 6,
+        "intro_pct": 40,
+        "outro_pct": 50
+      },
+      "loudness": {
+        "integrated_lufs": -11.0,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -12.3,
+          -11.0,
+          -11.1
+        ],
+        "build_lu": 1.2,
+        "entry_lufs": -11.8,
+        "exit_lufs": -11.4
+      },
+      "transition_to_next": {
+        "to": "Porch Vigil",
+        "camelot_distance": 1,
+        "key_relation": "adjacent",
+        "key_compat": "compatible",
+        "bpm_from": 104.0,
+        "bpm_to": 72.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 32.0,
+        "bpm_quality": "jump (31%)",
+        "pulse_pair": false,
+        "loudness_step_lu": -5.4,
+        "loudness_quality": "noticeable (quieter)"
+      }
+    },
+    {
+      "position": 3,
+      "name": "Porch Vigil",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 72.0,
+      "entry_bpm": 72.0,
+      "exit_bpm": 72.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 72.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "E minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "9A",
+        "entry": "E minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "9A",
+        "exit": "B minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "10A"
+      },
+      "energy": {
+        "level": 3,
+        "intro_pct": 18,
+        "outro_pct": 22
+      },
+      "loudness": {
+        "integrated_lufs": -16.0,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -17.3,
+          -16.0,
+          -16.2
+        ],
+        "build_lu": 1.1,
+        "entry_lufs": -16.8,
+        "exit_lufs": -16.5
+      },
+      "transition_to_next": {
+        "to": "Company Store",
+        "camelot_distance": 2,
+        "key_relation": "two-step",
+        "key_compat": "near",
+        "bpm_from": 72.0,
+        "bpm_to": 112.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 40.0,
+        "bpm_quality": "jump (56%)",
+        "pulse_pair": false,
+        "loudness_step_lu": 6.1,
+        "loudness_quality": "big jump (louder)"
+      }
+    },
+    {
+      "position": 4,
+      "name": "Company Store",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 112.0,
+      "entry_bpm": 112.0,
+      "exit_bpm": 112.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 112.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": false,
+      "key": {
+        "overall": "A minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "8A",
+        "entry": "A minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "8A",
+        "exit": "A minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "8A"
+      },
+      "energy": {
+        "level": 7,
+        "intro_pct": 55,
+        "outro_pct": 65
+      },
+      "loudness": {
+        "integrated_lufs": -9.8,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -10.9,
+          -9.8,
+          -9.7
+        ],
+        "build_lu": 1.2,
+        "entry_lufs": -10.4,
+        "exit_lufs": -10.0
+      },
+      "transition_to_next": {
+        "to": "Sweetwater Dance",
+        "camelot_distance": 1.5,
+        "key_relation": "distant",
+        "key_compat": "near",
+        "bpm_from": 112.0,
+        "bpm_to": 120.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 8.0,
+        "bpm_quality": "jump (7%)",
+        "pulse_pair": false,
+        "loudness_step_lu": 0.2,
+        "loudness_quality": "smooth"
+      }
+    },
+    {
+      "position": 5,
+      "name": "Sweetwater Dance",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 120.0,
+      "entry_bpm": 120.0,
+      "exit_bpm": 120.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 120.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": false,
+      "key": {
+        "overall": "G major",
+        "overall_confidence": 0.81,
+        "overall_camelot": "9B",
+        "entry": "G major",
+        "entry_confidence": 0.74,
+        "entry_camelot": "9B",
+        "exit": "G major",
+        "exit_confidence": 0.77,
+        "exit_camelot": "9B"
+      },
+      "energy": {
+        "level": 8,
+        "intro_pct": 60,
+        "outro_pct": 70
+      },
+      "loudness": {
+        "integrated_lufs": -9.4,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -10.3,
+          -9.4,
+          -9.3
+        ],
+        "build_lu": 1.0,
+        "entry_lufs": -9.8,
+        "exit_lufs": -9.6
+      },
+      "transition_to_next": {
+        "to": "Black Lung Lullaby",
+        "camelot_distance": 2.5,
+        "key_relation": "distant",
+        "key_compat": "distant",
+        "bpm_from": 120.0,
+        "bpm_to": 66.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 54.0,
+        "bpm_quality": "jump (45%)",
+        "pulse_pair": false,
+        "loudness_step_lu": -9.0,
+        "loudness_quality": "big jump (quieter)"
+      }
+    },
+    {
+      "position": 6,
+      "name": "Black Lung Lullaby",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 66.0,
+      "entry_bpm": 66.0,
+      "exit_bpm": 66.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 66.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": false,
+      "key": {
+        "overall": "D minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "7A",
+        "entry": "D minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "7A",
+        "exit": "D minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "7A"
+      },
+      "energy": {
+        "level": 2,
+        "intro_pct": 12,
+        "outro_pct": 10
+      },
+      "loudness": {
+        "integrated_lufs": -18.0,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -19.1,
+          -18.0,
+          -18.9
+        ],
+        "build_lu": 0.2,
+        "entry_lufs": -18.6,
+        "exit_lufs": -19.2
+      },
+      "transition_to_next": {
+        "to": "Strike Bell",
+        "camelot_distance": 2,
+        "key_relation": "two-step",
+        "key_compat": "near",
+        "bpm_from": 66.0,
+        "bpm_to": 132.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 66.0,
+        "bpm_quality": "jump (100%)",
+        "pulse_pair": true,
+        "loudness_step_lu": 10.2,
+        "loudness_quality": "big jump (louder)"
+      }
+    },
+    {
+      "position": 7,
+      "name": "Strike Bell",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 132.0,
+      "entry_bpm": 132.0,
+      "exit_bpm": 132.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 132.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "C minor",
+        "overall_confidence": 0.81,
+        "overall_camelot": "5A",
+        "entry": "C minor",
+        "entry_confidence": 0.74,
+        "entry_camelot": "5A",
+        "exit": "C minor",
+        "exit_confidence": 0.77,
+        "exit_camelot": "5A"
+      },
+      "energy": {
+        "level": 9,
+        "intro_pct": 70,
+        "outro_pct": 80
+      },
+      "loudness": {
+        "integrated_lufs": -8.4,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -9.5,
+          -8.4,
+          -8.3
+        ],
+        "build_lu": 1.2,
+        "entry_lufs": -9.0,
+        "exit_lufs": -8.6
+      },
+      "transition_to_next": {
+        "to": "Lantern Walk Home",
+        "camelot_distance": 2.5,
+        "key_relation": "distant",
+        "key_compat": "distant",
+        "bpm_from": 132.0,
+        "bpm_to": 84.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 48.0,
+        "bpm_quality": "jump (36%)",
+        "pulse_pair": false,
+        "loudness_step_lu": -6.0,
+        "loudness_quality": "big jump (quieter)"
+      }
+    },
+    {
+      "position": 8,
+      "name": "Lantern Walk Home",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 84.0,
+      "entry_bpm": 84.0,
+      "exit_bpm": 84.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 84.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "F major",
+        "overall_confidence": 0.81,
+        "overall_camelot": "7B",
+        "entry": "F major",
+        "entry_confidence": 0.74,
+        "entry_camelot": "7B",
+        "exit": "F major",
+        "exit_confidence": 0.77,
+        "exit_camelot": "7B"
+      },
+      "energy": {
+        "level": 4,
+        "intro_pct": 30,
+        "outro_pct": 20
+      },
+      "loudness": {
+        "integrated_lufs": -14.0,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -15.1,
+          -14.0,
+          -15.3
+        ],
+        "build_lu": -0.2,
+        "entry_lufs": -14.6,
+        "exit_lufs": -15.6
+      },
+      "transition_to_next": {
+        "to": "Homecoming Parade",
+        "camelot_distance": 3.5,
+        "key_relation": "distant",
+        "key_compat": "distant",
+        "bpm_from": 84.0,
+        "bpm_to": 96.0,
+        "bpm_basis": "exit/entry",
+        "bpm_change": 12.0,
+        "bpm_quality": "jump (14%)",
+        "pulse_pair": false,
+        "loudness_step_lu": 5.2,
+        "loudness_quality": "noticeable (louder)"
+      }
+    },
+    {
+      "position": 9,
+      "name": "Homecoming Parade",
+      "duration": 225.0,
+      "duration_display": "3:45",
+      "bpm": 96.0,
+      "entry_bpm": 96.0,
+      "exit_bpm": 96.0,
+      "tempo_source": "librosa",
+      "bpm_librosa_slow_prior": 96.0,
+      "librosa_prior_relation": "agree",
+      "felt_bpm": null,
+      "felt_bpm_check": true,
+      "key": {
+        "overall": "D major",
+        "overall_confidence": 0.81,
+        "overall_camelot": "10B",
+        "entry": "D major",
+        "entry_confidence": 0.74,
+        "entry_camelot": "10B",
+        "exit": "D major",
+        "exit_confidence": 0.77,
+        "exit_camelot": "10B"
+      },
+      "energy": {
+        "level": 7,
+        "intro_pct": 55,
+        "outro_pct": 60
+      },
+      "loudness": {
+        "integrated_lufs": -10.6,
+        "lra_lu": 6.0,
+        "thirds_lufs": [
+          -10.9,
+          -10.6,
+          -10.5
+        ],
+        "build_lu": 0.4,
+        "entry_lufs": -10.4,
+        "exit_lufs": -10.8
+      }
+    }
+  ],
+  "tempo_source_note": null
+}

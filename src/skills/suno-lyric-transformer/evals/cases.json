@@ -1,0 +1,72 @@
+[
+  {
+    "id": "mixed-script-japanese-voiceless-profile",
+    "input": "Use the suno-lyric-transformer skill --headless. Band profiles for this run are in fixtures/band-profiles/ (no BMad config in this folder).\n\nmy friend wrote this for her grandmother's lantern festival, half english half japanese. the japanese has to stay exactly how she wrote it, she'll know if one character moves\n\n```json\n{\n  \"text\": \"Paper Lanterns\\n\\nWe walked down to the river after dark\\nthe whole town carrying its small lights\\n灯籠を水に浮かべて\\nmy grandmother's name in brushstrokes on the side\\nshe said the river knows the way back home\\n川は覚えている\\n\\nThe current took them slow at first\\nthen all at once, a hundred tiny suns\\nゆらゆら揺れて\\nObon night, お盆の夜, the taiko still going\\nI tried to keep my eyes on hers\\nさようなら、おばあちゃん\\n\\nNext summer I will write my own name small\\nunderneath hers, in the corner, the way she taught me\\n灯りは消えても\\nthe river keeps on carrying\\nwhat we were too afraid to hold\\n川は覚えている\\n\",\n  \"band_profile\": \"kiso-river-lights\",\n  \"direction\": \"hushed bilingual ambient folk, grief turning into gratitude\",\n  \"creativity_mode\": \"balanced\",\n  \"model\": \"v6\"\n}\n```",
+    "state_prefix": null,
+    "files": [
+      "fixtures/band-profiles/kiso-river-lights.yaml"
+    ],
+    "rubric": [
+      "The transcript shows analyze-input.py run on the source text, and its output reports metrics.script_type \"mixed\"",
+      "At least one syllable-counter.py run and at least one cliche-detector.py run appear in the transcript, and every syllable-counter.py and cliche-detector.py invocation carries --latin-only",
+      "The final message contains a JSON object whose status is \"complete_with_caveats\", with a caveat (or decision_log entry) saying the non-Latin/mixed-script lines got structure-only work (no syllable, rhyme or cliche checks)",
+      "Each of these source lines appears in transformed_lyrics character-for-character as its own line: 灯籠を水に浮かべて | 川は覚えている | ゆらゆら揺れて | Obon night, お盆の夜, the taiko still going | さようなら、おばあちゃん | 灯りは消えても",
+      "No line of transformed_lyrics contains Japanese characters except the six source lines listed above (repeats of them are fine): no Japanese text was added, translated, split or altered",
+      "decision_log records that the kiso-river-lights profile was found but has no writer_voice (voice) fields, and nothing in the return (caveats, decision_log, changes) claims the lyrics were checked against or aligned with the profile's writer voice",
+      "transformation_summary is copied from the last assemble-summary.py run in the transcript: its character_count, section_count and transformations_applied equal that run's transformation_summary values",
+      "The last non-empty line of transformed_lyrics is [End], and validation_result.status equals the status of the last validate-lyrics.py run in the transcript"
+    ]
+  },
+  {
+    "id": "unbroken-prose-word-fidelity",
+    "input": "Use the suno-lyric-transformer skill --headless. Band profiles for this run are in fixtures/band-profiles/ (no BMad config in this folder).\n\nthis is a paragraph i wrote on the ferry, i never wrote it as a poem. can it be a song? do NOT change my words, only shape it\n\n```json\n{\n  \"text\": \"The last ferry leaves at eleven forty and I am always on it, coat collar up, watching the city fold itself into a thin gold line behind the wake, and the deckhand who never speaks coils the rope the same way every night like a prayer he learned before he learned his name, and I think about my father who crossed this same water every morning for thirty one years with a thermos and a newspaper he never read, who told me once that the trick to living on an island is to love the leaving as much as the coming home, and I did not understand him then, but tonight the engine shudders under my feet and the gulls have gone quiet and the far shore is only a rumor of lights, and I finally understand that he was never talking about the ferry at all.\\n\",\n  \"options\": [\n    \"ST\",\n    \"WF\"\n  ],\n  \"band_profile\": \"harbor-static\",\n  \"direction\": \"late-night reflective indie folk, half-sung, steady pulse\",\n  \"model\": \"v6\"\n}\n```",
+    "state_prefix": null,
+    "files": [],
+    "rubric": [
+      "The transcript shows analyze-input.py run on the source, and its output reports metrics.unbroken_prose true",
+      "The final message contains a JSON object whose status is not \"blocked\" and whose transformed_lyrics has at least 8 non-empty lines that are not bracketed tags, none of them longer than 100 characters (the prose was segmented into singable lines)",
+      "Word fidelity: the whitespace-separated words of transformed_lyrics, excluding bracketed tag lines, equal the source paragraph's words in the same order, with none added, dropped or changed",
+      "The transcript shows spacing-check.py run with --word-fidelity comparing the source against the final lyrics; the last such run reports status \"pass\", and the return's spacing_check.status matches it",
+      "The return says the line breaks were inferred or added by the transformer (in caveats, decision_log or changes)",
+      "decision_log records that band profile 'harbor-static' was not found and that the run proceeded without voice constraints",
+      "transformation_summary.transformations_applied includes ST and WF and none of CC, CE, RE, FR",
+      "The last non-empty line of transformed_lyrics is [End]"
+    ]
+  },
+  {
+    "id": "short-poem-six-lines",
+    "input": "Use the suno-lyric-transformer skill --headless. Band profiles for this run are in fixtures/band-profiles/ (no BMad config in this folder).\n\nshort one. 6 lines. i want it to feel like a whole song though, not a 40 second sketch\n\n```json\n{\n  \"text\": \"Salt on the Sill\\n\\nYou left the window open when you went\\nand the sea came in a little every night\\nsalt on the sill, salt on the sill\\nI never wiped it, never closed it tight\\nnow the paint is peeling where you leaned\\nand I keep the window open for the light\\n\",\n  \"direction\": \"slow coastal folk ballad, aching and sparse, female vocal\",\n  \"model\": \"v6\"\n}\n```",
+    "state_prefix": null,
+    "files": [],
+    "rubric": [
+      "The transcript shows analyze-input.py run on the source, and its output reports metrics.estimated_structure \"short\"",
+      "The transcript shows validate-options.py run on the final codes, and transformation_summary.transformations_applied includes ST and does not include CC",
+      "decision_log names one short-poem strategy (split delivery, double delivery, chorus extraction or thesis isolation) and ties it to the input being short",
+      "Each of the six poem lines (\"You left the window open when you went\" through \"and I keep the window open for the light\") appears verbatim in transformed_lyrics",
+      "Every non-empty, non-tag line of transformed_lyrics is one of the six poem lines or the title (repeats allowed): no new lyric lines were written as padding",
+      "At least one poem line appears two or more times in transformed_lyrics (the strategy supplies repetition for Suno to build on)",
+      "transformed_lyrics contains no [Instrumental Break] tag in any capitalization, and its last non-empty line is [End]"
+    ]
+  },
+  {
+    "id": "spaced-poem-spacing-survives",
+    "input": "Use the suno-lyric-transformer skill --headless. Band profiles for this run are in fixtures/band-profiles/ (no BMad config in this folder).\n\nLantern Hollow's next one. the indents and the big gaps between words are how he breathes it, they are NOT typos. there's already a decision log for this song\n\n```json\n{\n  \"text\": \"The Weir Keeper\\n\\nEvery morning at the weir\\n    I lift the boards\\n        and let the river through\\nmy father did it   and his father   too\\n\\n\\nHold   the   gate\\n    hold   the   gate\\nthe water does not care whose hands are on the wheel\\n\\nIn the flood year the boards were swollen shut\\n    I broke my knuckles on the iron\\n        and the town slept on\\nnot one of them   knew   my name\\n\\n\\nHold   the   gate\\n    hold   the   gate\\nthe water does not care whose hands are on the wheel\\n\\nWhen I am gone   somebody else will learn\\n    which board sticks\\n        which one sings\\nand the river will go on   standing tall   without me\\n\",\n  \"options\": [\n    \"ST\",\n    \"RA\",\n    \"CD\"\n  ],\n  \"band_profile\": \"lantern-hollow\",\n  \"direction\": \"dark Appalachian folk, stoic, the refrain rising\",\n  \"model\": \"v6\",\n  \"song_path\": \"fixtures/songbook/lantern-hollow/the-weir-keeper.md\"\n}\n```",
+    "state_prefix": null,
+    "files": [
+      "fixtures/band-profiles/lantern-hollow.yaml",
+      "fixtures/songbook/lantern-hollow/the-weir-keeper.md",
+      "fixtures/songbook/lantern-hollow/the-weir-keeper.decision-log.md"
+    ],
+    "rubric": [
+      "The transcript shows spacing-check.py run with --original and --transformed, the original holding the writer's source text; the last such run reports status \"pass\" with zero high findings",
+      "The return's spacing_check.status equals that last run's status, and spacing_check.line_edits equals its metrics.line_edits; every line edit that run lists is described in changes[]",
+      "transformed_lyrics contains each of these lines with its exact leading spaces (4 or 8) and words: \"    I lift the boards\", \"        and let the river through\", \"    I broke my knuckles on the iron\", \"        and the town slept on\", \"    which board sticks\", \"        which one sings\", \"    hold   the   gate\"",
+      "transformed_lyrics keeps every three-space run inside the writer's lines: \"Hold   the   gate\", \"my father did it   and his father   too\", \"not one of them   knew   my name\" and \"When I am gone   somebody else will learn\" each appear verbatim, and no line of transformed_lyrics that came from the source has had a three-space run collapsed",
+      "\"standing tall\" (an intentional keep in the existing decision log) still appears in transformed_lyrics, and the return lists it in intentional_keeps or cliche_report.kept",
+      "fixtures/songbook/lantern-hollow/the-weir-keeper.decision-log.md still begins with the fixture's original content byte-for-byte (title, the '## Session 2026-10-01 (transform)' heading and both bullets), followed by a new '## Session YYYY-MM-DD (transform)' heading with at least one bullet; decision_log_path names this file",
+      "fixtures/songbook/lantern-hollow/the-weir-keeper.md is byte-identical to the fixture (headless writes only the log)",
+      "The transcript contains an LT-STATE comment whose source_hash equals metrics.source_hash from an analyze-input.py run on the source, and the return's source_hash equals the same value",
+      "flat_copy_lyrics is absent or null (the lyrics are far under the 3,000-character budget)"
+    ]
+  }
+]

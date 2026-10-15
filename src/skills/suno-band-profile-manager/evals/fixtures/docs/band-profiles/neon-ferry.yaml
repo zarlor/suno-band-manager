@@ -1,0 +1,50 @@
+# Band Profile — Neon Ferry
+# Created: 2026-05-02
+# Last modified: 2026-09-14 (moved to v6)
+
+name: "Neon Ferry"
+version: 2
+instrumental: false
+
+# Sound Identity
+genre: "darkwave synth-pop with post-punk guitar"
+mood: 'nocturnal, restless, a little romantic'
+language: English
+reference_tracks:
+- "late-night harbor radio: cold drum machine, chorused bass, a vocal that sounds half-awake"
+
+# Model & Tier
+model_preference: "v6"  # moved to v6 2026-09-14 (was: v5 Pro)
+tier: pro
+
+# NOTE: keep "gothic" out of the baseline — it drags this band into organ-heavy cathedral rock.
+style_baseline: >
+  Darkwave synth-pop with post-punk guitar, cold drum machine at 118 BPM feel,
+  chorused bass carrying the hook, wiry clean guitar, close dry baritone vocal in
+  front of the band, wide reverb tails, analog synth pads.
+exclusion_defaults:
+- no autotune
+- no organ
+
+vocal:
+  gender: male
+  tone: "cool, low baritone with a slight smoke"
+  delivery: deadpan verses, opening up on choruses
+  energy: restrained, building
+  persona_reference: ''
+
+sliders:
+  weirdness: 45
+  style_influence: 60   # the prompt leads; above 70 the drums went stiff
+
+known_working_patterns:
+- "'chorused bass carrying the hook' keeps the bass forward"
+- "'wiry clean guitar' avoids the shoegaze wash"
+
+known_limitations:
+- "'gothic' pulls in church organ and cathedral reverb"
+
+generation_learnings:
+- "Weirdness above 55 breaks the drum-machine grid for this sound"
+
+generation_history: []

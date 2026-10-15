@@ -1,0 +1,42 @@
+# Band Profile — Lantern Hollow (synthetic eval fixture; not a real band)
+# Created: 2026-10-15
+
+name: "Lantern Hollow"
+version: 1
+instrumental: false
+
+genre: "dark Appalachian folk"
+mood: "stoic, weathered, devotional"
+language: "English"
+reference_tracks:
+  - "sparse banjo-and-fiddle murder ballads with a low male lead"
+
+model_preference: "v6"
+tier: "pro"
+
+style_baseline: >
+  Dark Appalachian folk, low weathered male vocal, clawhammer banjo, droning
+  fiddle, upright bass, sparse foot-stomp percussion, dry room.
+exclusion_defaults:
+  - "pop sheen"
+
+vocal:
+  gender: "male"
+  tone: "low, weathered"
+  delivery: "plainspoken, stoic"
+  energy: "restrained, rising on the refrain"
+  diction: "clear"
+
+writer_voice:
+  vocabulary: "plain, concrete, working-trade words (boards, iron, wheel, gate)"
+  rhythm: "short declaratives; lines stepped across the page with indents to mark breath"
+  imagery: "water, tools, hands, generations"
+  emotional_tone: "restrained, stoic, quietly proud"
+  metaphor_style: "rare and literal; the object carries the meaning"
+  repetition_patterns: "spaced-out refrains with deliberate gaps between words"
+  sample_quotes:
+    - "Hold   the   gate"
+
+creativity_default: "balanced"
+known_working_patterns: []
+known_limitations: []

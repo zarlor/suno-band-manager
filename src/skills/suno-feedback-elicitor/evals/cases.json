@@ -1,0 +1,88 @@
+{
+  "note": "Version-neutral cases for the leanness variant (new vs the prior snapshot): every rubric item holds for either layout. The only staged files are BMad's config resolvers and central config, which resolve against the project root first, so they are the repo's own installer-managed _bmad/config.toml (suno_tier pro, no personal data) and _bmad/scripts/*.py; that lets activation step 2 resolve instead of stopping to offer setup. No band profile, no songbook and no sibling skill is staged: the headless cases run with --no-write and never need the builder, and the interactive cases must stop at a narrowing question before any rebuild. If the repo's suno_tier changes from pro, re-read the tier items in technical-artifact-regenerate-first.",
+  "cases": [
+    {
+      "id": "clear-vocals-buried-headless",
+      "input": "Use the suno-feedback-elicitor skill --headless --no-write\n\n--feedback \"the vocals are buried under the guitars, I can barely make out the words in the verses. love the drums and that chugging riff though, don't touch those\"\n--style-prompt \"Southern hard rock, gritty male lead vocal, driving drums with a heavy backbeat, two thick overdriven rhythm guitars trading a chugging riff, overdriven bass locked to the kick, big wall-of-guitar chorus, ends on a hard stop\"\n--model v6\n--sliders '{\"weirdness\": 50, \"style_influence\": 70}'",
+      "state_prefix": null,
+      "files": [
+        "_bmad/config.toml",
+        "_bmad/scripts/resolve_config.py",
+        "_bmad/scripts/config_utils.py",
+        "_bmad/scripts/resolve_customization.py"
+      ],
+      "rubric": [
+        "The final message is a JSON envelope with status \"complete\", feedback_analysis.triage_type \"clear\", and feedback_analysis.identified_dimensions containing a vocal dimension (e.g. \"vocals\"); there is no greeting, question or prose outside the JSON",
+        "Vocal placement, not praise: at least one item in adjustment_recommendations.style_prompt.add places the vocal relative to the band (in front of the band, forward, the loudest element, close-mic'd or dry); adding only 'powerful', 'strong' or 'clear' vocals does not pass",
+        "The arrangement side is worked too: at least one recommendation makes room under the vocal on the guitar side — an add that pushes the rhythm guitars back, carves or leaves midrange space for the vocal, or thins the verse arrangement, or a remove/reorder that takes out or softens 'big wall-of-guitar chorus' or 'thick'",
+        "Keepers preserved: no style_prompt.remove item and no exclusions.add item targets the drums ('driving drums with a heavy backbeat') or the riff ('chugging riff'), and the output (decision_log, iteration_log or reasoning) names the drums and the riff as kept",
+        "Positive text only: no item in style_prompt.add contains a negative ('no ', 'without', 'not ', 'less '); anything to keep out is in exclusions.add instead",
+        "The transcript shows a Bash call running map-adjustments.py with --stdin before the final message",
+        "suggested_next_action names the skill \"suno-style-prompt-builder\" with mode \"--headless:refine\"",
+        "--no-write honored: written_paths is empty, and the workspace after the run has no docs/feedback-history/ file and no band-profile write (no Write/Edit or feedback-log.py append call in the transcript)",
+        "Branch-scoped loading: the transcript contains no Read of technical-resolution.md, gemini-audio-analysis.md, audio-analysis-scripts.md or retired-models.md (a clear mix complaint is not the technical, listening-analysis, audio or retired-model branch)"
+      ]
+    },
+    {
+      "id": "vague-narrows-to-one-anchor",
+      "input": "hey, can you help me give feedback on my Suno output? song's called \"Porch Light\", made it on v6 on my Pro plan, Weirdness 45 / Style Influence 70, no band profile. style prompt was: \"Dreamy indie folk, soft female vocal close to the mic, fingerpicked acoustic guitar, warm upright bass, brushed drums, lap steel swells in the chorus, slow 72 BPM feel with a gentle sway, ends on a held chord\"\n\nI've listened to it like three times and... I don't know. it just doesn't feel right. not bad exactly, just not what I had in my head",
+      "state_prefix": null,
+      "files": [
+        "_bmad/config.toml",
+        "_bmad/scripts/resolve_config.py",
+        "_bmad/scripts/config_utils.py",
+        "_bmad/scripts/resolve_customization.py"
+      ],
+      "rubric": [
+        "The skill ran: the transcript shows a Skill tool_use naming suno-feedback-elicitor or a Read of its SKILL.md before the reply",
+        "No proposed changes yet: the final reply contains no rewritten or amended style prompt, no descriptors to add or remove, no Exclude Styles items, and no slider values or slider directions",
+        "One narrowing question: the final reply asks exactly one question about the song, and it narrows — an either/or between broad dimensions (e.g. the music versus the vocal, energy too high versus too low, mood direction) or a request for a reference (a song, an artist, a scene or a feeling); a list of several questions fails",
+        "The reply asks for no numeric rating (no 'on a scale of 1 to 10' or similar)",
+        "Minimum context: the reply does not ask again for the style prompt, model, tier or sliders, which the user already gave",
+        "The transcript shows feedback-log.py run with locate (the iteration log is looked up) before the final reply",
+        "No mapping or rebuild happened: no Bash call to map-adjustments.py and no Skill or Agent call to suno-style-prompt-builder appears in the transcript"
+      ]
+    },
+    {
+      "id": "technical-artifact-regenerate-first",
+      "input": "Use the suno-feedback-elicitor skill --headless --no-write\n\n--feedback \"there's crackly clipping on the big chorus hits around 1:40 and 2:50, and a glitchy warble on the vocal at 2:05 like two takes got spliced. the song itself is great, the melody and the arrangement are exactly what I wanted. also honestly the whole thing feels a bit off somehow but I can't put my finger on it\"\n--style-prompt \"Swampy blues rock, warm baritone male vocal, slide guitar answering the vocal lines, stomping kick and tambourine, fuzzy bass, gang-shout chorus, Hammond organ swells, ends on a ringing open chord\"\n--model v6\n--sliders '{\"weirdness\": 55, \"style_influence\": 75}'",
+      "state_prefix": null,
+      "files": [
+        "_bmad/config.toml",
+        "_bmad/scripts/resolve_config.py",
+        "_bmad/scripts/config_utils.py",
+        "_bmad/scripts/resolve_customization.py"
+      ],
+      "rubric": [
+        "The final message is a JSON envelope with status \"complete\" and feedback_analysis.triage_type \"technical\"; there is no greeting, question or prose outside the JSON",
+        "Regenerate first: the output explicitly recommends regenerating the unchanged style prompt (several takes) as the first step for the clipping and the warble, and frames any style-prompt or exclusion change as a fallback for when the artifact persists across takes; a package that leads with prompt edits fails",
+        "Keepers preserved: no style_prompt.remove item and no exclusions.add item targets the melody, the arrangement or the genre the user said was right (swampy blues rock, slide guitar, stomp, organ), and the output names them as kept",
+        "Tier gating for Pro (the staged config's suno_tier): every editor path offered is one Pro has (Replace Section, Remaster, stems/Auto Split, Extend, Crop, Fade Out); any Studio feature is either absent or labelled Premier-only, never offered as available",
+        "No archived Studio 1.x tool is recommended by name (Warp Markers, Remove FX, Alternates, Quick Replace, Heal Edits, Stem Cover)",
+        "If Replace Section is recommended for the 2:05 warble, the output warns that it can leave an audible seam or that the transition must be judged alongside the fix",
+        "Mixed-feedback order: the vague remark ('feels a bit off') produces no style_prompt.add/remove item of its own; it is recorded as open or deferred until after the technical fixes (decision_log, iteration_log or reasoning says so)",
+        "The transcript shows a Read of technical-resolution.md before the final message",
+        "--no-write honored: written_paths is empty and the transcript has no Write/Edit and no feedback-log.py append call"
+      ]
+    },
+    {
+      "id": "instrumental-skips-vocal-questions",
+      "input": "give feedback on my Suno output — it's an instrumental, no vocals at all, it's meant to sit under a road-trip video. title \"Low Country Drive\", v6 on Pro, Weirdness 50 / Style Influence 70. style prompt: \"Instrumental Southern rock, slide guitar lead over a chugging rhythm guitar, Hammond organ pads, driving drums, warm bass, steady mid-tempo groove, a bigger final section, ends on a held chord\"\n\nit's fine I guess but it feels flat? like something's missing and I can't say what",
+      "state_prefix": null,
+      "files": [
+        "_bmad/config.toml",
+        "_bmad/scripts/resolve_config.py",
+        "_bmad/scripts/config_utils.py",
+        "_bmad/scripts/resolve_customization.py"
+      ],
+      "rubric": [
+        "The skill ran: the transcript shows a Skill tool_use naming suno-feedback-elicitor or a Read of its SKILL.md before the reply",
+        "No vocal or lyric questions: nothing in the final reply asks about vocals, singing, a voice, harmonies or lyrics, and it does not ask for lyrics or a lyrics file",
+        "No question is spent confirming that the track has no vocals or that it is instrumental",
+        "Any narrowing question offers only non-vocal dimensions or a reference (e.g. energy, arrangement density, the lead instrument, groove, mood, structure, or a song or scene that has what they want); an either/or of 'the music or the vocals' fails",
+        "No proposed change includes a vocal or lyric element: no vocal descriptor (vocal, voice, singer, harmonies, choir, ad-libs) appears in any suggested style-prompt wording, and no lyric adjustment spec is offered",
+        "Vague feedback narrows before it maps: the reply proposes no style-prompt rewrite, descriptor list, Exclude Styles items or slider values, and asks one narrowing question"
+      ]
+    }
+  ]
+}

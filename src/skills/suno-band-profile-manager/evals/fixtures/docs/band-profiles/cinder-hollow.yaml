@@ -1,0 +1,44 @@
+# Band Profile — Cinder Hollow
+# Created: 2026-08-20
+# Last modified: 2026-08-20
+
+name: "Cinder Hollow"
+version: 1
+instrumental: false
+
+genre: "rock"
+mood: "emotional"
+language: English
+reference_tracks: []
+
+model_preference: "v6"
+tier: pro
+
+style_baseline: >
+  Good rock music with nice vocals and a great sound, emotional and powerful,
+  professional production.
+exclusion_defaults:
+- no bad sounds
+
+vocal:
+  gender: female
+  tone: "nice"
+  delivery: "good"
+  energy: "high"
+
+sliders:
+  weirdness: 50
+  style_influence: 50
+
+writer_voice: {}
+
+known_working_patterns: []
+known_limitations: []
+generation_learnings: []
+generation_history: []
+
+playlist:
+  album: "Cinder Hollow"
+  tracks:
+  - name: "Ash Road"
+    file: "Ash Road.mp3"

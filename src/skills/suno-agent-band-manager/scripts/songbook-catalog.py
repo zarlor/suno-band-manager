@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pyyaml>=6.0"]
 # ///
 """Per-song songbook extract for browsing, lookup and pattern tallies.
@@ -24,7 +24,7 @@ Songbook parsing reuses validate-sidecar.py (load_all_songs), so there is one
 songbook parser.
 
 Usage:
-    uv run scripts/songbook-catalog.py "{project-root}" [--band SLUG] [--since DATE]
+    uv run {skill-root}/scripts/songbook-catalog.py "{project-root}" [--band SLUG] [--since DATE]
         [--model TEXT] [--status published|wip] [--title TEXT] [--full-prompts]
         [--format json|text]
 """

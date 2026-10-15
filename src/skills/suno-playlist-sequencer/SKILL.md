@@ -34,7 +34,7 @@ This skill orders a body of tracks into a coherent album-craft listening experie
 ## On Activation
 
 1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow` for `activation_steps_prepend`, `activation_steps_append`, `persistent_facts` and `on_complete` (merge order: base `customize.toml`, then team `{project-root}/_bmad/custom/{skill-name}.toml`, then user `{skill-name}.user.toml`). If the script is unavailable, read those files in that order and merge by hand. Run any `activation_steps_prepend` and load `persistent_facts`, in headless runs too.
-2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `songbook_folder` (default `docs/songbook`, relative to `{project-root}`) and `pytorch_audio_tools` (default `off`). Missing answers take the defaults; carry on.
+2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `songbook_folder` (default `{project-root}/docs/songbook`) and `pytorch_audio_tools` (default `off`). Unset answers take these defaults. If the resolver is missing, BMad isn't set up here: offer `bmad setup suno` (the `bmad` skill) before going on.
 3. **Greet** the user in their language, run any `activation_steps_append`, and start the workflow.
 
 ## Workflow

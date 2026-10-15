@@ -11,30 +11,6 @@ code: RS
 
 The owner has tried a package on Suno and is back with a take. This is the one place that handles it: diagnose what's off, then rebuild only the parts that change, through the same pipeline that built the package. "FL", "feedback loop" and "give feedback on a take" all land here — the suno-feedback-elicitor skill is the diagnosis step inside this flow, not a separate stop on Mac's menu.
 
-**Headless-eligible:** true.
-
-## Headless Mode
-
-If invoked with `--headless` or structured JSON input, skip all interactive steps (the handoff checkpoints, the "want me to rebuild…?" offers, the conversational loop). The input is taken as confirmed.
-
-**Input contract:**
-```json
-{
-  "song_ref": "optional — songbook path or title of the song being refined; if omitted, the caller must supply original_style_prompt/original_lyrics",
-  "original_style_prompt": "optional — the prompt being refined (looked up from song_ref if absent)",
-  "original_lyrics": "optional — the lyrics being refined",
-  "feedback": "required — the listener reaction / adjustment request to act on",
-  "model": "optional — model the song used (inferred from tier/profile if absent)",
-  "tier": "optional — free|pro|premier (else memory/owner/preferences.md)",
-  "band_profile": "optional — profile name for voice constraints",
-  "creativity_mode": "optional — conservative|balanced|experimental, default balanced"
-}
-```
-
-**Process (no interaction):** Read `memory/owner/preferences.md` for a missing tier (warn and assume Free if unresolved). Run the Feedback Elicitor headless on the feedback and context, then route its `adjustment_recommendations` back through the Style Prompt Builder and/or Lyric Transformer headless exactly as Step 3 does. The Package Assembly Rule still binds — load the sanctum's `memory/disciplines/package-assembly.md`. Assemble and return.
-
-**Output:** the refined package delta as structured JSON (only what changed — style prompt, exclusions, lyrics, settings — in the create-song `package` field names), plus the standard headless result envelope (`status`, `capability`, `artifact_path`, `summary`, `warnings`). A refinement that would overwrite a *published* songbook entry is a Law-3-gated write — stage it and report it as a warning rather than applying it. Any other durable write first passes `uv run {skill-root}/scripts/validate-path.py "<target path>" write`; a denied path is skipped and reported in `warnings`. If `feedback` is missing or no original prompt/lyrics can be resolved, return `status: blocked` with the reason.
-
 ## Step 1: Gather Context
 
 **From this session** (create-song ran earlier): the package, model, settings, band profile and intent are already in context.
@@ -43,9 +19,9 @@ If invoked with `--headless` or structured JSON input, skip all interactive step
 
 **Minimal context path:** If the user can't give details ("I just hit Create"), work with what they have: infer the model from tier (Free = v6-mini; paid = v6 unless the package ran on v6-wild), don't ask about sliders on Free, and accept a plain reaction — "I pasted X and got Y, but it sounds too Z" is enough. The Feedback Elicitor handles vague feedback.
 
-**Downloads:** the take is heard in the browser; refinement doesn't need it downloaded. Measuring it does — when a script reading would settle the question (tempo, loudness, a section that ran together), say that downloading it uses one of the cycle's downloads (the count is in `memory/work/downloads.md`) and update the count if they download.
+**Downloads:** the take is heard in the browser; refinement doesn't need it downloaded. Measuring it does (the suno-feedback-elicitor skill's Analyze Audio, on a file the owner already has) — when a script reading would settle the question (tempo, loudness, a section that ran together), say that downloading it uses one of the cycle's downloads (the count is in `memory/work/downloads.md`) and update the count if they download.
 
-**Reading the take** (2026-10-03): what plays isn't always what was asked for. Trust the audio and the owner's ear over the song page's displayed style text, which shows the input or Variety's rewrite, not what landed. For a near-keeper that only needs a better ending, a fuller final chorus or a louder vocal, the suno-feedback-elicitor skill's `references/technical-resolution.md` → "Repair Ladder for a Near-Keeper" lists things to try before a full re-roll. They apply only before the take is handed over.
+**Reading the take** (2026-10-03): what plays isn't always what was asked for. Trust the audio and the owner's ear over the song page's displayed style text, which shows the input or Variety's rewrite, not what landed. For a near-keeper that only needs a better ending, a fuller final chorus or a louder vocal, offer things to try before a full re-roll, cheapest first: Extend from just before the last section, Crop then Fade Out for a tail that runs on, Remaster at Variation Subtle for a buried vocal. They are anecdotal and apply only before the take is handed over.
 
 ### Handoff Checkpoint (before diagnosis)
 
@@ -92,6 +68,8 @@ Then: "Give this version a spin on Suno — listen in the browser, and come back
 If the feedback revealed a **systematic preference** rather than a one-song tweak, suggest a profile update ("You've mentioned wanting rawer vocals twice now — want me to update your band profile's vocal direction?") and make it through `suno-band-profile-manager`.
 
 **Published songs:** a refinement that edits a song already in the songbook is a published-attribute change. Its cross-file updates (playlist YAML, voice file, songbook Settings block) go in the same write batch — the sanctum `CREED.md` "Sync at the point of change" principle — and a rename runs `references/reconcile.md` in that batch. Afterwards, `uv run {skill-root}/scripts/validate-sidecar.py "{project-root}" --format json` is the backstop. A refinement of the current, not-yet-saved iteration has nothing to sync.
+
+**A keeper downloaded or published:** load `references/post-publish.md`.
 
 ## Loop
 

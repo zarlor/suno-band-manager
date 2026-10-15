@@ -1,8 +1,8 @@
 # Safety Tables — Reload Before Every Build and Refine
 
-These are the load-bearing gotchas for style-prompt building, gathered in one short file so they can be reread before every build and every refine generation. A long session or refine loop can compact them out of context, and a prompt built from memory of them can ship "metal" without a vocal pairing, a keyboard-pulling word, a crowd-noise word, an exclude that defends against nothing, or a slider anchored to a profile default. `scripts/validate-prompt.py` flags the enumerable words; the substitution and every judgment call come from here.
+This file is the one home for the style-prompt gotchas, kept short so it can be reread before every build and every refine generation. A long session or refine loop can compact them out of context, and a prompt built from memory of them can ship "metal" without a vocal pairing, a keyboard-pulling word, a crowd-noise word, an inline negative, a mid-song tempo change, an exclude that defends against nothing, or a slider anchored to a profile default. `scripts/validate-prompt.py` flags the enumerable words (its lists match this file); the substitution and every judgment call come from here.
 
-Everything else — v6 prompt architecture, sliders beyond the song-type table, Voices, Personas, counter-genre technique — lives in `references/model-prompt-strategies.md`.
+When the validator can't run, check by hand: the model's character limit (1,000; 200 on the retired v4 Pro), genre, mood and vocal essentials in the first 200 characters, no section tags or asterisks, and every word in the trigger lists below.
 
 ## Vocal Triggers
 
@@ -10,12 +10,10 @@ Everything else — v6 prompt architecture, sliders beyond the song-type table, 
 
 Certain words reliably trigger unwanted screaming or harsh vocals, even when the intent is melodic:
 
-- `metal` on its own (without melodic vocal guidance)
-- `sludge`
-- `doom`
-- `!` in lyrics (exclamation marks push vocal delivery toward shouting/screaming)
+- `metal`, `sludge`, `doom`, `death`, `thrash` and `black` as genre modifiers, on their own (without melodic vocal guidance)
+- `!` in the prompt or the lyrics (exclamation marks push vocal delivery toward shouting/screaming)
 
-**Fix:** Always pair heavy genre terms with explicit positive vocal instructions. For example, `heavy swamp metal, raw melodic singing` or `sludge metal, gritty male vocals` (plus "screaming" in Exclude Styles — on v6 the negative goes only there, never inline). Telling Suno what you DO want from the vocals is more reliable than only excluding what you don't.
+**Fix:** Always pair heavy genre terms with explicit positive vocal instructions. For example, `heavy swamp metal, raw melodic singing` or `sludge metal, gritty male vocals` (plus "screaming" in Exclude Styles — on v6 the negative goes only there, never inline). Telling Suno what you DO want from the vocals is more reliable than only excluding what you don't. For heavy without the word, use `progressive heavy groove` or `heavy groove`. An instrumental has no vocal to protect, so it skips the pairing.
 
 ### The "live" Word Family Triggers Crowd Noise (LOCAL-CONFIRMED, recurring)
 
@@ -29,9 +27,23 @@ When the song needs **one singer** and nothing else, three layers work together.
 
 1. **Positive solo-singer language in the style prompt** — "solo lead vocal, one singer only," and where the energy is supposed to come from instead: "chorus energy from instruments and arrangement, not extra voices." Filling the role is stronger than forbidding the filler.
 2. **Excludes covering the whole family** — `choir, backing vocals, gang vocals, layered vocals, crowd chants`. Excluding "choir" alone leaves gang vocals and stacked doubles untouched; they are different arrangement conventions and Suno reaches for whichever one the genre suggests.
-3. **Avoid the trigger words entirely** — `anthemic`, `festival`, `stadium`, `crowd`, and **the whole "live" family** (see the section above) invite group vocals and audience texture by association. Excludes cannot reliably override a prompt that is asking for group energy in its adjectives.
+3. **Avoid the trigger words entirely** — `anthemic`, `festival`, `stadium`, `concert`, `crowd`, `audience`, and **the whole "live" family** (see the section above) invite group vocals and audience texture by association. Excludes cannot reliably override a prompt that is asking for group energy in its adjectives.
 
-The lyric side of this stack — section-tag wording that invites choirs, and the anti-choir tag forms — lives in `suno-lyric-transformer/references/metatag-reference.md`.
+The lyric side of this stack — section-tag wording that invites choirs, and the anti-choir tag forms — is the `suno-lyric-transformer` skill's job; when one singer matters, say so in the handoff notes.
+
+## Prompt-Wide Rules
+
+### No Inline Negatives
+
+Suno keeps the noun and drops the negation, so "no screaming" or "without reverb" asks for screaming and reverb. Write what you want instead ("raw melodic singing", "dry, close-mic'd") and put the negative in Exclude Styles. The validator flags "no X" and "without X" as high, and "not X", "avoid X" and "don't X" as medium. Persistence phrasing ("the riff continues under the verse, never stops") is direction, not a negative.
+
+### One Tempo Per Song
+
+Suno doesn't shift BPM within a song: a "tempo change" or "dynamic pacing" prompt produces arrangement-density changes (pull back for a halftime feel, compress for double-time) over one steady tempo. Plan one underlying BPM, and use rhythm nouns (`halftime groove`, `double-time driving`, `shuffle feel`) over "slow" and "fast" to vary the felt pace.
+
+### The Instrument Palette Is Global
+
+Instruments named anywhere in the style prompt bleed into every section; section tags can only emphasize what the prompt already names, never add an instrument it lacks. "Accents" after an instrument name and placing it last reduce the bleed without removing it. When an instrument has to stay out of a section, leave it out of the prompt, or generate with it and remove it from that section with stems.
 
 ## Arrangement Triggers
 
@@ -102,7 +114,7 @@ Specific genre terms produce specific results. This table documents what Suno ac
 
 These are starting-point ranges based on production testing. Adjust per song, but these give a reliable baseline.
 
-**Do NOT anchor slider values to a band profile's stored `sliders:` defaults, nor to "what similar catalog songs used."** A band profile's stored slider values (if present) are not a baseline to nudge up or down from — not even for a quick Demo. For every song, CHOOSE Weirdness and Style Influence fresh from this table + the song's type + counter-genre needs, reasoning from what each slider actually DOES. **The sliders are the deliberate per-song differentiator** — the mechanism for giving distinct feels to songs whose prompts are otherwise similar — so each is a fresh per-song decision, never a band default. (Audio Influence follows its slot instead: a Persona and a Voice have different ranges — see "Audio Influence Slider Behavior" and "Voices" in `references/model-prompt-strategies.md`.) The user directive behind this rule: `docs/mac-preferences.md` → "USE the sliders." A documented failure (2026-06-07): the builder recommended Weirdness 55 by anchoring "above the profile's 45 default" instead of reasoning from behavior — for a dissonant/locked/counter-genre song that actually wanted ~75.
+**Do NOT anchor slider values to a band profile's stored `sliders:` defaults, nor to "what similar catalog songs used."** A band profile's stored slider values (if present) are not a baseline to nudge up or down from — not even for a quick Demo. For every song, CHOOSE Weirdness and Style Influence fresh from this table + the song's type + counter-genre needs, reasoning from what each slider actually DOES. **The sliders are the deliberate per-song differentiator** — the mechanism for giving distinct feels to songs whose prompts are otherwise similar — so each is a fresh per-song decision, never a band default; the owner's standing direction is to use them. (Audio Influence follows its slot instead: a Persona runs 15–25%, a Voice 35–95%.) A documented failure (2026-06-07): the builder recommended Weirdness 55 by anchoring "above the profile's 45 default" instead of reasoning from behavior — for a dissonant/locked/counter-genre song that actually wanted ~75.
 
 | Song Type | Weirdness | Style Influence | Notes |
 |---|---|---|---|

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pytest>=7.0", "pyyaml>=6.0"]
 # ///
 """Tests for scan-wip-status.py — WIP COMPLETED-marker scan + songbook correlation."""

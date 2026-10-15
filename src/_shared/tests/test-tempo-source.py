@@ -20,6 +20,8 @@ import pytest
 
 SCRIPT = Path(__file__).parent.parent / "tempo_source.py"
 sys.path.insert(0, str(SCRIPT.parent))  # tempo_source imports its sibling bmad_config
+sys.path.insert(0, str(Path(__file__).parent))
+from fake_resolver import install_resolver  # noqa: E402
 spec = importlib.util.spec_from_file_location("tempo_source", SCRIPT)
 ts = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ts)
@@ -28,6 +30,8 @@ spec.loader.exec_module(ts)
 def write(path, text):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
+    if path.suffix == ".toml" and "_bmad" in path.parts:
+        install_resolver(path.parents[len(path.parts) - 1 - path.parts.index("_bmad")])
 
 
 def fake_beat_grid(monkeypatch, tmp_path, body):
@@ -70,9 +74,22 @@ def test_no_config_means_librosa(tmp_path):
     assert ts.read_config_flag(tmp_path) is None
 
 
+def test_broken_config_warns_and_uses_librosa(tmp_path, capsys):
+    write(tmp_path / "_bmad/config.toml", "[modules.suno\nbad")
+    assert ts.read_config_flag(tmp_path) == "off"
+    assert "unreadable" in capsys.readouterr().err
+
+
+def test_no_resolver_is_a_reasoned_warning(tmp_path, capsys):
+    (tmp_path / "_bmad").mkdir()
+    assert ts.read_config_flag(tmp_path) == "off"
+    assert "bmad setup suno" in capsys.readouterr().err
+
+
 def test_legacy_yaml_config_is_not_read(tmp_path):
     write(tmp_path / "_bmad/suno/config.yaml", "pytorch_audio_tools: 'on'\n")
     write(tmp_path / "_bmad/config.yaml", "suno:\n  pytorch_audio_tools: 'on'\n")
+    install_resolver(tmp_path)
     assert ts.read_config_flag(tmp_path) is None
 
 

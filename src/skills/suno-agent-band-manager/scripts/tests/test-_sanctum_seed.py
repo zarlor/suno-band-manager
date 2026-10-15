@@ -17,6 +17,9 @@ from pathlib import Path
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fake_resolver import install_resolver  # noqa: E402
+
 SCRIPTS_DIR = Path(__file__).parent.parent
 SKILL_DIR = SCRIPTS_DIR.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
@@ -235,6 +238,7 @@ def test_resolve_config_from_toml_layers_and_bond(tmp_path):
     (bmad / "custom").mkdir()
     (bmad / "custom" / "config.user.toml").write_text('[modules.suno]\nsuno_tier = "free"\nsongbook_folder = "{project-root}/book"\n')
     (bmad / "config.yaml").write_text("user_name: Yaml\nsuno:\n  default_mode: jam\n")
+    install_resolver(tmp_path)
     sanctum = mod.sanctum_dir(tmp_path)
     sanctum.mkdir(parents=True)
     (sanctum / "BOND.md").write_text("# Bond\n\n- **Name:** Robin\n- **Language:** French\n")
@@ -245,7 +249,7 @@ def test_resolve_config_from_toml_layers_and_bond(tmp_path):
     assert cfg["values"]["output_folder"] == "{project-root}/out"
     assert cfg["values"]["suno_tier"] == "free"
     assert cfg["values"]["default_mode"] == "demo"  # legacy YAML is not read
-    assert cfg["values"]["songbook_folder"] == "book"
+    assert cfg["values"]["songbook_folder"] == "{project-root}/book"
     assert cfg["warnings"] == []
 
 
@@ -257,6 +261,23 @@ def test_owner_from_lone_voice_file_before_bond(tmp_path):
     assert cfg["values"]["user_name"] == "Mary Jane"
     assert mod.normalize_username(cfg["values"]["user_name"]) == "mary-jane"
     (docs / "voice-context-other.md").write_text("# voice\n")
+    assert mod.resolve_config(tmp_path)["values"]["user_name"] is None
+
+
+def test_broken_config_is_reported_not_called_unset(tmp_path):
+    (tmp_path / "_bmad").mkdir()
+    (tmp_path / "_bmad" / "config.toml").write_text("[modules.suno\nbad")
+    install_resolver(tmp_path)
+    cfg = mod.resolve_config(tmp_path)
+    assert any("broken" in w for w in cfg["warnings"])
+    assert not any("bmad setup suno` asks" in w for w in cfg["warnings"])
+    assert cfg["values"]["songbook_folder"] == "{project-root}/docs/songbook"
+
+
+def test_not_yet_known_marker_is_not_a_name(tmp_path):
+    sanctum = mod.sanctum_dir(tmp_path)
+    sanctum.mkdir(parents=True)
+    (sanctum / "BOND.md").write_text("- **Name:** _(not yet known)_\n")
     assert mod.resolve_config(tmp_path)["values"]["user_name"] is None
 
 

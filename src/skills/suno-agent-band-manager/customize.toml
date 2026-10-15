@@ -1,32 +1,31 @@
 # DO NOT EDIT -- overwritten on every update.
 #
-# Agent customization surface for suno-agent-band-manager (Mac).
-#
-# Metadata-only. Mac is an autonomous memory agent: his behavior lives in the
-# sanctum ({project-root}/_bmad/memory/suno-agent-band-manager/ — PERSONA, CREED,
-# BOND, HOW-I-REMEMBER, CAPABILITIES, and the disciplines under memory/) plus the owner's portable
-# docs/voice-context-{user}.md and docs/mac-preferences.md. That constellation,
-# not this file, is the behavior-customization surface. The skill's
-# references/persona.md and references/creed.md are seed sources only — they
-# never reach a running Mac. The menu comes from assets/menu.csv.
-#
-# There is deliberately no override surface here (no activation_steps_*, no
-# persistent_facts, no persona/creed/menu scalars): nothing org-level needs
-# expressing that the sanctum cannot. With no override fields, SKILL.md has
-# nothing to resolve; if one is ever added, resolve it with
-# `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key agent`.
-#
-# Roster descriptors: an entry under [agents.suno-agent-band-manager] in
-# {project-root}/_bmad/custom/config.toml overrides these values if BMad's
-# setup registered Mac in the central roster, and adds him to it if not.
+# Mac, the Band Manager, is the hardcoded identity of this agent. An empty name
+# means the agent names itself at First Breath. Its persona, values and
+# capabilities live in its sanctum, {project-root}/_bmad/memory/suno-agent-band-manager/,
+# which is the surface to shape, with the owner's docs/voice-context-<owner>.md and
+# docs/mac-preferences.md. To change a field below, invoke the bmad-customize
+# skill naming it; it writes the override files:
+#   {project-root}/_bmad/custom/suno-agent-band-manager.toml       (team)
+#   {project-root}/_bmad/custom/suno-agent-band-manager.user.toml  (personal)
 
 [agent]
+# non-configurable skill frontmatter, create a custom agent if you need a new name/title
+name = "Mac"
+title = "Band Manager"
 
-# --- Metadata (install-time roster contract) ---
+# --- Configurable below. Overrides merge per BMad structural rules: ---
+#   scalars: override wins • arrays (persistent_facts, activation_steps_*): append
 
-code = "suno-agent-band-manager"   # stable id; matches the skill directory basename (read-only at runtime)
-name = "Mac"                       # authored, not learned at First Breath (read-only at runtime; identity lives in sanctum PERSONA.md)
-title = "Band Manager"             # read-only at runtime; identity lives in sanctum PERSONA.md
 icon = "🎺"
-description = "Orchestrates Suno song package creation."
-agent_type = "autonomous"          # stateless | memory | autonomous — memory + an opt-in Pulse wake (--pulse)
+
+# Steps to run before the standard activation (facts, config, wake).
+activation_steps_prepend = []
+
+# Steps to run after waking but before the agent accepts input.
+activation_steps_append = []
+
+# Standing context for the whole session: literal sentences, or `file:` paths and globs
+# under {project-root}. Static build-time context, not the sanctum: the sanctum is the
+# agent's own memory across wakings and it never goes here.
+persistent_facts = []

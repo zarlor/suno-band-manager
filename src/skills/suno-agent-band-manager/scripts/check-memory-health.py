@@ -31,7 +31,7 @@ script measures instead:
 Token figures are estimates (characters / 4), good enough to spot bloat.
 
 Usage:
-    uv run scripts/check-memory-health.py <project-root> [--sanctum-dir PATH]
+    uv run {skill-root}/scripts/check-memory-health.py <project-root> [--sanctum-dir PATH]
                                           [--format json|text] [-o OUTPUT]
 
 A sanctum path given in place of the project root is accepted too (the project
@@ -180,7 +180,7 @@ def check_health(sanctum: Path, project_root: Path) -> dict:
     if identity["missing"]:
         recs.append(
             f"Identity files missing: {', '.join(identity['missing'])} "
-            "(upgrade-sanctum.py restores them from the templates)."
+            "(`uv run {skill-root}/scripts/upgrade-sanctum.py` restores them from the templates)."
         )
     if companions_over:
         recs.append(
@@ -295,8 +295,8 @@ def main() -> int:
             "sanctum_path": str(sanctum),
             "message": (
                 f"{sanctum} is a {fmt} store. Convert it first: "
-                + ("migrate-sidecar-to-v2.py --in-place, then " if fmt == "v1" else "")
-                + "migrate-sanctum-to-v7.py."
+                + ("`uv run {skill-root}/scripts/migrate-sidecar-to-v2.py --in-place`, then " if fmt == "v1" else "")
+                + "`uv run {skill-root}/scripts/migrate-sanctum-to-v7.py`."
             ),
         }
     elif fmt == "absent":

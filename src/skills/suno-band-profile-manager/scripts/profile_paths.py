@@ -13,8 +13,7 @@ each folder:
                 (holds {slug}-playlist.yaml, the sequencer's module-wide contract)
   songbook dir  --songbook-dir flag > modules.suno.songbook_folder > {docs dir}/songbook
 
-The config read is the shared `_shared/bmad_config.py` (stdlib TOML), so scripts
-without a YAML dependency can use it too.
+The config read goes through BMad's resolve_config.py (via `_shared/bmad_config.py`).
 """
 
 from __future__ import annotations
@@ -27,9 +26,13 @@ import bmad_config  # noqa: E402
 
 
 def read_module_config(project_root: Path | str) -> dict:
-    """This module's answers from {project-root}/_bmad, `{project-root}` filled in.
-    No config returns {}."""
-    return bmad_config.module_config(project_root)
+    """This module's answers from BMad's resolver, `{project-root}` filled in.
+    No _bmad/ returns {}; a broken config exits 2 with the resolver's reason."""
+    try:
+        return bmad_config.module_config(project_root)
+    except bmad_config.ConfigError as exc:
+        print(f"ERROR: module config unreadable: {exc}", file=sys.stderr)
+        sys.exit(2)
 
 
 def under_root(root: Path, value: str) -> Path:

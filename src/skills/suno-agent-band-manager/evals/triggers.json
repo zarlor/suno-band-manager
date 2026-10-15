@@ -1,0 +1,22 @@
+[
+  {"query": "talk to Mac", "should_trigger": true},
+  {"query": "hey Band Manager, I've got a new idea for the Swamp Kings", "should_trigger": true},
+  {"query": "create a song for Suno about leaving a small town, something like early Springsteen", "should_trigger": true},
+  {"query": "here's a poem I wrote last night, can you turn it into a full Suno song with style prompt, lyrics and settings?", "should_trigger": true},
+  {"query": "my Suno take came back and the chorus is buried, rework the package", "should_trigger": true},
+  {"query": "I generated the package you gave me yesterday and it sounds too polished, let's fix it and rebuild what needs changing", "should_trigger": true},
+  {"query": "browse my songbook", "should_trigger": true},
+  {"query": "what were the style prompts that worked best on my jazz songs last month?", "should_trigger": true},
+  {"query": "surprise me with a Suno song, any genre", "should_trigger": true},
+  {"query": "save what we did today to memory so we can pick it up next time, Mac", "should_trigger": true},
+  {"query": "build a style prompt for a dark synthwave track on v6", "should_trigger": false},
+  {"query": "transform these lyrics into Suno format with section tags", "should_trigger": false},
+  {"query": "create a band profile for my new shoegaze project", "should_trigger": false},
+  {"query": "sequence my playlist for the album, I have twelve finished tracks", "should_trigger": false},
+  {"query": "give feedback on Suno output: the vocals sound robotic, what parameters would fix that?", "should_trigger": false},
+  {"query": "analyze writer voice from these three poems", "should_trigger": false},
+  {"query": "what's the character limit for the Exclude Styles field on Suno?", "should_trigger": false},
+  {"query": "write me a song about my dog for my daughter's birthday card, just the words", "should_trigger": false},
+  {"query": "measure the tempo and key of this mp3", "should_trigger": false},
+  {"query": "list my bands", "should_trigger": false}
+]

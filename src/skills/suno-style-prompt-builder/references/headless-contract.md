@@ -16,7 +16,7 @@ The Band Manager agent calls this skill headless for every package, so the retur
   }
   ```
   `reorder_notes` is free-text guidance; apply it as a re-front-loading instruction. The legacy `adjustments.reorder: string[]` / `adjustments.replace[]` shape is still accepted.
-- **`--headless:migrate`** — reformat `prompt` from `from_model` to `target_model` using the target's strategy. Read `references/retired-model-strategies.md` when either model is retired; a retired target can't generate, so migrate to v6 and log why.
+- **`--headless:migrate`** — reformat `prompt` from `from_model` to `target_model` using the target's strategy. A retired target can't generate, so migrate to v6 and log why.
 
 Headless skips the reference-decomposition confirmation; record the skip in `decisions[]`.
 
@@ -40,11 +40,12 @@ Headless skips the reference-decomposition confirmation; record the skip in `dec
 
 ## Rules that hold headless
 
-- **Sliders are chosen per song,** from what each slider does and the song-type table in `references/safety-tables.md` — never from a band profile's stored values. Log each value with its reasoning.
+- **Sliders are chosen per song,** from what each slider does and the song's type — never from a band profile's stored values. Log each value with its reasoning.
 - **Audio Influence follows its slot:** a Persona runs 15–25%, a Voice 35–95%. A value from the wrong range is an error.
 - **Every exclude defends against drift from the current prompt's own descriptors.** Give each one a rationale naming the descriptor it defends against; drop any that defend against nothing.
-- **Wild card:** see SKILL.md Step 4. It's on by default for a build.
-- **Validate before emitting,** in every mode: pipe the package JSON to `uv run {skill-root}/scripts/validate-prompt.py --stdin` (it checks the wild card too), fix what it flags, re-run, and put the report in `validation`. If the script can't run, do its checks by hand (see SKILL.md Step 5) and say so in `validation`.
+- **Wild card** (on by default for a build): a genre or subgenre shift that stays inside the band's core sound (never a different genre family), keeps the song's subject, mood arc and hook, and runs on the primary's model and sliders.
+- **Validate before emitting,** in every mode: pipe the package JSON (with `tier`) to `uv run {skill-root}/scripts/validate-prompt.py --stdin` (it checks the wild card too), fix what it flags, re-run, and put the final report in `validation`. A `review` status passes only with each medium finding judged and logged in `decisions[]`. Exit 2 names a malformed field: fix it and re-run. If the script can't run, check by hand — the model's character limit, genre/mood/vocals in the first 200 characters, no section tags or asterisks, every trigger word in the safety tables — and say so in `validation`.
+- **Counts come from the validator:** `style_prompt_chars` and `style_prompt_limit` are the final report's `metrics.style_prompt_chars` and `metrics.style_prompt_limit`; `wild_card.style_prompt_chars` is `metrics.wild_card_prompt_chars`. Never count characters yourself.
 - **Capture, don't drop:** lyric ideas, structure preferences or mix notes in the input go in `handoff_notes`.
 
 ## Success output

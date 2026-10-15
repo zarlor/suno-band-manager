@@ -1,6 +1,6 @@
 # Suno Studio & Editor Reference
 
-Comprehensive reference for Suno's post-generation editing tools. This covers **Suno Studio 2.0** (Premier-only generative DAW), the **Song Editor / Legacy Editor** (Pro/Premier section-level editor), and all related features. Companion to the [Suno Reference](SUNO-REFERENCE.md) (which covers prompting, models, and generation) and the [Usage Guide](USAGE.md) (which covers Mac's workflows).
+Comprehensive reference for Suno's post-generation editing tools. This covers **Suno Studio 2.0** (Premier-only generative DAW), the **Song Editor / Legacy Editor** (Pro/Premier section-level editor), and all related features. Companion to the [Suno Reference](SUNO-REFERENCE.md), which covers prompting, models, and generation.
 
 > **Last validated:** August 14, 2026 for the body of this file (Suno Studio **2.0**, Song Editor / Legacy Editor, v5.5 Pro; day-one primary-source field reports folded in), plus **Suno's September 2026 Studio release notes, added 2026-09-17** — see "Studio updates since 2.0 shipped" below. **Since 2026-09-09 every generation — including edits and extends of older songs — runs on the v6 family**; see "Editing Workflow Paradigm" for what v6 adds. Suno updates Studio features frequently — use web search to verify capabilities against current documentation when uncertain.
 
@@ -710,7 +710,7 @@ Source: [Cut Credit Waste — Jack Righteous](https://jackrighteous.com/en-us/bl
 
 ## Tier Summary
 
-Current as of 2026-08-13. Pricing is shown as the pricing page displays it ($8 / $24 with a "Monthly / Annual save 20%" toggle) — see the pricing-display ambiguity note in the suno-band-profile-manager skill's `references/tier-features.md`.
+Current as of 2026-08-13. Pricing is shown as the pricing page displays it ($8 / $24 with a "Monthly / Annual save 20%" toggle). The page doesn't settle whether $8/$24 are annual-billing per-month rates (press reports $10/$30 month-to-month), so quote the displayed number and the toggle, not a single monthly price.
 
 | Feature | Free | Pro ($8 displayed) | Premier ($24 displayed) |
 |---------|------|-------------|------------------|

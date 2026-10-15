@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pytest>=7.0"]
 # ///
 """Tests for validate-prompt.py"""
@@ -110,6 +110,7 @@ class TestValidateStylePrompt:
         findings = validate_prompt.validate_style_prompt(prompt)
         asterisk = [f for f in findings if "asterisk" in f["issue"].lower()]
         assert len(asterisk) == 1
+        assert asterisk[0]["severity"] == "high"
 
     def test_southern_lane_genre_recognized(self):
         """Heavy/southern lane genres should satisfy front-loading (no false 'no genre')."""
@@ -268,7 +269,7 @@ class TestValidateExclusionPrompt:
         assert len(high) >= 1
 
     def test_too_many_items_warns(self):
-        """More than 5 exclusion items should produce a medium warning."""
+        """More than 3 exclusion items should produce a medium notice."""
         prompt = "no guitar, no piano, no drums, no bass, no synth, no vocals"
         findings = validate_prompt.validate_exclusion_prompt(prompt)
         medium = [f for f in findings if f["severity"] == "medium" and "many" in f["issue"].lower()]
@@ -289,7 +290,7 @@ class TestBuildReport:
         """Report should have all required fields."""
         report = validate_prompt.build_report([], [], "test", "", "/test/path")
         assert report["script"] == "validate-prompt"
-        assert report["version"] == "1.3.0"
+        assert report["version"] == "1.4.0"
         assert report["status"] == "pass"
         assert "findings" in report
         assert "summary" in report
@@ -518,4 +519,185 @@ class TestPackageCLI:
             [sys.executable, str(SCRIPT_PATH), "--stdin"],
             input="{not json", capture_output=True, text=True,
         )
+        assert result.returncode == 2
+
+
+def _run_cli(*args, stdin=None):
+    return subprocess.run([sys.executable, str(SCRIPT_PATH), *args],
+                          input=stdin, capture_output=True, text=True)
+
+
+class TestStatusAndExit:
+    def test_medium_only_is_review_and_exits_1(self):
+        result = _run_cli("--style", "indie rock, warm male vocal, cinematic swells", "--model", "v6")
+        output = json.loads(result.stdout)
+        assert output["status"] == "review"
+        assert result.returncode == 1
+
+    def test_low_only_is_pass(self):
+        report = validate_prompt.validate_package({"model": "v6", "style_prompt": "indie rock, warm vocal!"})
+        assert report["status"] == "pass"
+
+    def test_four_exclusion_items_trigger_notice(self):
+        findings = validate_prompt.validate_exclusion_prompt("choir, backing vocals, gang vocals, crowd chants")
+        assert [f for f in findings if f["severity"] == "medium" and "many" in f["issue"].lower()]
+
+    def test_three_exclusion_items_are_fine(self):
+        findings = validate_prompt.validate_exclusion_prompt("screaming, steel guitar, autotune")
+        assert not [f for f in findings if "many" in f["issue"].lower()]
+
+
+class TestModelCheck:
+    def _models(self, report):
+        return [f for f in report["findings"] if f["category"] == "model"]
+
+    def test_current_model_passes(self):
+        for model in ("v6", "v6-wild", "v6-mini"):
+            report = validate_prompt.validate_package({"model": model, "style_prompt": "indie rock, warm vocal"})
+            assert not self._models(report)
+
+    def test_retired_model_is_high(self):
+        report = validate_prompt.validate_package({"model": "v5.5 Pro", "style_prompt": "indie rock, warm vocal"})
+        found = self._models(report)
+        assert found and found[0]["severity"] == "high" and "retired" in found[0]["issue"]
+        assert report["status"] == "warning"
+
+    def test_unknown_model_is_high_with_hint(self):
+        report = validate_prompt.validate_package({"model": "V6", "style_prompt": "indie rock, warm vocal"})
+        found = self._models(report)
+        assert found and found[0]["severity"] == "high"
+        assert "v6" in found[0]["issue"]
+
+    def test_wild_card_model_checked(self):
+        report = validate_prompt.validate_package({
+            "model": "v6", "style_prompt": "indie rock, warm vocal",
+            "wild_card": {"style_prompt": "indie folk, warm vocal", "model": "v5 Pro"},
+        })
+        assert self._models(report)
+
+    def test_wild_card_on_other_model_is_medium(self):
+        report = validate_prompt.validate_package({
+            "model": "v6", "style_prompt": "indie rock, warm vocal",
+            "wild_card": {"style_prompt": "indie folk, warm vocal", "model": "v6-wild"},
+        })
+        mismatch = [f for f in report["findings"] if "wild card runs on" in f["issue"].lower()]
+        assert mismatch and mismatch[0]["severity"] == "medium"
+        assert report["metrics"]["wild_card_prompt_limit"] == 1000
+
+
+class TestTierRules:
+    def _tier(self, report):
+        return [f for f in report["findings"] if f["category"] == "tier"]
+
+    def test_free_with_excludes_and_sliders_flagged(self):
+        report = validate_prompt.validate_package({
+            "model": "v6-mini", "tier": "free", "style_prompt": "indie rock, warm vocal",
+            "exclusion_prompt": "autotune", "sliders": {"weirdness": 50, "style_influence": 70},
+        })
+        issues = " ".join(f["issue"] for f in self._tier(report))
+        assert "Exclude Styles" in issues and "Slider" in issues
+        assert report["status"] == "warning"
+
+    def test_free_on_paid_model_flagged(self):
+        report = validate_prompt.validate_package({"model": "v6", "tier": "free", "style_prompt": "indie rock"})
+        assert self._tier(report)
+
+    def test_clean_free_package_passes(self):
+        report = validate_prompt.validate_package({
+            "model": "v6-mini", "tier": "free", "style_prompt": "indie rock, warm vocal",
+            "exclusion_prompt": None, "sliders": None,
+        })
+        assert not self._tier(report)
+
+    def test_pro_tier_unrestricted(self):
+        report = validate_prompt.validate_package({
+            "model": "v6", "tier": "pro", "style_prompt": "indie rock, warm vocal",
+            "exclusion_prompt": "autotune", "sliders": {"weirdness": 50},
+        })
+        assert not self._tier(report)
+
+    def test_tier_flag(self):
+        result = _run_cli("--style", "indie rock, warm vocal", "--exclude", "autotune",
+                          "--model", "v6-mini", "--tier", "free")
+        output = json.loads(result.stdout)
+        assert [f for f in output["findings"] if f["category"] == "tier"]
+
+
+class TestMalformedInput:
+    def _exit(self, package):
+        return _run_cli("--stdin", stdin=json.dumps(package))
+
+    def test_string_sliders_exits_2_with_reason(self):
+        result = self._exit({"style_prompt": "indie rock", "sliders": "same as primary"})
+        assert result.returncode == 2
+        assert "sliders" in result.stderr
+
+    def test_string_instrumental_exits_2(self):
+        result = self._exit({"style_prompt": "indie rock", "instrumental": "false"})
+        assert result.returncode == 2
+        assert "instrumental" in result.stderr
+
+    def test_non_string_prompt_exits_2(self):
+        result = self._exit({"style_prompt": ["indie rock"]})
+        assert result.returncode == 2
+        assert "style_prompt" in result.stderr
+
+    def test_unknown_tier_exits_2(self):
+        result = self._exit({"style_prompt": "indie rock", "tier": "gold"})
+        assert result.returncode == 2
+        assert "tier" in result.stderr
+
+    def test_wild_card_sliders_string_is_accepted(self):
+        report = validate_prompt.validate_package({
+            "model": "v6", "style_prompt": "indie rock, warm vocal",
+            "wild_card": {"style_prompt": "indie folk, warm vocal", "sliders": "same as primary"},
+        })
+        assert report["status"] == "pass"
+
+    def test_missing_file_exits_2(self, tmp_path):
+        result = _run_cli("--input-file", str(tmp_path / "nope.json"))
+        assert result.returncode == 2
+        assert "not found" in result.stderr
+
+
+class TestYamlInput:
+    def test_yaml_keeps_nested_fields(self, tmp_path):
+        path = tmp_path / "package.yaml"
+        path.write_text(
+            "model: v6\n"
+            "instrumental: true\n"
+            "style_prompt: doom metal, slow crushing riffs, droning bass\n"
+            "wild_card:\n"
+            "  style_prompt: sludge metal, swampy feedback\n"
+        )
+        result = _run_cli("--input-file", str(path))
+        output = json.loads(result.stdout)
+        triggers = [f for f in output["findings"] if f.get("data", {}).get("triggers")]
+        # instrumental survives, so the scream trigger is informational, not high
+        assert triggers and all(f["severity"] == "info" for f in triggers)
+        assert output["metrics"]["wild_card_prompt_chars"] > 0
+
+    def test_yaml_without_pyyaml_exits_2(self, tmp_path, monkeypatch):
+        import builtins
+        real_import = builtins.__import__
+
+        def no_yaml(name, *args, **kwargs):
+            if name == "yaml":
+                raise ImportError("no yaml")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", no_yaml)
+        path = tmp_path / "package.yaml"
+        path.write_text("style_prompt: indie rock\n")
+        try:
+            validate_prompt._load_package_file(path)
+        except validate_prompt.PackageError as exc:
+            assert "pyyaml" in str(exc)
+        else:
+            raise AssertionError("expected PackageError")
+
+    def test_bad_yaml_exits_2(self, tmp_path):
+        path = tmp_path / "package.yml"
+        path.write_text("style_prompt: [unclosed\n")
+        result = _run_cli("--input-file", str(path))
         assert result.returncode == 2

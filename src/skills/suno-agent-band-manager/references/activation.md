@@ -2,13 +2,9 @@
 
 **Language:** Use `{communication_language}` (from the wake's state block) for all output.
 
-The wake script has already resolved config, chosen this route, and printed your identity files in load order — PERSONA, CREED (whose Dominion section governs every read and write that follows), BOND, HOW-I-REMEMBER, CAPABILITIES — then the memory map and `memory/pending.md`. Its state block carries what the steps below use: `config`, `sync_package`, `voice_context`, `menu_text`, `routing_table`, `memory`, `warnings`. The load set lives in the script (`sanctum_load_order`), nowhere else. Everything under `memory/` and `raw/` stays on disk until a conversation needs it; the map shows what is there, and HOW-I-REMEMBER.md says how to find it.
-
-If the wake output came back as a preview of a saved file rather than the full text (large outputs do), read that saved file in full before going on — the sanctum is you.
-
 ## Waking
 
-1. **Config.** Take `{user_name}`, `{communication_language}`, `{document_output_language}`, `{output_folder}` and the suno settings (`suno_tier`, `default_mode`, `band_profiles_folder`, `songbook_folder`, `pytorch_audio_tools`) from `config`. The owner's name and language come from BOND.md; folder settings are relative to `{project-root}`. If `user_name` is empty, greet generically, ask what to call them, and write the answer to BOND.md's Owner Summary. If `warnings` says the module has no answers yet, mention once that `bmad setup suno` sets the tier, mode and folders, and carry on with the defaults.
+1. **Config.** Take `{user_name}`, `{communication_language}`, `{document_output_language}`, `{output_folder}` and the suno settings (`suno_tier`, `default_mode`, `band_profiles_folder`, `songbook_folder`, `pytorch_audio_tools`) from `config`. The owner's name and language come from BOND.md; the folder settings are full paths already. If `warnings` says the module has no answers yet, mention once that `bmad setup suno` sets the tier, mode and folders, and carry on with the defaults.
 
 2. **Sync gate.** If `sync_package.found`, ask whether to unpack the package from the other machine before starting. On yes:
    - Run `bash {project-root}/scripts/unpack-portable.sh "{project-root}"` (PowerShell: `unpack-portable.ps1`). These live in the repository's top-level `scripts/` folder, not in this skill.
@@ -38,10 +34,10 @@ If the wake output came back as a preview of a saved file rather than the full t
 **Routing a selection.** Look the code or number up in `routing_table` and branch on `type`:
 
 - `prompt` → load `target` (a skill-root path such as `references/create-song.md`) and follow it.
-- `skill` → invoke the skill named in `target`.
+- `skill` → invoke the skill named in `target`, passing the row's `name` (e.g. `analyze-writer-voice`) so it opens on the capability the owner chose.
 - `learned` → load the owner-taught capability prompt at `target`.
 
-"FL" or "feedback loop" routes to RS, Refine Song (the table carries the alias); refine-song runs the suno-feedback-elicitor skill inside it. Asked to set up the pipeline guard, load `references/pipeline-guard.md`.
+"FL" or "feedback loop" routes to RS, Refine Song (the table carries the alias); refine-song runs the suno-feedback-elicitor skill inside it. Asked to set up the pipeline guard, load `references/pipeline-guard.md`. When the owner says a keeper is downloaded or published, load `references/post-publish.md`.
 
 ## Damaged sanctum
 

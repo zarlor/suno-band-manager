@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pyyaml>=6.0"]
 # ///
 """Validate Mac's sanctum against songbook + band-profile ground truth.
@@ -21,11 +21,11 @@ songbook itself disagrees with itself.
 Cross-platform: pure Python stdlib + PyYAML (already a module dependency).
 
 Usage:
-    uv run scripts/validate-sidecar.py [project_root]
-    uv run scripts/validate-sidecar.py --format json
-    uv run scripts/validate-sidecar.py --warn-only  # exit 0 even with findings
-    uv run scripts/validate-sidecar.py --sanctum-dir PATH  # test a staging copy
-    uv run scripts/validate-sidecar.py --since 2026-10-01  # + untracked companion files
+    uv run {skill-root}/scripts/validate-sidecar.py [project_root]
+    uv run {skill-root}/scripts/validate-sidecar.py --format json
+    uv run {skill-root}/scripts/validate-sidecar.py --warn-only  # exit 0 even with findings
+    uv run {skill-root}/scripts/validate-sidecar.py --sanctum-dir PATH  # test a staging copy
+    uv run {skill-root}/scripts/validate-sidecar.py --since 2026-10-01  # + untracked companion files
 
 Checks performed:
     1. Songbook internal consistency — frontmatter status/date vs. body status marker
@@ -41,6 +41,9 @@ Checks performed:
        active, and every active docs/wip-*.md is listed there
     9. Voice-file Companion Files table entries exist on disk; with --since,
        docs/ files changed since that date that the table doesn't list
+   10. Voice-file track numbers (a numbered list, a `| N | Title |` table row
+       or a `Track N: Title` line in a band's `## ` section) match the song's
+       position in docs/{band-slug}-playlist.yaml (warning: voice_catalog_order)
 
 Called by:
     - pack-portable.{sh,ps1} before packing (gates sync)
@@ -111,7 +114,7 @@ class Song:
 
 @dataclass
 class Finding:
-    category: str  # songbook_drift | audio_missing | index_drift | playlist_drift | cross_reference_missing | voice_catalog_drift | pending_drift | companion_missing | companion_untracked
+    category: str  # songbook_drift | audio_missing | index_drift | playlist_drift | cross_reference_missing | voice_catalog_drift | voice_catalog_order | pending_drift | companion_missing | companion_untracked
     severity: str  # "error" | "warning"
     path: str
     message: str
@@ -724,6 +727,101 @@ def check_voice_catalog_counts(songs: list[Song], project_root: Path) -> list[Fi
     return findings
 
 
+# Numbered catalog lines in a voice file: "12. **Title** — note", "| 12 | Title |",
+# "Track 12: Title" / "#12 — Title".
+_NUMBERED_LINE_RES = (
+    re.compile(r"^\s*(\d{1,3})[.)]\s+(.+)$"),
+    re.compile(r"^\s*\|\s*#?(\d{1,3})\s*\|\s*([^|]+?)\s*\|"),
+    re.compile(r"^\s*[-*]?\s*(?:\*\*)?(?:Track|#)\s*(\d{1,3})(?:\*\*)?\s*[:.\-\u2014\u2013]\s*(.+)$", re.IGNORECASE),
+)
+_TITLE_SPLIT_RE = re.compile(r"\s+(?:[\u2014\u2013]|--?)\s+|\s+\(|:\s")
+
+
+def _title_candidates(entry: str) -> list[str]:
+    """Plausible song-title spans of a numbered line: bold, quoted, then the head."""
+    out = re.findall(r"\*\*(.+?)\*\*", entry)
+    out += re.findall(r"[\"\u201c](.+?)[\"\u201d]", entry)
+    out += re.findall(r"_(.+?)_", entry)
+    head = _TITLE_SPLIT_RE.split(entry.replace("**", ""), maxsplit=1)[0]
+    out.append(head)
+    return [c.strip().strip("*_\"'").rstrip(".,;") for c in out if c.strip()]
+
+
+def playlist_positions(playlist_path: Path) -> dict[str, list[int]] | None:
+    """normalized track name -> 1-based positions, or None when unreadable."""
+    try:
+        playlist = yaml.safe_load(playlist_path.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, OSError, UnicodeDecodeError):
+        return None
+    if not isinstance(playlist, dict):
+        return None
+    positions: dict[str, list[int]] = {}
+    for i, track in enumerate(playlist.get("tracks", []) or [], start=1):
+        if isinstance(track, dict) and str(track.get("name", "")).strip():
+            positions.setdefault(normalize_title(track["name"]), []).append(i)
+    return positions
+
+
+def check_voice_catalog_order(songs: list[Song], project_root: Path) -> list[Finding]:
+    """Track numbers in a voice file's band sections must match the playlist YAML.
+
+    A numbered line counts only when one of its title spans names a track of
+    that band's playlist (directly, or through a songbook entry's title,
+    stylized `|` form or short_title), so numbered procedure lists are ignored.
+    """
+    findings: list[Finding] = []
+    display = _band_display_names(project_root)
+    for vf in _voice_files(project_root):
+        try:
+            text = vf.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        rel = str(vf.relative_to(project_root))
+        parts = _SECTION_SPLIT_RE.split(text)
+        for i in range(1, len(parts) - 1, 2):
+            heading, body = parts[i], parts[i + 1]
+            slug = _band_for_text(heading, display)
+            if slug is None:
+                continue
+            playlist_path = project_root / "docs" / f"{slug}-playlist.yaml"
+            positions = playlist_positions(playlist_path) if playlist_path.is_file() else None
+            if not positions:
+                continue
+            # A songbook title, stylized form or short_title also names its track.
+            aliases: dict[str, str] = {key: key for key in positions}
+            for song in songs:
+                if song.band != slug:
+                    continue
+                keys = title_keys(song)
+                track = next((k for k in keys if k in positions), None)
+                if track:
+                    for k in keys:
+                        aliases.setdefault(k, track)
+            for line in body.splitlines():
+                match = next((m for m in (r.match(line) for r in _NUMBERED_LINE_RES) if m), None)
+                if not match:
+                    continue
+                number = int(match.group(1))
+                track = next((aliases[normalize_title(c)] for c in _title_candidates(match.group(2))
+                              if normalize_title(c) in aliases), None)
+                if track is None or number in positions[track]:
+                    continue
+                at = positions[track]
+                findings.append(
+                    Finding(
+                        category="voice_catalog_order",
+                        severity="warning",
+                        path=rel,
+                        message=(
+                            f"section {heading.strip()!r} numbers {track!r} as {number}, but "
+                            f"{playlist_path.name} places it at "
+                            f"{', '.join(str(n) for n in at)}; renumber from the playlist YAML"
+                        ),
+                    )
+                )
+    return findings
+
+
 _COMPANION_ROW_RE = re.compile(r"^\|\s*`([^`]+)`\s*\|", re.MULTILINE)
 
 
@@ -1105,6 +1203,7 @@ def run_checks(
 
     findings.extend(check_playlist_songbook_parity(songs, project_root))
     findings.extend(check_voice_catalog_counts(songs, project_root))
+    findings.extend(check_voice_catalog_order(songs, project_root))
     findings.extend(check_companion_files(project_root, since))
     findings.extend(check_markdown_cross_references(project_root, sanctum))
 

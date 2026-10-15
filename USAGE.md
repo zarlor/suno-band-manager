@@ -1,6 +1,6 @@
 # Suno Band Manager -- Usage Guide
 
-This guide covers everything you need to know about working with Mac, the Suno Band Manager agent. Mac works with any LLM CLI that supports the [Agent Skills](https://agentskills.io) standard — see `INSTALLATION.md` at the repository root for setup.
+This guide covers everything you need to know about working with Mac, the Suno Band Manager agent. Mac works with any LLM CLI that supports the [Agent Skills](https://agentskills.io) standard — see [INSTALLATION.md](INSTALLATION.md) for setup.
 
 ---
 
@@ -24,15 +24,17 @@ This guide covers everything you need to know about working with Mac, the Suno B
 
 The very first time you invoke Mac, he runs through a setup flow to learn how you work. Here is what happens under the hood:
 
-1. Mac checks whether his sanctum, `{project-root}/_bmad/memory/suno-agent-band-manager/`, exists.
-2. If it does not exist, Mac runs `scripts/pre-activate.py --scaffold` to create it from the templates.
-3. Mac loads `init.md` and walks you through the first-run setup.
+1. Mac checks whether his sanctum, `_bmad/memory/suno-agent-band-manager/`, exists.
+2. If it does not exist, his wake script (`pre-activate.py --scaffold`) creates it from the templates.
+3. Mac asks what to call you — your answer sets your name and the language he talks in — and then walks you through the first song.
+
+If that first session gets cut short, the next one picks up where it stopped: Mac asks only for what he hasn't learned yet.
 
 If you used Mac before module 4.0.0, his memory sits in the old place (`_bmad/_memory/band-manager-sidecar/`). On the first waking after the upgrade he offers to convert it: he backs it up to `_bmad/backups/`, shows you what goes where, and converts on your yes. The old folder stays until you tell him to remove it.
 
-### Setup: One Question, Then Learning as You Go
+### Setup: Your Name, One Question, Then Learning as You Go
 
-Mac doesn't open with a form. He asks one thing -- "What kind of music are you looking to make today?" -- and gets you into a song. The rest he picks up as you work and saves to memory the moment he learns it:
+Mac doesn't open with a form. After your name he asks one thing -- "What kind of music are you looking to make today?" -- and gets you into a song. The rest he picks up as you work and saves to memory the moment he learns it:
 
 | What Mac learns | How | Why It Matters |
 |---|---|---|
@@ -308,7 +310,7 @@ close-mic'd intimate vocal, tape warmth, brushed snare only on the last chorus
 fewer instruments, a closer vocal, and tape warmth instead of a full band."
 ```
 
-For a field-by-field mapping of where each component goes in Suno's UI, see [Suno Reference — Package Field Mapping](SUNO-REFERENCE.md#package-field-mapping).
+For a field-by-field mapping of where each component goes in Suno's UI, see [Suno Reference — Package Field Mapping](src/skills/suno-agent-band-manager/references/SUNO-REFERENCE.md#package-field-mapping).
 
 ### Tips for Using the Output in Suno
 
@@ -628,7 +630,7 @@ For detailed audio analysis of Suno output, three complementary tools are availa
 - **Gemini 3.1 Pro** — upload MP3 to Google AI Studio for AI-powered instrument identification, genre classification, and style prompt accuracy feedback. A two-pass workflow is mandatory for fusion genres.
 - **ChatGPT** — upload MP3 for "blind" analysis (without the style prompt) to get unbiased genre and instrument identification. Useful for catching cases where the style prompt intent diverges from what Suno actually produced.
 
-See the Feedback Elicitor's audio-analysis-workflow reference for detailed setup and prompting guidance.
+See the Feedback Elicitor's [audio-analysis scripts guide](src/skills/suno-feedback-elicitor/references/audio-analysis-scripts.md) and [Gemini audio-analysis workflow](src/skills/suno-feedback-elicitor/references/gemini-audio-analysis.md) for setup and prompting guidance.
 
 ### Improving Your Suno Prompting with A/B Testing
 
@@ -652,7 +654,7 @@ Mac routes playlist/album ordering to the dedicated `suno-playlist-sequencer` sk
 
 Tell Mac "help me order my playlist" or "sequence these songs for an album" and provide the audio files or sequencing data. Mac hands the work to `suno-playlist-sequencer`, which balances sonic flow (BPM transitions, key compatibility, timbral variety) with narrative progression (thematic arc, emotional journey) to suggest an ordering.
 
-See the suno-playlist-sequencer skill's `references/playlist-sequencing-methodology.md` for the full sequencing methodology (its Transition Discipline section covers key and tempo moves at the seam), and the suno-feedback-elicitor skill's `references/audio-analysis-scripts.md` → "Reading librosa numbers" for felt BPM versus measured BPM.
+See [the sequencing methodology](src/skills/suno-playlist-sequencer/references/playlist-sequencing-methodology.md) (its Transition Discipline section covers key and tempo moves at the seam), and [the audio-analysis scripts guide](src/skills/suno-feedback-elicitor/references/audio-analysis-scripts.md) → "Reading librosa numbers" for felt BPM versus measured BPM.
 
 ---
 
@@ -736,7 +738,7 @@ All skills support headless (non-interactive) operation for scripting, batch pro
 
 ### Headless Modes for Each Skill
 
-**Style Prompt Builder** (contract: the skill's `references/headless-contract.md`):
+**Style Prompt Builder** (contract: [headless-contract.md](src/skills/suno-style-prompt-builder/references/headless-contract.md)):
 - `--headless` -- build a package. A named band profile supplies the baseline and other inputs override it; without a profile, `genre_mood` is required. The wild card is on by default (`include_wild_card: true`). The older `--headless:from-profile`, `--headless:custom`, and "`--headless` with a profile name" forms are aliases of this one mode
 - `--headless:refine` -- accept an existing prompt + the Feedback Elicitor's adjustment recommendations
 - `--headless:migrate` -- reformat a prompt from one model to another
@@ -803,7 +805,7 @@ He never silently fails or fabricates skill output.
 
 ### Suno-Specific Issues
 
-For detailed troubleshooting of Suno platform issues (prompt formatting, audio quality, vocal artifacts, instrument bleed, metatag behavior), see the [Suno Reference — Troubleshooting](SUNO-REFERENCE.md#troubleshooting-suno-issues).
+For detailed troubleshooting of Suno platform issues (prompt formatting, audio quality, vocal artifacts, instrument bleed, metatag behavior), see the [Suno Reference — Troubleshooting](src/skills/suno-agent-band-manager/references/SUNO-REFERENCE.md#troubleshooting-suno-issues).
 
 ### Getting Unstuck
 

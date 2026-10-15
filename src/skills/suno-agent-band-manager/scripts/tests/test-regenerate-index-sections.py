@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pytest>=7.0", "pyyaml>=6.0"]
 # ///
 """Tests for regenerate-index-sections.py"""
@@ -209,3 +209,60 @@ def test_main_honors_sanctum_dir_override(tmp_path, monkeypatch, capsys):
     assert "Harbor Lights" in (staging / RECENT).read_text(encoding="utf-8")
     # The default location was never created.
     assert not tmp_path.joinpath(*SANCTUM_REL).exists()
+
+
+def _add_bad_songs(tmp_path):
+    songbook = tmp_path / "docs" / "songbook" / "paper-lanterns"
+    (songbook / "broken.md").write_text("---\ntitle: [unclosed\n---\n\nbody\n", encoding="utf-8")
+    (songbook / "typo-band.md").write_text(SONG_TEXT.replace("paper-lanterns", "paper-lantern")
+                                           .replace("Harbor Lights", "Typo Song"), encoding="utf-8")
+    (songbook / "no-frontmatter.md").write_text("# Just a heading\n", encoding="utf-8")
+
+
+def test_load_all_songs_reports_every_skip(tmp_path):
+    _songbook(tmp_path)
+    _add_bad_songs(tmp_path)
+    songs, skipped = mod.load_all_songs(tmp_path)
+    assert [s["title"] for s in songs] == ["Harbor Lights"]
+    reasons = {Path(s["path"]).name: s["reason"] for s in skipped}
+    assert set(reasons) == {"broken.md", "typo-band.md", "no-frontmatter.md"}
+    assert "YAML error" in reasons["broken.md"]
+    assert "paper-lantern'" in reasons["typo-band.md"]
+    assert "frontmatter" in reasons["no-frontmatter.md"]
+
+
+def test_main_with_skips_reports_status_and_exits_1(tmp_path, monkeypatch, capsys):
+    import json
+    sanctum = _v7(tmp_path)
+    _add_bad_songs(tmp_path)
+    assert _main(monkeypatch, str(tmp_path), "--format", "json") == 1
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "regenerated_with_skips"
+    assert len(result["skipped"]) == 3
+    # The good song still lands in the catalog.
+    assert "Harbor Lights" in (sanctum / RECENT).read_text(encoding="utf-8")
+    assert _main(monkeypatch, str(tmp_path), "--format", "json") == 1
+    assert json.loads(capsys.readouterr().out)["status"] == "unchanged_with_skips"
+
+
+def test_main_text_mode_prints_skips_to_stderr(tmp_path, monkeypatch, capsys):
+    _v7(tmp_path)
+    _add_bad_songs(tmp_path)
+    assert _main(monkeypatch, str(tmp_path)) == 1
+    err = capsys.readouterr().err
+    assert "3 songbook entries left out" in err and "broken.md" in err
+
+
+def test_dry_run_with_skips_exits_1(tmp_path, monkeypatch, capsys):
+    import json
+    _v7(tmp_path)
+    _add_bad_songs(tmp_path)
+    assert _main(monkeypatch, str(tmp_path), "--dry-run", "--format", "json") == 1
+    assert len(json.loads(capsys.readouterr().out)["skipped"]) == 3
+
+
+def test_clean_run_has_empty_skipped(tmp_path, monkeypatch, capsys):
+    import json
+    _v7(tmp_path)
+    assert _main(monkeypatch, str(tmp_path), "--format", "json") == 0
+    assert json.loads(capsys.readouterr().out)["skipped"] == []

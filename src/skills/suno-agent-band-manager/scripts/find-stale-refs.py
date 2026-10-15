@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = []
 # ///
 """Find references to an old value across the catalog docs and the sanctum.
@@ -33,9 +33,9 @@ Also lists `docs/...` file references (backticked paths) in the searched files
 whose target is not on disk.
 
 Usage:
-    uv run scripts/find-stale-refs.py "{project-root}" --old "Old Title" [--new "New Title"]
-    uv run scripts/find-stale-refs.py "{project-root}" --paths-only
-    uv run scripts/find-stale-refs.py --help
+    uv run {skill-root}/scripts/find-stale-refs.py "{project-root}" --old "Old Title" [--new "New Title"]
+    uv run {skill-root}/scripts/find-stale-refs.py "{project-root}" --paths-only
+    uv run {skill-root}/scripts/find-stale-refs.py --help
 
 Output: JSON (default) or text. Exit 0 on a completed scan, 2 on bad input.
 """

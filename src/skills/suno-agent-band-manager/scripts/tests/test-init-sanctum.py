@@ -74,7 +74,7 @@ def test_standing_files_seeded_from_memory_template(project):
     assert "<!-- derived:recently-published:start -->" in published and "<!-- derived:recently-published:end -->" in published
     assert "<!-- derived:catalog-status:start -->" in status and "<!-- derived:catalog-status:end -->" in status
     assert not (sanctum / "memory/pending.md").exists()  # nothing to raise yet
-    assert "First Breath" in (sanctum / "memory/work/session-history.md").read_text()
+    assert not (sanctum / "memory/work/session-history.md").exists()  # session notes live in memory/sessions/
 
 
 def test_scaffold_is_idempotent_no_clobber(project):
@@ -87,7 +87,9 @@ def test_default_user_name_when_no_config(tmp_path):
     (tmp_path / "_bmad").mkdir()
     result = mod.scaffold(tmp_path, SKILL_DIR)
     assert result["status"] == "created"
-    assert "friend" in (sanctum_of(tmp_path) / "BOND.md").read_text()
+    bond = (sanctum_of(tmp_path) / "BOND.md").read_text()
+    assert "_(not yet known)_" in bond and "friend" not in bond
+    assert "docs/voice-context-<owner>.md" in bond
 
 
 def test_fresh_birth_has_disciplines_and_incidents(project):

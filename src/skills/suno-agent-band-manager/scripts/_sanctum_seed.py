@@ -36,6 +36,7 @@ import csv
 import json
 import os
 import re
+import subprocess
 import sys
 import warnings
 from pathlib import Path
@@ -244,38 +245,47 @@ CONFIG_DEFAULTS = {
     "output_folder": "{project-root}/_bmad-output",
     "suno_tier": None,
     "default_mode": "demo",
-    "band_profiles_folder": "docs/band-profiles",
-    "songbook_folder": "docs/songbook",
+    "band_profiles_folder": "{project-root}/docs/band-profiles",
+    "songbook_folder": "{project-root}/docs/songbook",
     "pytorch_audio_tools": "off",
 }
 VOICE_GLOB = "voice-context-*.md"
+# What First Breath writes for an owner fact it hasn't learned yet. BOND.md
+# carries it until the owner says what to call them; owner_from_bond never
+# reads it as a name, and the wake treats it as an unfinished birth.
+OWNER_UNSET = "_(not yet known)_"
+RESOLVER_REL = ("_bmad", "scripts", "resolve_config.py")
 
 
-def _load_toml_layers(bmad: Path) -> dict:
-    """Merge BMad's four central TOML layers (tables deep-merge, scalars override)."""
+def resolve_bmad_config(project_root: Path) -> tuple[dict, list[str]]:
+    """`core.output_folder` and `modules.suno` from BMad's resolve_config.py.
+
+    Returns (values, warnings). Merging the config layers is the resolver's
+    job; a missing or failing resolver is reported, never papered over.
+    """
+    root = Path(project_root)
+    script = root.joinpath(*RESOLVER_REL)
+    if not script.is_file():
+        return {}, ["BMad is not set up here (no _bmad/scripts/resolve_config.py): offer `bmad setup suno`; module defaults apply."]
+    cmd = [sys.executable, str(script), "--project-root", str(root), "--key", "core.output_folder", "--key", "modules.suno"]
     try:
-        import tomllib
-    except ModuleNotFoundError:  # Python < 3.11
-        return {}
-
-    def merge(base: dict, over: dict) -> dict:
-        out = dict(base)
-        for key, value in over.items():
-            if isinstance(value, dict) and isinstance(out.get(key), dict):
-                out[key] = merge(out[key], value)
-            else:
-                out[key] = value
-        return out
-
-    merged: dict = {}
-    for rel in ("config.toml", "config.user.toml", "custom/config.toml", "custom/config.user.toml"):
-        path = bmad / rel
-        if path.is_file():
-            try:
-                merged = merge(merged, tomllib.loads(path.read_text(encoding="utf-8")))
-            except (OSError, ValueError):
-                continue
-    return merged
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return {}, [f"BMad config could not be resolved ({exc}); module defaults apply."]
+    if proc.returncode != 0:
+        reason = (proc.stderr or proc.stdout).strip().splitlines()
+        return {}, [f"BMad config is broken ({reason[-1] if reason else 'resolve_config.py exited ' + str(proc.returncode)}); module defaults apply until it is fixed."]
+    try:
+        payload = json.loads(proc.stdout or "{}")
+    except json.JSONDecodeError:
+        return {}, ["resolve_config.py printed no JSON; module defaults apply."]
+    values = dict(payload.get("modules.suno") or {})
+    if payload.get("core.output_folder"):
+        values["output_folder"] = payload["core.output_folder"]
+    warnings_out = [] if payload.get("modules.suno") else [
+        "No suno answers in BMad's config: the module defaults apply. `bmad setup suno` asks the questions."
+    ]
+    return values, warnings_out
 
 
 def owner_from_bond(sanctum: Path) -> dict:
@@ -289,7 +299,8 @@ def owner_from_bond(sanctum: Path) -> dict:
         match = re.match(r"^\s*-\s*\*\*(Name|Language):\*\*\s*(.+?)\s*$", line)
         if match:
             value = match.group(2)
-            if "{" not in value:  # an unfilled template token is not a name
+            # An unfilled template token or the not-yet-known marker is not a name.
+            if "{" not in value and value != OWNER_UNSET:
                 found.setdefault(labels[match.group(1).lower()], value)
     return found
 
@@ -311,9 +322,10 @@ def owner_from_voice_file(project_root: Path) -> str | None:
 def resolve_config(project_root: Path, sanctum: Path | None = None) -> dict:
     """Resolve Mac's config. Never raises; missing pieces fall back to defaults.
 
-    Module answers and output_folder come from BMad's TOML layers; the owner's
-    name and language from the sanctum's BOND.md, then a lone voice file, then
-    defaults (greet generically, English).
+    Module answers and output_folder come from BMad's resolve_config.py; the
+    owner's name and language from the sanctum's BOND.md, then a lone voice
+    file, then defaults (greet generically, English). Config values hold
+    `{project-root}`; the model fills it in.
     """
     project_root = Path(project_root)
     sanctum = sanctum or sanctum_dir(project_root)
@@ -329,10 +341,8 @@ def resolve_config(project_root: Path, sanctum: Path | None = None) -> dict:
         if took and label not in sources:
             sources.append(label)
 
-    toml = _load_toml_layers(project_root / "_bmad")
-    if toml:
-        fill(toml.get("core") or {}, CORE_KEYS, "config.toml")
-        fill((toml.get("modules") or {}).get("suno") or {}, SUNO_KEYS, "config.toml")
+    bmad_values, warnings_out = resolve_bmad_config(project_root)
+    fill(bmad_values, CORE_KEYS + SUNO_KEYS, "resolve_config.py")
 
     fill(owner_from_bond(sanctum), OWNER_KEYS, "BOND.md")
     voice_name = owner_from_voice_file(project_root)
@@ -341,21 +351,12 @@ def resolve_config(project_root: Path, sanctum: Path | None = None) -> dict:
     if values.get("communication_language"):
         values.setdefault("document_output_language", values["communication_language"])
 
-    warnings_out: list[str] = []
     for key, default in CONFIG_DEFAULTS.items():
         if values.get(key) in (None, ""):
             values[key] = default
-    for key in ("band_profiles_folder", "songbook_folder"):
-        values[key] = values[key].replace("{project-root}/", "")
     if not values.get("user_name"):
         warnings_out.append(
-            "user_name not found (no BOND.md name, no single voice file); greet generically "
-            "and ask what to call the owner."
-        )
-    if not toml.get("modules", {}).get("suno"):
-        warnings_out.append(
-            "No suno answers in BMad's config: the module defaults apply. "
-            "`bmad setup suno` asks the questions."
+            "user_name not known yet (BOND.md has no name, no single voice file): ask what to call the owner."
         )
     return {"values": values, "sources": sources or ["defaults"], "warnings": warnings_out}
 
@@ -366,16 +367,17 @@ def normalize_username(name: str) -> str:
 
 
 def template_variables(project_root: Path, config: dict | None = None, birth_date: str | None = None) -> dict:
-    """The substitution map for sanctum templates."""
+    """The substitution map for sanctum templates. Owner facts not yet known stay OWNER_UNSET."""
     from datetime import date
 
     values = (config or resolve_config(project_root))["values"]
-    user = values.get("user_name") or "friend"
+    user = values.get("user_name")
+    known_language = user is not None and values.get("communication_language")
     root = str(project_root)
     return {
-        "user_name": user,
-        "user_slug": normalize_username(user),
-        "communication_language": values.get("communication_language") or "English",
+        "user_name": user or OWNER_UNSET,
+        "user_slug": normalize_username(user) if user else "<owner>",
+        "communication_language": known_language or OWNER_UNSET,
         "birth_date": birth_date or date.today().isoformat(),
         "project_root": root,
         "project-root": root,
@@ -458,7 +460,7 @@ def generate_capabilities_md(rows: list[dict]) -> str:
         lines += [
             "_assets/menu.csv was not found, so the roster could not be generated. "
             "Reinstall the suno-agent-band-manager skill, then regenerate this section with "
-            "`uv run scripts/upgrade-sanctum.py`._"
+            "`uv run {skill-root}/scripts/upgrade-sanctum.py`._"
         ]
     lines += [
         "",

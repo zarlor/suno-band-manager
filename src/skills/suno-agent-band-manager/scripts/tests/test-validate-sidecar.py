@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pytest>=7.0", "pyyaml>=6.0"]
 # ///
 """Tests for validate-sidecar.py"""
@@ -420,3 +420,75 @@ def test_source_wip_and_short_title_parsed(tmp_path):
     song, _ = mod.parse_song(p, tmp_path)
     assert song.source_wip == "docs/wip-dock.md"
     assert song.short_title == "Harbor"
+
+
+# ---------------------------------------------------------------------------
+# voice_catalog_order — voice-file track numbers vs the playlist YAML
+# ---------------------------------------------------------------------------
+
+ORDER_PLAYLIST = (
+    'album: "PL"\ntracks:\n'
+    '  - name: "Harbor Lights"\n    file: a.mp3\n'
+    '  - name: "Mirror Song"\n    file: b.mp3\n'
+    '  - name: "Askin\'?"\n    file: c.mp3\n'
+    '  - name: "Encore (Version 1)"\n    file: d.mp3\n'
+)
+
+
+def _order_project(tmp_path, voice_body):
+    _docs(tmp_path, "docs/band-profiles/paper-lanterns.yaml", "name: Paper Lanterns\n")
+    _docs(tmp_path, "docs/band-profiles/paper-lanterns-redux.yaml", "name: Paper Lanterns - Redux\n")
+    _docs(tmp_path, "docs/paper-lanterns-playlist.yaml", ORDER_PLAYLIST)
+    _docs(tmp_path, "docs/voice-context-owner.md", voice_body)
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
+    _write_song(tmp_path, "mirror.md", PUBLISHED_SONG.replace(
+        'title: "Harbor Lights"', 'title: "gnoS rorriM|Mirror Song"'))
+    return mod.check_voice_catalog_order(_songs(tmp_path), tmp_path)
+
+
+def test_voice_catalog_order_clean_when_numbers_match(tmp_path):
+    body = ("# Voice\n\n## The Paper Lanterns Catalog\n\n"
+            "1. **Harbor Lights** — opener\n2. \"Mirror Song\" (the mirror one)\n"
+            "| 3 | Askin'? | pocket |\n**Track 4:** Encore (Version 2)\n")
+    assert _order_project(tmp_path, body) == []
+
+
+def test_voice_catalog_order_flags_each_stale_number(tmp_path):
+    body = ("# Voice\n\n## The Paper Lanterns Catalog\n\n"
+            "1. **Mirror Song** — moved\n2. **Harbor Lights** — moved\n"
+            "| 7 | Askin'? | pocket |\nTrack 9: gnoS rorriM\n")
+    findings = _order_project(tmp_path, body)
+    assert all(f.category == "voice_catalog_order" and f.severity == "warning" for f in findings)
+    messages = [f.message for f in findings]
+    assert len(messages) == 4
+    assert any("'mirror song' as 1" in m and "at 2" in m for m in messages)
+    assert any("'harbor lights' as 2" in m and "at 1" in m for m in messages)
+    assert any("as 7" in m and "at 3" in m for m in messages)
+    assert any("as 9" in m and "at 2" in m for m in messages)  # stylized songbook form
+
+
+def test_voice_catalog_order_ignores_procedure_lists_and_other_sections(tmp_path):
+    body = ("# Voice\n\n## How He Writes\n\n4. **Harbor Lights** in a section naming no band\n\n"
+            "## The Paper Lanterns Catalog\n\n1. Find direction\n2. Find the words\n"
+            "3. Harbor Lights came first — a prose note, not a title\n")
+    assert _order_project(tmp_path, body) == []
+
+
+def test_voice_catalog_order_uses_the_longest_band_name(tmp_path):
+    body = "# Voice\n\n## Paper Lanterns - Redux\n\n5. **Harbor Lights**\n"
+    # The Redux band has no playlist YAML, so nothing is compared.
+    assert _order_project(tmp_path, body) == []
+
+
+def test_voice_catalog_order_skips_without_playlist(tmp_path):
+    _docs(tmp_path, "docs/band-profiles/paper-lanterns.yaml", "name: Paper Lanterns\n")
+    _docs(tmp_path, "docs/voice-context-owner.md", "## Paper Lanterns\n\n9. **Harbor Lights**\n")
+    _write_song(tmp_path, "harbor-lights.md", PUBLISHED_SONG)
+    assert mod.check_voice_catalog_order(_songs(tmp_path), tmp_path) == []
+
+
+def test_voice_catalog_order_is_a_warning_in_run_checks(tmp_path):
+    _order_project(tmp_path, "## Paper Lanterns\n\n4. **Harbor Lights**\n")
+    findings, stats = mod.run_checks(tmp_path)
+    order = [f for f in findings if f.category == "voice_catalog_order"]
+    assert len(order) == 1 and order[0].severity == "warning"

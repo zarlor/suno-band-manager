@@ -1,56 +1,60 @@
-"""Read this module's answers from BMad's central config (BMad v7).
+"""Read this module's answers through BMad's own resolver (BMad v7).
 
 `bmad setup suno` writes the answers to `{project-root}/_bmad/config.toml` as
-`[modules.suno]`; teams and users override them in `config.user.toml` and the
-two `custom/` layers. Skills read them through `_bmad/scripts/resolve_config.py`;
-scripts read the same four layers here, with tables deep-merged and later layers
-winning, so they need no subprocess and no third-party parser.
+`[modules.suno]`; teams and users override them in the other layers. Merging
+those layers is the resolver's job, so scripts ask
+`{project-root}/_bmad/scripts/resolve_config.py` for `modules.suno` instead of
+reading the TOML themselves. It runs with this interpreter (it is stdlib-only
+and needs Python 3.11+, which every script here declares).
 
-Folder answers are relative to the project root (`docs/songbook`); a value that
-still carries a `{project-root}` token is filled in, and an absolute path is kept.
+Config values hold `{project-root}`; it is filled in here. A project with no
+`_bmad/` gives no answers (scripts fall back to their flags and defaults); a
+broken one raises ConfigError with the resolver's reason, never a silent {}.
 """
 
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
 from pathlib import Path
 
 MODULE_CODE = "suno"
-LAYERS = ("config.toml", "config.user.toml", "custom/config.toml", "custom/config.user.toml")
+RESOLVER_REL = ("_bmad", "scripts", "resolve_config.py")
 
 
-def _merge(base: dict, over: dict) -> dict:
-    out = dict(base)
-    for key, value in over.items():
-        if isinstance(value, dict) and isinstance(out.get(key), dict):
-            out[key] = _merge(out[key], value)
-        else:
-            out[key] = value
-    return out
+class ConfigError(RuntimeError):
+    """BMad's config could not be resolved; the message says why."""
 
 
-def load_layers(project_root) -> dict:
-    """The four BMad config layers of a project, merged. {} when none can be read."""
-    try:
-        import tomllib
-    except ModuleNotFoundError:  # Python < 3.11
+def resolve(project_root, *keys: str) -> dict:
+    """{key: value} for the dotted keys resolve_config.py finds. Missing keys are absent."""
+    root = Path(project_root)
+    if not (root / "_bmad").is_dir():
         return {}
-    bmad = Path(project_root) / "_bmad"
-    merged: dict = {}
-    for rel in LAYERS:
-        path = bmad / rel
-        if not path.is_file():
-            continue
-        try:
-            merged = _merge(merged, tomllib.loads(path.read_text(encoding="utf-8")))
-        except (OSError, ValueError):
-            continue
-    return merged
+    script = root.joinpath(*RESOLVER_REL)
+    if not script.is_file():
+        raise ConfigError(f"BMad is not set up in {root} (no {'/'.join(RESOLVER_REL)}); run `bmad setup suno`.")
+    cmd = [sys.executable, str(script), "--project-root", str(root)]
+    for key in keys:
+        cmd += ["--key", key]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ConfigError(f"could not run resolve_config.py: {exc}") from exc
+    if proc.returncode != 0:
+        reason = (proc.stderr or proc.stdout).strip().splitlines()
+        raise ConfigError(reason[-1] if reason else f"resolve_config.py exited {proc.returncode}")
+    try:
+        return json.loads(proc.stdout or "{}")
+    except json.JSONDecodeError as exc:
+        raise ConfigError(f"resolve_config.py printed no JSON: {exc}") from exc
 
 
 def module_config(project_root) -> dict:
     """This module's answers as strings, `{project-root}` filled in. {} when unset."""
     root = Path(project_root)
-    section = (load_layers(root).get("modules") or {}).get(MODULE_CODE) or {}
+    section = resolve(root, f"modules.{MODULE_CODE}").get(f"modules.{MODULE_CODE}") or {}
     return {
         key: str(value).replace("{project-root}", str(root))
         for key, value in section.items()
@@ -59,8 +63,8 @@ def module_config(project_root) -> dict:
 
 
 def module_path(project_root, key: str, default: str) -> Path:
-    """A folder answer resolved against the project root (absolute values kept)."""
+    """A folder answer as a path; `default` may hold `{project-root}`. Relative values resolve from the root."""
     root = Path(project_root)
-    value = module_config(root).get(key) or default
+    value = module_config(root).get(key) or default.replace("{project-root}", str(root))
     path = Path(value)
     return path if path.is_absolute() else root / path

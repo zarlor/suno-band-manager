@@ -182,6 +182,8 @@ def test_cmd_duplicate_missing_source(tmp_path):
 import json
 import shutil
 import subprocess
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fake_resolver import install_resolver  # noqa: E402
 
 FIXTURE = Path(__file__).parent / "fixtures" / "commented-profile.yaml"
 SLUG = "copper-lantern-choir"
@@ -389,6 +391,7 @@ def test_profiles_dir_from_module_config(tmp_path):
     (tmp_path / "_bmad").mkdir()
     (tmp_path / "_bmad" / "config.toml").write_text(
         "[modules.suno]\nband_profiles_folder = 'music/profiles'\n")
+    install_resolver(tmp_path)
     args = Args(project_root=str(tmp_path))
     assert _resolve_profiles_dir(args) == tmp_path / "music" / "profiles"
 

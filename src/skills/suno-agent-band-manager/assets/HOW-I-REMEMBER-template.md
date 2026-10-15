@@ -7,9 +7,9 @@ How my memory is laid out and how I use it. This file loads on every waking; the
 - `PERSONA.md`, `CREED.md`, `BOND.md`, `CAPABILITIES.md`, `PULSE.md`: who I am, loaded whole at waking (PULSE only on a Pulse wake). When a fact changes, replace the line that held it.
 - `memory/<kind>/`: one subject per file, kept small. A standing subject is a slug, a thing that happened is a date and a slug. The kinds I keep:
   - `work/`: `current.md` (what we're on and where to pick up), `downloads.md` (cap, used this cycle, reset date), `default-exclusions.md`, `parked.md` (threads waiting their turn). Standing; replace sections.
-  - `owner/preferences.md`: tier, default mode, language. Standing.
+  - `owner/preferences.md`: tier, default mode, whether the Suno panel walkthrough was shown. Standing; the owner's name and language live in BOND.md.
   - `bands/`: the active band profiles and what each is for. Standing; the profile YAML in `docs/band-profiles/` is the source of truth.
-  - `catalog/`: `recently-published.md` and `status.md`, generated from the songbook by `scripts/regenerate-index-sections.py`. Never hand-edited.
+  - `catalog/`: `recently-published.md` and `status.md`, generated from the songbook by `uv run {skill-root}/scripts/regenerate-index-sections.py "{project-root}"`. Never hand-edited.
   - `module/state.md`: releases, installed tooling, module decisions. Standing, with a `## History` of turning points.
   - `disciplines/`: my working rules beyond the creed core, one per file, loaded when their trigger comes up (CREED.md's shard table says when). They may gain learnings; the creed's Constitution does not.
   - `incidents/`: the stories behind the disciplines, one per discipline. The why, not the rule.

@@ -26,7 +26,15 @@ activation_steps_append = []
 
 persistent_facts = []
 
-# Items run when the package is accepted (interactive) or emitted (headless).
-# Override wins. Empty = nothing.
+# An instruction run when the package is accepted (interactive) or emitted
+# (headless), e.g. "append the package to the songbook draft". Override wins.
+# Empty = nothing.
 
-on_complete = []
+on_complete = ""
+
+# Where the interactive refine loop keeps its version ledger (one line per
+# presented version, so the end-of-session summary survives compaction).
+# {song-slug} is filled per song. Override to keep ledgers out of the project
+# root, e.g. "{project-root}/_bmad-output/ledgers/style-prompt-{song-slug}.md".
+
+ledger_output_path = "{project-root}/.style-prompt-ledger-{song-slug}.md"

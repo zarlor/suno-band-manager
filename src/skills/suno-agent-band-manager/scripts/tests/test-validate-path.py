@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pytest>=7.0"]
 # ///
 """Tests for validate-path.py"""
@@ -176,3 +176,16 @@ def test_cli_explicit_boundaries_and_missing_file(v7_project, monkeypatch, capsy
     assert code == 0 and out["allowed"] is True
     code, out = _cli(monkeypatch, capsys, "docs/a.md", "read", "--project-root", str(root / "nowhere"))
     assert code == 1 and out["error"] is True and "CREED.md" in out["message"]
+
+
+def test_labeled_bullet_names_its_path_in_parentheses(tmp_path):
+    creed = tmp_path / "CREED.md"
+    creed.write_text(
+        "# Creed\n\n## Dominion (Access Boundaries)\n\n### Write Access\n\n"
+        "- WIP files (`docs/wip-*.md`) when capturing creative fragments\n"
+        "- Band profile writes happen via the `suno-band-profile-manager` skill, not directly\n"
+        "  - nested note (`docs/nested-not-a-rule.md`) stays prose\n"
+        "- Plain prose (e.g. `docs/inline-not-a-rule.md`) mid-sentence\n",
+        encoding="utf-8")
+    b = mod.parse_boundaries(creed)
+    assert b["write"] == ["docs/wip-*.md"]

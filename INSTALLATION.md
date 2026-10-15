@@ -64,7 +64,7 @@ Skills in `.agents/skills/` are auto-discovered at session start. Invoke by name
 
 ### 5. Start creating
 
-Tell Mac what kind of song you want. See the [Usage Guide](src/skills/suno-agent-band-manager/references/USAGE.md) for all features.
+Tell Mac what kind of song you want. See the [Usage Guide](USAGE.md) for all features.
 
 ---
 
@@ -92,8 +92,8 @@ BMad v6 installs (6.12 and earlier, `npx bmad-method install`) are not supported
 | `suno_tier` | `free`, `pro`, `premier` | `free` | Which Suno models and features Mac recommends |
 | `default_mode` | `demo`, `studio`, `jam` | `demo` | Mac's starting interaction mode |
 | `pytorch_audio_tools` | `on`, `off` | `off` | Whether the audio scripts take tempo from Beat This! and the Demucs tools are available (see [Optional: Audio Analysis](#optional-audio-analysis)) |
-| `band_profiles_folder` | folder, relative to the project root | `docs/band-profiles` | Where band profiles are stored |
-| `songbook_folder` | folder, relative to the project root | `docs/songbook` | Where saved songs and lyrics are stored |
+| `band_profiles_folder` | folder path (holds `{project-root}`) | `{project-root}/docs/band-profiles` | Where band profiles are stored |
+| `songbook_folder` | folder path (holds `{project-root}`) | `{project-root}/docs/songbook` | Where saved songs and lyrics are stored |
 
 The answers live in `_bmad/config.toml` under `[modules.suno]`:
 
@@ -120,11 +120,11 @@ To override them without touching that file, put a `[modules.suno]` table in `_b
 
 ## Pipeline Guard (Recommended)
 
-The module ships a Stop hook script (`.claude/skills/suno-agent-band-manager/scripts/pipeline-guard.py`) that enforces Mac's mandatory production pipeline. It blocks any response containing a Suno package if `suno-style-prompt-builder` and `suno-lyric-transformer` weren't invoked during the session.
+The module ships a Stop hook script (`.claude/skills/suno-agent-band-manager/scripts/pipeline-guard.py`) that enforces Mac's mandatory production pipeline. It blocks a response that presents a Suno package unless `suno-style-prompt-builder` (for the style sections) and `suno-lyric-transformer` (for the lyrics) actually ran in that turn, or the package is unchanged from what they returned earlier in the session. It checks the transcript for evidence that the skill ran, not for words in a prompt.
 
 **Why:** Without this guard, the agent may hand-build packages from conversation memory instead of running them through the skills. The skills contain critical guardrails (artist name detection, production descriptor checks, character budget validation, section tag validation) that cannot be replicated from memory.
 
-**Auto-configuration:** Ask Mac to "set up the pipeline guard". He runs `configure-guard.py` (in `suno-agent-band-manager/scripts/`), which appends the standing order to `AGENTS.md` and, when the project has a `.claude/` folder, merges the Stop hook into `.claude/settings.local.json`. Both steps are safe to repeat. The manual steps below are for reference or if you prefer to set it up yourself.
+**Auto-configuration:** Ask Mac to "set up the pipeline guard". He runs `configure-guard.py` (in `suno-agent-band-manager/scripts/`), which appends the standing order to `AGENTS.md` and, when the project has a `.claude/` folder, merges the Stop hook into `.claude/settings.local.json`. He also offers the optional Dominion guard: a pre-write hook that, while Mac is awake, checks writes outside his sanctum against the access boundaries in his CREED.md and asks you before any write they don't allow. All steps are safe to repeat. The manual steps below are for reference or if you prefer to set it up yourself.
 
 ### Claude Code Setup
 
@@ -143,10 +143,24 @@ Add to your `.claude/settings.local.json` (create if it doesn't exist):
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/skills/suno-agent-band-manager/scripts/pipeline-guard.py --dominion",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
 ```
+
+The `PreToolUse` block is the optional Dominion guard; leave it out if you want only the pipeline guard. Both hooks let the turn or write through when they can't read what they need (no transcript, no sanctum yet).
 
 Adjust the path to match where you cloned the module. If using a standalone install, the path would be relative to your project root.
 
@@ -229,7 +243,7 @@ Aider does not support the Agent Skills format. You can load reference documents
 ```bash
 aider \
   --read src/skills/suno-agent-band-manager/references/SUNO-REFERENCE.md \
-  --read src/skills/suno-agent-band-manager/references/USAGE.md
+  --read USAGE.md
 ```
 
 This provides Suno context but not the interactive Mac workflow.
@@ -323,7 +337,7 @@ Without `uv` and without these deps, the audio scripts return JSON with install 
 
 **Permission denied on link-skills.sh:** Run `chmod +x link-skills.sh` first.
 
-**Python scripts fail:** The module's scripts run via `uv run`, which reads each script's PEP 723 inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`). If `uv` is missing, install it (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`). Most scripts are dependency-free and also run under plain Python 3.10+ (`python3 scripts/<name>.py`); scripts that need `pyyaml` require either `uv` or a manual `pip install pyyaml`. The one exception is the `pipeline-guard.py` Stop-hook command, which is invoked directly with `python3` (a hot path — kept off `uv` to avoid per-call startup latency).
+**Python scripts fail:** The module's scripts run via `uv run`, which reads each script's PEP 723 inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`). If `uv` is missing, install it (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`). Most scripts are dependency-free and also run under plain Python 3.11+ (`python3 scripts/<name>.py`); scripts that need `pyyaml` require either `uv` or a manual `pip install pyyaml`. The one exception is the `pipeline-guard.py` Stop-hook command, which is invoked directly with `python3` (a hot path — kept off `uv` to avoid per-call startup latency).
 
 **Mac says the module has no answers yet:** `bmad setup suno` hasn't been run in this project. Run it, or ignore the note: every skill uses the defaults.
 

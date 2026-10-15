@@ -262,3 +262,48 @@ def test_cli_points_a_legacy_project_at_the_converter(tmp_path, monkeypatch, cap
         (legacy / name).write_text("# old\n")
     out = _cli(monkeypatch, capsys, "--project-root", str(tmp_path))
     assert "(v2)" in out and "migrate-sanctum-to-v7.py" in out
+
+
+def _cli_rc(monkeypatch, capsys, *argv):
+    monkeypatch.setattr(sys, "argv", ["upgrade-sanctum.py", *argv])
+    rc = mod.main()
+    return rc, capsys.readouterr().out
+
+
+def test_cli_apply_unknown_id_exits_1(born, monkeypatch, capsys):
+    root, _ = born
+    rc, out = _cli_rc(monkeypatch, capsys, "--project-root", str(root), "--apply", "NOPE.md#9",
+                      "--format", "json")
+    payload = json.loads(out)
+    assert rc == 1
+    assert payload["status"] == "nothing-applied" and payload["unknown_ids"] == ["NOPE.md#9"]
+
+
+def test_cli_apply_partly_unknown_ids_exits_1_but_applies_the_rest(born, monkeypatch, capsys):
+    root, sanctum = born
+    (sanctum / "HOW-I-REMEMBER.md").unlink()
+    rc, out = _cli_rc(monkeypatch, capsys, "--project-root", str(root), "--apply", "safe,TYPO#1")
+    assert rc == 1
+    assert "Applied: HOW-I-REMEMBER.md#1" in out and "Unknown ids (not applied): TYPO#1" in out
+    assert (sanctum / "HOW-I-REMEMBER.md").is_file()
+
+
+def test_cli_apply_safe_with_nothing_pending_is_clean(born, monkeypatch, capsys):
+    root, _ = born
+    rc, out = _cli_rc(monkeypatch, capsys, "--project-root", str(root), "--apply", "safe", "--format", "json")
+    assert rc == 0 and json.loads(out)["status"] == "nothing-to-apply"
+
+
+def test_cli_apply_on_legacy_store_exits_1(tmp_path, monkeypatch, capsys):
+    legacy = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+    legacy.mkdir(parents=True)
+    for name in mod._seed.V2_SPINE:
+        (legacy / name).write_text("# old\n")
+    rc, out = _cli_rc(monkeypatch, capsys, "--project-root", str(tmp_path), "--apply", "safe")
+    assert rc == 1 and "uv run {skill-root}/scripts/migrate-sanctum-to-v7.py" in out
+
+
+def test_cli_empty_apply_exits_1(born, monkeypatch, capsys):
+    root, _ = born
+    rc, _ = _cli_rc(monkeypatch, capsys, "--project-root", str(root), "--apply", ",")
+    assert rc == 1

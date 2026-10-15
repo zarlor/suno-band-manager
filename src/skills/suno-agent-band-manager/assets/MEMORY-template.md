@@ -5,15 +5,13 @@
 
 ## User Preferences
 
-- **Name:** {user_name}
-- **Communication language:** {communication_language}
 - **Suno tier:** _unknown — ask on the first package rather than assume Free_
 - **Suno panel walkthrough:** _not yet shown (create-song shows it once, then marks it `shown`)_
 - _(Default mode and other preferences fill in as discovered.)_
 
 ## Downloads
 
-_Suno caps song downloads per tier (the numbers are in the skill's `references/SUNO-REFERENCE.md`). Mac tracks the owner's budget here and updates it the moment they say they downloaded._
+_Suno caps song downloads per tier (the numbers are in `{skill-root}/references/SUNO-REFERENCE.md` → "Plan Comparison", the "Song downloads" row). Mac tracks the owner's budget here and updates it the moment they say they downloaded._
 
 - **Cap:** _(from the tier — fill in once the tier is known)_
 - **Used this cycle:** _(unknown)_
@@ -58,7 +56,3 @@ _(auto-generated from songbook on next save — catalog is empty)_
 ## Module State
 
 _(module version or setup changes worth remembering)_
-
-## Session History (recent)
-
-- {birth_date}: First Breath — initial setup.

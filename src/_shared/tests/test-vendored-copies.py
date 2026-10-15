@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pytest>=7.0"]
 # ///
-"""Every skill's scripts/_shared/ must be a byte-identical copy of src/_shared/.
+"""Every skill's scripts/_shared/ holds byte-identical copies of the src/_shared/ helpers it imports.
 
 Installers copy skill folders one at a time, so each skill vendors the helpers it
 imports. Edit only src/_shared/, then run `uv run dev-tools/sync-shared.py`.
@@ -27,10 +27,10 @@ def test_every_importing_skill_vendors_the_helpers():
 
 
 def test_vendored_copies_match_canon():
-    drift = []
-    for dest in SKILLS.glob("suno-*/scripts/_shared"):
-        for src in CANON:
-            target = dest / src.name
-            if not target.is_file() or target.read_bytes() != src.read_bytes():
-                drift.append(str(target.relative_to(SKILLS)))
-    assert not drift, "vendored _shared copies drifted — run `uv run dev-tools/sync-shared.py`: " + ", ".join(drift)
+    """Each skill vendors exactly the helpers its scripts import, byte-identical to the canon."""
+    import subprocess
+    import sys
+
+    tool = SHARED.parent.parent / "dev-tools" / "sync-shared.py"
+    proc = subprocess.run([sys.executable, str(tool), "--check"], capture_output=True, text=True)
+    assert proc.returncode == 0, "vendored _shared copies drifted — run `uv run dev-tools/sync-shared.py`:\n" + proc.stdout

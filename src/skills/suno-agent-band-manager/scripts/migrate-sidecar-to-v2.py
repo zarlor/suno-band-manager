@@ -803,7 +803,7 @@ def main() -> int:
             status = result["status"]
             if status == "migrated":
                 print(
-                    f"Upgraded sidecar to v2 in place (next: migrate-sanctum-to-v7.py).\n"
+                    f"Upgraded sidecar to v2 in place (next: `uv run {{skill-root}}/scripts/migrate-sanctum-to-v7.py`).\n"
                     f"  backup dir:     {result['backup_path']}\n"
                     f"  backup tarball: {result['backup_tarball']}\n"
                     f"  sanctum:        {result['sanctum_path']}\n"
@@ -812,7 +812,7 @@ def main() -> int:
                 )
             elif status in ("already-v2", "already-v7"):
                 print(f"Sidecar is already {status[len('already-'):]} — nothing to do here "
-                      "(a v2 store converts with migrate-sanctum-to-v7.py).")
+                      "(a v2 store converts with `uv run {skill-root}/scripts/migrate-sanctum-to-v7.py`).")
             elif status == "no-sidecar":
                 print("No sidecar present — nothing to upgrade.")
             else:  # blocked

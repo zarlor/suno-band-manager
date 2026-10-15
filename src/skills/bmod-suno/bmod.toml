@@ -32,10 +32,10 @@ default = "off"
 
 [[bmod.config_questions]]
 key = "band_profiles_folder"
-prompt = "Where should band profiles be stored, relative to the project root?"
-default = "docs/band-profiles"
+prompt = "Where should band profiles be stored?"
+default = "{project-root}/docs/band-profiles"
 
 [[bmod.config_questions]]
 key = "songbook_folder"
-prompt = "Where should saved songs and lyrics be stored, relative to the project root?"
-default = "docs/songbook"
+prompt = "Where should saved songs and lyrics be stored?"
+default = "{project-root}/docs/songbook"

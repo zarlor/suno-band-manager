@@ -14,7 +14,7 @@
 - `docs/audio-analysis/` — measured renders
 - `docs/*-playlist*` — playlist YAMLs and ordering docs
 - `docs/*-genre-coverage.md` — generated coverage indices
-- The companion files listed in the voice file's Companion Files table, and the module's sibling suno skills when a rule points into them
+- The companion files listed in the voice file's Companion Files table
 
 ## Write Access
 - `{project-root}/_bmad/memory/suno-agent-band-manager/` — own memory

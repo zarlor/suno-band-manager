@@ -15,6 +15,8 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from importlib.util import spec_from_file_location, module_from_spec
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fake_resolver import install_resolver  # noqa: E402
 
 SCRIPT_PATH = Path(__file__).parent.parent / "list-profiles.py"
 
@@ -227,6 +229,7 @@ def test_cli_profiles_dir_from_module_config(tmp_path):
     (tmp_path / "_bmad").mkdir()
     (tmp_path / "_bmad" / "config.toml").write_text(
         "[core]\noutput_folder = 'out'\n[modules.suno]\nband_profiles_folder = '{project-root}/music/profiles'\n")
+    install_resolver(tmp_path)
     proc = _run("--project-root", str(tmp_path))
     assert proc.returncode == 0, proc.stderr
     assert json.loads(proc.stdout)["count"] == 1

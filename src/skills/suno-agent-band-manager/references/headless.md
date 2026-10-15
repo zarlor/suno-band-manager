@@ -11,13 +11,13 @@ No greeting, no menu, no sync-package prompt, no reconcile walk-through, and no 
 ## What headless still does
 
 1. **Wake as usual.** The wake already printed the identity files, so the CREED core (the Package Assembly Rule binds headless package runs too, and its Dominion governs every write) and HOW-I-REMEMBER.md are loaded. Tier, default exclusions and the active band resolve from `memory/owner/preferences.md`, `memory/work/default-exclusions.md` and `memory/bands/active.md`, with `config.suno_tier` as the fallback. If the tier is still unknown, build for Free and say so in `warnings`. If the mode is UPGRADE_V2 or UPGRADE_V1, run the headless branch of `references/upgrade-v2.md` or `references/upgrade-v1.md` first.
-2. **Resolve the capability** against `routing_table` (action name or menu code; FL routes to RS). For a `prompt` route, load the prompt and check its `Headless-eligible:` marker first:
-   - `true` (create-song, refine-song) → run that capability's own Headless Mode contract.
-   - `false` (browse-songbook, save-memory, reconcile) → interactive-only by design. Don't improvise a contract; return `blocked` with `summary: "capability {capability} is interactive-only"` and leave durable files untouched.
+2. **Resolve the capability** against `routing_table` (action name or menu code; FL routes to RS):
+   - create-song → load `references/create-song-headless.md`; refine-song → load `references/refine-song-headless.md`. Each holds its own input contract and payload.
+   - browse-songbook, save-memory, reconcile → interactive-only by design. Don't improvise a contract; return `blocked` with `summary: "capability {capability} is interactive-only"` and leave durable files untouched.
+   - A `skill` route invokes that skill in its own headless mode, passing the row's `name`.
 
-   A `skill` route invokes that skill in its own headless mode.
 3. **Pipeline tool choice.** The Package Assembly Rule calls for Agent subagents to keep the pipeline skills' JSON out of a user-facing turn. A headless run has no such turn, and may already be running inside another skill's subagent, so invoke the style and lyric skills directly with the Skill tool rather than nesting Agent inside Agent. The requirement to run the pipeline at all is unchanged.
-4. **Persist like the interactive flow does.** Run the capability's own save and regenerate steps (`regenerate-index-sections.py`, `genre-coverage.py` where it already calls them). Before each durable write, check the path: `uv run {skill-root}/scripts/validate-path.py <path> write --boundaries "{project-root}/_bmad/memory/suno-agent-band-manager/CREED.md" --project-root "{project-root}" --skill-root "{skill-root}"`; a denied path is a `blocked` result, not a workaround. Any write the interactive flow gates behind a "never overwrite without asking" checkpoint is staged and reported in `warnings`, never auto-applied. Headless skips prompts, not persistence and not boundaries.
+4. **Persist like the interactive flow does.** Run the capability's own save and regenerate steps (`regenerate-index-sections.py`, `genre-coverage.py` where it already calls them). Before each durable write, check the path: `uv run {skill-root}/scripts/validate-path.py <path> write --boundaries "{project-root}/_bmad/memory/suno-agent-band-manager/CREED.md" --project-root "{project-root}" --skill-root "{skill-root}"`; a denied write is never worked around — skip it and report it in `warnings`, or return `blocked` when it was the run's main artifact. Any write the interactive flow gates behind a "never overwrite without asking" checkpoint is staged and reported in `warnings`, never auto-applied. Headless skips prompts, not persistence and not boundaries.
 
 ## Result
 

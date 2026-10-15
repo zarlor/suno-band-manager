@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pyyaml>=6.0"]
 # ///
 """Regenerate Mac's derived catalog files from the songbook (BMad v7 sanctum).
@@ -16,6 +16,11 @@ playlist YAMLs, and only the text between each file's marker pair is rewritten.
 They are never hand-edited. A missing file is created with its heading and an
 empty marker pair, then filled.
 
+A songbook entry that cannot be read (no frontmatter, a YAML error) or whose
+`band_profile` names no band profile is left out of the catalog and listed in
+`skipped[]`; the run then reports `regenerated_with_skips` (or
+`unchanged_with_skips`) and exits 1, so a dropped song is never silent.
+
 If a catalog file exists but has no marker pair, the script reports it and
 exits non-zero without modifying it. Pass --migrate to wrap the file's existing
 body (everything under its `# ` heading) with the markers, then regenerate.
@@ -23,11 +28,11 @@ body (everything under its `# ` heading) with the markers, then regenerate.
 Cross-platform: pure Python stdlib + PyYAML.
 
 Usage:
-    uv run scripts/regenerate-index-sections.py [project_root]
-    uv run scripts/regenerate-index-sections.py --dry-run  # print the content only
-    uv run scripts/regenerate-index-sections.py --migrate  # add missing markers
-    uv run scripts/regenerate-index-sections.py --sanctum-dir PATH  # override sanctum
-    uv run scripts/regenerate-index-sections.py --format json
+    uv run {skill-root}/scripts/regenerate-index-sections.py [project_root]
+    uv run {skill-root}/scripts/regenerate-index-sections.py --dry-run  # print the content only
+    uv run {skill-root}/scripts/regenerate-index-sections.py --migrate  # add missing markers
+    uv run {skill-root}/scripts/regenerate-index-sections.py --sanctum-dir PATH  # override sanctum
+    uv run {skill-root}/scripts/regenerate-index-sections.py --format json
 """
 
 from __future__ import annotations
@@ -109,23 +114,28 @@ def display_path(path: Path, project_root: Path) -> str:
 
 
 def parse_song(path: Path) -> dict | None:
-    text = path.read_text(encoding="utf-8")
+    """The parsed song, or None when it cannot be read (see read_song for why)."""
+    return read_song(path)[0]
+
+
+def read_song(path: Path) -> tuple[dict | None, str | None]:
+    """(song, None) on success, (None, reason) when the entry cannot be read."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        return None, f"unreadable: {exc}"
     fm_match = FRONTMATTER_RE.match(text)
     if not fm_match:
-        return None
+        return None, "no YAML frontmatter (the file must open with a --- block)"
     try:
         frontmatter = yaml.safe_load(fm_match.group(1)) or {}
     except yaml.YAMLError as exc:
-        # Surface parse failures instead of silently dropping the song.
         # Common cause: flow-sequence values containing inner brackets
         # (e.g., transformations_applied: [... [Spoken] ...]) — use a quoted
         # string or a flat list without brackets inside items. See issue #29.
-        print(
-            f"WARNING: YAML parse error in {path} — {exc}. "
-            "Song will be skipped; derived sections may be incomplete.",
-            file=sys.stderr,
-        )
-        return None
+        return None, "frontmatter YAML error: " + " ".join(str(exc).split())
+    if not isinstance(frontmatter, dict):
+        return None, "frontmatter is not a mapping"
 
     body = text[fm_match.end() :]
     body_status = body_date = body_desc = None
@@ -158,7 +168,7 @@ def parse_song(path: Path) -> dict | None:
         "body_status": body_status,
         "body_date": body_date,
         "body_desc": body_desc,
-    }
+    }, None
 
 
 def band_display_map(project_root: Path) -> dict[str, str]:
@@ -195,23 +205,30 @@ def known_band_slugs(project_root: Path) -> set[str]:
     return {p.stem for p in profiles_dir.glob("*.yaml")}
 
 
-def load_all_songs(project_root: Path) -> list[dict]:
+def load_all_songs(project_root: Path) -> tuple[list[dict], list[dict]]:
+    """(songs, skipped). Each skipped entry is {"path", "reason"}; nothing is dropped silently."""
     songbook_root = project_root / "docs" / "songbook"
-    songs = []
+    songs: list[dict] = []
+    skipped: list[dict] = []
     if not songbook_root.is_dir():
-        return songs
+        return songs, skipped
     valid_bands = known_band_slugs(project_root)
     for path in sorted(songbook_root.rglob("*.md")):
-        song = parse_song(path)
+        shown = display_path(path, project_root)
+        song, reason = read_song(path)
         if song is None:
+            skipped.append({"path": shown, "reason": reason})
             continue
-        # Songs whose band_profile doesn't match a known band profile YAML are
-        # likely legacy / personal-project entries with custom metadata — they
-        # shouldn't surface in catalog status or recently-published output.
+        # A band_profile that names no band profile YAML (a legacy entry, a
+        # typo) stays out of the catalog, and is reported so it can be fixed.
         if valid_bands and song["band"] not in valid_bands:
+            skipped.append({
+                "path": shown,
+                "reason": f"band_profile '{song['band']}' matches no docs/band-profiles/*.yaml",
+            })
             continue
         songs.append(song)
-    return songs
+    return songs, skipped
 
 
 def is_published(song: dict) -> bool:
@@ -404,12 +421,20 @@ def main() -> int:
     if not sanctum_dir.is_dir():
         print(
             f"ERROR: no sanctum at {sanctum_dir}. First Breath scaffolds one; an old "
-            "store converts with migrate-sanctum-to-v7.py.",
+            "store converts with `uv run {skill-root}/scripts/migrate-sanctum-to-v7.py`.",
             file=sys.stderr,
         )
         return 2
 
-    songs = load_all_songs(project_root)
+    songs, skipped = load_all_songs(project_root)
+
+    def report_skips() -> None:
+        if skipped and args.format == "text":
+            print(f"WARNING: {len(skipped)} songbook entr{'y' if len(skipped) == 1 else 'ies'} "
+                  "left out of the catalog:", file=sys.stderr)
+            for item in skipped:
+                print(f"  {item['path']}: {item['reason']}", file=sys.stderr)
+
     content = {
         "recently-published": generate_recently_published(songs, project_root),
         "catalog-status": generate_catalog_status(songs, project_root),
@@ -421,13 +446,15 @@ def main() -> int:
                 "status": "dry_run",
                 "recently_published": content["recently-published"],
                 "catalog_status": content["catalog-status"],
+                "skipped": skipped,
             })
         else:
             print("=== Recently Published ===\n")
             print(content["recently-published"])
             print("\n=== Catalog Status ===\n")
             print(content["catalog-status"])
-        return 0
+            report_skips()
+        return 1 if skipped else 0
 
     # Plan every file first; write nothing unless every file can be regenerated.
     planned: list[tuple[Path, str, str, str]] = []  # (path, old, new, action)
@@ -476,19 +503,23 @@ def main() -> int:
         files.append({"path": shown, "status": action})
 
     changed = [f["path"] for f in files if f["status"] != "unchanged"]
+    suffix = "_with_skips" if skipped else ""
     if not changed:
         emit({
-            "status": "unchanged",
+            "status": "unchanged" + suffix,
             "message": "No changes needed — the catalog files are already up to date.",
             "files": files,
+            "skipped": skipped,
         })
-        return 0
-    emit({
-        "status": "regenerated",
-        "message": f"Regenerated {', '.join(changed)}",
-        "files": files,
-    })
-    return 0
+    else:
+        emit({
+            "status": "regenerated" + suffix,
+            "message": f"Regenerated {', '.join(changed)}",
+            "files": files,
+            "skipped": skipped,
+        })
+    report_skips()
+    return 1 if skipped else 0
 
 
 if __name__ == "__main__":

@@ -11,8 +11,6 @@ menu-code: SM
 
 The tending pass. Mac captures as he goes (Persistent Memory), so this is where memory gets tended the way the sanctum's `HOW-I-REMEMBER.md` says, and the session gets its note. Run it when session notes or raw material have built up, when the session is winding down after real work, or when the owner asks — it is not a sign-off ritual.
 
-**Headless-eligible:** false — save-memory distills the live conversation and needs the owner's confirmation at the checkpoint. A headless invocation returns `{status: blocked, reason: "interactive-only"}`; headless capabilities run their own persistence (`references/headless.md`).
-
 Sanctum: `{project-root}/_bmad/memory/suno-agent-band-manager/`. Write rule: the Dominion section of the sanctum's `CREED.md`.
 
 ## Process
@@ -34,7 +32,7 @@ Sanctum: `{project-root}/_bmad/memory/suno-agent-band-manager/`. Write rule: the
    - `uv run {skill-root}/scripts/check-memory-health.py "{project-root}"` — oversized identity or companion files, and standing files that are being appended to.
 
 8. **Act on what's left** — these are independent; do the ones that apply:
-   - **Findings from step 7.** Fix sync drift in one batch (a playlist YAML missing a new song, a stale catalog count, a COMPLETED WIP still listed as parked, an untracked companion file). Present them together: *"Found three loose ends — want me to fix them all, go one by one, or skip?"* Each one is also a sign that sync-at-the-point-of-change slipped; tighten that next session. The per-band playlist YAML is the band's single source of truth for its sequence (the suno-band-profile-manager skill's `references/playlist-yaml.md`).
+   - **Findings from step 7.** Fix sync drift in one batch (a playlist YAML missing a new song, a stale catalog count, a COMPLETED WIP still listed as parked, an untracked companion file). Present them together: *"Found three loose ends — want me to fix them all, go one by one, or skip?"* Each one is also a sign that sync-at-the-point-of-change slipped; tighten that next session. The per-band playlist YAML is the band's single source of truth for its sequence.
    - **Oversized files.** A standing file longer than a screen → find the section being appended to and rewrite it as what is true now. A companion file over budget → offer the owner a compaction pass; don't do it unasked.
    - **WIP completion.** `uv run {skill-root}/scripts/scan-wip-status.py "{project-root}" --format json`. For an active WIP with a `correlation_warning` (its working title matches a published song), ask whether to mark it COMPLETED (`references/reconcile.md` → "The COMPLETED WIP convention" has the marker format).
    - **Behavioral corrections.** Any correction the owner gave this session that didn't reach `docs/mac-preferences.md` in the turn it landed — append it now.

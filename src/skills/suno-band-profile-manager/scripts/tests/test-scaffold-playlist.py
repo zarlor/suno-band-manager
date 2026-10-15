@@ -14,6 +14,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from importlib.util import spec_from_file_location, module_from_spec
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fake_resolver import install_resolver  # noqa: E402
 
 SCRIPT_PATH = Path(__file__).parent.parent / "scaffold-playlist.py"
 
@@ -192,6 +194,7 @@ def test_main_follows_module_config(tmp_path):
         "[modules.suno]\n"
         "band_profiles_folder = 'music/band-profiles'\n"
         "songbook_folder = '{project-root}/music/songbook'  # moved\n")
+    install_resolver(tmp_path)
     entry = tmp_path / "music" / "songbook" / "my-band" / "song.md"
     entry.parent.mkdir(parents=True)
     entry.write_text('---\ntitle: "Moved Song"\nstatus: published\n---\n')

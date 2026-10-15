@@ -1,6 +1,6 @@
 ---
 name: suno-style-prompt-builder
-description: Generates model-aware Suno style prompts. Use when user says 'build a style prompt', 'generate style prompt', or 'create a Suno prompt'.
+description: 'Generates model-aware Suno style prompts and settings. Use when the user says "build a style prompt", "create a Suno prompt", "migrate a prompt to v6" or "set Exclude Styles or sliders".'
 ---
 
 # Style Prompt Builder
@@ -21,34 +21,24 @@ This skill builds Suno-ready style prompts for the user's model and tier, blendi
 
 ## Conventions
 
-- Bare paths (`references/...`, `scripts/...`) resolve from the skill root (`{skill-root}`, where `customize.toml` lives); `{project-root}` paths from the project working directory. A sibling skill's file is named by skill and resolves from that skill's directory.
+- Bare paths (`references/...`, `scripts/...`) resolve from the skill root (`{skill-root}`, where `customize.toml` lives); `{project-root}` is the nearest folder holding `_bmad/`.
 - Run every script with `uv run`; `--help` documents its flags.
 
 ## On Activation
 
 These steps run in every mode, headless included.
 
-1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. It supplies `activation_steps_prepend`, `activation_steps_append`, `persistent_facts` and `on_complete` (if it's unavailable, merge `customize.toml` with the overrides in `{project-root}/_bmad/custom/` by hand). Run any `activation_steps_prepend` and load `persistent_facts`.
-2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `suno_tier` and `band_profiles_folder` (default `docs/band-profiles`, relative to `{project-root}`). Missing answers take the defaults; carry on.
+1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. It supplies `activation_steps_prepend`, `activation_steps_append`, `persistent_facts`, `on_complete` and `ledger_output_path`. If it can't run, use the defaults in `customize.toml` and tell the user once that setting up BMad (invoke the `bmad` skill) restores their overrides. Run any `activation_steps_prepend` and load `persistent_facts`. To change a value (say, where the version ledger goes), the user invokes the `bmad-customize` skill naming the key; if it isn't installed, offer `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`.
+2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `suno_tier` and `band_profiles_folder` (default `{project-root}/docs/band-profiles`). Missing answers take the defaults; carry on.
 3. **Headless** (`--headless` / `-H`, any `--headless:` variant, or clearly non-interactive intent): load `references/headless-contract.md`, run any `activation_steps_append`, and follow the steps below without greeting or asking.
 4. **Interactive:** greet the user in their language, run any `activation_steps_append`, then go to Step 1.
 
 ## References: Load What Each Step Needs
 
-- `references/safety-tables.md` (~3k tokens): the trigger tables, the exclude rule and the song-type slider table. **Reread it before every build and every refine generation:** a long session can compact it away, and a prompt built from memory can ship "metal" unpaired or an anchored slider.
+- `references/safety-tables.md` (~3.5k tokens): the one home for the gotchas — scream, keyboard-pull and crowd-noise triggers, inline negatives, one tempo per song, the global instrument palette — plus the exclude rule, the song-type slider table and the hand checks. **Reread it before every build and every refine generation:** a long session can compact it away, and a prompt built from memory can ship "metal" unpaired or an anchored slider.
 - `references/model-prompt-strategies.md` (~23k tokens): read only the sections each step names (its "How to Use This File" table maps them).
 - `references/retired-model-strategies.md`: only for `:migrate` involving a retired model, or a question about an older record.
 - `references/interactive-session.md`: interactive Step 5 (presentation, refine loop, version ledger).
-
-## Gotchas
-
-- **Scream triggers:** `metal`, `sludge`, `doom`, `death`, `thrash` and `black` (as genre modifiers) pull harsh vocals unless paired with a positive vocal instruction ("raw melodic singing", "gritty male vocals"). For heavy without the word, use "progressive heavy groove" or "heavy groove".
-- **Keyboard pulls:** `baroque`, `orchestral`, `cinematic` and `rock opera` pull theatrical, keyboard-heavy or cinematic-light arrangements when guitars should lead. Rewrites are in the safety tables.
-- **Crowd noise:** the "live" word family (`live recording`, `live-band drums`, `live energy`) and crowd/audience words (`crowd`, `audience`, `stadium`, `festival`, `anthemic`) pull audience texture. Say the quality instead: "unpolished room sound", "single-take band performance".
-- **No inline negatives** ("no X", "without X"): they read as inclusion. `!` pushes delivery toward shouting.
-- **One tempo per song.** Suno doesn't shift BPM within a song; "tempo change" prompts produce arrangement-density changes. Use rhythm nouns ("halftime", "double-time", "shuffle") over "slow"/"fast".
-- **The instrument palette is global.** Instruments named anywhere bleed into every section; section tags can only emphasize what the prompt already names.
-- **Excludes defend only against drift from the current prompt's own descriptors.** Suno is stateless: prior takes, other bands' versions and the catalog don't exist for it.
 
 ## Workflow Steps
 
@@ -56,9 +46,9 @@ These steps run in every mode, headless included.
 
 **Open the floor first.** Invite everything in one go: genre, mood, "sounds like X meets Y", a band profile, reference tracks, target model, exclusions. Then ask only for what's missing. With a profile in hand, ask what this song should do differently from the baseline. If the opening already gives model, direction and creativity intent, skip ahead to Step 2 and confirm only genuine ambiguities.
 
-**Build or refine?** If the user brings listening feedback on a song they already generated, route it to the Feedback Elicitor when it's installed; otherwise refine here (apply the deltas, re-front-load, re-validate). An existing prompt plus a target model is a migrate, which you also do here.
+**Build or refine?** If the user brings listening feedback on a song they already generated, invoke the `suno-feedback-elicitor` skill when it's installed; otherwise refine here (apply the deltas, re-front-load, re-validate). An existing prompt plus a target model is a migrate, which you also do here.
 
-**Required:** at least one source of musical direction. Without a profile, you need genre, mood and vocal direction (offer the Profile Manager).
+**Required:** at least one source of musical direction. Without a profile, you need genre, mood and vocal direction (offer to invoke the `suno-band-profile-manager` skill).
 
 **Optional:**
 - **Band profile:** `{band_profiles_folder}/{profile-name}.yaml`, including its `reference_tracks`. If not found, list the folder's profiles; fill missing fields from conversation.
@@ -99,7 +89,7 @@ Generate one experimental variant (skip only when the user asked for conservativ
 
 ### Step 5: Validate and Present
 
-**Validate (fail-fast).** Pipe the package as JSON (`style_prompt`, `exclusion_prompt`, `model`, `instrumental`, `wild_card.style_prompt`, `vocal_gender`, `sliders`) to `uv run {skill-root}/scripts/validate-prompt.py --stdin`. It checks limits, structure and the gotcha words in both prompts, plus the excludes and the Audio Influence range; a scream trigger with a positive pairing is still reported, at low severity, for you to judge. Fix what it flags and re-run. If it can't run, check by hand: the model's character limit, essentials in the first 200 characters, no section tags or asterisks, and the gotcha words above.
+**Validate (fail-fast).** Pipe the package as JSON (`style_prompt`, `exclusion_prompt`, `model`, `tier`, `instrumental`, `wild_card.style_prompt`, `wild_card.model`, `vocal_gender`, `sliders`) to `uv run {skill-root}/scripts/validate-prompt.py --stdin`. It checks limits, structure and the gotcha words in both prompts, the model, the Free-tier rules, the wild card's model, the excludes and the Audio Influence range; a scream trigger with a positive pairing is still reported, at low severity, for you to judge. Fix what it flags and re-run until the status is `pass`, or `review` with each remaining medium finding judged and its reason logged. Every character count and limit you show comes from the final run's `metrics`, never your own count. Exit 2 means the package itself is malformed: fix the field its message names. If it can't run, do the hand checks in `references/safety-tables.md`.
 
 **Then judge what the script can't:** the right substitution for a flagged term, word meaning in context, decomposition fidelity, and fit with the user's intent.
 

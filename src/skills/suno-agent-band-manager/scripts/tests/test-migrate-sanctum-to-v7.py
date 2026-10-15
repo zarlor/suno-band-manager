@@ -165,8 +165,9 @@ def project(tmp_path):
     return tmp_path
 
 
-def run(project, *extra):
-    proc = subprocess.run([sys.executable, str(SCRIPT), str(project), *extra], capture_output=True, text=True)
+def run(project, *extra, backup=False):
+    flags = [] if backup else ["--no-backup"]
+    proc = subprocess.run([sys.executable, str(SCRIPT), str(project), *flags, *extra], capture_output=True, text=True)
     return proc.returncode, (json.loads(proc.stdout) if proc.stdout.strip() else None)
 
 
@@ -284,3 +285,97 @@ def test_refuses_an_existing_target_without_force(project):
 def test_refuses_without_a_source(tmp_path):
     code, out = run(tmp_path)
     assert code == 1 and "no v2 sanctum" in out["reason"]
+
+
+def test_conversion_writes_born_from_the_old_creed(project):
+    run(project, "--today", "2026-10-15")
+    assert (target_of(project) / "memory/.born").read_text().strip() == "2026-06-18"
+
+
+def test_born_falls_back_to_persona_then_today(project):
+    legacy = project / "_bmad" / "_memory" / "band-manager-sidecar"
+    (legacy / "CREED.md").write_text(CREED.replace("> **Born:** 2026-06-18\n", ""), encoding="utf-8")
+    (legacy / "PERSONA.md").write_text("# Persona\n\n**Born:** 2026-05-01\n", encoding="utf-8")
+    run(project, "--today", "2026-10-15")
+    assert (target_of(project) / "memory/.born").read_text().strip() == "2026-05-01"
+    (legacy / "PERSONA.md").write_text("# Persona\n", encoding="utf-8")
+    run(project, "--today", "2026-10-15", "--force")
+    assert (target_of(project) / "memory/.born").read_text().strip() == "2026-10-15"
+
+
+def test_backup_is_written_by_default_and_lists_the_source(project):
+    import tarfile
+    code, out = run(project, "--today", "2026-10-15", backup=True)
+    assert code == 0 and out["status"] == "written"
+    archive = Path(out["backup_path"])
+    assert archive.parent == project / "_bmad" / "backups" and archive.name.startswith("mac-sanctum-v2-")
+    legacy = project / "_bmad" / "_memory" / "band-manager-sidecar"
+    expected = {"band-manager-sidecar/" + p.relative_to(legacy).as_posix() for p in legacy.rglob("*") if p.is_file()}
+    with tarfile.open(archive) as tar:
+        assert expected <= {m.name for m in tar.getmembers() if m.isfile()}
+
+
+def test_backup_includes_an_existing_target_on_force(project):
+    import tarfile
+    target_of(project).mkdir(parents=True)
+    (target_of(project) / "PERSONA.md").write_text("already here")
+    code, out = run(project, "--force", backup=True)
+    assert code == 0
+    with tarfile.open(out["backup_path"]) as tar:
+        assert "suno-agent-band-manager/PERSONA.md" in tar.getnames()
+
+
+def test_no_backup_and_dry_run_report_null_backup_path(project):
+    assert run(project, "--dry-run", backup=True)[1]["backup_path"] is None
+    assert not (project / "_bmad" / "backups").exists()
+    assert run(project)[1]["backup_path"] is None
+    assert not (project / "_bmad" / "backups").exists()
+
+
+def test_failed_backup_refuses_and_writes_nothing(project):
+    blocker = project / "not-a-dir"
+    blocker.write_text("a file where the backup folder should be")
+    code, out = run(project, "--backup-dir", str(blocker / "sub"), backup=True)
+    assert code == 1 and out["status"] == "refused" and "backup failed" in out["reason"]
+    assert not target_of(project).exists()
+
+
+def test_backup_listing_mismatch_refuses(project, tmp_path, monkeypatch):
+    import tarfile as tf
+    real_open = tf.open
+
+    class Lister:
+        def __init__(self, archive):
+            self.archive = archive
+        def __enter__(self):
+            return self
+        def __exit__(self, *exc):
+            return False
+        def getmembers(self):
+            return []
+
+    def fake_open(path, mode="r", *a, **k):
+        return Lister(path) if mode.startswith("r") else real_open(path, mode, *a, **k)
+
+    monkeypatch.setattr(mod.tarfile, "open", fake_open)
+    legacy = project / "_bmad" / "_memory" / "band-manager-sidecar"
+    archive, reason = mod.backup(legacy, target_of(project), tmp_path / "bk", "stamp")
+    assert archive is None and "does not list the source" in reason
+    assert not (tmp_path / "bk" / "mac-sanctum-v2-stamp.tar.gz").exists()
+
+
+def test_verify_flags_missing_and_changed_files(project, tmp_path):
+    legacy = project / "_bmad" / "_memory" / "band-manager-sidecar"
+    plan = mod.build_plan(legacy, SKILL_DIR, "2026-10-15", project)
+    target = tmp_path / "out"
+    mod.write(plan, target)
+    assert mod.verify(plan, target) == []
+    (target / "PERSONA.md").unlink()
+    (target / "memory/.tended").write_text("")
+    (target / "capabilities/liner-notes.md").write_text("changed size\n")
+    assert mod.verify(plan, target) == ["PERSONA.md", "capabilities/liner-notes.md", "memory/.tended"]
+
+
+def test_bad_today_is_exit_2(project):
+    code, out = run(project, "--today", "15-10-2026")
+    assert code == 2 and out["status"] == "error"

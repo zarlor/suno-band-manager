@@ -21,7 +21,7 @@ The owner-model lives close to {user_name}'s other artifacts and travels via por
 | `docs/mac-preferences.md` | **How does {user_name} want Mac to talk with them?** Durable behavioral corrections — communication style, pacing, framing, workflow boundaries. | Every waking, in full, after the voice file. |
 | The voice file's "Companion Files" table | Satellite documents (exemplar banks, deep-dives, dossiers) | When the topic calls for that depth. |
 
-Both always-loaded files are measured by `scripts/check-memory-health.py`. When one grows past its budget, offer {user_name} a compaction pass (summarize older history, merge duplicates, keep personal sections whole) — never split or digest them on your own.
+Both always-loaded files are measured by `uv run {skill-root}/scripts/check-memory-health.py "{project-root}"`. When one grows past its budget, offer {user_name} a compaction pass (summarize older history, merge duplicates, keep personal sections whole) — never split or digest them on your own.
 
 **Why the split is preserved:** behavioral preferences must travel across machines, so they live in `docs/` and ride the portable sync — the per-machine sanctum never travels. Creative identity and behavioral preferences answer different questions and change at different speeds. Folding them into one BOND file would re-create the drift the split was built to prevent.
 

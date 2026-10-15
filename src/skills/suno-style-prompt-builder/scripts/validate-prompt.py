@@ -1,36 +1,41 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
-# dependencies = []
+# requires-python = ">=3.11"
+# dependencies = ["pyyaml>=6"]
 # ///
 """
 Validate a Suno style prompt package: limits, structure and enumerable safety triggers.
 
 Checks the primary style prompt and, when given, the wild-card style prompt:
 - Character count against the model's limit (1,000 for the v6 family; 200 for the retired v4 Pro)
+- The model itself: unknown or retired model names are flagged
 - Critical zone (essentials belong in the first 200 chars) and genre front-loading
 - Section tags and asterisks that don't belong in a style prompt
 - Enumerable safety triggers: unpaired scream-trigger genres, keyboard-pull words,
   the "live" word family and crowd/audience words, inline negatives ("no X",
   "without X"), and '!'
-Also checks the Exclude Styles text (length, item count, vagueness) and, when given,
-Audio Influence against its slot's range (Persona 15-25%, Voice 35-95%) and a
-Vocal Gender set alongside a Voice.
+Also checks the Exclude Styles text (length, item count, vagueness), the tier rules
+(Free: v6-mini, no Exclude Styles, no sliders), the wild card's model against the
+primary's, and, when given, Audio Influence against its slot's range (Persona 15-25%,
+Voice 35-95%) and a Vocal Gender set alongside a Voice.
 
-The script DETECTS; the calling LLM decides each rewrite or substitution.
+The script DETECTS; the calling LLM decides each rewrite or substitution. Copy the
+character counts and limits you display from the report's "metrics".
 
 Usage:
     # Whole package as JSON on stdin (preferred: no shell quoting of long prompts)
-    echo '{"style_prompt": "...", "exclusion_prompt": "...", "model": "v6",
+    echo '{"style_prompt": "...", "exclusion_prompt": "...", "model": "v6", "tier": "pro",
            "wild_card": {"style_prompt": "..."}}' | uv run validate-prompt.py --stdin
 
-    # Package from a file (.json; .yaml/.yml when pyyaml is available)
+    # Package from a file (.json, .yaml or .yml)
     uv run validate-prompt.py --input-file package.json
 
     # Flags (short prompts)
     uv run validate-prompt.py --style "indie folk-rock, warm..." --exclude "autotune" --model v6
 
-Exit codes: 0 = pass, 1 = warning or fail (see "status"), 2 = bad input.
+Status: "pass" (nothing above low), "review" (medium findings to fix or judge),
+"warning" (high findings), "fail" (critical findings).
+Exit codes: 0 = pass, 1 = review, warning or fail (see "status"), 2 = bad input (reason on stderr).
 """
 
 import argparse
@@ -47,10 +52,19 @@ from suno_constants import (  # noqa: E402
     EXCLUSION_RECOMMENDED_MAX, EXCLUSION_HARD_MAX,
     GENRE_SIGNALS, HEAVY_VOCAL_TRIGGERS, VOCAL_SAFE_PAIRINGS,
     KEYBOARD_PULL_WORDS, SHOUT_TRIGGER_CHAR,
+    CURRENT_MODELS, RETIRED_MODELS, VALID_MODELS, DEFAULT_MODEL,
+    VALID_TIERS, FREE_TIER_MODEL,
 )
 
 SCRIPT_NAME = "validate-prompt"
-VERSION = "1.3.0"
+VERSION = "1.4.0"
+
+# Exclude Styles works best at 2-3 items; above this the notice fires.
+EXCLUSION_ITEM_NOTICE = 3
+
+
+class PackageError(ValueError):
+    """Malformed package input: the CLI exits 2 with this message."""
 
 # Constants not (yet) in the shared module. getattr lets a later shared-module
 # version take over without a code change here.
@@ -281,7 +295,7 @@ def validate_style_prompt(text: str, model: str = "", instrumental: bool = False
 
     if '*' in text:
         findings.append({
-            "severity": "medium",
+            "severity": "high",
             "category": "structure",
             "issue": "Asterisks found in style prompt. Suno does not use markdown formatting in style prompts.",
             "fix": "Remove all asterisks from the style prompt.",
@@ -289,6 +303,77 @@ def validate_style_prompt(text: str, model: str = "", instrumental: bool = False
 
     findings.extend(detect_triggers(text, instrumental=instrumental))
     return findings
+
+
+def exclusion_items(text: str) -> list[str]:
+    return [i.strip() for i in re.split(r'[,;]', text or "") if i.strip()]
+
+
+def validate_model(model: str, *, label: str = "Model") -> list[dict]:
+    """Flag a model Suno can't generate with: retired, or not a known model name."""
+    if not model:
+        return []
+    if model in RETIRED_MODELS:
+        return [{
+            "severity": "high",
+            "category": "model",
+            "issue": f"{label} '{model}' was retired and can no longer generate.",
+            "fix": f"Build for {DEFAULT_MODEL} ({FREE_TIER_MODEL} on Free); a migrate targets {DEFAULT_MODEL} and logs why.",
+            "data": {"model": model, "current_models": sorted(CURRENT_MODELS)},
+        }]
+    if model not in VALID_MODELS:
+        close = [m for m in sorted(CURRENT_MODELS) if m.lower() == model.strip().lower()]
+        hint = f" Did you mean '{close[0]}'?" if close else ""
+        return [{
+            "severity": "high",
+            "category": "model",
+            "issue": f"{label} '{model}' is not a known Suno model, so its character limit is a guess.{hint}",
+            "fix": f"Use one of {sorted(CURRENT_MODELS)}, spelled exactly.",
+            "data": {"model": model, "current_models": sorted(CURRENT_MODELS)},
+        }]
+    return []
+
+
+def validate_tier(tier: str, model: str, exclusion_text: str, sliders: dict) -> list[dict]:
+    """Free tier: v6-mini only, no Exclude Styles field, no Weirdness/Style Influence sliders."""
+    if tier != "free":
+        return []
+    findings = []
+    if model and model != FREE_TIER_MODEL:
+        findings.append({
+            "severity": "high",
+            "category": "tier",
+            "issue": f"Model '{model}' on the Free tier; Free runs {FREE_TIER_MODEL} only.",
+            "fix": f"Set the model to {FREE_TIER_MODEL}.",
+        })
+    if exclusion_items(exclusion_text):
+        findings.append({
+            "severity": "high",
+            "category": "tier",
+            "issue": "Exclude Styles given on the Free tier, which has no Exclude Styles field.",
+            "fix": "Drop the field and carry each exclusion as positive phrasing in the style prompt.",
+        })
+    set_sliders = sorted(k for k in ("weirdness", "style_influence")
+                         if sliders.get(k) not in (None, ""))
+    if set_sliders:
+        findings.append({
+            "severity": "high",
+            "category": "tier",
+            "issue": f"Slider value(s) {set_sliders} given on the Free tier, which has no sliders.",
+            "fix": "Set sliders to null on Free.",
+        })
+    return findings
+
+
+def validate_wild_card_model(model: str, wild_model: str) -> list[dict]:
+    if wild_model and model and wild_model != model:
+        return [{
+            "severity": "medium",
+            "category": "consistency",
+            "issue": f"Wild card runs on '{wild_model}' but the primary on '{model}'. The wild card keeps the primary's model.",
+            "fix": "Put the wild card on the primary's model; offer the unchanged primary on v6-wild as the alternative route.",
+        }]
+    return []
 
 
 def validate_exclusion_prompt(text: str) -> list[dict]:
@@ -323,13 +408,16 @@ def validate_exclusion_prompt(text: str) -> list[dict]:
             "data": {"char_count": char_count, "recommended_max": EXCLUSION_RECOMMENDED_MAX},
         })
 
-    items = [i.strip() for i in re.split(r'[,;]', text) if i.strip()]
-    if len(items) > 5:
+    items = exclusion_items(text)
+    if len(items) > EXCLUSION_ITEM_NOTICE:
         findings.append({
             "severity": "medium",
             "category": "consistency",
-            "issue": f"Too many exclusion items ({len(items)}). More than 3-5 exclusions can confuse the model.",
-            "fix": "Reduce to 2-3 most critical exclusions.",
+            "issue": f"Too many exclusion items ({len(items)}). Past 2-3, excludes start to destabilize the arrangement.",
+            "fix": ("Keep only the items something in this prompt pulls toward. A whole family "
+                    "(e.g. choir, backing vocals, gang vocals for a one-singer song) can justify more; "
+                    "log why if they stay."),
+            "data": {"item_count": len(items), "notice_above": EXCLUSION_ITEM_NOTICE},
         })
 
     vague_terms = ["no music", "no sound", "no instruments", "no singing", "nothing bad"]
@@ -389,10 +477,12 @@ def _tag(findings: list, field: str) -> list:
 
 def build_report(style_findings: list, exclusion_findings: list, style_text: str, exclusion_text: str,
                  skill_path: str = "", *, model: str = "", wild_card_findings: list | None = None,
-                 wild_card_text: str = "", control_findings: list | None = None) -> dict:
+                 wild_card_text: str = "", control_findings: list | None = None,
+                 package_findings: list | None = None, wild_card_model: str = "") -> dict:
     """Build the standard output report."""
     all_findings = (
-        _tag(style_findings, "style_prompt")
+        _tag(package_findings or [], "package")
+        + _tag(style_findings, "style_prompt")
         + _tag(exclusion_findings, "exclusion_prompt")
         + _tag(wild_card_findings or [], "wild_card_prompt")
         + _tag(control_findings or [], "controls")
@@ -407,6 +497,8 @@ def build_report(style_findings: list, exclusion_findings: list, style_text: str
         status = "fail"
     elif severity_counts["high"] > 0:
         status = "warning"
+    elif severity_counts["medium"] > 0:
+        status = "review"
 
     metrics = {
         "model": model,
@@ -415,9 +507,12 @@ def build_report(style_findings: list, exclusion_findings: list, style_text: str
         "critical_zone": CRITICAL_ZONE,
         "exclusion_prompt_chars": len(exclusion_text) if exclusion_text else 0,
         "exclusion_recommended_max": EXCLUSION_RECOMMENDED_MAX,
+        "exclusion_item_count": len(exclusion_items(exclusion_text)),
     }
     if wild_card_text:
+        wild = wild_card_model or model
         metrics["wild_card_prompt_chars"] = len(wild_card_text)
+        metrics["wild_card_prompt_limit"] = get_limit_for_model(wild) if wild else STYLE_PROMPT_DEFAULT_MAX
 
     return {
         "script": SCRIPT_NAME,
@@ -438,46 +533,85 @@ def _load_package_file(path: Path) -> dict:
     try:
         import yaml
     except ImportError:
-        # Minimal fallback for flat one-line YAML fields.
-        data = {}
-        for line in text.splitlines():
-            key, sep, value = line.partition(":")
-            if sep and key.strip() in ("style_prompt", "exclusion_prompt", "model", "wild_card_prompt"):
-                data[key.strip()] = value.strip().strip('"').strip("'")
-        return data
-    return yaml.safe_load(text) or {}
+        # A hand-rolled YAML reader would drop nested fields (instrumental, wild_card,
+        # sliders) without a word, so refuse instead.
+        raise PackageError("reading YAML needs pyyaml (run with `uv run`, which installs it), "
+                           "or pipe the package as JSON with --stdin")
+    try:
+        return yaml.safe_load(text) or {}
+    except yaml.YAMLError as exc:
+        raise PackageError(f"invalid YAML: {exc}") from exc
 
 
-def _wild_card_text(package: dict) -> str:
+def _text_field(package: dict, key: str, where: str = "") -> str:
+    value = package.get(key)
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise PackageError(f"'{where}{key}' must be a string, got {type(value).__name__}: {value!r}")
+    return value
+
+
+def _wild_card(package: dict) -> tuple[str, str | None]:
+    """Return (wild-card prompt text, wild-card model or None)."""
     wc = package.get("wild_card")
     if isinstance(wc, dict):
-        return wc.get("style_prompt", "") or ""
+        return _text_field(wc, "style_prompt", "wild_card."), (_text_field(wc, "model", "wild_card.") or None)
     if isinstance(wc, str):
-        return wc
-    return package.get("wild_card_prompt", "") or ""
+        return wc, None
+    if wc is not None:
+        raise PackageError(f"'wild_card' must be an object, a string or null, got {type(wc).__name__}")
+    return _text_field(package, "wild_card_prompt"), None
 
 
 def validate_package(package: dict, skill_path: str = "") -> dict:
-    """Validate a whole package dict (the headless shape) and return the report."""
-    model = package.get("model", "") or ""
-    instrumental = bool(package.get("instrumental", False))
-    style_text = package.get("style_prompt", "") or ""
-    exclusion_text = package.get("exclusion_prompt", package.get("exclude_styles", "")) or ""
-    wild_text = _wild_card_text(package)
-    wild_model = package.get("wild_card", {}).get("model", model) if isinstance(package.get("wild_card"), dict) else model
-    sliders = package.get("sliders") or {}
+    """Validate a whole package dict (the headless shape) and return the report.
+
+    Raises PackageError when a field has the wrong type.
+    """
+    model = _text_field(package, "model")
+    instrumental = package.get("instrumental", False)
+    if instrumental is None:
+        instrumental = False
+    if not isinstance(instrumental, bool):
+        raise PackageError(f"'instrumental' must be true or false, got {instrumental!r}")
+    style_text = _text_field(package, "style_prompt")
+    exclusion_key = "exclusion_prompt" if package.get("exclusion_prompt") is not None else "exclude_styles"
+    exclusion_text = _text_field(package, exclusion_key)
+    wild_text, wild_model = _wild_card(package)
+    sliders = package.get("sliders")
+    if sliders is None:
+        sliders = {}
+    if not isinstance(sliders, dict):
+        raise PackageError(f"'sliders' must be an object or null, got {type(sliders).__name__}: {sliders!r}")
+    tier = _text_field(package, "tier").strip().lower()
+    if tier and tier not in VALID_TIERS:
+        raise PackageError(f"'tier' must be one of {sorted(VALID_TIERS)}, got {tier!r}")
+    audio_source = sliders.get("audio_source")
+    if audio_source is not None and not isinstance(audio_source, str):
+        raise PackageError(f"'sliders.audio_source' must be a string, got {audio_source!r}")
+
+    package_findings = (
+        validate_model(model)
+        + (validate_model(wild_model, label="Wild-card model") if wild_model and wild_model != model else [])
+        + validate_wild_card_model(model, wild_model or "")
+        + validate_tier(tier, model, exclusion_text, sliders)
+    )
+    effective_wild_model = wild_model or model
 
     return build_report(
         validate_style_prompt(style_text, model=model, instrumental=instrumental),
         validate_exclusion_prompt(exclusion_text),
         style_text, exclusion_text, skill_path,
         model=model,
-        wild_card_findings=validate_style_prompt(wild_text, model=wild_model, instrumental=instrumental) if wild_text else [],
+        wild_card_findings=validate_style_prompt(wild_text, model=effective_wild_model, instrumental=instrumental) if wild_text else [],
         wild_card_text=wild_text,
+        wild_card_model=effective_wild_model,
         control_findings=validate_controls(
-            sliders.get("audio_influence"), sliders.get("audio_source", "") or "",
-            package.get("vocal_gender", "") or "",
+            sliders.get("audio_influence"), audio_source or "",
+            _text_field(package, "vocal_gender"),
         ),
+        package_findings=package_findings,
     )
 
 
@@ -487,7 +621,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Package fields (JSON via --stdin / --input-file): style_prompt, exclusion_prompt, model,
-instrumental, wild_card.style_prompt (or wild_card_prompt), vocal_gender,
+tier (free|pro|premier), instrumental, wild_card.style_prompt + wild_card.model (or
+wild_card_prompt), vocal_gender, sliders.weirdness, sliders.style_influence,
 sliders.audio_influence + sliders.audio_source (voice|persona).
 
 Examples:
@@ -496,13 +631,14 @@ Examples:
   %(prog)s --style "indie folk-rock, warm analog..." --exclude "autotune" --model v6
         """,
     )
-    parser.add_argument("file", nargs="?", help="Package file (.json, or .yaml/.yml) — same as --input-file")
-    parser.add_argument("--input-file", help="Package file (.json, or .yaml/.yml when pyyaml is available)")
+    parser.add_argument("file", nargs="?", help="Package file (.json, .yaml or .yml) — same as --input-file")
+    parser.add_argument("--input-file", help="Package file (.json, .yaml or .yml)")
     parser.add_argument("--stdin", action="store_true", help="Read the package as JSON from stdin")
     parser.add_argument("--style", help="Style prompt text to validate")
     parser.add_argument("--exclude", default="", help="Exclusion prompt text to validate")
     parser.add_argument("--wild-card", default="", help="Wild-card style prompt text to validate")
     parser.add_argument("--model", default="", help="Suno model name for model-specific limits (e.g., 'v6', 'v6-wild')")
+    parser.add_argument("--tier", default="", choices=["", *sorted(VALID_TIERS)], help="Suno plan; 'free' checks the Free-tier rules")
     parser.add_argument("--instrumental", action="store_true", help="Instrumental track: scream triggers become informational")
     parser.add_argument("--audio-influence", type=float, default=None, help="Audio Influence percentage to range-check")
     parser.add_argument("--audio-source", default="", choices=["", "voice", "persona"], help="What the Audio Influence slot holds")
@@ -519,44 +655,48 @@ Examples:
             package = json.loads(sys.stdin.read() or "{}")
         elif package_path:
             path = Path(package_path)
-            if not path.exists():
-                print(f"Error: File not found: {package_path}", file=sys.stderr)
-                sys.exit(2)
+            if not path.is_file():
+                raise PackageError(f"file not found: {package_path}")
             package = _load_package_file(path)
         elif args.style is not None:
             package = {"style_prompt": args.style, "exclusion_prompt": args.exclude}
         else:
             parser.print_help()
             sys.exit(2)
-    except (json.JSONDecodeError, ValueError) as exc:
-        print(f"Error: could not parse package: {exc}", file=sys.stderr)
+        if not isinstance(package, dict):
+            raise PackageError("package must be a JSON/YAML object")
+
+        # Flags fill in (or override) package fields.
+        if args.model:
+            package["model"] = args.model
+        if args.tier:
+            package["tier"] = args.tier
+        if args.instrumental:
+            package["instrumental"] = True
+        if args.wild_card:
+            package["wild_card_prompt"] = args.wild_card
+            package.pop("wild_card", None)
+        if args.audio_influence is not None or args.audio_source:
+            sliders = package.get("sliders") or {}
+            if not isinstance(sliders, dict):
+                raise PackageError(f"'sliders' must be an object or null, got {sliders!r}")
+            sliders = dict(sliders)
+            if args.audio_influence is not None:
+                sliders["audio_influence"] = args.audio_influence
+            if args.audio_source:
+                sliders["audio_source"] = args.audio_source
+            package["sliders"] = sliders
+        if args.vocal_gender:
+            package["vocal_gender"] = args.vocal_gender
+
+        if args.verbose:
+            print(f"Validating style prompt ({len(str(package.get('style_prompt') or ''))} chars)...", file=sys.stderr)
+
+        report = validate_package(package, args.skill_path)
+    except (json.JSONDecodeError, PackageError, OSError, UnicodeDecodeError) as exc:
+        print(f"Error: could not validate package: {exc}", file=sys.stderr)
         sys.exit(2)
-    if not isinstance(package, dict):
-        print("Error: package must be a JSON/YAML object", file=sys.stderr)
-        sys.exit(2)
 
-    # Flags fill in (or override) package fields.
-    if args.model:
-        package["model"] = args.model
-    if args.instrumental:
-        package["instrumental"] = True
-    if args.wild_card:
-        package["wild_card_prompt"] = args.wild_card
-        package.pop("wild_card", None)
-    if args.audio_influence is not None or args.audio_source:
-        sliders = dict(package.get("sliders") or {})
-        if args.audio_influence is not None:
-            sliders["audio_influence"] = args.audio_influence
-        if args.audio_source:
-            sliders["audio_source"] = args.audio_source
-        package["sliders"] = sliders
-    if args.vocal_gender:
-        package["vocal_gender"] = args.vocal_gender
-
-    if args.verbose:
-        print(f"Validating style prompt ({len(package.get('style_prompt', '') or '')} chars)...", file=sys.stderr)
-
-    report = validate_package(package, args.skill_path)
     output_json = json.dumps(report, indent=2)
 
     if args.output:

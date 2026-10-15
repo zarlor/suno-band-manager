@@ -1,0 +1,21 @@
+[
+  {"query": "build a style prompt for my midnight-echoes band profile", "should_trigger": true},
+  {"query": "I need a Suno style prompt for a slow southern sludge song with clean melodic vocals", "should_trigger": true},
+  {"query": "create a Suno prompt for a dreamy indie folk track on v6", "should_trigger": true},
+  {"query": "migrate this v5.5 Pro prompt to v6: 'warm indie rock, jangly guitars, breathy female vocal'", "should_trigger": true},
+  {"query": "what should go in Exclude Styles and where should Weirdness and Style Influence sit for this prompt?", "should_trigger": true},
+  {"query": "turn 'sounds like Tom Petty meets Black Sabbath' into a Suno Styles field", "should_trigger": true},
+  {"query": "rewrite this style prompt so it fits under 1000 characters and front-loads the genre", "should_trigger": true},
+  {"query": "give me a style prompt plus a wild card variant for an instrumental post-metal piece", "should_trigger": true},
+  {"query": "set the Controls for this song with my Voice attached: Audio Influence, Max Mode, Variety, sliders", "should_trigger": true},
+  {"query": "write the Styles text for a heartland rock ballad, I'm on the Free tier", "should_trigger": true},
+  {"query": "create a song for Suno about my grandfather's fishing boat", "should_trigger": false},
+  {"query": "talk to Mac, I want to start a new song for the swamp band", "should_trigger": false},
+  {"query": "turn this poem into Suno lyrics with section tags", "should_trigger": false},
+  {"query": "prepare these lyrics for Suno, the bridge feels too long", "should_trigger": false},
+  {"query": "refine a song: the Suno take I generated buries the vocals under the guitars", "should_trigger": false},
+  {"query": "give feedback on my Suno output, the chorus dragged and went ballad on me", "should_trigger": false},
+  {"query": "create a band profile for my new sludge-metal project", "should_trigger": false},
+  {"query": "edit my band profile's default exclusions and model preference", "should_trigger": false},
+  {"query": "sequence my playlist of twelve Suno tracks into an album order", "should_trigger": false}
+]

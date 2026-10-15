@@ -10,8 +10,6 @@ description: Reconcile stale references across docs and sanctum memory files aft
 
 When authoritative data changes in one file, stale references may persist in other files. This reference defines how to detect and fix them.
 
-**Headless-eligible:** false — reconciliation hinges on judgment a script can't make (which hits are intentional historical references like "formerly known as" vs. genuine drift, and the in-context replacement) and on the owner's Handoff Checkpoint approval before any write. A headless invocation returns `{status: blocked, reason: "interactive-only"}`. The deterministic parts are scripts a headless caller can run directly for a punch list: `scripts/find-stale-refs.py` (the old-value search), `scripts/validate-sidecar.py` (catalog parity) and `scripts/scan-wip-status.py` (WIP markers).
-
 ## When to Run
 
 Reconciliation is triggered after these events:
@@ -30,7 +28,7 @@ Reconciliation is triggered after these events:
 | Song title | Songbook entry (`docs/songbook/{band}/{song}.md`) | Per-band playlist YAML, playlist ordering doc, voice context, sanctum `memory/work/` and `memory/chronology/`, WIP files, companion files |
 | Song status (WIP/published) | Songbook entry | Voice context (WIP sections, catalog), sanctum `memory/work/current.md` and `parked.md`, per-band playlist YAML, WIP files (marked COMPLETED, never deleted) |
 | Playlist order & track numbers | **Per-band playlist YAML** (`docs/{band-slug}-playlist.yaml`) | Playlist ordering doc (derived narrative companion), voice context (catalog section), songbook placement notes, position references in the sanctum's `memory/` files, script-generated companion at `docs/{band-slug}-playlist-sequencing.md` |
-| Band profile (genre, vocal, name) | Band profile YAML (`docs/band-profiles/*.yaml`) | Voice context, songbook entries referencing profile values, sanctum `memory/bands/active.md`. The band profile YAML carries no `playlist:` block — playlist data lives in the per-band playlist YAML (the suno-band-profile-manager skill's `references/playlist-yaml.md`). |
+| Band profile (genre, vocal, name) | Band profile YAML (`docs/band-profiles/*.yaml`) | Voice context, songbook entries referencing profile values, sanctum `memory/bands/active.md`. The band profile YAML carries no `playlist:` block — playlist data lives in the per-band playlist YAML, whose format the suno-band-profile-manager skill owns. |
 | Tier/preferences | Sanctum `memory/owner/preferences.md` / config (`modules.suno` in `{project-root}/_bmad/config.toml` and its `custom/` overrides) | Voice context (Suno Setup section), band profile tier field |
 | Voice file location | The file itself (`docs/voice-context-*.md`) | Pre-activate expectations, the sanctum's `memory/` files that name it |
 

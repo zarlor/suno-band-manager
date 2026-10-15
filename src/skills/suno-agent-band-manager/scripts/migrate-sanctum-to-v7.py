@@ -27,12 +27,26 @@ waking map now does.
              exports, marked distilled (their content was curated up already)
 
 Usage:
-    migrate-sanctum-to-v7.py <project-root> [--from DIR] [--to DIR] [--skill-path DIR]
-                             [--dry-run] [--force] [--today YYYY-MM-DD]
+    uv run {skill-root}/scripts/migrate-sanctum-to-v7.py <project-root>
+        [--from DIR] [--to DIR] [--skill-path DIR] [--dry-run] [--force]
+        [--today YYYY-MM-DD] [--backup-dir DIR | --no-backup]
 
 Default output is the plan as JSON. `--dry-run` writes nothing; without it the
 new sanctum is written (refused when the target exists, unless --force).
-Exit codes: 0 ok, 1 refused (target exists / source missing), 2 bad input.
+
+Before writing, the script tars the source store (and an existing target, when
+--force overwrites one) into `{project-root}/_bmad/backups/` (or --backup-dir)
+and checks the archive lists every file; no verified backup, no conversion.
+`--no-backup` skips it (tests). After writing, every planned file is checked to
+exist with the planned content (copies: the source's size). The JSON carries
+`backup_path`; any failure is `status: "refused"` with a `reason`.
+
+The converted sanctum gets `memory/.tended` (the conversion is a tending) and
+`memory/.born` (the birth date from the old CREED.md or PERSONA.md
+`**Born:**` line, else --today), so the wake reads it as a finished birth.
+
+Exit codes: 0 ok, 1 refused (target exists / source missing / backup failed /
+post-write check failed), 2 bad input.
 """
 
 from __future__ import annotations
@@ -42,6 +56,7 @@ import json
 import re
 import shutil
 import sys
+import tarfile
 from datetime import date, datetime
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -149,8 +164,9 @@ class Plan:
                              "bytes": src.stat().st_size})
 
 
-def build_plan(source: Path, skill_path: Path, today: str) -> Plan:
+def build_plan(source: Path, skill_path: Path, today: str, project_root: Path | None = None) -> Plan:
     plan = Plan(source)
+    project_root = project_root or source.parent.parent.parent
 
     def read(name: str) -> str | None:
         path = source / name
@@ -194,7 +210,7 @@ def build_plan(source: Path, skill_path: Path, today: str) -> Plan:
     pulse_template = skill_path / "assets" / "PULSE-template.md"
     old_pulse = read("PULSE.md")
     if pulse_template.is_file():
-        variables = _seed.template_variables(source.parent.parent.parent, _seed.resolve_config(source.parent.parent.parent, source))
+        variables = _seed.template_variables(project_root, _seed.resolve_config(project_root, source))
         variables["birth_date"] = _born(read("CREED.md") or "") or variables["birth_date"]
         pulse = _seed.substitute_vars(pulse_template.read_text(encoding="utf-8"), variables)
         if old_pulse is not None:
@@ -272,8 +288,10 @@ def build_plan(source: Path, skill_path: Path, today: str) -> Plan:
         for path in sorted(p for p in capabilities.rglob("*") if p.is_file()):
             plan.copy(path, "capabilities/" + path.relative_to(capabilities).as_posix())
 
-    # The conversion is itself a tending.
+    # The conversion is itself a tending; the birth date carries over, so the
+    # wake reads the converted sanctum as a finished First Breath.
     plan.files["memory/.tended"] = today + "\n"
+    plan.files["memory/.born"] = (_born(read("CREED.md") or "") or _born(read("PERSONA.md") or "") or today) + "\n"
 
     # Anything the plan did not place is reported, never silently lost.
     handled = {"INDEX.md", "MEMORY.md", "CREED.md", "access-boundaries.md", "chronology.md", "patterns.md",
@@ -307,6 +325,64 @@ def write(plan: Plan, target: Path) -> None:
         (target / folder).mkdir(parents=True, exist_ok=True)
 
 
+def _discard(archive: Path) -> None:
+    try:
+        archive.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def backup(source: Path, target: Path, backup_dir: Path, stamp: str) -> tuple[Path | None, str | None]:
+    """Tar the source store (and a non-empty target) and verify the listing.
+
+    Returns (archive, None) on success, (None, reason) on failure; a failed
+    archive is removed so it never passes for a good one.
+    """
+    roots = [source] + ([target] if target.is_dir() and any(target.iterdir()) else [])
+    expected = {f"{root.name}/{p.relative_to(root).as_posix()}"
+                for root in roots for p in root.rglob("*") if p.is_file()}
+    archive = backup_dir / f"mac-sanctum-v2-{stamp}.tar.gz"
+    try:
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(archive, "w:gz") as tar:
+            for root in roots:
+                tar.add(root, arcname=root.name)
+        with tarfile.open(archive, "r:gz") as tar:
+            listed = {m.name for m in tar.getmembers() if m.isfile()}
+    except (OSError, tarfile.TarError) as exc:
+        _discard(archive)
+        return None, f"backup failed: {exc}"
+    missing = sorted(expected - listed)
+    if missing or not expected:
+        _discard(archive)
+        what = ", ".join(missing[:5]) + (" ..." if len(missing) > 5 else "") if missing else "no files"
+        return None, f"backup archive does not list the source ({what})"
+    return archive, None
+
+
+def verify(plan: Plan, target: Path) -> list[str]:
+    """Planned files that are missing, empty when they should not be, or differ."""
+    bad = []
+    for rel, content in plan.files.items():
+        out = target / rel
+        try:
+            ok = out.is_file() and out.stat().st_size > 0 and out.read_text(encoding="utf-8") == content
+        except (OSError, UnicodeDecodeError):
+            ok = False
+        if not ok:
+            bad.append(rel)
+    for src, rel in plan.copies:
+        out = target / rel
+        if not out.is_file() or out.stat().st_size != src.stat().st_size:
+            bad.append(rel)
+    return sorted(bad)
+
+
+def refused(reason: str, **extra) -> int:
+    print(json.dumps({"status": "refused", "reason": reason, **extra}, indent=2))
+    return 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("project_root")
@@ -316,26 +392,46 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="print the plan; write nothing")
     parser.add_argument("--force", action="store_true", help="write into an existing target")
     parser.add_argument("--today", default=date.today().isoformat())
+    parser.add_argument("--backup-dir", help="where the tarball goes (default: <project-root>/_bmad/backups)")
+    parser.add_argument("--no-backup", action="store_true", help="skip the backup tarball (tests only)")
     args = parser.parse_args()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.today):
+        print(json.dumps({"status": "error", "reason": f"--today must be YYYY-MM-DD, got {args.today!r}"}))
+        return 2
 
     root = Path(args.project_root).resolve()
     source = Path(args.source).resolve() if args.source else root.joinpath(*OLD_REL)
     target = Path(args.target).resolve() if args.target else root.joinpath(*NEW_REL)
     if not source.is_dir():
-        print(json.dumps({"status": "refused", "reason": f"no v2 sanctum at {source}"}))
-        return 1
+        return refused(f"no v2 sanctum at {source}")
     if target.exists() and any(target.iterdir()) and not args.force and not args.dry_run:
-        print(json.dumps({"status": "refused", "reason": f"{target} exists and is not empty; pass --force"}))
-        return 1
+        return refused(f"{target} exists and is not empty; pass --force")
 
-    plan = build_plan(source, Path(args.skill_path), args.today)
+    plan = build_plan(source, Path(args.skill_path), args.today, root)
+    backup_path = None
     if not args.dry_run:
-        write(plan, target)
+        if not args.no_backup:
+            backup_dir = Path(args.backup_dir).resolve() if args.backup_dir else root / "_bmad" / "backups"
+            archive, reason = backup(source, target, backup_dir, datetime.now().strftime("%Y%m%d-%H%M%S"))
+            if reason:
+                return refused(f"{reason}; nothing was written", backup_path=None)
+            backup_path = str(archive)
+        try:
+            write(plan, target)
+        except OSError as exc:
+            return refused(f"writing the new sanctum failed: {exc}; the source is untouched",
+                           target_written="partial", backup_path=backup_path)
+        bad = verify(plan, target)
+        if bad:
+            return refused(
+                f"post-write check failed: {len(bad)} planned file(s) missing, empty or different; "
+                "the source is untouched", target_written="partial", unverified=bad, backup_path=backup_path)
     source_bytes = sum(p.stat().st_size for p in source.rglob("*") if p.is_file())
     print(json.dumps({
         "status": "planned" if args.dry_run else "written",
         "source": str(source),
         "target": str(target),
+        "backup_path": backup_path,
         "source_bytes": source_bytes,
         "files": len(plan.files) + len(plan.copies),
         "entries": plan.entries,

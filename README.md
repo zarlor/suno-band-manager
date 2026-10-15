@@ -37,7 +37,7 @@ After you try the output on Suno, Mac helps you refine through a structured feed
 4. **Try it on Suno** — Paste into Suno's Custom Mode fields
 5. **Come back and refine** — Tell Mac what worked and what didn't
 
-For detailed documentation on all features, interaction modes, band profiles, the feedback loop, direct skill access, and headless/automation modes, see the [Usage Guide](src/skills/suno-agent-band-manager/references/USAGE.md).
+For detailed documentation on all features, interaction modes, band profiles, the feedback loop, direct skill access, and headless/automation modes, see the [Usage Guide](USAGE.md).
 
 ## Architecture
 
@@ -63,9 +63,9 @@ The orchestrating agent and each skill have their own documentation:
 
 | Component | Purpose | Key Scripts |
 |-----------|---------|-------------|
-| [**Mac (Band Manager)**](src/skills/suno-agent-band-manager/references/README.md) | Orchestrating agent — guides the full song creation workflow across all skills | `pre-activate.py` (the wake: `--wake`, `--pulse`), `validate-sidecar.py`, `songbook-catalog.py`, `find-stale-refs.py`, `upgrade-sanctum.py`, `check-memory-health.py`, `validate-path.py`, `configure-guard.py` (installs the pipeline guard) |
+| [**Mac (Band Manager)**](USAGE.md) | Orchestrating agent — guides the full song creation workflow across all skills | `pre-activate.py` (the wake: `--wake`, `--pulse`), `validate-sidecar.py`, `songbook-catalog.py`, `find-stale-refs.py`, `upgrade-sanctum.py`, `check-memory-health.py`, `validate-path.py`, `configure-guard.py` (installs the pipeline guard) |
 | [**Band Profile Manager**](src/skills/suno-band-profile-manager/references/README.md) | CRUD for band identity profiles, writer voice analysis, tier feature awareness, per-band playlist YAML | `apply-profile.py`, `validate-profile.py`, `list-profiles.py`, `tier-features.py`, `diff-profiles.py`, `scaffold-playlist.py` |
-| [**Style Prompt Builder**](src/skills/suno-style-prompt-builder/references/README.md) | Model-aware style prompt generation with creativity modes and wild card variants | `validate-prompt.py` |
+| [**Style Prompt Builder**](src/skills/suno-style-prompt-builder/SKILL.md) | Model-aware style prompt generation with creativity modes and wild card variants | `validate-prompt.py` |
 | [**Lyric Transformer**](src/skills/suno-lyric-transformer/references/README.md) | Poem/text to Suno-ready structured lyrics with metatags and cliché detection | `validate-lyrics.py`, `cliche-detector.py`, `syllable-counter.py`, `analyze-input.py`, `section-length-checker.py`, `lyrics-diff.py`, `spacing-check.py` (the writer's spacing survives verbatim), `validate-options.py`, `assemble-summary.py` |
 | [**Feedback Elicitor**](src/skills/suno-feedback-elicitor/references/README.md) | Post-generation feedback triage and guided refinement with musical vocabulary translation. Also hosts the audio-analysis toolkit and multi-machine audio verification scripts | `parse-feedback.py`, `map-adjustments.py`, `feedback-log.py`, `analyze-audio.py`, `audio-deep-analysis.py`, `chord-progression.py`, `tempo-detail.py`, `beat-grid.py`, `vocal-placement.py`, `section-map.py`, `audio-files-manifest.py`, `verify-audio-files.py` |
 | **Playlist Sequencer** (`src/skills/suno-playlist-sequencer/`) | Album-craft track ordering: energy arcs, key moves, locked arcs, encore design | `playlist-sequencing-data.py`, `batch-full-analysis.py`, `validate-sequence.py` |
@@ -158,8 +158,8 @@ It asks five questions:
 | `suno_tier` | `free`, `pro`, `premier` | `free` |
 | `default_mode` | `demo`, `studio`, `jam` | `demo` |
 | `pytorch_audio_tools` | `on`, `off` | `off` |
-| `band_profiles_folder` | a folder relative to the project root | `docs/band-profiles` |
-| `songbook_folder` | a folder relative to the project root | `docs/songbook` |
+| `band_profiles_folder` | a folder path (holds `{project-root}`) | `{project-root}/docs/band-profiles` |
+| `songbook_folder` | a folder path (holds `{project-root}`) | `{project-root}/docs/songbook` |
 
 The answers go to `_bmad/config.toml` under `[modules.suno]`. Team overrides go in `_bmad/custom/config.toml` and personal ones in `_bmad/custom/config.user.toml`. Skipping setup is fine: every skill falls back to the defaults above.
 
@@ -244,23 +244,24 @@ src/skills/
 │   ├── assets/                     # Sanctum templates seeded at First Breath; menu.csv (Mac's menu)
 │   ├── references/
 │   │   ├── activation.md           # Waking — identity files, memory map, greeting, menu
-│   │   ├── headless.md             # Headless capability runs
+│   │   ├── headless.md             # Headless capability runs (routes to the *-headless.md contracts)
 │   │   ├── create-song.md          # CS — main song creation workflow
+│   │   ├── create-song-headless.md # CS headless input contract and package payload
 │   │   ├── refine-song.md          # RS — bring back a take: diagnose, rebuild what changed
+│   │   ├── refine-song-headless.md # RS headless input contract and delta payload
+│   │   ├── post-publish.md         # The keeper pass: measure, songbook entry, reconcile, index
 │   │   ├── browse-songbook.md      # SB — creative history browsing
 │   │   ├── save-memory.md          # SM — tending pass and session note
 │   │   ├── reconcile.md            # Stale-reference reconciliation
-│   │   ├── capabilities.md         # External skills, catalog scripts, audio analysis
 │   │   ├── capability-authoring.md # Authoring a capability the owner teaches Mac
 │   │   ├── prompt-quality-canon.md # Outcome-driven prompt quality
-│   │   ├── creed.md / persona.md   # Sanctum seed source (not loaded on waking)
+│   │   ├── creed.md                # Seed source for the sanctum's creed disciplines (not loaded on waking)
 │   │   ├── init.md                 # First Breath — first-run setup
 │   │   ├── upgrade-v1.md           # v1 memory store → v2 (then v7 on the next wake)
 │   │   ├── upgrade-v2.md           # v2 sanctum → v7 sanctum
 │   │   ├── pipeline-guard.md       # Setting up the pipeline guard
 │   │   ├── SUNO-REFERENCE.md       # Suno platform reference
-│   │   ├── STUDIO-EDITOR-REFERENCE.md # Studio 2.0 and Song Editor reference
-│   │   └── USAGE.md                # End-user guide (canonical location)
+│   │   └── STUDIO-EDITOR-REFERENCE.md # Studio 2.0 and Song Editor reference
 │   └── scripts/
 │       ├── pre-activate.py         # The wake: config, sanctum state, menu (--wake, --pulse)
 │       ├── init-sanctum.py         # Scaffolds a fresh sanctum
@@ -272,7 +273,7 @@ src/skills/
 │       ├── songbook-catalog.py     # Per-song catalog lookups
 │       ├── genre-coverage.py, scan-wip-status.py, reconcile-sidecar.py,
 │       │   regenerate-index-sections.py, check-memory-health.py, _sanctum_seed.py
-│       ├── pipeline-guard.py       # Stop hook: package pipeline + order guard
+│       ├── pipeline-guard.py       # Stop hook: package pipeline + order guard (runs on bare python3)
 │       ├── configure-guard.py      # Installs the guard: AGENTS.md standing order + Claude Code Stop hook
 │       └── validate-path.py        # Access boundary check
 ├── suno-band-profile-manager/ # Band profile CRUD and writer voice analysis

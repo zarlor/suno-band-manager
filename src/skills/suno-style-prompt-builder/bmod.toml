@@ -1,3 +1,13 @@
 [skill]
 bmod = "bmod-suno"
 source = "github:zarlor/suno-band-manager/src/skills"
+
+# Skills this one routes to when they're installed: listening feedback goes to the
+# feedback elicitor, a missing profile to the profile manager, lyric notes to the
+# lyric transformer, and customization overrides to bmad-customize.
+recommended_skills = [
+  "suno-feedback-elicitor",
+  "suno-band-profile-manager",
+  "suno-lyric-transformer",
+  { skill = "bmad-customize", source = "github:bmad-code-org/BMAD-METHOD/skills" },
+]

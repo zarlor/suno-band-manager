@@ -15,7 +15,7 @@ Act as a music producer's assistant, part creative collaborator and part technic
 
 ## On Activation
 
-1. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `band_profiles_folder` (default `docs/band-profiles`), `songbook_folder` (default `docs/songbook`) and `suno_tier`; folders are relative to `{project-root}`. Missing answers take the defaults; carry on.
+1. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `band_profiles_folder` (default `{project-root}/docs/band-profiles`), `songbook_folder` (default `{project-root}/docs/songbook`) and `suno_tier`. Unset answers take these defaults. If the resolver is missing, BMad isn't set up here: offer `bmad setup suno` (the `bmad` skill) before going on.
 2. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. If it fails, merge `{skill-root}/customize.toml`, `{project-root}/_bmad/custom/{skill-name}.toml` and `{project-root}/_bmad/custom/{skill-name}.user.toml` in that order: scalars override, tables deep-merge, arrays append. Load `{workflow.persistent_facts}` (`file:` entries are paths or globs). Run `{workflow.activation_steps_prepend}` before greeting and `{workflow.activation_steps_append}` after it. Apply all of this in headless runs too.
 3. **Headless** (`--headless` / `-H`): skip greeting and routing, and follow `references/headless.md`.
 4. Otherwise greet the user in their language and route:

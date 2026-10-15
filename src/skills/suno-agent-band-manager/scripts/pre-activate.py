@@ -197,6 +197,47 @@ def learned_capabilities(sanctum: Path) -> list[dict]:
     return rows
 
 
+def learned_warnings(sanctum: Path, builtin_codes: set[str]) -> list[str]:
+    """Learned-table rows that would silently miss the menu: malformed, or a code clash."""
+    path = sanctum / "CAPABILITIES.md"
+    if not path.is_file():
+        return []
+    out: list[str] = []
+    in_learned = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## "):
+            in_learned = line.strip() == "## Learned"
+            continue
+        row = line.strip()
+        if not in_learned or not row.startswith("|") or set(row) <= set("|-: "):
+            continue
+        if row.lower().startswith("| code "):
+            continue
+        match = LEARNED_ROW_RE.match(row)
+        if not match:
+            out.append(f"CAPABILITIES.md Learned row not readable, left off the menu: {row[:80]}")
+        elif match.group(1).strip() in builtin_codes:
+            out.append(f"Learned capability [{match.group(1).strip()}] clashes with a built-in menu code, left off the menu: pick another code.")
+    return out
+
+
+def resolve_customization(project_root: Path, skill_dir: Path) -> tuple[dict, str | None]:
+    """The agent's v7 override arrays from BMad's resolve_customization.py."""
+    empty = {"activation_steps_prepend": [], "activation_steps_append": [], "persistent_facts": []}
+    script = project_root / "_bmad" / "scripts" / "resolve_customization.py"
+    if not script.is_file():
+        return empty, "BMad is not set up here (no resolve_customization.py): team overrides not applied; offer `bmad setup suno`."
+    cmd = [sys.executable, str(script), "--skill", str(skill_dir), "--project-root", str(project_root), "--key", "agent"]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+        agent = (json.loads(proc.stdout or "{}") or {}).get("agent") or {}
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
+        return empty, f"customization could not be resolved ({exc}); shipped defaults apply."
+    if proc.returncode != 0:
+        return empty, f"customization could not be resolved ({(proc.stderr or '').strip()[-200:]}); shipped defaults apply."
+    return {key: list(agent.get(key) or []) for key in empty}, None
+
+
 def render_menu(csv_path: Path, include_modules: list[str] | None = None, learned: list[dict] | None = None) -> str:
     """Mac's menu: assets/menu.csv rows (minus FL) + learned capabilities."""
     rows = _seed.menu_rows(csv_path, include_modules)
@@ -271,6 +312,8 @@ def build_state(args, project_root: Path, skill_dir: Path) -> dict:
     if args.scaffold and sidecar["sidecar_format"] == "absent":
         scaffold = scaffold_sidecar(project_root, skill_dir, args.sanctum_dir)
         sanctum, sidecar = locate(project_root, args.sanctum_dir)
+        if not scaffold.get("scaffolded"):
+            warnings.append(f"Scaffold failed: {scaffold.get('message') or scaffold.get('init_result')}")
     else:
         scaffold = None
 
@@ -286,10 +329,23 @@ def build_state(args, project_root: Path, skill_dir: Path) -> dict:
     else:
         menu_text = render_menu(csv_path, [MODULE_CODE], learned)
         routing_table = build_routing_table(csv_path, [MODULE_CODE], learned)
+        builtin = {(r.get("menu-code") or "").strip() for r in _seed.menu_rows(csv_path, [MODULE_CODE])}
+        warnings.extend(learned_warnings(sanctum, builtin | set(MENU_ALIASES)))
+
+    customization, customization_warning = resolve_customization(project_root, skill_dir)
+    if customization_warning:
+        warnings.append(customization_warning)
 
     pulse = bool(getattr(args, "pulse", False))
+    resume = sidecar["sidecar_format"] == "v7" and not (sanctum / "memory" / ".born").is_file()
+    mode = mode_for(sidecar, pulse)
+    if resume and mode == "WAKING":
+        mode = "FIRST_BREATH"
+    if scaffold is not None and not scaffold.get("scaffolded"):
+        mode = "SCAFFOLD_FAILED"
     state = {
-        "mode": mode_for(sidecar, pulse),
+        "mode": mode,
+        "resume": resume,
         "first_run": sidecar["sidecar_format"] == "absent",
         "sidecar_format": sidecar["sidecar_format"],
         "needs_migration": sidecar["needs_migration"],
@@ -300,6 +356,7 @@ def build_state(args, project_root: Path, skill_dir: Path) -> dict:
         "menu_text": menu_text,
         "routing_table": routing_table,
         "menu_aliases": dict(MENU_ALIASES),
+        "customization": customization,
         "voice_context": detect_voice_files(project_root, user_name),
         "sanctum_path": str(sanctum),
         "sanctum_load_order": (
@@ -336,6 +393,10 @@ WAKE_GUIDANCE = {
         "below. Follow references/activation.md 'Damaged sanctum'."
     ),
     "PULSE_SKIPPED": "No complete sanctum, so there is nothing for Pulse to maintain. Stop.",
+    "SCAFFOLD_FAILED": (
+        "Creating the sanctum failed (see warnings and scaffold). Tell the owner what failed "
+        "in a line; don't retry --scaffold until the cause is fixed."
+    ),
 }
 
 
@@ -345,13 +406,18 @@ def render_wake(state: dict) -> str:
     out = [f"MODE: {mode}", f"Sanctum: {state['sanctum_path']}"]
     if mode == "FIRST_BREATH" and state.get("scaffold", {}).get("scaffolded"):
         out.append("Sanctum created from the templates and printed below. Become it, then load references/init.md.")
+    elif mode == "FIRST_BREATH" and state.get("resume"):
+        out.append("First Breath was cut short (no memory/.born). Your sanctum is printed below; "
+                   "load references/init.md and pick up from what is still unset.")
     elif mode in WAKE_GUIDANCE:
         out.append(WAKE_GUIDANCE[mode])
+    if mode == "SCAFFOLD_FAILED":
+        scaffold = state.get("scaffold") or {}
+        out.append(f"Reason: {scaffold.get('message') or scaffold.get('init_result') or 'unknown'}")
     out += ["", "===== STATE =====", json.dumps(state, indent=2, ensure_ascii=False)]
     sanctum = Path(state["sanctum_path"])
-    if mode in ("WAKING", "PULSE", "DAMAGED", "UPGRADE_V2") or (
-        mode == "FIRST_BREATH" and state.get("scaffold", {}).get("scaffolded")
-    ):
+    newborn = mode == "FIRST_BREATH" and (state.get("scaffold", {}).get("scaffolded") or state.get("resume"))
+    if mode in ("WAKING", "PULSE", "DAMAGED", "UPGRADE_V2") or newborn:
         for name in state["sanctum_load_order"]:
             path = sanctum / name
             out.append(f"\n===== {name} =====")
@@ -359,9 +425,7 @@ def render_wake(state: dict) -> str:
                 out.append(path.read_text(encoding="utf-8").rstrip())
             else:
                 out.append(f"(missing: {name})")
-    if mode in ("WAKING", "PULSE", "DAMAGED") or (
-        mode == "FIRST_BREATH" and state.get("scaffold", {}).get("scaffolded")
-    ):
+    if mode in ("WAKING", "PULSE", "DAMAGED") or newborn:
         out += ["\n===== memory map =====", _seed.memory_map(sanctum)]
         pending = _seed.pending_text(sanctum)
         if pending:
@@ -393,8 +457,8 @@ def main():
         if reconfigure is not None:
             reconfigure(encoding="utf-8")
         sys.stdout.write(output if output.endswith("\n") else output + "\n")
+    return 1 if state["mode"] == "SCAFFOLD_FAILED" else 0
 
 
 if __name__ == "__main__":
-    main()
-    sys.exit(0)
+    sys.exit(main())

@@ -10,6 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from profile_paths import read_module_config, resolve_dirs  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fake_resolver import install_resolver  # noqa: E402
 
 CONFIG = """[core]
 output_folder = "{project-root}/_bmad-output"
@@ -28,6 +30,7 @@ band_profiles_folder = "/wrong"
 def write_config(root: Path, text: str = CONFIG) -> None:
     (root / "_bmad").mkdir()
     (root / "_bmad" / "config.toml").write_text(text, encoding="utf-8")
+    install_resolver(root)
 
 
 def test_reads_only_the_named_section_and_substitutes_project_root(tmp_path):

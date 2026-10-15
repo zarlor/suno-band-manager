@@ -11,62 +11,6 @@ code: CS
 
 The main creative workflow. Guide the user from initial inspiration to a complete Suno-ready package: structured lyrics with metatags + model-specific style prompt + exclusion prompt + parameter recommendations.
 
-**Headless-eligible:** true.
-
-## Headless Mode
-
-If invoked with `--headless` or structured JSON input, skip all interactive steps. The input is taken as confirmed.
-
-**Input contract:**
-```json
-{
-  "genre_mood": "required — genre, mood, vibe description",
-  "source_text": "optional — poem or text to transform",
-  "lyrics": "optional — finished lyrics to use as-is (with lyrics_ready: true)",
-  "lyrics_ready": "optional — true skips the Lyric Transformer and uses `lyrics` unchanged",
-  "band_profile": "optional — profile name to load",
-  "tier": "optional — free|pro|premier (else memory/owner/preferences.md)",
-  "model": "optional — default v6 on Pro/Premier, v6-mini on Free (also: v6-wild)",
-  "exclusions": "optional — list (else memory/work/default-exclusions.md + the profile's)",
-  "voice": "optional — Voice name attached in Suno",
-  "persona": "optional — Persona name",
-  "custom_model": "optional — Custom Model name",
-  "creativity_mode": "optional — conservative|balanced|experimental, default balanced",
-  "instrumental": "optional — true for instrumental-only",
-  "language": "optional — default English",
-  "include_wild_card": "optional — default true",
-  "save_to_songbook": "optional — default false"
-}
-```
-
-**Process (no interaction):** Read `memory/owner/preferences.md`, `memory/work/default-exclusions.md` and `memory/bands/active.md` for anything the input leaves out (tier, exclusions, the active band). If the tier still can't be resolved, build for Free and say so in `warnings`. Run the Lyric Transformer (when there's source text, it isn't instrumental and `lyrics_ready` isn't set) and the Style Prompt Builder exactly as Steps 3–4 describe — the Package Assembly Rule binds headless too. Assemble and return.
-
-**Output:** the standard headless result envelope (`status`, `capability`, `artifact_path`, `summary`, `warnings`) plus a `package` object in Step 5 order:
-
-```json
-{
-  "package": {
-    "voice": "name or null",
-    "lyrics": "transformed lyrics, 'auto' for Suno auto-lyrics, or 'instrumental'",
-    "style_prompt": "string",
-    "char_count": 612,
-    "exclude_styles": "comma-separated, or null on Free",
-    "settings": {
-      "model": "v6", "vocal_gender": "", "duration": "Auto", "max_mode": true,
-      "weirdness": 55, "style_influence": 75, "audio_influence": null,
-      "variety": "Exact style", "personalize": false
-    },
-    "title": "string",
-    "save_to": "the band's Suno workspace, or null",
-    "wild_card": {"style_prompt": "string", "pitch": "one line", "exclude_styles": null}
-  }
-}
-```
-
-Sliders are `null` on Free. `wild_card` is `null` when `include_wild_card` is false. `artifact_path` stays `null` unless `save_to_songbook` is true; before that write, run `uv run {skill-root}/scripts/validate-path.py "<target path>" write` and, if it's denied, skip the write and report it in `warnings`. Missing `genre_mood` with no band profile → `status: blocked` with the reason.
-
-## Interactive Mode
-
 ## Step 1: Infer the Mode (Soft Gate)
 
 **Do not ask the user to choose a mode.** Infer it from their input and confirm with a soft gate:
@@ -102,6 +46,8 @@ Collect what you need for the mode. Not everything is required.
 
 **Studio mode:** before building, draw out the emotional core, the arc and its turn, the hook line, the sounds the user already hears, and who's singing. **Jam mode:** one question — "Give me a starting point — a word, a feeling, a weird mashup idea — and I'll run with it." **Demo mode:** infer what you can from the request and profile.
 
+**Creative riff (Studio and Jam):** you're a producer, not just a listener — offer one proactive idea per song (an unexpected genre fusion, an instrumentation choice, a structural twist), framed as an idea, not a directive.
+
 **Instrumental:** skip the Lyric Transformer; default exclusions "no vocals, no humming, no choirs, instrumental only"; note the Instrumental toggle for Pro/Premier users (on the reworked v6 Create sidebar, one user found no Instrumental toggle as of 2026-10-05 — if it isn't there, leave Lyrics empty and let the exclude list carry the anti-vocal load); the package shows "Lyrics: Instrumental (no vocals)" instead of a lyrics block.
 
 **Non-English:** add the language to the style prompt (e.g., "sung in French"), warn that metatag reliability may differ with non-Latin scripts, and pass the language to the Lyric Transformer.
@@ -132,7 +78,7 @@ After Steps 3 and 4 return, apply **Transparency**: compare skill output against
 
 > **Load the Package Assembly discipline** `{project-root}/_bmad/memory/suno-agent-band-manager/memory/disciplines/package-assembly.md` before assembling. The always-loaded `CREED.md` core carries the Package Assembly Rule core; the discipline file carries the rest (Violation Tells, Agent-vs-Skill tool choice, highest-risk contexts, refinement presentation scope).
 >
-> **Reference:** for metatag behavior, section tag selection and structure, consult the suno-lyric-transformer skill's `references/metatag-reference.md` and `references/section-jobs.md`. Key: only use recognized section tags (custom tags get sung as lyrics), and Bridge (something new) vs Breakdown (something less).
+> Section tags: only recognized tags (a custom tag gets sung as a lyric), and Bridge means something new where Breakdown means something less; the Lyric Transformer holds the full tag catalog.
 
 **Run both skills in parallel and headless, and say nothing until Step 5.** They are independent — the Style Prompt Builder doesn't need the lyrics. Send both calls in a single message as two Agent subagent invocations, each running one skill headless; Agent keeps the skill's JSON as a tool result rather than a visible turn (the shard's "Tool Choice" section). Narrating the run or showing a raw return leaves the owner with partial packages and JSON instead of one pasteable package.
 
@@ -142,7 +88,7 @@ Skip it for an instrumental or when the user supplied finished lyrics they want 
 
 **With source text:** invoke `suno-lyric-transformer --headless` with the text, band profile (for writer-voice constraints), song direction, language if non-English, the per-section cues from the style map (Step 4), and `song_path` when the song already has a songbook entry. Map the interaction mode to options: Demo → balanced defaults (ST + CC + RA + CD); Studio → let the user choose; Jam → full rewrite encouraged.
 
-**Expected return:** the transformer's Transform Return (its `references/headless-contract.md`): `transformed_lyrics`, `transformation_summary`, `decision_log`, `intentional_keeps`, and `flat_copy_lyrics` only when needed. `transformed_lyrics` keeps the writer's spacing verbatim (its `spacing-check.py` verifies this) — the package's Lyrics field carries that spaced version. A flat copy is only a labelled paste aid. Without a `song_path`, the transformer writes no decision log; keep its `decision_log` and `intentional_keeps` for Step 7.
+**Expected return:** the transformer's Transform Return: `transformed_lyrics`, `transformation_summary`, `decision_log`, `intentional_keeps`, and `flat_copy_lyrics` only when needed. `transformed_lyrics` keeps the writer's spacing verbatim (the transformer checks it by script) — the package's Lyrics field carries that spaced version. A flat copy is only a labelled paste aid. Without a `song_path`, the transformer writes no decision log; keep its `decision_log` and `intentional_keeps` for the post-publish pass.
 
 **Only a topic/mood (no source text):**
 - **Demo:** default to Suno's auto-lyrics — "Lyrics: Auto-generated by Suno to match your style." Don't ask; skip the Lyric Transformer.
@@ -153,10 +99,10 @@ Skip it for an instrumental or when the user supplied finished lyrics they want 
 
 Invoke `suno-style-prompt-builder --headless` with the band profile, tier and model, song direction (genre, mood, reference tracks, vocal direction), creativity mode (same mapping as Step 3), the user's exclusions and specific requests ("no piano," "acoustic only"), any attached Voice / Persona / Custom Model, and a working title. The wild card is on by default.
 
-**Expected return:** the builder's success JSON (its `references/headless-contract.md`), already in Step 5 order: style prompt and character count, exclusions with rationales, model, vocal gender, the v6 options and sliders with reasoning, title suggestion, wild card, validation report, and `handoff_notes`. Route each `handoff_notes` item to the song's workshop or WIP file — they are mid-build ideas the owner shouldn't lose.
+**Expected return:** the builder's success JSON, already in Step 5 order: style prompt and character count, exclusions with rationales, model, vocal gender, the v6 options and sliders with reasoning, title suggestion, wild card, validation report, and `handoff_notes`. Route each `handoff_notes` item to the song's workshop or WIP file — they are mid-build ideas the owner shouldn't lose.
 
 **Prompt adjustments to ask for:**
-- The **v6 prompt architecture** (the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "Suno v6 Family", PREVIEW guidance): ordered production direction, each instrument's job per section, the vocal placed rather than praised, both edges stated, positive text only with every negative in Exclude Styles. When lyrics are transformed too, pass the key per-section instructions to the Lyric Transformer so its section cues restate the style map word-for-word.
+- The **v6 prompt architecture** (PREVIEW guidance the builder carries): ordered production direction, each instrument's job per section, the vocal placed rather than praised, both edges stated, positive text only with every negative in Exclude Styles. When lyrics are transformed too, pass the key per-section instructions to the Lyric Transformer so its section cues restate the style map word-for-word.
 - **Voice** → no gender descriptors in the prompt; note the active Voice in the package.
 - **Custom Model** → no generic production descriptors the model already handles (if it encodes "lo-fi tape warmth," don't repeat it); spend the prompt on what's new.
 - **Specificity pays** — "fingerpicked nylon guitar with room reverb" beats "acoustic guitar."
@@ -238,7 +184,7 @@ Not available on Free tier — exclusions are handled through positive phrasing 
   - Style Influence: {value}% — {reasoning} (controls prompt adherence: lower = looser interpretation, higher = tighter to your style prompt)
   - Audio Influence: {value}% — {reasoning}
     {If Persona selected:} Persona slot: 15-25% effective range (25% default, reduce for era mismatch)
-    {If Voice selected:} Voice slot: runs much higher and is per-voice — start ~50% and profile. Pull the value from the suno-style-prompt-builder skill's `references/model-prompt-strategies.md` → "Voices" (canonical ranges + Suno's raise-then-rebuild escalation); do not recite a scale from memory here
+    {If Voice selected:} Voice slot: runs much higher and is per-voice — use the value the Style Prompt Builder returned (it holds the canonical ranges and Suno's raise-then-rebuild escalation); don't recite a scale from memory
   - Variety: Off (the leftmost notch, Exact style) — keeps this style prompt exactly as written (any higher notch rewrites it before generating)
   - Personalize: Off — keeps your My Taste profile from reshaping this package
 
@@ -266,7 +212,7 @@ Not available on Free tier — exclusions are handled through positive phrasing 
 **After presenting:**
 
 1. **Generate → inspect → refine:** "Go try this on Suno — generate 3-5 versions and listen through them. Suno interprets the same inputs differently each time, so casting a wider net gives you more to work with. When you've heard the results, come back and tell me what you think — that's where songs really come together." To find a style's feel cheaply, a couple of Max Mode–off sketches can come first; the takes you might keep run with Max Mode on. When the owner is testing one change against another, offer about 4 takes (two Creates) per version as a suggestion, with the reason: on v6 the spread between takes can be bigger than the change being tested, and a measured outside series saw the ranking flip between 2 and 4 takes. How many takes they run is their call.
-2. **Listen in the browser; download only the keeper** (or a take that needs measuring). Suno caps downloads on every tier (see `SUNO-REFERENCE.md`). On a paid tier, say how many downloads are left this cycle when `memory/work/downloads.md` has the number, and update that count the moment the owner says they downloaded.
+2. **Listen in the browser; download only the keeper** (or a take that needs measuring). Suno caps downloads on every tier (`references/SUNO-REFERENCE.md` → "Plan Comparison", the "Song downloads" row). On a paid tier, say how many downloads are left this cycle when `memory/work/downloads.md` has the number, and update that count the moment the owner says they downloaded.
 3. **Section replacement over full regeneration:** if a version is mostly right but has a weak section, suggest section replacement (the Song Editor; v6 also takes plain-language section edits, which launch-week users report as uneven). "If the verse is perfect but the chorus needs work, try replacing just the chorus section instead of rolling the dice on a whole new generation."
 4. **Route captured items** from Capture-Don't-Interrupt.
 5. If working with a band profile, offer to save successful elements to the profile.
@@ -285,23 +231,6 @@ Refine Song (`references/refine-song.md`) diagnoses through the suno-feedback-el
 
 **Diminishing returns:** after 2-3 rounds, suggest a different approach: "We've been tweaking this one pretty hard. Suno has some randomness baked in — want to run a few more takes of the current package and pick the one that clicks?" (Takes cost credits, not downloads — listen before downloading.)
 
-## Step 7: Post-Publish (When the Keeper Is Downloaded)
+## Step 7: Post-Publish
 
-When the owner has published a track and its audio is in the band's audio folder, offer the post-publish pass. It runs on the one downloaded keeper. In order:
-
-1. **Measure:** run the suno-feedback-elicitor skill's `analyze-audio.py` on the keeper (its Analyze Audio capability; `references/audio-analysis-scripts.md` there covers flags and reading the numbers).
-2. **Section map:** when `pytorch_audio_tools` is on in the module config, run its `section-map.py` on the keeper with the package lyrics.
-3. **Songbook entry:** write the measured BPM, key, duration and LUFS into the songbook entry, and record `source_wip: docs/wip-<slug>.md` in its frontmatter when the song grew from a WIP. If the Lyric Transformer returned a `decision_log` / `intentional_keeps` (no `song_path` was passed), append them as a `## Session YYYY-MM-DD (transform)` section to `{song-title}.decision-log.md` beside the entry.
-4. **Reconcile and index:** run the reconciliation below, then `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --band {band-slug}` so the coverage index reflects the new song.
-
-Scripts are the source of truth for numbers. External LLM listening notes (Gemini, etc.) help with qualitative description but are unreliable for BPM, duration and vocal-dynamics claims — compare them against the script output, never the other way round. Playlist placement goes to the suno-playlist-sequencer skill, and weighs key transitions, tempo flow, energy arc and thematic fit together — never one factor alone.
-
-### Post-Publish Reconciliation
-
-Sync happens at the point of change (the sanctum `CREED.md` Principles): each publish write carries its cross-file updates in the same batch — songbook entry, the band's playlist YAML, the voice file's catalog count and Companion Files row, the sanctum's `memory/work/current.md` and `memory/work/parked.md`. Then one deterministic backstop:
-
-- **Run `uv run {skill-root}/scripts/validate-sidecar.py "{project-root}" --format json`** and act on `playlist_drift` (the playlist and songbook name different songs), `voice_catalog_drift` (a stale published count), `pending_drift` (a COMPLETED WIP still listed, or an active one missing) and `companion_missing` findings.
-- **Title changed from the working title:** load `references/reconcile.md` and run it with the old and new titles.
-- **Song came from a WIP file:** mark that WIP COMPLETED — never delete it. You know which WIP you worked from this session; mark it directly (`references/reconcile.md` → "The COMPLETED WIP convention" has the marker). `uv run {skill-root}/scripts/scan-wip-status.py "{project-root}" --format json` is the backstop for WIPs this session didn't touch: its `correlation_warning` names unmarked WIPs that a published entry's `source_wip` points at, or whose working title matches. The marker is required whenever a song originated from a WIP, even if nothing else changed — without it, the next session (especially on another machine after a portable sync) treats the finished song as pending work.
-
-A song that published under its original title with no metadata changes needs nothing beyond the validator run.
+When the owner has downloaded or published the keeper, load `references/post-publish.md`.

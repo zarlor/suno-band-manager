@@ -11,6 +11,9 @@ from pathlib import Path
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fake_resolver import install_resolver  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from importlib.util import spec_from_file_location, module_from_spec
 
@@ -46,6 +49,9 @@ V2_SPINE = [
 def _full_spine(sanctum, names=SPINE):
     for name in names:
         (sanctum / name).write_text(f"# {name}\n")
+    if names is SPINE:  # a born v7 sanctum
+        (sanctum / "memory").mkdir(exist_ok=True)
+        (sanctum / "memory" / ".born").write_text("2026-06-18\n")
 
 
 # The real skill directory — init-sanctum.py reads its assets/ templates from here.
@@ -378,6 +384,7 @@ def test_config_resolved_from_v7_config_and_bond(tmp_path, monkeypatch, capsys):
         '[core]\noutput_folder = "{project-root}/out"\n'
         '[modules.suno]\nsuno_tier = "premier"\ndefault_mode = "studio"\n'
     )
+    install_resolver(tmp_path)
     sanctum = _make_sanctum(tmp_path)
     _full_spine(sanctum)
     (sanctum / "BOND.md").write_text("# Bond\n\n- **Name:** Alex Smith\n- **Language:** English\n")
@@ -495,3 +502,54 @@ def test_main_emits_menu_text_key(tmp_path, monkeypatch, capsys):
     assert "[CS]" in payload["menu_text"]
     # The load order is surfaced as the v7 identity set.
     assert payload["sanctum_load_order"] == mod.SANCTUM_LOAD_ORDER == SPINE
+
+
+def test_unfinished_first_breath_resumes(tmp_path, monkeypatch, capsys):
+    """A v7 sanctum without memory/.born is a First Breath cut short."""
+    sanctum = _make_sanctum(tmp_path)
+    _full_spine(sanctum)
+    (sanctum / "memory" / ".born").unlink()
+    out = _run_main(monkeypatch, capsys, [str(tmp_path), "--wake"])
+    assert out.startswith("MODE: FIRST_BREATH")
+    assert "cut short" in out and "===== PERSONA.md =====" in out
+    assert '"resume": true' in out
+
+
+def test_scaffold_failure_is_its_own_mode_and_exits_nonzero(tmp_path, monkeypatch, capsys):
+    (tmp_path / "_bmad").mkdir()
+    monkeypatch.setattr(mod, "scaffold_sidecar", lambda *a, **k: {"scaffolded": False, "error": True, "message": "disk full"})
+    monkeypatch.setattr(sys, "argv", ["pre-activate.py", str(tmp_path), "--wake", "--scaffold"])
+    assert mod.main() == 1
+    out = capsys.readouterr().out
+    assert out.startswith("MODE: SCAFFOLD_FAILED") and "disk full" in out
+
+
+def test_learned_rows_that_miss_the_menu_are_warned(tmp_path, monkeypatch, capsys):
+    sanctum = _make_sanctum(tmp_path)
+    _full_spine(sanctum)
+    (sanctum / "CAPABILITIES.md").write_text(
+        "## Learned\n\n| Code | Name | Description | Source | Added |\n|---|---|---|---|---|\n"
+        "| [CS] | Clash | Clashes. | `capabilities/x.md` | 2026-10-01 |\n"
+        "| LX | Broken row without brackets |\n"
+    )
+    payload = json.loads(_run_main(monkeypatch, capsys, [str(tmp_path)]))
+    assert any("[CS] clashes" in w for w in payload["warnings"])
+    assert any("not readable" in w for w in payload["warnings"])
+
+
+def test_customization_arrays_reach_the_state(tmp_path, monkeypatch, capsys):
+    scripts = tmp_path / "_bmad" / "scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "resolve_customization.py").write_text(
+        "import json\nprint(json.dumps({'agent': {'persistent_facts': ['file:docs/house-style.md'],"
+        " 'activation_steps_prepend': ['say hi'], 'activation_steps_append': []}}))\n"
+    )
+    payload = json.loads(_run_main(monkeypatch, capsys, [str(tmp_path)]))
+    assert payload["customization"]["persistent_facts"] == ["file:docs/house-style.md"]
+    assert payload["customization"]["activation_steps_prepend"] == ["say hi"]
+
+
+def test_no_bmad_means_empty_customization_with_a_reason(tmp_path, monkeypatch, capsys):
+    payload = json.loads(_run_main(monkeypatch, capsys, [str(tmp_path)]))
+    assert payload["customization"] == {"activation_steps_prepend": [], "activation_steps_append": [], "persistent_facts": []}
+    assert any("resolve_customization" in w for w in payload["warnings"])

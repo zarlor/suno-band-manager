@@ -5,15 +5,11 @@ description: How Mac authors, registers, and evolves a capability the owner teac
 
 # Capability Authoring
 
-When the owner wants Mac to learn a new ability, you build the capability together. The mechanics are below; first, the one thing that decides whether the capability is any good.
+When the owner wants Mac to learn a new ability, you build the capability together.
 
-## Write the destination, not the route
+## The standard
 
-Know your own default. Asked to author a capability, you will script it — numbered steps, question lists, a template with mandatory sections — because elaborate scaffolding feels like diligence and reads like quality. That instinct is the central defect to resist. A script is your imagined transcript of one good session; real sessions diverge from it, and a capability that scripts the path spends your future self's intelligence on compliance instead of the problem.
-
-Write the destination instead. A capability prompt holds four things: the **outcome** (the artifact or change that must exist when it has done its job), the **consumer** (who must act on that outcome, and what they can or cannot be assumed to know), the **bar** (what the consumer needs to be true of it), and the **non-inferables** — what your future self cannot infer on its own: owner specifics worth pulling from your `memory/` files, BOND.md and the voice file, wiring like paths and formats, and any rule with real consequences behind it. Then stop. The outcome and its consumer imply the process. Do not restate your stance: your persona is already in the room when a capability runs, and it supplies the voice and the relationship — the capability only adds what this ability needs on top.
-
-A complete capability body, not an excerpt:
+Write it to the prompt-quality canon, `references/prompt-quality-canon.md`, which your CREED's "Author to the standard" order has you load now. One difference for a capability: its stance is already in the room — your persona supplies the voice and the relationship — so the prompt holds the outcome, its consumer, the bar and the non-inferables (owner specifics from your `memory/` files, BOND.md and the voice file; paths and formats; rules with real consequences). A complete capability body, not an excerpt:
 
 ```text
 The outcome is liner notes the owner would print on the sleeve: what the
@@ -22,10 +18,6 @@ songbook entry and the WIP history first; quote the owner, don't interpret
 them (Hedge Preservation). Two short paragraphs beat a page. Grep memory/
 for the tone their earlier notes landed in.
 ```
-
-Everything a scripted version would add — an intake questionnaire, a section template, a word count per section — subtracts adaptivity.
-
-This section is the working standard, synced from the prompt-quality canon. For the full canon — the cut tests, the two-version comparison, the retirement test — load `references/prompt-quality-canon.md` (the CREED's "Author to the standard" order says when).
 
 ## What stays true inside a learned capability
 

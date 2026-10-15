@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pytest>=7.0", "pyyaml>=6.0"]
 # ///
 """Tests for genre-coverage.py"""
@@ -176,3 +176,47 @@ def test_regeneration_keeps_text_outside_markers_and_stamps_time(tmp_path, monke
     assert "\nold\n" not in doc
     assert re.search(r"on \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", doc)
     assert "Artist One — warm" in doc
+
+
+def _break_profile(tmp_path):
+    (tmp_path / "docs" / "band-profiles" / "paper-lanterns.yaml").write_text(
+        'name: "Paper Lanterns\nreference_tracks: [unclosed\n', encoding="utf-8")
+
+
+def test_profile_yaml_error_is_recorded_rendered_and_exits_1(tmp_path, monkeypatch, capsys):
+    _band(tmp_path)
+    _break_profile(tmp_path)
+    assert _run(monkeypatch, str(tmp_path), "--format", "json") == 1
+    band = json.loads(capsys.readouterr().out)["bands"][0]
+    assert "paper-lanterns.yaml" in band["profile_error"]
+    doc = (tmp_path / "docs" / "paper-lanterns-genre-coverage.md").read_text(encoding="utf-8")
+    assert "PROFILE ERROR" in doc and "paper-lanterns.yaml" in doc
+
+
+def test_check_fails_on_profile_error_even_when_fingerprint_matches(tmp_path, monkeypatch, capsys):
+    _band(tmp_path)
+    _break_profile(tmp_path)
+    _run(monkeypatch, str(tmp_path))  # writes an index whose fingerprint matches
+    capsys.readouterr()
+    assert _run(monkeypatch, str(tmp_path), "--check", "--format", "json") == 1
+    row = json.loads(capsys.readouterr().out)["bands"][0]
+    assert row["index"] == "profile_error" and "paper-lanterns.yaml" in row["profile_error"]
+
+
+def test_good_profile_reports_no_error(tmp_path, monkeypatch, capsys):
+    _band(tmp_path)
+    assert _run(monkeypatch, str(tmp_path), "--format", "json") == 0
+    assert json.loads(capsys.readouterr().out)["bands"][0]["profile_error"] is None
+
+
+def test_unknown_band_exits_2_with_reason(tmp_path, monkeypatch, capsys):
+    _band(tmp_path)
+    assert _run(monkeypatch, str(tmp_path), "--band", "paper-lantern", "--check") == 2
+    err = capsys.readouterr().err
+    assert "paper-lantern" in err and "paper-lanterns" in err
+    assert _run(monkeypatch, str(tmp_path), "--band", "nope", "--format", "json") == 2
+    assert json.loads(capsys.readouterr().out)["status"] == "error"
+
+
+def test_unknown_band_without_songbook_exits_2(tmp_path, monkeypatch, capsys):
+    assert _run(monkeypatch, str(tmp_path), "--band", "ghost") == 2

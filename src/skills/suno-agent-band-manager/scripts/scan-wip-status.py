@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = ["pyyaml>=6.0"]
 # ///
 """Scan docs/wip-*.md for COMPLETED markers and correlate against the songbook.

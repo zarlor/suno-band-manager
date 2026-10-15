@@ -15,12 +15,13 @@ Rule` and `### Notes` are prose. A legacy standalone access-boundaries.md (with
 
 Deny Zones win over everything; then a path is allowed if a Write Access entry
 (for writes) or a Read or Write Access entry (for reads) matches it. Entries are
-the backticked paths at the start of each bullet: directories end with `/`,
-globs (`*`) and placeholders (`{username}`) match any run of characters, and
+the backticked paths at the start of each bullet (or a top-level bullet's
+parenthesized path after a short label, "- WIP files (`docs/wip-*.md`) ..."):
+directories end with `/`, globs (`*`) and placeholders (`{username}`) match any run of characters, and
 `{project-root}` / `{skill-root}` resolve from the flags.
 
 Usage:
-    uv run scripts/validate-path.py <path> <read|write> [--boundaries FILE]
+    uv run {skill-root}/scripts/validate-path.py <path> <read|write> [--boundaries FILE]
                                     [--project-root DIR] [--skill-root DIR]
 
 Without --boundaries, the sanctum's CREED.md under --project-root (default: the
@@ -39,6 +40,9 @@ import sys
 from pathlib import Path
 
 ENTRY_RE = re.compile(r"^\s*[-*]\s+`([^`]+)`")
+# A top-level bullet that names its path in parentheses after a short label:
+# "- WIP files (`docs/wip-*.md`) when capturing creative fragments".
+LABELED_ENTRY_RE = re.compile(r"^[-*]\s+[^`(]*\(`([^`]*/[^`]*)`\)")
 SECTIONS = {"read access": "read", "write access": "write", "deny zones": "deny"}
 DOMINION_RE = re.compile(r"^##\s+Dominion\b", re.IGNORECASE)
 
@@ -85,7 +89,7 @@ def parse_boundaries(boundaries_path: Path) -> dict:
             continue
         if current is None:
             continue
-        match = ENTRY_RE.match(line)
+        match = ENTRY_RE.match(line) or LABELED_ENTRY_RE.match(line)
         if match:
             boundaries[current].append(re.sub(r"^\{project-root\}/", "", match.group(1).strip()))
         elif stripped.startswith("- ") and current != "deny" and "`" not in stripped:

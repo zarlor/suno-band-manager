@@ -78,12 +78,17 @@ class BeatThisUnavailable(RuntimeError):
 def read_config_flag(root):
     """The `pytorch_audio_tools` answer from a project root's BMad config, or None.
 
-    `bmad setup suno` writes it as `modules.suno.pytorch_audio_tools`; the shared
-    reader merges BMad's TOML layers, so overrides in `_bmad/custom/` win.
+    `bmad setup suno` writes it as `modules.suno.pytorch_audio_tools`; BMad's
+    resolver merges the config layers, so overrides in `_bmad/custom/` win.
     """
     if not (Path(root) / "_bmad").is_dir():
         return None
-    value = bmad_config.module_config(root).get(CONFIG_KEY)
+    try:
+        value = bmad_config.module_config(root).get(CONFIG_KEY)
+    except bmad_config.ConfigError as exc:
+        # The flag is optional: say why it could not be read, then use librosa.
+        print(f"WARNING: {CONFIG_KEY} unreadable ({exc}); using librosa.", file=sys.stderr)
+        return "off"
     return value.strip().lower() if value is not None else None
 
 

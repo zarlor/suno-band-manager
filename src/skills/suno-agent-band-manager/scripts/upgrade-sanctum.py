@@ -43,9 +43,15 @@ touched is backed up first to a sibling `.suno-agent-band-manager-upgrade-backup
 A v1 or v2 store (the legacy `_bmad/_memory/band-manager-sidecar/`) is not
 upgraded here: it converts with migrate-sanctum-to-v7.py.
 
+Exit codes: 0 for a dry run, or when `--apply` applied every change it named;
+1 when `--apply` applied nothing (a v1/v2 store or no sanctum included) or
+named an id the plan does not have (the JSON says which, in `status` and
+`unknown_ids`). `--apply safe` on a sanctum with no safe
+change pending is `nothing-to-apply`, exit 0.
+
 Usage:
-    uv run scripts/upgrade-sanctum.py --project-root PATH [--sanctum-dir DIR]
-                                      [--apply safe|ID[,ID...]] [--format text|json]
+    uv run {skill-root}/scripts/upgrade-sanctum.py --project-root PATH [--sanctum-dir DIR]
+                                                   [--apply safe|ID[,ID...]] [--format text|json]
 """
 
 from __future__ import annotations
@@ -239,19 +245,24 @@ def plan_file(name: str, live_text: str, new_text: str) -> tuple[list[dict], lis
 def refusal(sanctum: Path, fmt: str) -> dict | None:
     """A not-applicable report for anything that is not a v7 sanctum to repair."""
     messages = {
-        "absent": "No sanctum to upgrade — First Breath (init-sanctum.py) scaffolds one.",
+        "absent": "No sanctum to upgrade — First Breath (`uv run {skill-root}/scripts/init-sanctum.py`) scaffolds one.",
         "v1": (
-            "This is a v1 store. Convert it first: migrate-sidecar-to-v2.py --in-place, "
-            "then migrate-sanctum-to-v7.py."
+            "This is a v1 store. Convert it first: "
+            "`uv run {skill-root}/scripts/migrate-sidecar-to-v2.py --in-place`, "
+            "then `uv run {skill-root}/scripts/migrate-sanctum-to-v7.py`."
         ),
-        "v2": "This is a v2 store. Convert it with migrate-sanctum-to-v7.py; upgrade-sanctum.py repairs v7 sanctums only.",
+        "v2": (
+            "This is a v2 store. Convert it with `uv run {skill-root}/scripts/migrate-sanctum-to-v7.py`; "
+            "upgrade-sanctum.py repairs v7 sanctums only."
+        ),
     }
     if fmt == "damaged" and sanctum.is_dir() and not (sanctum / "HOW-I-REMEMBER.md").exists() and any(
         (sanctum / m).exists() for m in OLD_STORE_MARKERS
     ):
         fmt, message = "v2", (
             "This looks like a partial v2 store (INDEX.md / MEMORY.md / access-boundaries.md). "
-            "Convert it with migrate-sanctum-to-v7.py; upgrade-sanctum.py repairs v7 sanctums only."
+            "Convert it with `uv run {skill-root}/scripts/migrate-sanctum-to-v7.py`; "
+            "upgrade-sanctum.py repairs v7 sanctums only."
         )
     elif fmt in messages:
         message = messages[fmt]
@@ -347,6 +358,8 @@ def apply_changes(sanctum: Path, report: dict, selection: set[str]) -> dict:
     chosen = [c for c in report["changes"] if c["id"] in selection or ("safe" in selection and c["safe"])]
     unknown = sorted(s for s in selection if s != "safe" and s not in {c["id"] for c in report["changes"]})
     if not chosen:
+        if selection == {"safe"} and not any(c["safe"] for c in report["changes"]):
+            return {**report, "status": "nothing-to-apply", "applied": [], "unknown_ids": []}
         return {**report, "status": "nothing-applied", "applied": [], "unknown_ids": unknown}
 
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -428,8 +441,12 @@ def render_text(report: dict) -> str:
     if report["status"] == "applied":
         out.append(f"Applied: {', '.join(report['applied'])}")
         out.append(f"Backup: {report.get('backup_path')}")
+    if report["status"] == "nothing-applied":
+        out.append("Nothing was applied: --apply named no change this plan proposes.")
+    if report["status"] == "nothing-to-apply":
+        out.append("Nothing to apply: no safe change is pending.")
     if report.get("unknown_ids"):
-        out.append(f"Unknown ids (ignored): {', '.join(report['unknown_ids'])}")
+        out.append(f"Unknown ids (not applied): {', '.join(report['unknown_ids'])}")
     if report["status"] == "dry-run":
         for c in changes:
             out += ["", f"----- {c['id']} {c['kind']} -----", c["diff"].rstrip()]
@@ -466,7 +483,9 @@ def main() -> int:
     skill_path = Path(args.skill_path).resolve() if args.skill_path else Path(__file__).resolve().parent.parent
 
     report = plan(project_root, sanctum, skill_path)
-    if args.apply and report["status"] == "dry-run":
+    if args.apply and report["status"] == "dry-run" and not args.apply.strip(" ,"):
+        report = {**report, "status": "nothing-applied", "applied": [], "unknown_ids": []}
+    elif args.apply and report["status"] == "dry-run":
         selection = {s.strip() for s in args.apply.split(",") if s.strip()}
         report = apply_changes(sanctum, report, selection)
 
@@ -478,7 +497,16 @@ def main() -> int:
         print(json.dumps(slim, indent=2, ensure_ascii=False))
     else:
         sys.stdout.write(render_text(report))
-    return 0
+    return exit_code(report, bool(args.apply))
+
+
+def exit_code(report: dict, applying: bool) -> int:
+    """0 for a dry run or a clean apply; 1 when an apply did not do what it was asked."""
+    if not applying:
+        return 0
+    if report.get("unknown_ids"):
+        return 1
+    return 0 if report["status"] in ("applied", "nothing-to-apply") else 1
 
 
 if __name__ == "__main__":

@@ -204,7 +204,7 @@ If you do not provide source text:
 You: Make me an instrumental -- ambient electronic, something for studying
 ```
 
-Mac skips the Lyric Transformer entirely, auto-populates exclusion defaults ("no vocals, no humming, no choirs, instrumental only"), and notes the Instrumental toggle for paid-tier users.
+Mac skips the Lyric Transformer entirely, auto-populates exclusion defaults ("no vocals, no humming, no choirs, instrumental only"), and notes the Instrumental toggle for paid-tier users (on the reworked v6 Create sidebar, one user found no Instrumental toggle as of 2026-10-05 — if it isn't there, leave Lyrics empty and let the exclude list carry the anti-vocal load).
 
 ### Non-English Lyrics
 

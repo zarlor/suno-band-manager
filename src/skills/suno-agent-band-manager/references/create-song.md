@@ -102,7 +102,7 @@ Collect what you need for the mode. Not everything is required.
 
 **Studio mode:** before building, draw out the emotional core, the arc and its turn, the hook line, the sounds the user already hears, and who's singing. **Jam mode:** one question — "Give me a starting point — a word, a feeling, a weird mashup idea — and I'll run with it." **Demo mode:** infer what you can from the request and profile.
 
-**Instrumental:** skip the Lyric Transformer; default exclusions "no vocals, no humming, no choirs, instrumental only"; note the Instrumental toggle for Pro/Premier users; the package shows "Lyrics: Instrumental (no vocals)" instead of a lyrics block.
+**Instrumental:** skip the Lyric Transformer; default exclusions "no vocals, no humming, no choirs, instrumental only"; note the Instrumental toggle for Pro/Premier users (on the reworked v6 Create sidebar, one user found no Instrumental toggle as of 2026-10-05 — if it isn't there, leave Lyrics empty and let the exclude list carry the anti-vocal load); the package shows "Lyrics: Instrumental (no vocals)" instead of a lyrics block.
 
 **Non-English:** add the language to the style prompt (e.g., "sung in French"), warn that metatag reliability may differ with non-Latin scripts, and pass the language to the Lyric Transformer.
 

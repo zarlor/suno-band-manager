@@ -1037,7 +1037,7 @@ Instrumental generations frequently come back with wordless vocal texture ("ghos
 1. **Use the Lyrics box as a wordless structural timeline** — section tags only, no words at all (`[Intro]`, `[Verse]`, `[Solo]`, `[Outro]`, `[End]`). Suno still gets the structure, but there is nothing to sing. This also solves the "instrumental sections are dangerous" problem below by bounding each section.
 2. **Triple-layer it** — `instrumental, no vocals` in the Style field **+** `[Instrumental]` in the Lyrics field **+** exclusions covering `voice, singing, chanting, vocal samples`. The exclusion list matters because Suno's default vocal texture is not always "singing": excluding only "vocals" can leave chanting or sampled voices in.
 
-Note that both defences are prompt-side probability work, not switches — a paid-tier user also has the Instrumental toggle, which is the reliable control.
+Note that both defences are prompt-side probability work, not switches — a paid-tier user also has the Instrumental toggle, which is the reliable control (on the reworked v6 Create sidebar, one user found no Instrumental toggle as of 2026-10-05 — if it isn't there, leave Lyrics empty and let the exclude list carry the anti-vocal load).
 
 **⚠ Put the negation in the right place.** Write `instrumental, no vocals` in the **Style** field and the unwanted elements in **Exclude Styles** — do **not** write `[no vocals]` as a standalone bracket tag in the lyrics. See "Negation Inside Standalone Brackets Backfires" under Per-Section Instrument Control: a bare `[no vocals]` can *invite* the thing it names.
 

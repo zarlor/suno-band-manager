@@ -175,6 +175,15 @@ class ParseFeedbackStdinTest(unittest.TestCase):
 
 
 class ParseFeedbackFlagsTest(unittest.TestCase):
+    def test_skill_route_flags_are_accepted_and_ignored(self):
+        for flag in ("--headless", "-H", "--headless:analyze"):
+            code, out = run_flags([flag, "--feedback", "the vocals are buried", "--no-write"])
+            self.assertEqual(code, 0, (flag, out))
+
+    def test_other_unknown_flags_still_fail(self):
+        code, out = run_flags(["--feedback", "x", "--bogus"])
+        self.assertNotEqual(code, 0)
+
     def setUp(self):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)

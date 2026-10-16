@@ -40,7 +40,7 @@ SECTION_RANGES = {
     "bridge": (2, 6),
     "breakdown": (2, 4),
     "build-up": (2, 4),
-    "outro": (2, 6),
+    "outro": (1, 6),  # a one-line outro is a short-poem strategy (thesis isolation)
     "hook": (1, 4),
     "refrain": (2, 6),
     "interlude": (0, 4),
@@ -62,9 +62,25 @@ SECTION_RANGES = {
 }
 
 
+# Section names; a tag may carry a v6 cue after them: [Verse 1 - half-spoken],
+# [Verse 1: hushed], [Chorus | full band], [Bridge — THE TURN].
+SECTION_HEAD_RE = re.compile(
+    r'^(?P<head>(?:final\s+)?(?:verse|chorus|bridge|breakdown|build-up|buildup|pre-chorus|post-chorus|'
+    r'hook|refrain|interlude|guitar solo|piano solo|sax solo|saxophone solo|drum solo|bass solo|solo|'
+    r'instrumental|break|drop|build|end|intro|outro|fade\s*(?:out|in))\s*\d*)'
+    r'(?:\s*(?::|\||\s[-–—]\s?|[–—]).*)?$', re.IGNORECASE)
+
+
+def section_head(tag: str) -> str | None:
+    """The section part of a tag with any cue removed, or None when it isn't a section tag."""
+    m = SECTION_HEAD_RE.match(tag.strip())
+    return m.group("head").strip() if m else None
+
+
 def normalize_section_name(tag: str) -> str:
-    """Normalize section tag to base name: 'Verse 1' -> 'verse', 'Final Chorus' -> 'chorus'."""
-    tag_lower = tag.lower().strip()
+    """Normalize section tag to base name: 'Verse 1' -> 'verse', 'Final Chorus' -> 'chorus',
+    'Verse 1 - half-spoken' -> 'verse'."""
+    tag_lower = (section_head(tag) or tag).lower().strip()
     # Strip trailing numbers
     tag_lower = re.sub(r'\s*\d+$', '', tag_lower)
     # Handle "final chorus" -> "chorus"
@@ -82,12 +98,12 @@ def parse_sections(text: str) -> list[dict]:
         stripped = line.strip()
 
         # Check for section metatag
-        tag_match = re.match(r'^\[([^\]:]+)\]$', stripped)
-        if tag_match:
+        tag_match = re.match(r'^\[([^\]]+)\]$', stripped)
+        # A known section (with or without a v6 cue), or a plain tag with no cue separator
+        # ([Spoken Word]) that stands as its own section of unknown type.
+        if tag_match and (section_head(tag_match.group(1)) is not None
+                          or not re.search(r'[:|]|\s[-–—]\s|[–—]', tag_match.group(1))):
             tag_content = tag_match.group(1).strip()
-            # Skip descriptor metatags (contain colon)
-            if ':' in tag_content:
-                continue
             # Save previous section
             if current_section is not None:
                 sections.append(current_section)
@@ -98,9 +114,8 @@ def parse_sections(text: str) -> list[dict]:
             }
             continue
 
-        # Check for descriptor metatags like [Energy: slow] — don't count as content
-        descriptor_match = re.match(r'^\[[^\]]*:[^\]]*\]$', stripped)
-        if descriptor_match:
+        # Any other bracket line ([Energy: slow], [Whisper]) is a cue, not lyric content
+        if re.match(r'^\[[^\]]*\]$', stripped):
             continue
 
         # Non-empty, non-tag line goes into current section
@@ -227,7 +242,7 @@ Examples:
 
 Expected ranges (lines):
   Intro=0-4, Verse=4-8, Pre-Chorus=2-4, Chorus=2-6,
-  Bridge=2-6, Breakdown=2-4, Build-Up=2-4, Outro=2-6,
+  Bridge=2-6, Breakdown=2-4, Build-Up=2-4, Outro=1-6,
   Hook=1-4, Refrain=2-6
 
 Exit codes: 0 = check ran (read status and sections), 2 = bad input

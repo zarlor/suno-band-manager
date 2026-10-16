@@ -4,12 +4,14 @@
   "input": "Use the suno-band-profile-manager skill --headless:create. (No BMad install in this test folder; the default folders under docs/ are fine.)\n\n```yaml\n# Band Profile — Juniper Halloway\n# Solo project: just me, a harmonium and a kitchen-table mic.\n\nname: \"Juniper Halloway\"\nversion: 1\ninstrumental: false\n\ngenre: \"chamber folk with harmonium drones\"\nmood: \"hushed, wintry, patient\"\nlanguage: English\nreference_tracks:\n  - \"a harmonium recorded in a cold church hall, the voice right on the mic\"\n\nmodel_preference: \"v6-mini\"\ntier: free\n\n# NOTE: keep the harmonium dry and close; reverb turns it into a church organ.\nstyle_baseline: >\n  Chamber folk, solo female voice close to the mic, clear airy alto, harmonium\n  drones under fingerpicked nylon-string guitar, slow 3/4 sway, dry intimate room,\n  bowed cello swells on the last verse, no percussion, quiet and patient.\nexclusion_defaults:\n  - no drums\n  - no autotune\n\nvocal:\n  gender: female\n  tone: \"clear, airy alto with a slight catch\"\n  delivery: \"unhurried, almost spoken in the verses\"\n  energy: \"low, steady\"\n\nsliders:\n  weirdness: 40\n  style_influence: 70\n\nstudio_preferences:\n  bpm: 68\n  key: \"D minor\"\n  time_signature: \"3/4\"\n```",
   "rubric": [
    "docs/band-profiles/juniper-halloway.yaml exists with name \"Juniper Halloway\", tier free and model_preference v6-mini, and has no `sliders:` key and no `studio_preferences:` key (the Free tier can use neither).",
-   "Everything else survived verbatim: the saved profile still holds the comment line \"# NOTE: keep the harmonium dry and close; reverb turns it into a church organ.\" and the header comment \"# Solo project: just me, a harmonium and a kitchen-table mic.\", the style_baseline text is unchanged, and the vocal block keeps gender female.",
-   "Script order in the transcript: a validate-profile.py call with `--staged` on docs/band-profiles/drafts/juniper-halloway.yaml comes before the `apply-profile.py --save --in` call that writes the profile, and scaffold-playlist.py juniper-halloway runs after the save.",
+   "Everything else survived verbatim: the saved profile still holds the comment line \"# NOTE: keep the harmonium dry and close; reverb turns it into a church organ.\" and the header comment \"# Solo project: just me, a harmonium and a kitchen-table mic.\", the style_baseline text is unchanged, and the vocal block keeps gender female. No comment line was added that the input didn't have (reasons belong in the decision log).",
+   "Script order in the transcript: a validate-profile.py call with `--staged` on docs/band-profiles/drafts/juniper-halloway.yaml comes before the `apply-profile.py --save --in` call that writes the profile, and scaffold-playlist.py juniper-halloway runs after the save. The first staged draft is the input as given, sliders and studio_preferences included, so the validator reports the Free-tier conflict before anything is dropped.",
    "Single write path: no Write or Edit tool call, and no shell redirection, sed or python write, targets docs/band-profiles/juniper-halloway.yaml; that file is created only by apply-profile.py --save.",
    "docs/juniper-halloway-playlist.yaml exists with album \"Juniper Halloway\" and no tracks, and docs/band-profiles/drafts/juniper-halloway.yaml no longer exists.",
    "docs/band-profiles/juniper-halloway.decision-log.md exists and records that the sliders and the studio preferences were dropped because the Free tier can't use them.",
-   "The final message is only a JSON object with status \"complete\", profile_path, playlist_path, decision_log and a validation object carrying a warnings list; no greeting, menu or prose outside it."
+   "The final message is a JSON object with status \"complete\", profile_path, playlist_path, decision_log and a validation object whose warnings name the dropped sliders and studio preferences; no greeting, menu or prose outside it, and no message before it.",
+   "The sliders and studio_preferences came off the draft through `apply-profile.py --drop ... --in <draft>`, not a hand edit (no regex, sed or python rewrite of the draft), and validate-profile.py --staged ran again after the drop.",
+   "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)"
   ],
   "files": [],
   "timeout": 600
@@ -21,13 +23,14 @@
   "rubric": [
    "docs/band-profiles/saltgrass-parish.yaml exists with name \"Saltgrass Parish\", tier pro, model_preference v6 and vocal.voice_id \"dana-porch-take-3\".",
    "vocal.gender is absent or empty in the saved profile (the Voice defines it).",
-   "The saved style_baseline holds no gender or Voice-timbre words: none of \"female\", \"male\", \"woman\", \"husky\", \"smoky\" (any case) appears in it.",
+   "The saved style_baseline holds no gender or Voice-timbre words: none of \"female\", \"male\", \"woman\", \"husky\", \"smoky\" (any case) appears in it. The same holds for vocal.tone, which describes how the voice is used (e.g. close, conversational), not how it sounds.",
    "The style_baseline spends its words on arrangement: it names at least three of pedal steel, Wurlitzer, upright bass, brushed snare, horns, and \"country soul\" appears in its first 200 characters.",
    "The delivery Dana asked for is kept in the profile: vocal.delivery (or the style_baseline) carries storytelling/conversational delivery with the chorus lift.",
    "Script order in the transcript: a validate-profile.py `--staged` call on docs/band-profiles/drafts/saltgrass-parish.yaml comes before the `apply-profile.py --save --in` call, and no Write or Edit tool call or shell write targets docs/band-profiles/saltgrass-parish.yaml itself.",
    "docs/saltgrass-parish-playlist.yaml exists with album \"Saltgrass Parish\" (from scaffold-playlist.py in the transcript), and docs/band-profiles/drafts/saltgrass-parish.yaml no longer exists.",
    "docs/band-profiles/saltgrass-parish.decision-log.md exists and records the slug, the Pro tier, and that gender and timbre were left to the Voice rather than written into the profile.",
-   "The final message gives a Band Identity Card of 3-4 sentences about Saltgrass Parish."
+   "The final message gives a Band Identity Card about Saltgrass Parish of at most four sentences (who the band is, its sound, its voice, what sets it apart).",
+   "The owner's asks are kept: sliders.weirdness is 40, and exclusion_defaults carries autotune and pop sheen (as given or as an equivalent positive-safe exclude)."
   ],
   "files": [],
   "timeout": 600
@@ -44,7 +47,9 @@
    "Nothing else changed: the comments \"# NOTE: keep \\\"gothic\\\" out of the baseline — it drags this band into organ-heavy cathedral rock.\", \"# the prompt leads; above 70 the drums went stiff\" and \"# moved to v6 2026-09-14 (was: v5 Pro)\" are present verbatim, and style_baseline, sliders, known_limitations, generation_learnings and the key order match the fixture.",
    "docs/band-profiles/drafts/neon-ferry.yaml no longer exists at the end of the run.",
    "docs/band-profiles/neon-ferry.decision-log.md keeps both original entries and gains a new dated entry recording the mood change (old to new) and the added working pattern.",
-   "Sam is shown the diff: the mood change and the new pattern appear in assistant text in the transcript."
+   "Sam sees the output of diff-profiles.py --text (the mood change and the new pattern) in a ```diff block in assistant text: since Sam already said go, it may come in the reply that reports the save, which also offers to undo it; the reply never claims a diff was shown earlier when it wasn't",
+   "The decision-log entry gives Sam's reason in Sam's words, or says no reason was given; it never supplies a reason of its own.",
+   "After the apply, the reply offers a next step (a style prompt or lyrics for the band) and ends by asking whether there's anything else."
   ],
   "files": [
    "docs/band-profiles/neon-ferry.yaml",
@@ -61,7 +66,9 @@
    "The reply measures the profile against the standard in the decision log (every sound field names a real instrument and a place or texture / \"if a field could describe any rock band, it isn't done yet\"), not only a generic rubric.",
    "The reply invites a writer-voice analysis because writer_voice is empty.",
    "The reply asks whether recent sessions taught anything worth recording as generation_learnings or generation_history.",
-   "Nothing is written without the user's yes: docs/band-profiles/cinder-hollow.yaml and its decision log are byte-identical to the fixtures, no docs/cinder-hollow-playlist.yaml was created, and the transcript has no apply-profile.py --set/--append/--save or scaffold-playlist.py call and no Write or Edit under docs/."
+   "Nothing is written without the user's yes: docs/band-profiles/cinder-hollow.yaml and its decision log are byte-identical to the fixtures, no docs/cinder-hollow-playlist.yaml was created, and the transcript has no apply-profile.py --set/--append/--save or scaffold-playlist.py call and no Write or Edit under docs/.",
+   "The reply's first line is a plain yes/no verdict on whether the profile is good enough to build a song from today, naming a single field or action as the change that matters most (a list of fields fails); nothing comes before it.",
+   "Every rewrite the reply suggests for genre, style_baseline, mood, vocal.tone, vocal.delivery or vocal.energy meets the decision log's own standard: each names a real instrument plus a place or texture. The reply claims the standard only for rewrites that meet it."
   ],
   "files": [
    "docs/band-profiles/cinder-hollow.yaml",
@@ -69,5 +76,22 @@
    "docs/songbook/cinder-hollow/ash-road.md"
   ],
   "timeout": 600
+ },
+ {
+  "id": "create-headless-stale-decision-log",
+  "input": "Use the suno-band-profile-manager skill --headless:create. (No BMad install in this test folder; the default folders under docs/ are fine.)\n\n```yaml\nname: \"Hollow Pines\"\nversion: 1\ninstrumental: false\n\ngenre: \"Appalachian string-band folk\"\nmood: \"lonesome, patient, wood-smoke warm\"\nlanguage: English\nreference_tracks:\n  - \"a front-porch fiddle and banjo trio, one shared mic\"\n\nmodel_preference: \"v6\"\ntier: pro\n\nstyle_baseline: >\n  Appalachian string-band folk, clawhammer banjo and fiddle trading the melody, upright bass on the one,\n  close-harmony duet vocals on the choruses, one shared room mic, unhurried and lonesome.\nexclusion_defaults:\n  - autotune\n  - drum machine\n\nvocal:\n  gender: male\n  tone: \"plain, unpolished tenor\"\n  delivery: \"storytelling, unhurried\"\n  energy: \"low, steady\"\n\nsliders:\n  weirdness: 45\n  style_influence: 70\n```",
+  "files": [
+   "docs/band-profiles/hollow-pines.decision-log.md"
+  ],
+  "timeout": 600,
+  "rubric": [
+   "docs/band-profiles/hollow-pines.yaml exists with name \"Hollow Pines\", genre \"Appalachian string-band folk\" and tier pro.",
+   "The earlier band's log was moved aside, not appended to: a file docs/band-profiles/hollow-pines.decision-log.prior-*.md exists and is byte-identical to the fixture (it still names synthwave and premier), and the transcript shows `apply-profile.py --save` run with `--archive-existing-log`.",
+   "docs/band-profiles/hollow-pines.decision-log.md is a fresh log for this band: it records this create (slug, Pro tier) and carries none of the earlier band's content (no 'gated drums', 'v5.5', 'night-drive', 'premier', 'Rejected: acoustic'); a line naming the moved-aside file by its path is expected, not its contents.",
+   "The final message is only a JSON object with status \"complete\", profile_path, playlist_path and decision_log, and its warnings name the moved-aside earlier log; no greeting or prose outside it.",
+   "Single write path: no Write or Edit tool call, and no shell redirection, sed or python write, targets docs/band-profiles/hollow-pines.yaml; it is created only by apply-profile.py --save, after a validate-profile.py --staged call on the draft.",
+   "docs/hollow-pines-playlist.yaml exists with album \"Hollow Pines\", and docs/band-profiles/drafts/hollow-pines.yaml no longer exists.",
+   "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)"
+  ]
  }
 ]

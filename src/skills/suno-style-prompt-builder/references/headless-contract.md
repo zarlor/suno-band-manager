@@ -12,13 +12,13 @@ The Band Manager agent calls this skill headless for every package, so the retur
     "exclusion_prompt": "optional — the current Exclude Styles, which exclusions.remove edits",
     "tier": "optional — free | pro | premier; default as for a build",
     "band_profile": "optional — keeps the profile's guardrails in play",
-    "style_prompt": {"add": [], "remove": [], "reorder_notes": ""},
+    "style_prompt": {"add": [], "remove": [], "keep": [], "reorder_notes": ""},
     "exclusions": {"add": [], "remove": []},
     "sliders": {"weirdness": "", "style_influence": ""},
     "model_suggestion": ""
   }
   ```
-  `reorder_notes` is free-text guidance; apply it as a re-front-loading instruction. Without `exclusion_prompt`, `exclusions.remove` has nothing to edit: return the new excludes from `exclusions.add` and say in `warnings` that removals need the current list. The legacy `adjustments.reorder: string[]` / `adjustments.replace[]` shape is still accepted.
+  `style_prompt.keep` names the descriptors behind what the user liked: never remove or reword them. `reorder_notes` is free-text guidance; apply it as a re-front-loading instruction. A refine never adds a descriptor that pulls toward the drift it is fixing (fixing a choir drift, don't add "shout-chorus" or "gang" anything). Without `exclusion_prompt`, `exclusions.remove` has nothing to edit: return the new excludes from `exclusions.add` and say in `warnings` that removals need the current list. The legacy `adjustments.reorder: string[]` / `adjustments.replace[]` shape is still accepted.
 - **`--headless:migrate`** — reformat `prompt` from `from_model` to `target_model` using the target's strategy. A retired target can't generate, so migrate to v6 and log why.
 
 Headless skips the reference-decomposition confirmation; record the skip in `decisions[]`.
@@ -36,7 +36,7 @@ Headless skips the reference-decomposition confirmation; record the skip in `dec
 | `exclusions` | The user's "no X" asks: each goes to Exclude Styles, with a positive in the prompt |
 | `instrumental` | `true` drops vocal direction; `vocal_gender` is `""` and `lyrics_mode` is `Instrumental` |
 | `voice` / `persona` / `custom_model` | Name (or `true`) of what is attached. A Voice drops gender and timbre descriptors and leaves `vocal_gender` `""` |
-| `sliders` | User-supplied values are authoritative: pass them through |
+| `sliders` | User-supplied values are authoritative: pass them through. On refine an empty slider value means unchanged: keep the current setting, since the feedback didn't touch it |
 | `lyrics_mode` | `Manual` / `Auto` / `Instrumental`, passed through. Default: `Instrumental` for an instrumental, else `Manual` |
 | `working_title` | Seeds `title_suggestion` |
 | `include_wild_card` | Default `true` for a build, `false` for refine and migrate |
@@ -44,15 +44,19 @@ Headless skips the reference-decomposition confirmation; record the skip in `dec
 ## Rules that hold headless
 
 - **Each slider value carries its reasoning from this song** in `sliders.reasoning`, never a profile's stored value.
-- **Each exclude carries a rationale** in `exclusion_rationale` naming the descriptor in this prompt it defends against; drop any that defend against nothing.
-- **Wild card** is on by default for a build. It stays in the band's genre family even when this song is a counter-genre piece (a metal band's wild card is anchored in metal or hard rock, never another family), on the primary's model and sliders. Log in `decisions[]` which of the profile's genres anchors it.
-- **Validate before emitting,** in every mode: pipe the package JSON (with `tier`) to `uv run {skill-root}/scripts/validate-prompt.py --stdin` (it checks the wild card too), fix what it flags, re-run, and put the final report in `validation`. A `review` status passes only with each medium finding judged and logged in `decisions[]`. Exit 2 names a malformed field: fix it and re-run. If the script can't run, check by hand — the model's character limit, genre/mood/vocals in the first 200 characters, no section tags or asterisks, every trigger word in the safety tables — and say so in `validation`.
-- **Counts come from the validator:** `style_prompt_chars` and `style_prompt_limit` are the final report's `metrics.style_prompt_chars` and `metrics.style_prompt_limit`; `wild_card.style_prompt_chars` is `metrics.wild_card_prompt_chars`. Never count characters yourself.
+- **Each exclude carries a rationale** in `exclusion_rationale` quoting, in single quotes, the words in this prompt that cause the drift it defends against — the genre, instrument, era or arrangement cue ("'final chorus lift' or 'builds to a final chorus swell'" for `key change`: words that describe the lift, not just a section's name, so 'hard stop after the final chorus' is no cause) responsible, not whatever nearby phrase happens to be there; drop any that defend against nothing (a profile default with no cause in this prompt is dropped, not justified with a stretch such as 'autotune' from 'close to the mic'), and in refine list each dropped one in `exclusions_removed` with its reason in `decisions[]`, so the caller sees what left. The validator flags a reason whose quoted words aren't in the prompt (it's citing the profile or general model behaviour, which Suno never sees).
+- **Wild card** is on by default for a build. It — and any alternative twist you mention beside it — stays in the band's genre family even when this song is a counter-genre piece (a metal band's wild card is anchored in metal or hard rock, never another family), on the primary's model and sliders, and at the primary's tempo unless a `decisions[]` entry says why it moves. Log in `decisions[]` which of the profile's genres anchors it.
+- **Validate while you build, then let the script emit the return,** in every mode. Pipe the package JSON (with `tier`, and `exclusion_rationale` for the primary and any wild card) on stdin with a heredoc — `uv run {skill-root}/scripts/validate-prompt.py --stdin <<'PKG'` … `PKG` — never through a temp file, which another run can overwrite between write and check. Fix what it flags and re-run. Each finding carries an `id`; a medium finding you keep needs a `decisions[]` entry `{"finding": "<id>", "call": ..., "reason": ...}`. Exit 2 names a malformed field: fix it and re-run.
+- **Leave headroom:** aim the primary at about 850–950 characters on a 1,000 limit, so a refine has room to add without cutting.
+- **Read the references one file per call** (they don't fit one shell output together). When you expect the package to pass, validate straight with `--emit`: a refusal prints the same report, so a separate plain run first is optional.
+- **The last step is `--emit`:** pipe the complete success package (everything below except `validation`) to `uv run {skill-root}/scripts/validate-prompt.py --stdin --emit <<'PKG'` … `PKG`. Exit 0 prints the finished return: your package with the validator's report as `validation` and the script's character counts (`style_prompt_chars`, `style_prompt_limit`, `wild_card.style_prompt_chars`), so never count characters or write `validation` yourself. **Your reply is that printed JSON, exactly as printed:** copy it whole with its line breaks and indentation (don't minify or reformat it), and don't reword, trim or annotate any field (a finding's text included); a judgment you want to add goes in `decisions[]` before you emit. Exit 1 (`emit_refused`) names the findings still standing (a critical or high one, or a medium one with no `decisions[]` entry): fix or judge them and emit again. If the script can't run at all, check by hand — the model's character limit, genre/mood/vocals in the first 200 characters, no section tags or asterisks, every trigger word in the safety tables — and say so in `validation`.
 - **Capture, don't drop:** lyric ideas, structure preferences or mix notes in the input go in `handoff_notes`.
+
+**Work silently and finish everything:** send no message before the reply: every tool call goes out with no words beside it (no "Now emitting…", no progress note), and run no background commands: every tool call finishes before you return, so nothing reports after the reply. Scratch files go in a fresh `mktemp -d` folder, never a fixed `/tmp` name another run could share.
 
 ## Success output
 
-**The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field (`warnings`, `decision_log`, `summary`).
+**The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field the schema below has (`warnings`, `decisions`, `handoff_notes`); add no other fields.
 
 Fields run in the order the caller presents them: Voice → Lyrics → Style → Exclude → Settings (Model, then the Controls panel) → Title → Wild Card.
 
@@ -60,6 +64,7 @@ Fields run in the order the caller presents them: Voice → Lyrics → Style →
 {
   "status": "complete",
   "mode": "build",
+  "tier": "pro",
   "voice_note": "Voice active: gender and timbre descriptors omitted",
   "lyrics_mode": "Manual",
   "style_prompt": "string",
@@ -90,20 +95,25 @@ Fields run in the order the caller presents them: Voice → Lyrics → Style →
     "exclusion_rationale": [],
     "alt_route": "Or run the primary prompt unchanged on v6-wild."
   },
-  "validation": {"...": "validate-prompt.py report covering both prompts"},
+  "validation": {"...": "written by validate-prompt.py --emit: its report covering both prompts"},
+  "exclusions_removed": [],
+  "warnings": [],
   "handoff_notes": [{"for": "suno-lyric-transformer", "note": "string"}],
   "decisions": [
     {"call": "substituted 'progressive heavy groove' for 'metal'", "reason": "profile avoids screaming; 'metal' triggers harsh vocals"},
-    {"call": "skipped decomposition confirmation", "reason": "headless — no interactive turn"}
+    {"call": "skipped decomposition confirmation", "reason": "headless — no interactive turn"},
+    {"finding": "3f9a1c2e", "call": "kept 6 excludes", "reason": "each defends a word in this prompt"}
   ]
 }
 ```
 
 - The Controls panel order, top to bottom, is Vocal Gender, Duration, Max Mode, Weirdness, Style Influence, Audio Influence (only with a Voice, Persona or audio attached), Variety, Personalize. Exclude Styles is the panel's first row.
-- `voice_note` is `""` when nothing is attached. It also carries Persona and Custom Model handling.
+- `vocal_gender` is lower-case `"male"`, `"female"` or `""`. `exclusions_removed` lists excludes a refine dropped (`[]` in a build). `warnings` carries anything the caller should know that isn't a decision: a refine run without the current `exclusion_prompt`, BMad not set up here (one entry), a missing profile.
+- `voice_note` is `""` when nothing is attached. It never tells the user to change a Voice's Skill Level, which is fixed at recording (a Voice not set to Professional is re-recorded, not adjusted). It also carries Persona and Custom Model handling.
+- `sliders.reasoning` values are always strings: `""` for a slider that is `null` (no audio, so no `audio_influence`).
 - `vocal_gender` is `""` with a Voice or an instrumental. `audio_influence` and `audio_source` are `null` without audio attached. `sliders` is `null` on Free.
-- `wild_card.exclusion_prompt` is `null` when it matches the primary's; give it (with a rationale) only when the wild card needs different excludes, and include it in the package you validate: the validator checks it like the primary's (`wild_card_exclusion_prompt` findings). `wild_card` is `null` when it's off.
-- Refine and migrate return the same shape with `mode` set; fields the input didn't carry and the change didn't touch are `null`.
+- `wild_card.exclusion_prompt` is `null` only when every one of the primary's excludes also defends words in the wild card's own prompt; otherwise give the wild card its own excludes with their own rationale (the validator flags an inherited exclude whose quoted words the wild card lacks, and a scream trigger the wild card adds), and include it in the package you validate: the validator checks it like the primary's (`wild_card_exclusion_prompt` findings). `wild_card` is `null` when it's off.
+- Refine and migrate return the same shape with `mode` set; fields the input didn't carry and the change didn't touch are `null`, except `lyrics_mode`, which keeps its default (`Manual`, or `Instrumental` for an instrumental).
 
 ## Blocked output
 

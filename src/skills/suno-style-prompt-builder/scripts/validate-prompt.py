@@ -39,6 +39,7 @@ Exit codes: 0 = pass, 1 = review, warning or fail (see "status"), 2 = bad input 
 """
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -80,13 +81,16 @@ VOICE_AUDIO_INFLUENCE_RANGE = getattr(suno_constants, "VOICE_AUDIO_INFLUENCE_RAN
 # Inline negation: Suno reads the noun and drops the negation, so these add the
 # very thing they mean to remove. Negatives belong in Exclude Styles.
 # "no X" / "without X" are unambiguous; "not X" / "avoid X" / "don't X" usually are
-# but get a softer flag. "never" is deliberately absent: persistence phrasing such
-# as "the riff continues under the verse, never stops" is v6-endorsed direction.
+# but get a softer flag. "never" is flagged only off its persistence verbs: "the riff
+# continues under the verse, never stops" is v6-endorsed direction, while "the band
+# never crashes in" hands Suno "crashes".
 NEGATION_STRONG = (r"\bno\s+[a-z][\w'-]*", r"\bwithout\s+[a-z][\w'-]*")
 NEGATION_SOFT = (
     r"\bnot\s+[a-z][\w'-]*",
     r"\bavoid(?:s|ing)?\s+[a-z][\w'-]*",
     r"\b(?:do not|don't)\s+[a-z][\w'-]*",
+    r"\bnever\s+(?!(?:stops?|lets?\s+up|quits?|drops?\s+out|fades?|lets?\s+go|ends?|breaks?|rests?|"
+    r"resolves?|lifts?|leaves?|wavers?|settles?)\b)[a-z][\w'-]*",
 )
 NEGATION_PREFIXES = ("no ", "without ", "not ", "avoid")
 
@@ -216,6 +220,19 @@ def detect_triggers(text: str, instrumental: bool = False) -> list[dict]:
                 "data": {"phrases": negations},
             })
 
+    # v6-build-core rule 1: song-wide gravity words pull stock conventions.
+    # A word that describes a part ("heavy riffs", "massive kick") is direction, not gravity.
+    gravity = [w for w in GRAVITY_WORDS if re.search(
+        _word_re(w) + r"(?!(?:\s+[\w-]+)?\s+(?:" + GRAVITY_PART_NOUNS + "|" + GRAVITY_GENRE_NOUNS + r")\b)", text.lower())]
+    if gravity:
+        findings.append({
+            "severity": "medium",
+            "category": "gravity",
+            "issue": f"Gravity word(s) {gravity}: used song-wide, these pull stock conventions, and in our renders they pushed the vocal under the band.",
+            "fix": "Describe the band's part instead, or tie the word to one moment ('drums hit hard in the final chorus').",
+            "data": {"words": gravity},
+        })
+
     # Exclamation marks push delivery toward shouting/screaming.
     if SHOUT_TRIGGER_CHAR in text:
         findings.append({
@@ -338,8 +355,12 @@ def validate_model(model: str, *, label: str = "Model") -> list[dict]:
     return []
 
 
-def validate_tier(tier: str, model: str, exclusion_text: str, sliders: dict) -> list[dict]:
+def validate_tier(tier: str, model: str, exclusion_text: str, sliders: dict, v6_options: dict | None = None) -> list[dict]:
     """Free tier: v6-mini only, no Exclude Styles field, no Weirdness/Style Influence sliders."""
+    if not tier:
+        return [{"severity": "low", "category": "tier",
+                 "issue": "No `tier` in the package: the tier rules didn't run, and --emit refuses without it.",
+                 "fix": "Add \"tier\": \"free\" | \"pro\" | \"premier\" (the config's suno_tier when the caller gave none)."}]
     if tier != "free":
         return []
     findings = []
@@ -357,6 +378,21 @@ def validate_tier(tier: str, model: str, exclusion_text: str, sliders: dict) -> 
             "issue": "Exclude Styles given on the Free tier, which has no Exclude Styles field.",
             "fix": "Drop the field and carry each exclusion as positive phrasing in the style prompt.",
         })
+    v6 = v6_options or {}
+    if v6.get("max_mode") is True:
+        findings.append({
+            "severity": "high",
+            "category": "tier",
+            "issue": "Max Mode is on for the Free tier, whose Controls panel has only Vocal Gender, Lyrics mode and Title.",
+            "fix": "Set v6_options.max_mode to false (or null) on Free.",
+        })
+    if str(v6.get("variety") or "").strip() or v6.get("personalize") is True:
+        findings.append({
+            "severity": "medium",
+            "category": "tier",
+            "issue": "Variety or Personalize is set for the Free tier, which has neither control.",
+            "fix": "Set v6_options.variety and v6_options.personalize to null on Free.",
+        })
     set_sliders = sorted(k for k in ("weirdness", "style_influence")
                          if sliders.get(k) not in (None, ""))
     if set_sliders:
@@ -369,6 +405,20 @@ def validate_tier(tier: str, model: str, exclusion_text: str, sliders: dict) -> 
     return findings
 
 
+def validate_vocal_gender(value) -> list[dict]:
+    """Suno's Vocal Gender control takes Male, Female or nothing; the package spells it lower-case."""
+    if value in (None, ""):
+        return []
+    if str(value) not in ("male", "female"):
+        return [{
+            "severity": "medium",
+            "category": "consistency",
+            "issue": f"vocal_gender is {value!r}; the package uses \"male\", \"female\" or \"\" (not set).",
+            "fix": "Use lower-case \"male\" or \"female\", or \"\".",
+        }]
+    return []
+
+
 def validate_wild_card_model(model: str, wild_model: str) -> list[dict]:
     if wild_model and model and wild_model != model:
         return [{
@@ -378,6 +428,21 @@ def validate_wild_card_model(model: str, wild_model: str) -> list[dict]:
             "fix": "Put the wild card on the primary's model; offer the unchanged primary on v6-wild as the alternative route.",
         }]
     return []
+
+
+# v6-build-core.md rule 1.
+GRAVITY_WORDS = ("heavy", "doom", "crushing", "massive", "epic", "cinematic", "industrial")
+# "heavy swamp metal", "doom metal": the word is part of the lane's name, not song-wide gravity.
+GRAVITY_GENRE_NOUNS = "metal|rock|blues|swamp metal|sludge|stoner|psych|grunge|hardcore|punk|doom"
+GRAVITY_PART_NOUNS = ("riffs?|guitars?|drums?|bass|bassline|kick|snare|toms?|chords?|groove|low end|"
+                      "distortion|fuzz|amps?|cymbals?|breakdown|downbeat|backbeat|stomp")
+# Words in a prompt that invite group vocals, the drift the group-vocal family excludes defend against.
+GROUP_VOCAL_PULLS = ("call-and-response", "call and response", "gang", "shout-along", "sing-along",
+                     "singalong", "chant", "chanted", "choir", "choral", "backing vocals", "harmonies",
+                     "stacked vocals", "group vocals")
+
+# safety-tables.md: the group-vocal drift has several conventions; excluding one leaves the rest.
+CHOIR_FAMILY = ("choir", "backing vocals", "gang vocals", "layered vocals", "crowd chants")
 
 
 def validate_exclusion_prompt(text: str) -> list[dict]:
@@ -413,15 +478,28 @@ def validate_exclusion_prompt(text: str) -> list[dict]:
         })
 
     items = exclusion_items(text)
-    if len(items) > EXCLUSION_ITEM_NOTICE:
+    family = [t for t in CHOIR_FAMILY if any(_contains_term(i.lower(), t) for i in items)]
+    if family and len(family) < len(CHOIR_FAMILY):
+        missing = [t for t in CHOIR_FAMILY if t not in family]
+        findings.append({
+            "severity": "medium" if len(family) >= 2 else "low",
+            "category": "consistency",
+            "issue": (f"Part of the group-vocal family is excluded ({family}) but not {missing}. "
+                      "Suno reaches for whichever member the genre suggests, so a partial family leaves the drift open."),
+            "fix": f"Exclude the whole family ({', '.join(CHOIR_FAMILY)}), or log why the rest can stay.",
+            "data": {"present": family, "missing": missing},
+        })
+    # A whole family counts as one item: it defends against one drift.
+    counted = len([i for i in items if not any(_contains_term(i.lower(), t) for t in CHOIR_FAMILY)]) + (1 if family else 0)
+    if counted > EXCLUSION_ITEM_NOTICE:
         findings.append({
             "severity": "medium",
             "category": "consistency",
-            "issue": f"Too many exclusion items ({len(items)}). Past 2-3, excludes start to destabilize the arrangement.",
+            "issue": f"Too many exclusion items ({counted}, the group-vocal family counted once). Past 2-3, excludes start to destabilize the arrangement.",
             "fix": ("Keep only the items something in this prompt pulls toward. A whole family "
                     "(e.g. choir, backing vocals, gang vocals for a one-singer song) can justify more; "
                     "log why if they stay."),
-            "data": {"item_count": len(items), "notice_above": EXCLUSION_ITEM_NOTICE},
+            "data": {"item_count": counted, "notice_above": EXCLUSION_ITEM_NOTICE},
         })
 
     vague_terms = ["no music", "no sound", "no instruments", "no singing", "nothing bad"]
@@ -476,6 +554,11 @@ def validate_controls(audio_influence=None, audio_source: str = "", vocal_gender
 def _tag(findings: list, field: str) -> list:
     for f in findings:
         f["location"] = {"field": field}
+        if field.startswith("wild_card") and not str(f.get("issue", "")).startswith("Wild card"):
+            f["issue"] = "Wild card: " + str(f.get("issue", ""))
+        # A stable id, so a judgment in decisions[] can name the finding it covers.
+        key = f"{field}|{f.get('category', '')}|{f.get('issue', '')}"
+        f["id"] = hashlib.sha1(key.encode("utf-8")).hexdigest()[:8]
     return findings
 
 
@@ -534,6 +617,59 @@ def build_report(style_findings: list, exclusion_findings: list, style_text: str
     }
 
 
+def emit_package(package: dict, report: dict) -> tuple[dict, int]:
+    """The caller's final return: the package with the validator's own report and counts.
+
+    Refuses (exit 1) while a critical or high finding stands, or while a medium finding has
+    no `decisions[]` entry naming its id in `finding`. On success the package comes back
+    unchanged except for `validation` (this report, verbatim) and the character counts,
+    which are the script's, not hand counts.
+    """
+    if str(package.get("tier") or "").strip().lower() not in VALID_TIERS:
+        return {"status": "emit_refused", "reason": "the package needs `tier` (free, pro or premier) so the tier rules run",
+                "findings": [], "validation": report}, 1
+    if report["summary"]["critical"] or report["summary"]["high"]:
+        blocking = [f["id"] for f in report["findings"] if f["severity"] in ("critical", "high")]
+        return {"status": "emit_refused", "reason": "critical or high findings stand; fix them and re-run",
+                "findings": blocking, "validation": report}, 1
+    decisions = package.get("decisions") or []
+    judged = {str(d.get("finding")) for d in decisions if isinstance(d, dict) and d.get("finding")}
+    stale = sorted(judged - {f["id"] for f in report["findings"]})
+    if stale:
+        return {"status": "emit_refused",
+                "reason": "decisions[] names finding ids this report doesn't have (left from an earlier run); drop or re-point them",
+                "findings": stale, "validation": report}, 1
+    unjudged = [f["id"] for f in report["findings"] if f["severity"] == "medium" and f["id"] not in judged]
+    if unjudged:
+        return {"status": "emit_refused",
+                "reason": "each medium finding needs a decisions[] entry with \"finding\": <its id>, a call and a reason",
+                "findings": unjudged, "validation": report}, 1
+    metrics = report["metrics"]
+    counts = {"style_prompt_chars": metrics["style_prompt_chars"], "style_prompt_limit": metrics["style_prompt_limit"]}
+    out: dict = {}
+    for key, value in package.items():
+        if key in counts:
+            continue
+        out[key] = value
+        if key == "style_prompt":  # counts sit right after the prompt, as in the contract
+            out.update(counts)
+        if key == "wild_card" and isinstance(value, dict) and "wild_card_prompt_chars" in metrics:
+            wc = {}
+            for k, v in value.items():
+                if k != "style_prompt_chars":
+                    wc[k] = v
+                if k == "style_prompt":
+                    wc["style_prompt_chars"] = metrics["wild_card_prompt_chars"]
+            out[key] = wc
+    if "validation" in out:
+        out["validation"] = report
+    else:  # before the notes and decisions, as in the contract
+        tail = {k: out.pop(k) for k in ("handoff_notes", "decisions") if k in out}
+        out["validation"] = report
+        out.update(tail)
+    return out, 0
+
+
 def _load_package_file(path: Path) -> dict:
     text = path.read_text()
     if path.suffix.lower() == ".json":
@@ -572,6 +708,129 @@ def _wild_card(package: dict) -> tuple[str, str | None]:
     return _text_field(package, "wild_card_prompt"), None
 
 
+_QUOTED = re.compile(r"(?<![A-Za-z])['\u2018\"\u201c]([^'\u2019\"\u201d]{2,}?)['\u2019\"\u201d](?![A-Za-z])")
+
+
+def validate_exclusion_rationale(rationale, style_text: str, label: str = "exclusion_rationale",
+                                 also_in: str = "") -> list[dict]:
+    """Each exclude defends against words in THIS prompt (Suno sees nothing else).
+
+    A `defends_against` that quotes words not in the style prompt is citing the profile, the
+    request, an earlier take or general model behaviour: medium. Every quoted fragment must be
+    in the prompt (`also_in` adds the text of a wild card that inherits these excludes). One
+    that quotes nothing can't be checked: low.
+    """
+    if not isinstance(rationale, list):
+        return []
+    prompt = (style_text + "\n" + also_in).lower()
+    findings = []
+    for entry in rationale:
+        if not isinstance(entry, dict):
+            continue
+        term = str(entry.get("term") or "").strip()
+        reason = str(entry.get("defends_against") or "").strip()
+        quoted = [q.strip() for q in _QUOTED.findall(reason) if q.strip()]
+        if not quoted:
+            findings.append({
+                "severity": "low",
+                "category": "exclusion",
+                "issue": f"{label}: the reason for excluding '{term}' quotes no words from this prompt, so it can't be checked.",
+                "fix": "Quote the words in this style prompt that invite the drift, e.g. \"'southern rock' can pull slide/steel\".",
+                "data": {"term": term, "defends_against": reason},
+            })
+        elif [q for q in quoted if q.lower() not in prompt]:
+            missing = [q for q in quoted if q.lower() not in prompt]
+            findings.append({
+                "severity": "medium",
+                "category": "exclusion",
+                "issue": f"{label}: the reason for excluding '{term}' quotes {missing}, which aren't in this style prompt. An exclude defends against drift from the current prompt only; Suno sees nothing else.",
+                "fix": "Quote only words this prompt contains (the ones that cause the drift), or drop the exclude.",
+                "data": {"term": term, "defends_against": reason, "quoted": missing},
+            })
+        # A scream exclude defends against every heavy trigger the prompt carries, so its
+        # reason names each one (a 'metal' reason doesn't cover an added 'sludge').
+        if re.search(r"scream|growl|harsh", term.lower()):
+            uncovered = sorted(w for w in _heavy_triggers(style_text + "\n" + also_in) if w not in reason.lower())
+            if uncovered:
+                findings.append({
+                    "severity": "medium",
+                    "category": "exclusion",
+                    "issue": f"{label}: the reason for excluding '{term}' doesn't name the scream trigger(s) {uncovered} this prompt carries.",
+                    "fix": f"Quote each trigger in the reason, e.g. \"'{uncovered[0]}' pulls harsh vocals\".",
+                    "data": {"term": term, "uncovered": uncovered},
+                })
+    return findings
+
+
+def _heavy_triggers(text: str) -> set[str]:
+    lowered = text.lower()
+    return {w for w in HEAVY_VOCAL_TRIGGERS if re.search(_word_re(w), lowered)}
+
+
+def validate_inherited_wild_excludes(package: dict, style_text: str, wild_text: str, instrumental: bool) -> list[dict]:
+    """A wild card that inherits the primary's excludes but adds a scream trigger the primary lacks.
+
+    The inherited excludes were chosen for a prompt without that word, so nothing defends
+    against the drift it brings unless a reason names it.
+    """
+    wc = package.get("wild_card")
+    if not wild_text or not isinstance(wc, dict) or wc.get("exclusion_prompt") is not None:
+        return []
+    findings = []
+    # Each inherited exclude must defend something the wild card itself says.
+    wild_lower = wild_text.lower()
+    for entry in package.get("exclusion_rationale") or []:
+        if not isinstance(entry, dict):
+            continue
+        quoted = [q.strip() for q in _QUOTED.findall(str(entry.get("defends_against") or "")) if q.strip()]
+        # Every quoted fragment, the cause included: a holding line shared with the wild card
+        # doesn't make an exclude chosen for the primary's cause fit the wild card.
+        if quoted and not all(q.lower() in wild_lower for q in quoted):
+            findings.append({
+                "severity": "medium",
+                "category": "exclusion",
+                "issue": (f"The wild card inherits the exclude '{entry.get('term', '')}', whose reason quotes {quoted}; "
+                          f"{[q for q in quoted if q.lower() not in wild_lower]} aren't in the wild card's prompt."),
+                "fix": "Give the wild card its own exclusion_prompt and exclusion_rationale quoting its own words.",
+                "data": {"inherited_term": entry.get("term", ""), "quoted": quoted},
+            })
+    if instrumental:
+        return findings
+    added = sorted(_heavy_triggers(wild_text) - _heavy_triggers(style_text))
+    if not added:
+        return findings
+    reasons = " ".join(str(e.get("defends_against") or "") for e in (package.get("exclusion_rationale") or [])
+                       if isinstance(e, dict)).lower()
+    uncovered = [w for w in added if w not in reasons]
+    if not uncovered:
+        return findings
+    return findings + [{
+        "severity": "medium",
+        "category": "exclusion",
+        "issue": (f"The wild card adds scream trigger(s) {uncovered} and inherits the primary's Exclude Styles, "
+                  "which were chosen for a prompt without them; no reason names them."),
+        "fix": (f"Give the wild card its own exclusion_prompt (e.g. with 'screaming') and an exclusion_rationale "
+                f"entry quoting '{uncovered[0]}'."),
+        "data": {"added_triggers": uncovered},
+    }]
+
+
+def validate_group_vocal_contradiction(style_text: str, exclusion_text: str, label: str = "style_prompt") -> list[dict]:
+    """Excludes that defend against group vocals while the prompt asks for them work against each other."""
+    if not any(_contains_term(i.lower(), t) for i in exclusion_items(exclusion_text) for t in CHOIR_FAMILY):
+        return []
+    pulls = [w for w in GROUP_VOCAL_PULLS if re.search(_word_re(w), style_text.lower())]
+    if not pulls:
+        return []
+    return [{
+        "severity": "medium",
+        "category": "exclusion",
+        "issue": f"{label} asks for {pulls} while Exclude Styles defends against group vocals: the prompt pulls toward the drift the excludes fight.",
+        "fix": "Drop the group-vocal words from the prompt (a refine never adds a descriptor that pulls toward the drift it fixes), or drop the excludes.",
+        "data": {"pulls": pulls},
+    }]
+
+
 def validate_package(package: dict, skill_path: str = "") -> dict:
     """Validate a whole package dict (the headless shape) and return the report.
 
@@ -606,7 +865,17 @@ def validate_package(package: dict, skill_path: str = "") -> dict:
         validate_model(model)
         + (validate_model(wild_model, label="Wild-card model") if wild_model and wild_model != model else [])
         + validate_wild_card_model(model, wild_model or "")
-        + validate_tier(tier, model, exclusion_text, sliders)
+        + validate_tier(tier, model, exclusion_text, sliders,
+                        package.get("v6_options") if isinstance(package.get("v6_options"), dict) else None)
+        + validate_vocal_gender(package.get("vocal_gender"))
+        + validate_exclusion_rationale(
+            package.get("exclusion_rationale"), style_text,
+            also_in=(wild_text or "") if isinstance(wc, dict) and wc.get("exclusion_prompt") is None else "")
+        + (validate_exclusion_rationale(wc.get("exclusion_rationale"), wild_text or style_text,
+                                        label="wild_card.exclusion_rationale")
+           if isinstance(wc, dict) else [])
+        + validate_inherited_wild_excludes(package, style_text, wild_text or "", instrumental)
+        + validate_group_vocal_contradiction(style_text, exclusion_text)
     )
     effective_wild_model = wild_model or model
 
@@ -636,10 +905,13 @@ def main():
 Package fields (JSON via --stdin / --input-file): style_prompt, exclusion_prompt, model,
 tier (free|pro|premier), instrumental, wild_card.style_prompt + wild_card.model (or
 wild_card_prompt), vocal_gender, sliders.weirdness, sliders.style_influence,
-sliders.audio_influence + sliders.audio_source (voice|persona).
+sliders.audio_influence + sliders.audio_source (voice|persona), exclusion_rationale and
+wild_card.exclusion_prompt + wild_card.exclusion_rationale ([{term, defends_against}]; each reason
+quotes, in single quotes, words from its own style prompt).
 
 Examples:
   echo '{"style_prompt": "heartland rock, ...", "model": "v6"}' | %(prog)s --stdin
+  %(prog)s --stdin --emit <<'PKG'   # final step: prints the package to return, validation included
   %(prog)s --input-file package.json
   %(prog)s --style "indie folk-rock, warm analog..." --exclude "autotune" --model v6
         """,
@@ -647,6 +919,10 @@ Examples:
     parser.add_argument("file", nargs="?", help="Package file (.json, .yaml or .yml) — same as --input-file")
     parser.add_argument("--input-file", help="Package file (.json, .yaml or .yml)")
     parser.add_argument("--stdin", action="store_true", help="Read the package as JSON from stdin")
+    parser.add_argument("--emit", action="store_true",
+                        help="Print the finished package with this report as its `validation` (the caller's final "
+                             "return, to pass on unchanged); refuses with exit 1 while a critical/high finding stands "
+                             "or a medium one has no decisions[] entry naming its id")
     parser.add_argument("--style", help="Style prompt text to validate")
     parser.add_argument("--exclude", default="", help="Exclusion prompt text to validate")
     parser.add_argument("--wild-card", default="", help="Wild-card style prompt text to validate")
@@ -709,6 +985,15 @@ Examples:
     except (json.JSONDecodeError, PackageError, OSError, UnicodeDecodeError) as exc:
         print(f"Error: could not validate package: {exc}", file=sys.stderr)
         sys.exit(2)
+
+    if args.emit:
+        emitted, code = emit_package(package, report)
+        output_json = json.dumps(emitted, indent=2, ensure_ascii=False)
+        if args.output:
+            Path(args.output).write_text(output_json)
+        else:
+            print(output_json)
+        sys.exit(code)
 
     output_json = json.dumps(report, indent=2)
 

@@ -245,7 +245,12 @@ Example:
     parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output to stderr")
 
-    args = parser.parse_args()
+    # The skill's own flags (--headless, -H, --headless:<mode>) may be passed straight through
+    # with the rest; they choose the skill's route, not this parse, so they're accepted and ignored.
+    args, extra = parser.parse_known_args()
+    unknown = [a for a in extra if not (a in ("-H", "--headless") or a.startswith("--headless:"))]
+    if unknown:
+        parser.error(f"unrecognized arguments: {' '.join(unknown)}")
     flag_only = [n for n in ("style_prompt", "model", "sliders", "lyrics", "band_profile", "iteration_log", "title")
                  if getattr(args, n) is not None]
     if flag_only and args.feedback is None:

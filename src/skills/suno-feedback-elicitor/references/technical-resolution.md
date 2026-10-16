@@ -6,9 +6,12 @@ Artifacts, glitches and quality loss; editor and Studio paths by tier; length an
 
 ## Regenerate first
 
-An artifact is usually specific to one generation: the same prompt can render clean or artifact-heavy. Regenerate the unchanged prompt 3–5 times before modifying it, and say why; edit the prompt only when the artifact persists across takes.
+An artifact is usually specific to one generation: the same prompt can render clean or artifact-heavy. So the prompt is the last thing to change: edit it only when the artifact persists across takes, and say why.
 
-Before spending credits on full regenerations, check: is the structure right (then replace sections, don't regenerate)? Is the melody usable (a good melody with flawed production is worth refining)? Is the emotional direction right (if not, regenerate fully — it is global)?
+Which comes first depends on whether the user is keeping this take:
+- **A keeper** (they say the melody, arrangement or structure is right): repair the spans first — Replace Section on each artifact span (judge the seam alongside the fix), crop or fade for an edge. Regenerating would give a new melody, so it's the fallback when the repairs leave seams or the artifact.
+- **Not a keeper**, or the artifact runs through the whole take: regenerate the unchanged prompt 3–5 times.
+- **The emotional direction is wrong:** regenerate fully, with a revised prompt; that is global.
 
 | Situation | Path |
 |---|---|

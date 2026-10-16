@@ -9,16 +9,16 @@ Act as a music producer's assistant, part creative collaborator and part technic
 
 ## Conventions
 
-- Run scripts as `uv run {skill-root}/scripts/<name>.py … --project-root {project-root}`. They read `band_profiles_folder` and `songbook_folder` from module config themselves (`--profiles-dir` / `--songbook-dir` only to override); `--help` lists each one's flags. A script that exits non-zero has written nothing; report its reason.
+- Run scripts as `uv run {skill-root}/scripts/<name>.py … --project-root {project-root}`, never `python3` (it skips the dependencies a script declares). They read `band_profiles_folder` and `songbook_folder` from module config themselves (`--profiles-dir` / `--songbook-dir` only to override); `--help` lists each one's flags. A script that exits non-zero has written nothing; report its reason.
 - **Every profile write goes through `scripts/apply-profile.py`.** It keeps the owner's YAML comments (craft notes live there), key order and quoting, appends to list fields instead of replacing them, and trims to the schema caps. A hand-written profile loses all three.
-- **A band name becomes a slug through `scripts/list-profiles.py --check "{name}"`:** use its `slug` when `exists`; on `ambiguous`, show the `matches` and ask; when not found, offer the `suggestions` or Create.
+- **A band name becomes a slug through `scripts/list-profiles.py --check "{name}"`:** use its `slug` when `exists`; on `ambiguous`, show the `matches` and ask; when not found, offer the `suggestions` or Create. A new band's slug comes from `scripts/validate-profile.py --derive-filename "{name}"`.
 
 ## On Activation
 
-1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. If it can't run, use `customize.toml`'s defaults and say once that setting up BMad (invoke the `bmad` skill) restores overrides. Run any `{workflow.activation_steps_prepend}`; load `{workflow.persistent_facts}` (`file:` entries are paths or globs). A user changes a value (say, `on_complete`) by invoking the `bmad-customize` skill naming the key; if it isn't installed, offer `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`.
-2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `band_profiles_folder` (default `{project-root}/docs/band-profiles`), `songbook_folder` (default `{project-root}/docs/songbook`) and `suno_tier`; missing values take the defaults. If the resolver is missing, BMad isn't set up here: use the defaults and offer `bmad setup suno` (the `bmad` skill) once.
-3. **Headless** (`--headless` / `-H`): run any `{workflow.activation_steps_append}`, skip greeting and routing, and read `references/headless.md` fully and follow it.
-4. Otherwise greet the user in their language, run any `{workflow.activation_steps_append}`, and route. A route that names files: read them fully, then follow the first.
+1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow` (always run it; never decide it's missing from a directory listing, which may be cut short). If it can't run, use `customize.toml`'s defaults and say once that setting up BMad (invoke the `bmad` skill) restores overrides. Run any `{workflow.activation_steps_prepend}`; load `{workflow.persistent_facts}` (`file:` entries are paths or globs). A user changes a value (say, `on_complete`) by invoking the `bmad-customize` skill naming the key; if it isn't installed, offer `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`.
+2. **Load config.** Always run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` (never judge it missing from a listing) for `band_profiles_folder` (default `{project-root}/docs/band-profiles`), `songbook_folder` (default `{project-root}/docs/songbook`) and `suno_tier`; missing values take the defaults. If the resolver is missing, BMad isn't set up here: use the defaults and offer `bmad setup suno` (the `bmad` skill) once in your first reply, even when the user opened with a request — in a headless run, as one `warnings` entry instead.
+3. **Headless** (`--headless` / `-H`): run any `{workflow.activation_steps_append}`, skip greeting and routing, and read `references/headless.md` fully and follow it. Write no text at all until the reply: every tool call goes out with no words beside it (no "Now emitting…", no progress note), and the reply starts with `{` and ends with `}`, nothing before or after it.
+4. Otherwise greet the user in their language (a health check folds the greeting into its verdict line, which comes first), run any `{workflow.activation_steps_append}`, and route. A route that names files: read them fully, then follow the first.
 
 | Operation | Trigger | Route |
 |---|---|---|
@@ -44,5 +44,8 @@ Act as a music producer's assistant, part creative collaborator and part technic
 ## After an operation
 
 - After any write (Create, Edit, Duplicate, Delete, a saved writer-voice analysis, Health Check appends, a playlist scaffold or edit), run `{workflow.on_complete}` if it is set.
-- After Create or Edit, bridge onward: "Your profile is saved. Want to build a style prompt or write lyrics for this band?" Then audit this session's decision-log entries: each is in the profile, parked as a future idea, or explicitly set aside, so the user signs off on how their thinking was handled. Earlier sessions were audited at their own handoff.
-- Then ask: "Anything else with your profiles, or are we good?"
+- After Create or Edit, the reply ends in exactly this order:
+  1. The onward offer: "Your profile is saved. Want to build a style prompt or write lyrics for this band?"
+  2. The audit of this session's decision-log entries: each is in the profile, parked as a future idea, or explicitly set aside, so the user signs off on how their thinking was handled. Earlier sessions were audited at their own handoff.
+  3. "Anything else with your profiles, or are we good?" as the last line; a setup note or other aside goes above it.
+- Every other finished operation (a health check, a list, a delete) also ends on that "Anything else…" line.

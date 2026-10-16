@@ -44,7 +44,7 @@ sliders:
 
 writer_voice:
   vocabulary: "plain working words, rail and river terms"
-  rhythm: "short lines, hard stops at line ends"
+  rhythm: "short lines, 11 syllables at most, hard stops at line ends"
   imagery: "lanterns, tides, ledgers, rail yards"
   emotional_tone: "wry grief"
   metaphor_style: "one concrete object carries the whole feeling"

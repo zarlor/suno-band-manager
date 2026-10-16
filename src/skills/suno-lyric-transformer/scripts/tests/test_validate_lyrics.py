@@ -103,6 +103,12 @@ class TestValidateLyrics(unittest.TestCase):
         issues = [f["issue"] for f in report["findings"]]
         self.assertTrue(any("Empty section" in i for i in issues))
 
+    def test_instrumental_sections_are_not_flagged_empty(self):
+        lyrics = "[Intro - acoustic guitar, instrumental]\n\n[Verse 1]\nline one\n\n[Guitar Solo]\n\n[Chorus]\n\n[Outro]\n\n[End]\n"
+        report, code = run_script("--text", lyrics)
+        empty = [f["issue"] for f in report["findings"] if "Empty section" in f["issue"]]
+        self.assertEqual(empty, ["Empty section [Chorus] at line 8."])
+
     def test_report_structure(self):
         lyrics = "[Verse 1]\nA simple test line here\n"
         report, code = run_script("--text", lyrics)
@@ -157,7 +163,7 @@ class TestValidateLyrics(unittest.TestCase):
         report, code = run_script("--text", lyrics)
         self.assertIsNotNone(report)
         self.assertIn("character_count", report["metrics"])
-        self.assertEqual(report["metrics"]["character_count"], len(lyrics))
+        self.assertEqual(report["metrics"]["character_count"], len(lyrics) - 1)  # closing newline not counted
 
     def test_lyric_vs_metatag_character_split(self):
         """Metrics expose the lyrics-vs-metatags char split so the LLM doesn't count by hand."""

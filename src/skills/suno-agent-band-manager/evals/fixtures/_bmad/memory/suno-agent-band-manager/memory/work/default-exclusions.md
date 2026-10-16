@@ -1,3 +1,3 @@
 # Default Exclusions
 
-_(none yet — fill in as discovered)_
+- trap hi-hats (owner, 2026-09-01: never on any band)

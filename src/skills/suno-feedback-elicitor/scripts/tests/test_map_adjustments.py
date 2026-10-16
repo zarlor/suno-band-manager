@@ -35,6 +35,46 @@ def run_check_final(style: str, exclude: str = "") -> tuple[int, dict]:
 
 
 class MapAdjustmentsTest(unittest.TestCase):
+    def test_everyday_dimension_maps_to_the_table(self):
+        code, output = run_script({"dimensions": [{"dimension": "mix", "direction": "too_dry"}]})
+        self.assertEqual((code, output["status"]), (0, "pass"))
+        self.assertTrue(any("read as 'production'" in n for n in output["adjustments"]["notes"]))
+
+    def test_nested_context_supplies_prompt_and_model(self):
+        data = {"context": {"original_style_prompt": "indie rock, " * 120, "model": "v6"},
+                "dimensions": [{"dimension": "vocals", "direction": "too_quiet"}]}
+        code, output = run_script(data)
+        self.assertEqual(code, 0)
+        flat = {"original_style_prompt": "indie rock, " * 120, "model": "v6",
+                "dimensions": [{"dimension": "vocals", "direction": "too_quiet"}]}
+        _, expected = run_script(flat)
+        self.assertEqual(output["findings"], expected["findings"])
+
+    def test_list_prints_the_vocabulary(self):
+        result = subprocess.run([sys.executable, SCRIPT, "--list"], capture_output=True, text=True)
+        vocab = json.loads(result.stdout)
+        self.assertIn("too_quiet", vocab["vocals"]["directions"])
+        self.assertIn("buried", vocab["vocals"]["direction_aliases"])
+        self.assertIn("mix", vocab["production"]["dimension_aliases"])
+
+    def test_everyday_direction_maps_to_the_table(self):
+        """'buried' vocals read as too_quiet, and the mapping is noted."""
+        code, output = run_script({"dimensions": [{"dimension": "vocals", "direction": "buried"}]})
+        self.assertEqual(code, 0)
+        self.assertEqual(output["status"], "pass")
+        _, canonical = run_script({"dimensions": [{"dimension": "vocals", "direction": "too_quiet"}]})
+        self.assertEqual(output["adjustments"]["style_prompt"], canonical["adjustments"]["style_prompt"])
+        self.assertTrue(any("read as 'too_quiet'" in n for n in output["adjustments"].get("notes", [])))
+
+    def test_spaced_alias_is_normalized(self):
+        code, output = run_script({"dimensions": [{"dimension": "vocals", "direction": "Drowned Out"}]})
+        self.assertEqual((code, output["status"]), (0, "pass"))
+
+    def test_unknown_word_still_unmapped(self):
+        code, output = run_script({"dimensions": [{"dimension": "vocals", "direction": "purple"}]})
+        self.assertEqual(code, 1)
+        self.assertEqual(output["status"], "fail")
+
     def test_single_dimension(self):
         """Single dimension should produce relevant adjustments."""
         data = {"dimensions": [{"dimension": "vocals", "direction": "too_polished"}]}
@@ -195,8 +235,10 @@ class MapAdjustmentsTest(unittest.TestCase):
         code, output = run_script(data)
         self.assertEqual(code, 0)
         adj = output["adjustments"]
-        self.assertIn("natural vocal", adj["style_prompt"]["add_descriptors"])
-        self.assertIn("no auto-tune", adj["exclusions"]["add"])
+        held = adj["if_artifact_persists"]["by_direction"]["robotic_vocals"]
+        self.assertIn("natural vocal", held["add_descriptors"])
+        self.assertIn("no auto-tune", held["exclusions_add"])
+        self.assertEqual(adj["style_prompt"]["add_descriptors"], [])
 
     def test_quality_clipping(self):
         """Quality dimension clipping should add clean mix descriptors and remove heavy patterns."""
@@ -204,8 +246,10 @@ class MapAdjustmentsTest(unittest.TestCase):
         code, output = run_script(data)
         self.assertEqual(code, 0)
         adj = output["adjustments"]
-        self.assertIn("clean mix", adj["style_prompt"]["add_descriptors"])
-        self.assertIn("heavy", adj["style_prompt"]["remove_patterns"])
+        held = adj["if_artifact_persists"]["by_direction"]["clipping"]
+        self.assertIn("clean mix", held["add_descriptors"])
+        self.assertIn("heavy", held["remove_patterns"])
+        self.assertIn("regenerations", adj["if_artifact_persists"]["condition"])
 
     def test_quality_muffled(self):
         """Quality dimension muffled should add crisp descriptors."""
@@ -213,8 +257,18 @@ class MapAdjustmentsTest(unittest.TestCase):
         code, output = run_script(data)
         self.assertEqual(code, 0)
         adj = output["adjustments"]
-        self.assertIn("crisp", adj["style_prompt"]["add_descriptors"])
-        self.assertIn("lo-fi", adj["style_prompt"]["remove_patterns"])
+        held = adj["if_artifact_persists"]["by_direction"]["muffled"]
+        self.assertIn("crisp", held["add_descriptors"])
+        self.assertIn("lo-fi", held["remove_patterns"])
+
+    def test_quality_prompt_cause_is_named(self):
+        """A remove pattern already in the prompt is flagged as the likely cause."""
+        data = {"dimensions": [{"dimension": "technical/glitch", "direction": "muddy"}],
+                "original_style_prompt": "lo-fi bedroom pop, warm tape hiss"}
+        code, output = run_script(data)
+        self.assertEqual(code, 0)
+        held = output["adjustments"]["if_artifact_persists"]["by_direction"]["muffled"]
+        self.assertEqual(held["prompt_causes"], ["warm", "lo-fi"])
 
     def test_quality_artifacts_note(self):
         """Quality dimension artifacts should produce a note about regeneration."""

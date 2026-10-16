@@ -4,7 +4,7 @@ What this skill writes outside the conversation, and how. Two stores: the song's
 
 ## Iteration log
 
-One markdown file per song under `{workflow.feedback_history_output_path}`, the canonical memory of multi-round refinement: `{band-or-session}/{song-slug}.md`, where `{band-or-session}` is the band-profile name (or a session stamp `YYYYMMDD-HHMM` with no profile) and `{song-slug}` the kebab-cased title (or the same stamp when untitled). The script derives both, so never build the path by hand.
+One markdown file per song under `{workflow.feedback_history_output_path}`, the canonical memory of multi-round refinement: `{band-or-session}/{song-slug}.md`, where `{band-or-session}` is the band-profile name (or `no-band` with no profile, so a later session finds the same song's log) and `{song-slug}` the kebab-cased title (or the session stamp `YYYYMMDD-HHMM` when untitled). The script derives both, so never build the path by hand.
 
 - **Locate:** `uv run {skill-root}/scripts/feedback-log.py locate --band {profile} --title {title} --history-dir {workflow.feedback_history_output_path}` returns the path, whether it exists, the last round and date, the next round number, the `stamp` it used, and near-match `candidates` when the exact file is missing (the title may be fuzzy — pick among them, and pass the chosen one's title from then on).
 - **Open a round:** `uv run {skill-root}/scripts/feedback-log.py append --band {profile} --title {title} --history-dir {workflow.feedback_history_output_path} --text "<entry>" --snapshot '<json>'` writes the `## Round {n} — YYYY-MM-DD` heading, the prose entry and the snapshot, numbering the round from the log itself.
@@ -14,7 +14,7 @@ One markdown file per song under `{workflow.feedback_history_output_path}`, the 
 **Entry.** The prose says what was tried this round and how the user reacted, in their words. The snapshot is the same round in machine-readable form; it doubles as the headless `iteration_log` payload, and the script sets its `round`:
 
 ```json
-{"session_id": "{timestamp}", "feedback_type": "vague", "dimensions_adjusted": ["vocals", "production"], "key_changes": ["rawer vocals", "less reverb"], "user_intent": "dreamy indie folk", "reasoning_chain": "User said 'too polished' -> mapped to vocal production -> reduced reverb + added raw/intimate descriptors"}
+{"session_id": "{timestamp}", "feedback_type": "vague", "dimensions_adjusted": ["vocals", "production"], "key_changes": ["rawer vocals", "less reverb"], "user_intent": "the user's own sentence about what they wanted, quoted exactly (no paraphrase, nothing dropped)", "reasoning_chain": "User said 'too polished' -> mapped to vocal production -> reduced reverb + added raw/intimate descriptors"}
 ```
 
 ## Band profile
@@ -35,4 +35,4 @@ A headless run writes the same records, so a caller such as the Band Manager's r
 
 Record each write in `decision_log` and list the paths in `written_paths`. **`generation_learnings` is never written headless** — a durable pattern needs the owner's agreement, so return it in `suggested_profile_learnings` for the caller to offer. `--headless:analyze` writes nothing (no round happened).
 
-With `--no-write`, write nothing durable: skip both writes, pass `--no-archive --no-companion` to any audio script, and return the round in `iteration_log` and the snapshot in `suggested_generation_history` for the caller to apply.
+With `--no-write`, write nothing durable: skip both writes, pass `--no-archive --no-companion` to any audio script, and return the round in `iteration_log` and, when a band profile is in play, the snapshot in `suggested_generation_history` for the caller to apply (`null` without a profile).

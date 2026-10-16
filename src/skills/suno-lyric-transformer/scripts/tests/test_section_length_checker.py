@@ -100,6 +100,15 @@ class TestSectionLengthChecker(unittest.TestCase):
         unknown = [s for s in report["sections"] if s["status"] == "unknown"]
         self.assertGreaterEqual(len(unknown), 1)
 
+    def test_v6_cue_tags_resolve_to_their_section(self):
+        lyrics = "[Intro - guitar, instrumental]\n\n[Verse 1 - half-spoken]\na\nb\nc\nd\n\n[Chorus: full band]\nx\ny\n\n[Energy: low]\n[End]\n"
+        report, code = run_script("--text", lyrics)
+        names = [(s["tag"], s["base_name"]) for s in report["sections"]]
+        self.assertIn(("Verse 1 - half-spoken", "verse"), names)
+        self.assertIn(("Chorus: full band", "chorus"), names)
+        self.assertNotIn("unknown", [s["status"] for s in report["sections"] if s["base_name"] in ("verse", "chorus", "intro")])
+        self.assertFalse([s for s in report["sections"] if s["tag"].startswith("Energy")])
+
     def test_report_structure(self):
         lyrics = "[Verse 1]\nLine one\nLine two\nLine three\nLine four\n"
         report, code = run_script("--text", lyrics)

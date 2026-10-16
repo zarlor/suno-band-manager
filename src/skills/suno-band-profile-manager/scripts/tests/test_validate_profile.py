@@ -317,6 +317,36 @@ PRO_PROFILE = {
 
 
 class TestVoicesAndFilenames(TmpPathTestCase):
+    def _tone_findings(self, tone, voice_id="v-clone"):
+        vocal = {"tone": tone, "delivery": "conversational", "energy": "restrained"}
+        if voice_id:
+            vocal["voice_id"] = voice_id
+        else:
+            vocal["gender"] = "female"
+        path = write_profile(self.tmp_path, {**PRO_PROFILE, "vocal": vocal})
+        return [f for f in validate_profile(path)["findings"]
+                if f.get("location", {}).get("field") == "vocal.tone"]
+
+    def test_timbre_words_in_tone_with_a_voice_are_flagged(self):
+        found = self._tone_findings("low, smoky, husky")
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["severity"], "low")
+        self.assertIn("smoky", found[0]["issue"])
+
+    def test_timbre_words_in_a_comment_with_a_voice_are_flagged(self):
+        vocal = {"tone": "close", "delivery": "conversational", "energy": "restrained", "voice_id": "v-clone"}
+        path = write_profile(self.tmp_path, {**PRO_PROFILE, "vocal": vocal})
+        path.write_text(path.read_text() + "# owner: it's a low smoky voice\n")
+        found = [f for f in validate_profile(path)["findings"] if f.get("location", {}).get("field") == "comments"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("smoky", found[0]["issue"])
+
+    def test_usage_words_in_tone_with_a_voice_pass(self):
+        self.assertEqual(self._tone_findings("hushed, close, conversational"), [])
+
+    def test_timbre_words_without_a_voice_pass(self):
+        self.assertEqual(self._tone_findings("warm, breathy", voice_id=None), [])
+
     def test_voices_valid_list(self):
         tmp_path = self.tmp_path
         data = {**PRO_PROFILE, "voices": [

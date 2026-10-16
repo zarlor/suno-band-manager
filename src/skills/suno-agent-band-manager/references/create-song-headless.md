@@ -19,7 +19,7 @@ No greeting, no soft gates, no handoff checkpoint: the input is taken as confirm
   "band_profile": "optional — profile name to load",
   "tier": "optional — free|pro|premier (else memory/owner/preferences.md)",
   "model": "optional — default v6 on Pro/Premier, v6-mini on Free (also: v6-wild)",
-  "exclusions": "optional — list (else memory/work/default-exclusions.md + the profile's)",
+  "exclusions": "optional — the caller's \"no X\" asks (else memory/work/default-exclusions.md); the builder applies the profile's exclusion_defaults itself",
   "voice": "optional — Voice name attached in Suno",
   "persona": "optional — Persona name",
   "custom_model": "optional — Custom Model name",
@@ -33,8 +33,8 @@ No greeting, no soft gates, no handoff checkpoint: the input is taken as confirm
 
 **Process.** Fill what the input leaves out from `memory/owner/preferences.md`, `memory/work/default-exclusions.md` and `memory/bands/active.md`; an unresolved tier builds for Free and says so in `warnings`. Then run the pipeline:
 
-- **suno-lyric-transformer, headless** — when there is source text, the song isn't instrumental and `lyrics_ready` isn't set. Pass `text` (the `source_text`), `band_profile`, `direction`, `language` and `creativity_mode`. Use its `transformed_lyrics` as returned (the writer's spacing intact); keep its `decision_log` and `intentional_keeps` for the songbook entry.
-- **suno-style-prompt-builder, headless** — always. Pass the band profile, tier and model, the direction, the creativity mode, the exclusions, any Voice / Persona / Custom Model and a working title. Its success JSON carries the style prompt and character count, exclusions, settings, title and wild card.
+- **suno-lyric-transformer, headless** — when there is source text, the song isn't instrumental and `lyrics_ready` isn't set. Pass `text` (the `source_text`), `band_profile`, `direction`, `language` and `creativity_mode`. Its transform return (the contract's whole JSON object, `changes` and `decision_log` included) is written to the scratch folder as `lyrics.json` before you go on; read `transformed_lyrics` (the writer's spacing intact) and `changes` from that file, never from a draft. Keep its `decision_log` and `intentional_keeps` for the songbook entry.
+- **suno-style-prompt-builder, headless** — always. Pass the builder's own field names: `band_profile`, `tier`, `model`, `genre_mood`, `reference_tracks`, `vocal_direction`, `requests` (the direction and specific asks, "acoustic only"), `creativity_mode` (same mapping as Step 3), `exclusions` (only the owner's own "no X" asks and `memory/work/default-exclusions.md`; the builder reads the profile's `exclusion_defaults` itself and keeps those this prompt pulls toward), `voice` / `persona` / `custom_model`, `instrumental` and `working_title` (`genre_mood` is the input's; leave `exclusions` out rather than pass `[]`). Its success JSON carries the style prompt and character count, exclusions, settings, title and wild card; its `handoff_notes` go in the envelope's `warnings`, each prefixed "builder note: ", so no mid-build idea is lost.
 
 Without source text the lyrics are `auto` (Suno's auto-lyrics); instrumental songs carry `instrumental`.
 
@@ -54,10 +54,10 @@ Without source text the lyrics are `auto` (Suno's auto-lyrics); instrumental son
       "variety": "Exact style", "personalize": false
     },
     "title": "string",
-    "save_to": "the band's Suno workspace, or null",
+    "save_to": "the band profile's `name`, exactly, or null without a profile",
     "wild_card": {"style_prompt": "string", "pitch": "one line", "exclude_styles": null}
   }
 }
 ```
 
-Sliders are `null` on Free. `wild_card` is `null` when `include_wild_card` is false. `artifact_path` stays `null` unless `save_to_songbook` is true; that write passes the path check in `references/headless.md` first, and a denied path is skipped and reported in `warnings`. Missing `genre_mood` with no band profile → `status: blocked` with the reason.
+**The package is assembled, not retyped:** read `style_prompt`, `char_count` (`style_prompt_chars`), `exclude_styles` (`exclusion_prompt`), the settings (`model`, `vocal_gender`, `v6_options`, `sliders`) and `wild_card` (`style_prompt`, `twist` as the pitch, `exclusion_prompt`) straight from the builder's `--emit` JSON programmatically from that file, never typing a value. The `package` carries exactly the keys above, in that order; anything else the builder returned (rationales, slider reasoning) stays out of it — pass a note on in `warnings` if the owner needs it. Figures in the envelope's `summary` (character counts, slider values) are read from the builder's emitted JSON too, never typed. `save_to` is the band's Suno workspace, which carries the band's name: copy the profile's `name` exactly (no "workspace" suffix), or `null` with no band profile. When the transformer's `changes` include an added or split line, list them in the envelope's `lyrics_changes` (its `changes`, as returned) so the caller sees every line that isn't the writer's. Sliders are `null` on Free. `wild_card` is `null` when `include_wild_card` is false. `artifact_path` stays `null` unless `save_to_songbook` is true; that write passes the path check in `references/headless.md` first, and a denied path is skipped and reported in `warnings`. Missing `genre_mood` with no band profile → `status: blocked` with the reason.

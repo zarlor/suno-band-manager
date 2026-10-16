@@ -36,6 +36,12 @@ class TestSpacingCheck(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(report["metrics"]["whitespace_changes"], 0)
         self.assertEqual(report["metrics"]["blank_lines_removed"], 0)
+        self.assertEqual([t["line"] for t in report["added_tag_lines"]], [1, 6, 9])
+        self.assertEqual(report["added_tag_lines"][1]["tag"], "[Chorus]")
+
+    def test_tags_already_in_the_source_are_not_added(self):
+        report, _ = run("[Verse 1]\nhello", "[Verse 1]\nhello\n\n[End]")
+        self.assertEqual(report["added_tag_lines"], [{"line": 4, "tag": "[End]"}])
 
     def test_internal_spacing_flattened_is_high(self):
         transformed = "[Verse 1]\nDay by Day\n    the porch light hums\n\n\nand I wait"

@@ -29,8 +29,8 @@ Certain words reliably trigger unwanted screaming or harsh vocals, even when the
 
 When the song needs **one singer** and nothing else, three layers work together. Any one alone leaks.
 
-1. **Positive solo-singer language in the style prompt** — "solo lead vocal, one singer only," and where the energy is supposed to come from instead: "chorus energy from instruments and arrangement, not extra voices." Filling the role is stronger than forbidding the filler.
-2. **Excludes covering the whole family** — `choir, backing vocals, gang vocals, layered vocals, crowd chants`. Excluding "choir" alone leaves gang vocals and stacked doubles untouched; they are different arrangement conventions and Suno reaches for whichever one the genre suggests.
+1. **Positive solo-singer language in the style prompt** — "solo lead vocal, one singer only," and where the energy is supposed to come from instead: "chorus energy from instruments and arrangement, one voice throughout" (phrased positively: "not extra voices" is an inline negative, which hands Suno "extra voices"). Filling the role is stronger than forbidding the filler.
+2. **Excludes covering the whole family** — `choir, backing vocals, gang vocals, layered vocals, crowd chants`. With a Voice attached, this is a second step, not a first build's default: v6 doubles a Voice on its own, and excluding backing vocals for it is untested, so add the family only after a take doubled too much, and say so in its rationale. Excluding "choir" alone leaves gang vocals and stacked doubles untouched; they are different arrangement conventions and Suno reaches for whichever one the genre suggests.
 3. **Avoid the trigger words entirely** — `anthemic`, `festival`, `stadium`, `concert`, `crowd`, `audience`, and **the whole "live" family** invite group vocals and audience texture by association. Excludes cannot reliably override a prompt that is asking for group energy in its adjectives.
 
 The lyric side of this stack — section-tag wording that invites choirs, and the anti-choir tag forms — is the `suno-lyric-transformer` skill's job; when one singer matters, say so in the handoff notes.
@@ -81,7 +81,7 @@ What Suno generates for common genre keywords, from production testing.
 | `speed metal` | Fast, aggressive, thrash-adjacent | Straightforward — does what it says |
 | `hard rock` | Straightforward driving energy | Clean, uncomplicated rock foundation |
 | `hard rock` + `NOLA second line groove` + `brass band accents` | NOLA parade groove with rock weight | The combination pulls toward parade-style rhythms |
-| `crushing slow heavy swamp metal` + `pounding heartbeat kick drum` | Heavy, deliberate, single-tempo weight | Stacking slow/heavy modifiers locks Suno into a plodding pace |
+| `slow heavy swamp metal` + `pounding heartbeat kick drum` | Heavy, deliberate, single-tempo weight | Stacking slow/heavy modifiers locks Suno into a plodding pace |
 | `prog rock` + `slow build then fade` | Atmospheric with proper decrescendo | One of the few reliable ways to get Suno to actually come back down |
 | `Acoustic, intimate, solo voice with gentle guitar, bluesy, swampy, sparse and warm, quiet reflection, raw clean vocals, stripped down, empty room atmosphere` | Acoustic track that retains band identity | `bluesy, swampy` keeps NOLA identity; `empty room atmosphere` = reverb/space; explicitly exclude `heavy guitars, drums` in Exclude Styles |
 | `heartland rock` | Accessible mid-tempo rock with Petty/Mellencamp/Springsteen character — chimey or mid-gain driven electric guitars, rock-forward without metal weight | **Safe rock term for Voice tracks** — no harsh vocal trigger. Good starting point when a clean-voice Voice clone needs rock energy without metal pull |
@@ -112,11 +112,13 @@ Starting-point ranges from production testing:
 |---|---|---|---|
 | Acoustic/stripped | 40 | 80 | Lower Weirdness for compliance; high SI to honor the style prompt's genre descriptors |
 | Structured songs (verse-chorus) | 50-55 | 75-80 | Higher Style Influence keeps structure tight |
-| Dark alternative | 50-55 | 75-80 | Standard settings; may need lower Weirdness for compliance when pushing a metal band into non-metal territory |
+| Dark alternative | 50-55 | 75-80 | Standard settings |
 | Through-composed | 55-60 | 70-75 | Slightly looser to allow organic flow |
 | Funk-forward | 60 | 65-70 | Weirdness adds rhythmic surprise; lower SI lets funk breathe |
 | Post-metal | 60-65 | 65 | Needs room for patient builds and textural exploration |
 | Prog | 65-75 | 65 | Higher Weirdness encourages unexpected transitions |
 | Circular / agitated | 75 | 65 | High Weirdness for unsettling, looping energy |
+
+**Counter-genre builds** (a song pushed against its band's gravity: acoustic from a metal band, slow from a driving one) start Weirdness at 60–70, because default 50–55 quietly normalizes the song back toward the band's sound (model-prompt-strategies → "Default Weirdness Normalizes Counter-Genre Prompts"; v5.5 finding, a starting hypothesis on v6). The rows above are for songs inside their band's own lane. Exclude integrity is not a reason to start lower: lower Weirdness only after an exclude has actually failed on this song.
 
 **General principle:** Weirdness adds unpredictability and non-obvious choices. Style Influence controls how tightly Suno follows the prompt versus doing its own thing. For conventional songs, keep SI high. For experimental work, back SI off and let Weirdness drive.

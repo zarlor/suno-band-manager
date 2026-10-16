@@ -5,6 +5,7 @@
 # ///
 """Tests for apply-profile.py"""
 
+import re
 import sys
 import tempfile
 import unittest
@@ -58,6 +59,9 @@ class Args:
         self.append_json = None
         self.max = None
         self.confirm = False
+        self.drop = None
+        self.own_log = False
+        self.archive_existing_log = False
         self.purge = False
         self.docs_dir = None
         self.songbook_dir = None
@@ -192,6 +196,8 @@ FIXTURE = Path(__file__).parent / "fixtures" / "commented-profile.yaml"
 SLUG = "copper-lantern-choir"
 cmd_append = apply_mod.cmd_append
 cmd_save = apply_mod.cmd_save
+cmd_drop = apply_mod.cmd_drop
+touch_last_modified = apply_mod.touch_last_modified
 cmd_load = apply_mod.cmd_load
 cmd_delete = apply_mod.cmd_delete
 _segments = apply_mod._segments
@@ -219,7 +225,11 @@ class TestCommentPreservingEdits(TmpPathTestCase):
         self.assertEqual(result["status"], "complete")
         self.assertEqual(result["fields_changed"], ["tier"])
         after = (store / f"{SLUG}.yaml").read_text()
-        self.assertEqual(after, before.replace("tier: pro\n", "tier: premier\n"))
+        # Only the tier line and the "# Last modified" stamp change; the old stamp is reported.
+        stamped = re.sub(r"^(# Last modified: ).*$", lambda m: m.group(1) + after.split("# Last modified: ")[1].split("\n")[0],
+                         before, count=1, flags=re.M)
+        self.assertEqual(after, stamped.replace("tier: pro\n", "tier: premier\n"))
+        self.assertIn("last_modified_was", result)
 
     def test_set_preserves_header_and_section_comments_and_order(self):
         store = make_store(self.tmp_path)
@@ -342,6 +352,56 @@ class TestCommentPreservingEdits(TmpPathTestCase):
         text = FIXTURE.read_text().replace("Copper Lantern Choir", "Tin Roof Parade")
         result = cmd_save(Args(profiles_dir=str(store), input=str(_write_tmp(store, text))))
         self.assertTrue(result["existing_decision_log"].endswith("tin-roof-parade.decision-log.md"))
+
+    def test_save_with_own_log_does_not_warn(self):
+        store = make_store(self.tmp_path)
+        (store / "tin-roof-parade.decision-log.md").write_text("# started this session\n")
+        text = FIXTURE.read_text().replace("Copper Lantern Choir", "Tin Roof Parade")
+        result = cmd_save(Args(profiles_dir=str(store), input=str(_write_tmp(store, text)), own_log=True))
+        self.assertNotIn("existing_decision_log", result)
+        self.assertNotIn("warnings", result)
+        self.assertTrue(result["decision_log"].endswith("tin-roof-parade.decision-log.md"))
+
+    def test_drop_removes_blocks_and_keeps_the_rest_verbatim(self):
+        draft = self.tmp_path / "draft.yaml"
+        draft.write_text('# header\nname: "X"\ntier: free\n# s\nsliders:\n  weirdness: 40\nmood: "calm"  # keep\n')
+        result = cmd_drop(Args(input=str(draft), drop="sliders,absent"))
+        self.assertEqual((result["dropped"], result["not_present"]), (["sliders"], ["absent"]))
+        self.assertEqual(draft.read_text(), '# header\nname: "X"\ntier: free\nmood: "calm"  # keep\n')
+
+    def test_drop_on_a_saved_profile_needs_stage(self):
+        store = make_store(self.tmp_path)
+        result = cmd_drop(Args(slug=SLUG, profiles_dir=str(store), drop="sliders"))
+        self.assertEqual(result["status"], "fail")
+
+    def test_last_modified_header_is_touched_on_edit(self):
+        self.assertRegex(touch_last_modified("# Last modified: 2020-01-01\nname: x\n"),
+                         r"^# Last modified: \d{4}-\d{2}-\d{2}\nname: x\n$")
+        self.assertEqual(touch_last_modified("name: x\n"), "name: x\n")
+
+    def test_save_can_archive_an_earlier_bands_log(self):
+        store = make_store(self.tmp_path)
+        old = store / "tin-roof-parade.decision-log.md"
+        old.write_text("# old band\n")
+        text = FIXTURE.read_text().replace("Copper Lantern Choir", "Tin Roof Parade")
+        result = cmd_save(Args(profiles_dir=str(store), input=str(_write_tmp(store, text)),
+                               archive_existing_log=True))
+        self.assertFalse(old.exists())
+        archived = Path(result["archived_decision_log"])
+        self.assertEqual(archived.read_text(), "# old band\n")
+        self.assertTrue(archived.name.startswith("tin-roof-parade.decision-log.prior-"))
+        self.assertNotIn("existing_decision_log", result)
+        self.assertIn(str(archived), result["warnings"][0])
+
+    def test_save_with_stage_writes_the_input_verbatim(self):
+        store = make_store(self.tmp_path)
+        text = "# hand comment\nname: \"Tin Roof Parade\"\nsliders:  {weirdness: 50}\n"
+        draft = store / "drafts" / "tin-roof-parade.yaml"
+        result = cmd_save(Args(profiles_dir=str(store), input=str(_write_tmp(store, text)), stage=str(draft)))
+        self.assertEqual((result["status"], result["operation"]), ("complete", "stage"))
+        self.assertEqual(draft.read_text(), text)
+        self.assertFalse((store / "tin-roof-parade.yaml").exists())
+        self.assertIs(result["profile_exists"], False)
 
 
 def _write_tmp(store, text):
@@ -468,7 +528,7 @@ class TestEndToEnd(TmpPathTestCase):
                      set_json='{"vocal": {"energy": "slow burn"}, "sliders": {"weirdness": 50}}'))
         after = (store / f"{SLUG}.yaml").read_text().splitlines()
         changed = [ln for ln in difflib.unified_diff(before, after, lineterm="", n=0)
-                   if ln[:1] in "+-" and not ln.startswith(("+++", "---"))]
+                   if ln[:1] in "+-" and not ln.startswith(("+++", "---")) and "# Last modified:" not in ln]
         self.assertEqual(sorted(changed), sorted(["-  energy: restrained, building", "+  energy: slow burn",
                                                   "-  weirdness: 45", "+  weirdness: 50"]))
 

@@ -14,13 +14,16 @@
       "rubric": [
         "The final message is a JSON envelope with status \"complete\", feedback_analysis.triage_type \"clear\", and feedback_analysis.identified_dimensions containing a vocal dimension (e.g. \"vocals\"); there is no greeting, question or prose outside the JSON",
         "Vocal placement, not praise: at least one item in adjustment_recommendations.style_prompt.add places the vocal relative to the band (in front of the band, forward, the loudest element, close-mic'd or dry); adding only 'powerful', 'strong' or 'clear' vocals does not pass",
-        "The arrangement side is worked too: at least one recommendation makes room under the vocal on the guitar side — an add that pushes the rhythm guitars back, carves or leaves midrange space for the vocal, or thins the verse arrangement, or a remove/reorder that takes out or softens 'big wall-of-guitar chorus' or 'thick'",
-        "Keepers preserved: no style_prompt.remove item and no exclusions.add item targets the drums ('driving drums with a heavy backbeat') or the riff ('chugging riff'), and the output (decision_log, iteration_log or reasoning) names the drums and the riff as kept",
+        "The arrangement side is worked too: at least one recommendation makes room under the vocal on the guitar side without rewriting a keeper — an add that pushes the rhythm guitars back, carves or leaves midrange space for the vocal, or thins the verse arrangement, or a remove/reorder that takes out or softens 'big wall-of-guitar chorus' or 'thick' (the 'chugging riff' wording itself stays)",
+        "Keepers preserved: no style_prompt add, remove or reorder item and no exclusions.add item rewrites the drums ('driving drums with a heavy backbeat') or the riff ('chugging riff') (e.g. 'palm-muted riff' rewrites it; 'guitars a step behind the vocal' is a mix-space move and allowed), and the output names the drums and the riff as kept",
         "Positive text only: no item in style_prompt.add contains a negative ('no ', 'without', 'not ', 'less '); anything to keep out is in exclusions.add instead",
         "The transcript shows a Bash call running map-adjustments.py with --stdin before the final message",
         "suggested_next_action names the skill \"suno-style-prompt-builder\" with mode \"--headless:refine\"",
         "--no-write honored: written_paths is empty, and the workspace after the run has no docs/feedback-history/ file and no band-profile write (no Write/Edit or feedback-log.py append call in the transcript)",
-        "Branch-scoped loading: the transcript contains no Read of technical-resolution.md, gemini-audio-analysis.md, audio-analysis-scripts.md or retired-models.md (a clear mix complaint is not the technical, listening-analysis, audio or retired-model branch)"
+        "Branch-scoped loading: the transcript never loads technical-resolution.md, gemini-audio-analysis.md, audio-analysis-scripts.md or retired-models.md, by Read or by cat/sed/head/grep output of the file (a clear mix complaint is not the technical, listening-analysis, audio or retired-model branch)",
+        "Every slider in adjustment_recommendations.sliders is either \"\" (untouched) or a new value with a reason tied to this complaint; no slider changes without one",
+        "map-adjustments.py's output (the last --stdin run) maps every dimension it was given (no `unmapped` entries), or each unmapped one is judged in decision_log; the run passed the style prompt and model at the top level or as `context`.",
+        "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)"
       ]
     },
     {
@@ -36,11 +39,13 @@
       "rubric": [
         "The skill ran: the transcript shows a Skill tool_use naming suno-feedback-elicitor or a Read of its SKILL.md before the reply",
         "No proposed changes yet: the final reply contains no rewritten or amended style prompt, no descriptors to add or remove, no Exclude Styles items, and no slider values or slider directions",
-        "One narrowing question: the final reply asks exactly one question about the song, and it narrows — an either/or between broad dimensions (e.g. the music versus the vocal, energy too high versus too low, mood direction) or a request for a reference (a song, an artist, a scene or a feeling); a list of several questions fails",
+        "One narrowing question: the final reply asks exactly one question about the song, and it narrows — an either/or between broad dimensions (e.g. the music versus the vocal, energy too high versus too low, mood direction) or a request for a reference (a song, an artist, a scene or a feeling); a list of several questions fails A soft extra ask in the same message (\"if one moment stands out, tell me that too\") counts as a second question.",
         "The reply asks for no numeric rating (no 'on a scale of 1 to 10' or similar)",
         "Minimum context: the reply does not ask again for the style prompt, model, tier or sliders, which the user already gave",
         "The transcript shows feedback-log.py run with locate (the iteration log is looked up) before the final reply",
-        "No mapping or rebuild happened: no Bash call to map-adjustments.py and no Skill or Agent call to suno-style-prompt-builder appears in the transcript"
+        "No mapping or rebuild happened: no Bash call to map-adjustments.py and no Skill or Agent call to suno-style-prompt-builder appears in the transcript",
+        "The round is logged: the song's iteration log under docs/feedback-history/ quotes \"not what I had in my head\" (the user's words) and its JSON snapshot carries a session_id.",
+        "For this zero-awareness feedback the one question is a reference request (a song, artist, scene or feeling that sounds like what they wanted), per the triage guide, not a binary dimension question"
       ]
     },
     {
@@ -55,14 +60,16 @@
       ],
       "rubric": [
         "The final message is a JSON envelope with status \"complete\" and feedback_analysis.triage_type \"technical\"; there is no greeting, question or prose outside the JSON",
-        "Regenerate first: the output explicitly recommends regenerating the unchanged style prompt (several takes) as the first step for the clipping and the warble, and frames any style-prompt or exclusion change as a fallback for when the artifact persists across takes; a package that leads with prompt edits fails",
-        "Keepers preserved: no style_prompt.remove item and no exclusions.add item targets the melody, the arrangement or the genre the user said was right (swampy blues rock, slide guitar, stomp, organ), and the output names them as kept",
+        "Keeper take, repair first: because the user calls the melody and arrangement right, the output's first step for the clipping and the warble is a span repair (Replace Section on the artifact spans, or crop/fade at an edge), with regenerating the unchanged style prompt as the fallback; no style-prompt or exclusion change is offered for the artifacts until they persist across takes.",
+        "Keepers preserved: no style_prompt.remove item and no exclusions.add item targets the melody, the arrangement or the genre the user said was right (swampy blues rock, slide guitar, stomp, organ), and the output names the melody and arrangement as kept (style_prompt.keep holds what the user praised; listing the genre there is optional)",
         "Tier gating for Pro (the staged config's suno_tier): every editor path offered is one Pro has (Replace Section, Remaster, stems/Auto Split, Extend, Crop, Fade Out); any Studio feature is either absent or labelled Premier-only, never offered as available",
         "No archived Studio 1.x tool is recommended by name (Warp Markers, Remove FX, Alternates, Quick Replace, Heal Edits, Stem Cover)",
         "If Replace Section is recommended for the 2:05 warble, the output warns that it can leave an audible seam or that the transition must be judged alongside the fix",
         "Mixed-feedback order: the vague remark ('feels a bit off') produces no style_prompt.add/remove item of its own; it is recorded as open or deferred until after the technical fixes (decision_log, iteration_log or reasoning says so)",
-        "The transcript shows a Read of technical-resolution.md before the final message",
-        "--no-write honored: written_paths is empty and the transcript has no Write/Edit and no feedback-log.py append call"
+        "The transcript shows technical-resolution.md read (a Read call, or cat/sed on the file) before the final message",
+        "--no-write honored: written_paths is empty and the transcript has no Write/Edit and no feedback-log.py append call",
+        "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)",
+        "map-adjustments.py's artifact edits (its if_artifact_persists block) appear nowhere in style_prompt or exclusions; at most decision_log names them as the fallback if the artifact persists"
       ]
     },
     {
@@ -81,7 +88,8 @@
         "No question is spent confirming that the track has no vocals or that it is instrumental",
         "Any narrowing question offers only non-vocal dimensions or a reference (e.g. energy, arrangement density, the lead instrument, groove, mood, structure, or a song or scene that has what they want); an either/or of 'the music or the vocals' fails",
         "No proposed change includes a vocal or lyric element: no vocal descriptor (vocal, voice, singer, harmonies, choir, ad-libs) appears in any suggested style-prompt wording, and no lyric adjustment spec is offered",
-        "Vague feedback narrows before it maps: the reply proposes no style-prompt rewrite, descriptor list, Exclude Styles items or slider values, and asks one narrowing question"
+        "Vague feedback narrows before it maps: the reply proposes no style-prompt rewrite, descriptor list, Exclude Styles items or slider values, and asks one narrowing question",
+        "The round is logged: the song's iteration log under docs/feedback-history/ exists after the run and quotes the user's own words from the feedback."
       ]
     }
   ]

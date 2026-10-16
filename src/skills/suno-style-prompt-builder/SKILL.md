@@ -9,16 +9,16 @@ Act as a producer's sound engineer who thinks in sonic textures, frequency range
 
 ## On Activation
 
-1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`. If it can't run, use `customize.toml`'s defaults and say once that setting up BMad (invoke the `bmad` skill) restores overrides. Run any `activation_steps_prepend`; load `persistent_facts`. A user changes a value (say, the ledger path) by invoking the `bmad-customize` skill naming the key; if it isn't installed, offer `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`.
-2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `suno_tier` and `band_profiles_folder` (default `{project-root}/docs/band-profiles`); missing values take the defaults. If the resolver is missing, BMad isn't set up here: use the defaults and offer `bmad setup suno` (the `bmad` skill) once.
-3. **Headless** (`--headless` / `-H`, any `--headless:` variant, or clearly non-interactive intent): read `references/headless-contract.md` fully, run any `activation_steps_append`, and follow the steps below without greeting or asking.
+1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow` (always run it; never decide it's missing from a directory listing, which may be cut short). If it can't run, use `customize.toml`'s defaults and say once that setting up BMad (invoke the `bmad` skill) restores overrides. Run any `activation_steps_prepend`; load `persistent_facts`. A user changes a value (say, the ledger path) by invoking the `bmad-customize` skill naming the key; if it isn't installed, offer `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`.
+2. **Load config.** Always run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` (never judge it missing from a listing) for `suno_tier` and `band_profiles_folder` (default `{project-root}/docs/band-profiles`); missing values take the defaults. If the resolver is missing, BMad isn't set up here: use the defaults and offer `bmad setup suno` (the `bmad` skill) once in your first reply, even when the user opened with a request — in a headless run, as one `warnings` entry instead.
+3. **Headless** (`--headless` / `-H`, any `--headless:` variant, or clearly non-interactive intent): read `references/headless-contract.md` fully, run any `activation_steps_append`, and follow the steps below without greeting or asking. Write no text at all until the reply: every tool call goes out with no words beside it (no "Now emitting…", no progress note), and the reply starts with `{` and ends with `}`, nothing before or after it.
 4. **Interactive:** greet the user in their language, run any `activation_steps_append`, read `references/interactive-session.md` fully (intake, presentation, refine loop), then go to Step 1.
 
 ## References
 
 - `references/safety-tables.md`: reread before every build and every refine generation; a long session compacts it away, and a prompt built from memory ships "metal" unpaired or an anchored slider.
 - `references/v6-build-core.md`: read whole at Steps 2–3 of every build and refine.
-- `references/model-prompt-strategies.md`: when the song has a Voice, Persona or Custom Model, a counter-genre lean, uploaded audio, a reference track, a heavy mix, a real tempo change, brass-band genres, a build-and-fade arc, a set length or an instrument question, read the routing table at its top, then only the sections it names.
+- `references/model-prompt-strategies.md` (its routing table at the top names the sections to read; a reference track, a Voice or a counter-genre lean always qualifies): when the song has a Voice, Persona or Custom Model, a counter-genre lean, uploaded audio, a reference track, a heavy mix, a real tempo change, brass-band genres, a build-and-fade arc, a set length or an instrument question, read the routing table at its top, then each section it names in full (by its heading's line range, never the head of the file), and only those.
 - `references/retired-model-strategies.md`: only for a `:migrate` involving a retired model, or a question about an older record.
 
 ## Rules That Hold in Every Mode
@@ -47,9 +47,9 @@ Listening feedback on a generated song goes to the `suno-feedback-elicitor` skil
 
 Done when the style prompt, built from the profile's baseline, is ordered production direction (retired formats only for `:migrate`) within the limit, with genre, mood and vocals in the first ~200 characters, every trigger handled per the safety tables, and the creativity mode applied.
 
-- **Voice:** drop gender and timbre descriptors, keep delivery. A Persona or Custom Model follows its strategies section.
+- **Voice:** drop gender and timbre descriptors, keep delivery — including any timbre words the profile's `vocal.tone` still carries. A Persona or Custom Model follows its strategies section.
 - **Instrumental:** no vocal direction or scream pairing; the critical zone goes to the lead instrument, interplay, the arc and the space.
-- **Exclude Styles (Pro/Premier):** 2–3 items under ~200 characters from the profile's `exclusion_defaults`, the user's "no X" asks and genre risks, each kept only when a descriptor in this prompt pulls toward it and paired with a positive in the prompt. **Free:** carry them as positive phrasing.
+- **Exclude Styles (Pro/Premier):** 2–3 items under ~200 characters (a safety-table family, such as the group-vocal one, counts as one item and goes in whole) from the profile's `exclusion_defaults`, the user's "no X" asks and genre risks, each kept only when a descriptor in this prompt pulls toward it and paired with a positive in the prompt. Never write a pull into the prompt only to justify an exclude (a "final chorus lift" added for `key change`); the band's own genre, demoted in a counter-genre song, is identity, and excluding its drift is the recipe, and the positive holding line is never the exclude's cause. A rhythm noun (`halftime feel`) asks for drums: when drums are excluded, put the pulse on the instrument that carries it (`slow strummed pulse`). **Free:** carry them as positive phrasing.
 
 ### Step 3: Controls
 
@@ -57,10 +57,12 @@ Done when the Controls follow the build core, Weirdness and Style Influence come
 
 ### Step 4: Wild Card
 
-Unless the user asked for conservative only (headless: `include_wild_card` false), one experimental variant: a genre or subgenre shift inside the band's core sound, bounded by the profile's genres and reference tracks (a metal band's stays anchored in metal or hard rock, never another genre family, even when this song is a counter-genre piece; log which profile genre anchors it), keeping the song's subject, mood arc and hook, on the primary's model and sliders unless a stated reason says otherwise. Give it a one-line pitch; offer the other in-lane twists and the unchanged primary on v6-wild as alternatives.
+A counter-genre song opens with the counter-lane itself: the prompt's first words are its genre (`acoustic singer-songwriter lullaby`), and the band's heavy genre comes later, demoted (`swamp metal undertones`).
+
+Unless the user asked for conservative only (headless: `include_wild_card` false), one experimental variant: a genre or subgenre shift inside the band's core sound, bounded by the profile's genres and reference tracks (a metal band's stays anchored in metal or hard rock, never another genre family, even when this song is a counter-genre piece; log which profile genre anchors it), keeping the song's subject, mood arc and hook, on the primary's model and sliders unless a stated reason says otherwise. The user's asks bind the wild card too ("no big band moment" means no swell or drum return there either). Give it a one-line pitch; offer the other in-lane twists and the unchanged primary on v6-wild as alternatives.
 
 ### Step 5: Validate and Present
 
-Pipe the whole package, wild card and `tier` included, as JSON to `uv run {skill-root}/scripts/validate-prompt.py --stdin` (`--help` lists the fields). Fix what it flags and re-run until the status is `pass`, or `review` with each medium finding judged and its reason logged; a paired scream trigger stays at low severity for you to judge. Exit 2 names a malformed field. If the script can't run, do the safety tables' hand checks. Then judge what it can't: substitutions, word meaning in context, decomposition fidelity, fit with the intent.
+Pipe the whole package, wild card, `tier` and `exclusion_rationale` included, as JSON with a heredoc (no temp file) to `uv run {skill-root}/scripts/validate-prompt.py --stdin` (`--help` lists the fields). Fix what it flags and re-run until the status is `pass`, or `review` with each medium finding judged and its reason logged; a paired scream trigger stays at low severity for you to judge. Exit 2 names a malformed field. If the script can't run, do the safety tables' hand checks. Then judge what it can't: substitutions, word meaning in context, decomposition fidelity, fit with the intent.
 
 **Interactive:** present and refine per the interactive session file. **Headless:** emit the success JSON from the headless contract, then run `{workflow.on_complete}` if it's set.

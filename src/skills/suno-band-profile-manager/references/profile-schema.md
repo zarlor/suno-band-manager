@@ -101,7 +101,7 @@ The plan decides which fields a profile may carry. Feature facts (credits, downl
 
 ## A band with a Voice
 
-A Voice carries vocal character (gender, timbre, lilt, mic artifacts), not genre. With `voice_id` set, keep gender and timbre words out of `style_baseline` and leave `vocal.gender` empty, since a stored gender invites them back and they fight the captured character; delivery words stay. Spend the baseline on arrangement: instrumentation, genre, production, dynamics. A clean Voice can't scream, so a harsh-vocal exclusion wastes Exclude Styles space; suggest production and genre guards instead. A stored `style_influence` around 65 suits a Voice used across genres, so the prompt leads the band.
+A Voice carries vocal character (gender, timbre, lilt, mic artifacts), not genre. With `voice_id` set, keep gender and timbre words out of `style_baseline` and `vocal.tone` (which then says how the voice is used — "hushed, close" — not how it sounds — "smoky, husky") and leave `vocal.gender` empty, since a stored gender invites them back and they fight the captured character; delivery words stay. Spend the baseline on arrangement: instrumentation, genre, production, dynamics. A clean Voice can't scream, so a harsh-vocal exclusion wastes Exclude Styles space; suggest production and genre guards instead. A stored `style_influence` around 65 suits a Voice used across genres, so the prompt leads the band.
 
 ## Who reads what
 

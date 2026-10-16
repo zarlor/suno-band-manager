@@ -25,6 +25,7 @@ songbook folders, not folders guessed from the draft's location.
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -59,6 +60,12 @@ except ImportError as exc:
     sys.exit(2)
 
 VALID_GENDERS = {"male", "female", "nonbinary", "any"}
+# Words that describe how a voice sounds (or who it is), which a cloned Voice already carries.
+VOICE_TIMBRE_WORDS = {
+    "male", "female", "man", "woman", "baritone", "tenor", "soprano", "alto", "bass-baritone",
+    "smoky", "smokey", "husky", "raspy", "gravelly", "throaty", "nasal", "silky", "velvety",
+    "reedy", "deep",
+}  # Delivery-leaning words (breathy, gritty, bright, hushed) stay allowed: a singer chooses them.
 VALID_CREATIVITY = {"conservative", "balanced", "experimental"}
 STYLE_BASELINE_MAX = STYLE_PROMPT_DEFAULT_MAX
 STYLE_BASELINE_MAX_V4 = STYLE_PROMPT_LIMITS["v4 Pro"]
@@ -378,6 +385,38 @@ def validate_profile(profile_path: Path, docs_dir: Path | None = None,
             "issue": "vocal.gender is set alongside vocal.voice_id; the Voice already defines gender and timbre",
             "fix": "Clear vocal.gender and keep gender and timbre words out of style_baseline",
         })
+
+    # Rule 17b: with a Voice, vocal.tone says how the voice is used, not how it sounds;
+    # timbre words there get read back into the style prompt and fight the clone.
+    if isinstance(vocal, dict) and str(vocal.get("voice_id") or "").strip():
+        tone = str(vocal.get("tone") or "").lower()
+        found = sorted({w for w in VOICE_TIMBRE_WORDS if re.search(rf"\b{w}\b", tone)})
+        if found:
+            findings.append({
+                "severity": "low",
+                "category": "consistency",
+                "location": {"file": str(profile_path), "field": "vocal.tone"},
+                "issue": f"vocal.tone carries timbre or gender word(s) {found} alongside vocal.voice_id; the Voice already defines how it sounds",
+                "fix": "Describe how the voice is used instead (e.g. 'hushed, close', 'conversational, lifting on choruses')",
+            })
+
+        # Comments are read too (by every model that opens the file), so the same words in a
+        # comment ("# it's a low smoky female voice") pull the same way.
+        try:
+            raw = Path(profile_path).read_text(encoding="utf-8")
+        except OSError:
+            raw = ""
+        comment_words = sorted({w for line in raw.splitlines() if "#" in line
+                                for w in VOICE_TIMBRE_WORDS
+                                if re.search(rf"\b{w}\b", line.split("#", 1)[1].lower())})
+        if comment_words:
+            findings.append({
+                "severity": "low",
+                "category": "consistency",
+                "location": {"file": str(profile_path), "field": "comments"},
+                "issue": f"A comment carries timbre or gender word(s) {comment_words} alongside vocal.voice_id; the skills that read this file can carry them into a prompt",
+                "fix": "Drop those words from the comment; the decision log can record what the owner said about the voice",
+            })
 
     # Rule 19: Custom Models are Pro/Premier only.
     if str(profile.get("custom_model_id") or "").strip() and tier == "free":

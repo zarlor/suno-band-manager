@@ -16,8 +16,8 @@ Invite the user to dump everything: the vibe, bands it should sound like, lyrics
 
 ## What only you can bring
 
-- **References.** Break each "sounds like" down into instrumentation, production style, vocal approach, energy and era. Use web search to check the sound when you have it; if you don't, say so and work from the user's description. Confirm the breakdown matches what they hear.
-- **Vocals** (skip if instrumental). Push for evocative specifics ("warm, breathy female vocal with indie folk phrasing", not "female vocals"). A band with a Voice follows the schema's "A band with a Voice".
+- **References.** Break each "sounds like" down into instrumentation, production style, vocal approach, energy and era. Check the sound with web search whenever the tool is available (load it if it is deferred) and say that you did; only when there is no search tool, say so and work from the user's description. Confirm the breakdown matches what they hear, and wait for that before it goes in the profile; a user who says to skip it ("I trust you, save it") waives it, and you say it wasn't confirmed. Never search the disk outside the project for references.
+- **Vocals** (skip if instrumental). Push for evocative specifics ("warm, breathy female vocal with indie folk phrasing", not "female vocals"). A band with a Voice keeps timbre and gender words out of the file entirely, comments included (the decision log can quote what the owner said about the voice), and follows the schema's "A band with a Voice".
 - **Style baseline.** Show the draft: "Read this like a recipe for your sound — does every ingredient belong?"
 - **Exclusions.** Capture them as given. Suno handles negatives poorly, so the Style Prompt Builder turns them into positive language later.
 - **Writer voice.** Offer to analyze samples now or later.
@@ -26,10 +26,10 @@ Invite the user to dump everything: the vibe, bands it should sound like, lyrics
 
 ## Validate, present, save
 
-1. Run `scripts/validate-profile.py {slug} --staged {band_profiles_folder}/drafts/{slug}.yaml --project-root {project-root}` for the structural checks. Fix what it finds before judging quality.
-2. Judge what the validator cannot: is the style baseline specific, the vocal direction evocative, and do the exclusions fight the genre? Fix what you can; flag what needs the user.
-3. Present a **Band Identity Card**, then the YAML. The card is at most four sentences: who the band is, its sound, its voice, and what sets it apart — one sentence each. Count before presenting; anything more belongs in the YAML.
+1. Run `scripts/validate-profile.py {slug} --staged {band_profiles_folder}/drafts/{slug}.yaml --project-root {project-root}` for the structural checks. Fix what it finds before judging quality, and re-run it after any change to the draft (a comment included): the file you save is the file that passed.
+2. Judge what the validator cannot: is the style baseline specific, the vocal direction evocative and inside its first ~200 characters, does any phrase contradict another ("natural room reverb" beside "dry"), and do the exclusions fight the genre? Fix what you can; flag what needs the user.
+3. Present a **Band Identity Card**, then the full YAML in a code block (even when the user waived a draft review: it is what gets saved). The card is at most four sentences: who the band is, its sound, its voice, and what sets it apart — one sentence each. Count before presenting; anything more belongs in the YAML.
 4. On approval, write it all in one batch:
-   - `scripts/apply-profile.py --save --in {band_profiles_folder}/drafts/{slug}.yaml --project-root {project-root}`. The file is written verbatim, comments included, and the call refuses to overwrite an existing profile. If its JSON carries `existing_decision_log`, resolve that with the user first. Then delete the draft.
+   - `scripts/apply-profile.py --save --in {band_profiles_folder}/drafts/{slug}.yaml --own-log --project-root {project-root}`. The file is written verbatim, comments included, and the call refuses to overwrite an existing profile. `--own-log` says the slug's decision log is the one you started under "Working state" (an earlier band's log was settled then); leave it off if you didn't start one this session, and a leftover log comes back as `existing_decision_log` for the user to decide. Then delete the draft, and the `drafts/` folder if it is left empty.
    - `scripts/scaffold-playlist.py {slug} --project-root {project-root}` creates the band's empty playlist YAML. Without it the validator flags the band as soon as a song is added, and playlist work has nowhere to write.
    - Record the meaningful decisions in the decision log: chosen slug, references kept or rejected, tier, any trims.

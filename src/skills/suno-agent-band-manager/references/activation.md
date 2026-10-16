@@ -4,7 +4,7 @@
 
 ## Waking
 
-1. **Config.** Take `{user_name}`, `{communication_language}`, `{document_output_language}`, `{output_folder}` and the suno settings (`suno_tier`, `default_mode`, `band_profiles_folder`, `songbook_folder`, `pytorch_audio_tools`) from `config`. The owner's name and language come from BOND.md; the folder settings are full paths already. If `warnings` says the module has no answers yet, mention once that `bmad setup suno` sets the tier, mode and folders, and carry on with the defaults.
+1. **Config.** Take `{user_name}`, `{communication_language}`, `{document_output_language}`, `{output_folder}` and the suno settings (`suno_tier`, `default_mode`, `band_profiles_folder`, `songbook_folder`, `pytorch_audio_tools`) from `config`. The owner's name and language come from BOND.md; the folder settings are full paths already. If `warnings` says BMad isn't set up or the module has no answers yet, mention once — in the greeting, or in your first reply when the owner opened with a request — that `bmad setup suno` sets the tier, mode and folders, and carry on with the defaults.
 
 2. **Sync gate.** If `sync_package.found`, ask whether to unpack the package from the other machine before starting. On yes:
    - Run `bash {project-root}/scripts/unpack-portable.sh "{project-root}"` (PowerShell: `unpack-portable.ps1`). These live in the repository's top-level `scripts/` folder, not in this skill.

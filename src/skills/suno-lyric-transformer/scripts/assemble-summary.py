@@ -23,6 +23,7 @@ Usage:
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -79,6 +80,12 @@ def overall_status(statuses: dict) -> str:
     return "pass"
 
 
+def section_type(tag: str) -> str:
+    """The section's kind without its number or cue: "Verse 1 - riff" -> "Verse", "Final Verse" -> "Final Verse"."""
+    base = re.split(r"\s*(?::|\||\s[-–—]\s?|[–—])", tag, maxsplit=1)[0].strip()
+    return re.sub(r"\s+\d+$", "", base) or tag
+
+
 def assemble_summary(validation: dict, syllables: dict, cliches: dict | None,
                      transformations: list[str]) -> dict:
     """Assemble summary data from the reports; cliches is None when CD did not run."""
@@ -97,7 +104,7 @@ def assemble_summary(validation: dict, syllables: dict, cliches: dict | None,
     return {
         "section_count": val["section_count"],
         "sections": val["sections"],
-        "unique_section_types": sorted({s.split()[0] if " " in s else s for s in val["sections"]}),
+        "unique_section_types": sorted({section_type(s) for s in val["sections"]}),
         "lyric_lines": val["lyric_lines"],
         "total_lines": val["total_lines"],
         "character_count": char_count,

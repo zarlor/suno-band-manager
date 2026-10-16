@@ -2,6 +2,8 @@
 
 Read this when the skill runs with `--headless` / `-H`. The Band Manager agent calls it this way for every package with lyrics, so the return must be complete without a conversation. The workflow steps in `SKILL.md` still apply; this file covers the inputs, the defaults that replace questions, what is written, and what comes back.
 
+**Work silently and finish everything:** send no message before the reply: every tool call goes out with no words beside it (no "Now emitting…", no progress note), and run no background commands: every tool call finishes before you return, so nothing reports after the reply. Scratch files go in a fresh `mktemp -d` folder, never a fixed `/tmp` name another run could share.
+
 ## Modes
 
 | Flag | Runs | Returns |
@@ -40,22 +42,23 @@ Record each one you apply in `decision_log`.
   | `experimental` | The defaults, with ST taking structural liberties using the writer's own lines: reorder sections, repeat or split lines, call-and-response, unconventional forms (the Band Manager's Jam mode). The writer's words stay theirs: add FR or RE only when `direction` asks for a rewrite or new rhymes (owner, 2026-10-15) |
 
   The input-size rules still hold after the mode: a short input takes a short-poem strategy instead of CC, and over ~2,500 characters drops CC. Log the mode and the resulting codes in `decision_log`.
-- **Non-Latin or mixed script** (`analyze-input.py` `script_type`): non-Latin lines get structure and arc work only; no syllable, rhyme or cliche checks (`--latin-only`). Add a caveat. Latin-script non-English text: run the checks and caveat that they are tuned for English.
+- **Non-Latin or mixed script** (`analyze-input.py` `script_type`): non-Latin lines get structure and arc work only; no syllable, rhyme or cliche checks (`--latin-only`). Add a caveat; the line count it gives is the length of the scripts' `skipped_lines`, not a count by eye. Latin-script non-English text: run the checks and caveat that they are tuned for English.
 - **Oversized input:** focus on the single strongest section that fits the budget and return `complete_with_caveats`. Block only if even that section is over the 5,000 hard limit.
 - **Band profile:** record which state applied (not found, malformed, or no voice fields) and proceed without what's missing.
 - **Narrative section labels:** translate them to Suno direction and record the original labels.
 
 ## Transform Return
 
-**The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field (`warnings`, `decision_log`, `summary`).
+**The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field: `caveats` qualify the lyrics, `warnings` carry only setup notices (BMad not set up, one entry; a missing profile goes in `decision_log`), `decision_log` the calls made.
 
-Copy `transformation_summary` as is from `assemble-summary.py`'s JSON; don't compute any of it. `cliche_report.flagged` is its `metrics.total_cliches` (`cliche_report` is `null` when CD didn't run), and `validation_result` is the final `validate-lyrics.py` run's `status` and `findings`.
+Copy `transformation_summary` as is from `assemble-summary.py`'s JSON, run on the exact lyrics you return (after the last edit; its `character_count` equals their length); don't compute any of it. Each `changes[].lines` is the `location.transformed_lines` that `spacing-check.py` reported for that edit (1-based lines of `transformed_lyrics`, tags and blanks counted), and an ST entry's lines are the `line` values of its `added_tag_lines`: never a count by hand. `transformed_lyrics` carries no trailing newline (the scripts count it that way). `cliche_report.flagged` is `cliche-detector.py`'s `metrics.total_cliches_found` (`cliche_report` is `null` when CD didn't run), and `validation_result` is the final `validate-lyrics.py` run's `status` and `findings`.
 
 ```json
 {
   "status": "complete | complete_with_caveats | blocked",
   "reason": "one line, only when blocked",
   "caveats": ["degraded: syllable-counter.py failed, counts are estimates"],
+  "warnings": ["BMad not set up here: config defaults used; run bmad setup suno"],
   "transformed_lyrics": "complete lyrics with metatags, writer's spacing intact",
   "flat_copy_lyrics": "only when needed: a paste aid, not the canonical lyrics",
   "transformation_summary": {
@@ -89,11 +92,24 @@ Copy `transformation_summary` as is from `assemble-summary.py`'s JSON; don't com
 **Analysis return** (`--headless:analyze`): `status`, `reason`, `decision_log`, `source_hash` and `analysis`. The `analysis` object holds `structure`, `emotional_arc`, `hooks`, the `analyze-input.py` metrics, a syllable summary, and `recommended_codes` with a one-line rationale each. Transform fields are left out.
 
 **Status.** `complete` is a clean run. Use `complete_with_caveats`, and say why in `caveats`, when lyrics come back but are qualified:
-- the voice-preservation read flagged a real risk;
+- the voice-preservation read flagged a real risk (whatever `decision_log` flags as a risk is also a caveat);
+- a line that isn't the writer's was written (name it; it's also in `changes`);
+- a length the writer asked for ("a whole song, not a sketch") isn't reached by `estimated_duration`;
 - a script failed and figures are estimates;
 - oversized input was focused down;
 - non-Latin or mixed script forced structure-only work;
 - a flat copy was needed.
+
+**Before returning,** check the draft against these, since no one reviews it after you:
+- Every `decision_log` entry that names a risk has its caveat, and the status is then `complete_with_caveats`.
+- `estimated_duration` is `assemble-summary.py`'s figure. If the writer asked for a length it doesn't reach, the caveat says so with both figures; never claim a duration the script didn't estimate.
+- Each `changes[]` entry has the lines of its own edit. An edit with no line left in the lyrics (a removed title line) has `"lines": []` and quotes the source line in `detail`.
+- A section sung once is a verse, bridge or refrain, not `[Chorus]`: a chorus returns.
+- A short poem uses one short-poem strategy from `section-jobs.md`, named in `decision_log`. A section-length finding never justifies padding (repeating a line to reach a minimum): leave the section short and say so in `decision_log`.
+- A count in a caveat ("the hook is sung 7 times", "6 Japanese lines") is counted from the returned lyrics or a script's output, never estimated.
+- An edit `spacing-check.py` didn't report as a line edit (a repeated section aligned as the writer's own) cites only the `added_tag_lines` line of the section it built (the tag, not the writer's lines under it).
+- Each edit carries the code of what was done, whatever the mode: any section built from the writer's own lines (a chorus, a refrain, an outro repeating the closing line) is CE, a newly written chorus CC, and a caveat never says lines weren't repeated when a section repeats them. When that departs from the mode's codes, `decision_log` says why.
+- The final `spacing-check.py` run compares the returned lyrics with the unmodified source (never a trimmed copy), and adds `--word-fidelity` only in WF mode (SKILL Step 4): a removed title line or any other reported edit is a change it would flag.
 
 `blocked` means no source text (or a path the scripts can't read), no section that fits the hard limit, or options that cannot be reconciled (`validate-options.py` exit 1). Give a one-line `reason` and still return `decision_log`.
 

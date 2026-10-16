@@ -75,7 +75,8 @@ STYLE_PROMPT_ADJUSTMENTS: dict[str, dict[str, dict[str, Any]]] = {
             "exclude_add": ["no raspy vocals"],
         },
         "too_quiet": {
-            "add": ["prominent vocals", "voice-forward mix"],
+            # map-vocals.md (LOCAL): no level word lifts a buried vocal; placing it does.
+            "add": ["lead vocal in front of the band", "close-mic'd dry vocal", "vocal is the loudest element"],
             "remove_patterns": [],
             "exclude_add": [],
         },
@@ -243,6 +244,66 @@ STYLE_PROMPT_ADJUSTMENTS: dict[str, dict[str, dict[str, Any]]] = {
     },
 }
 
+# Everyday words for a direction (a model triaging "the vocals are buried" reaches for
+# "buried"), mapped per dimension to the canonical direction. The result notes each mapping.
+DIRECTION_ALIASES: dict[str, dict[str, str]] = {
+    "vocals": {"buried": "too_quiet", "drowned": "too_quiet", "drowned_out": "too_quiet",
+               "too_low": "too_quiet", "too_soft": "too_quiet", "quiet": "too_quiet",
+               "lost": "too_quiet", "too_far_back": "too_quiet", "loud": "too_loud",
+               "too_forward": "too_loud", "too_clean": "too_polished", "too_raw": "too_rough"},
+    "energy": {"too_much": "too_high", "too_little": "too_low", "boring": "flat", "static": "flat"},
+    "tempo": {"rushed": "too_fast", "dragging": "too_slow"},
+    "production": {"too_clean": "too_polished", "too_raw": "too_rough", "too_wet": "too_reverb",
+                   "too_much_reverb": "too_reverb"},
+    "instrumentation": {"too_busy": "too_much", "cluttered": "too_much", "too_sparse": "too_little",
+                        "too_thin": "too_little"},
+    "quality": {"glitch": "artifacts", "glitches": "artifacts", "glitchy": "artifacts", "noise": "artifacts",
+                "warble": "artifacts", "clipped": "clipping", "distorted": "clipping", "crackle": "clipping",
+                "robotic": "robotic_vocals", "metallic": "robotic_vocals", "muddy": "muffled", "dull": "muffled"},
+}
+
+
+# Everyday words for a dimension, mapped to the table's dimension.
+DIMENSION_ALIASES: dict[str, str] = {
+    "mix": "production", "sound": "production", "sound_quality": "production", "mixing": "production",
+    "vocal": "vocals", "voice": "vocals", "singing": "vocals", "singer": "vocals",
+    "arrangement": "instrumentation", "instruments": "instrumentation", "band": "instrumentation",
+    "mood": "vibe", "feel": "vibe", "tone": "vibe",
+    "speed": "tempo", "pace": "tempo", "bpm": "tempo",
+    "dynamics": "energy", "intensity": "energy",
+    "duration": "length", "song_length": "length",
+    "form": "structure", "song_structure": "structure",
+    "lyric": "lyrics", "words": "lyrics",
+    "artifacts": "quality", "artifact": "quality", "audio_quality": "quality", "glitch": "quality",
+    "glitches": "quality", "technical": "quality",
+}
+
+
+def canonical_dimension(dimension: str) -> str:
+    """The table's dimension for an everyday word, or the dimension unchanged."""
+    key = str(dimension).strip().lower().replace(" ", "_").replace("-", "_")
+    if "/" in key:  # "technical/glitch": the first part the table knows
+        for part in key.split("/"):
+            part = DIMENSION_ALIASES.get(part, part)
+            if part in STYLE_PROMPT_ADJUSTMENTS:
+                return part
+    return DIMENSION_ALIASES.get(key, key)
+
+
+def vocabulary() -> dict:
+    """Every dimension with its directions and the aliases each accepts (for --list)."""
+    return {dim: {"directions": sorted(dirs),
+                  "direction_aliases": DIRECTION_ALIASES.get(dim, {}),
+                  "dimension_aliases": sorted(a for a, d in DIMENSION_ALIASES.items() if d == dim)}
+            for dim, dirs in STYLE_PROMPT_ADJUSTMENTS.items()}
+
+
+def canonical_direction(dimension: str, direction: str) -> str:
+    """The table's direction for an everyday word, or the direction unchanged."""
+    key = str(direction).strip().lower().replace(" ", "_").replace("-", "_")
+    return DIRECTION_ALIASES.get(dimension, {}).get(key, key)
+
+
 SLIDER_DIRECTION_MAP = {
     "increase_slightly": "+5-10 from current",
     "increase": "+15-20 from current",
@@ -307,6 +368,7 @@ def generate_adjustments(
     lyric_changes: list[str] = []
     notes: list[str] = []
     unmapped: list[dict[str, str]] = []
+    persistent: dict[str, dict[str, list[str]]] = {}
 
     for dim_entry in dimensions:
         if not isinstance(dim_entry, dict):
@@ -316,12 +378,20 @@ def generate_adjustments(
         dimension = dim_entry.get("dimension", "")
         direction = dim_entry.get("direction", "")
 
+        canonical_dim = canonical_dimension(dimension)
+        if canonical_dim != dimension and canonical_dim in STYLE_PROMPT_ADJUSTMENTS:
+            notes.append(f"Dimension '{dimension}' read as '{canonical_dim}'")
+            dimension = canonical_dim
         if dimension not in STYLE_PROMPT_ADJUSTMENTS:
             unmapped.append({"dimension": dimension, "direction": direction, "reason": "unknown dimension"})
             notes.append(f"Unknown dimension '{dimension}' — requires LLM judgment")
             continue
 
         dim_adjustments = STYLE_PROMPT_ADJUSTMENTS[dimension]
+        canonical = canonical_direction(dimension, direction)
+        if canonical != direction and canonical in dim_adjustments:
+            notes.append(f"Direction '{direction}' for '{dimension}' read as '{canonical}'")
+        direction = canonical
         if direction not in dim_adjustments:
             available = list(dim_adjustments.keys())
             unmapped.append({"dimension": dimension, "direction": direction, "reason": "unknown direction"})
@@ -332,6 +402,25 @@ def generate_adjustments(
             continue
 
         adj = dim_adjustments[direction]
+
+        if dimension == "quality":
+            # A technical artifact is one generation's until it repeats, so its prompt
+            # edits are held apart: the caller applies them only if it persists.
+            held = persistent.setdefault(direction, {})
+            for src, dst in (("add", "add_descriptors"), ("remove_patterns", "remove_patterns"),
+                             ("exclude_add", "exclusions_add")):
+                if adj.get(src):
+                    held[dst] = list(adj[src])
+            # A remove pattern already in the prompt points at the prompt, not the take.
+            causes = [w for w in adj.get("remove_patterns", []) if style_prompt and re.search(
+                r"(?<![a-z0-9])" + re.escape(w) + r"(?![a-z0-9])", style_prompt.lower())]
+            if causes:
+                held["prompt_causes"] = causes
+                notes.append(f"The prompt itself carries {causes}, a likely cause of '{direction}': "
+                             "if the artifact repeats, these are the first edit")
+            if "note" in adj:
+                notes.append(adj["note"])
+            continue
 
         if "add" in adj:
             style_add.extend(adj["add"])
@@ -372,6 +461,14 @@ def generate_adjustments(
 
     if lyric_changes:
         result["lyrics"] = {"changes": lyric_changes}
+
+    if persistent:
+        result["if_artifact_persists"] = {
+            "condition": ("Apply only if the artifact is still there after 3-5 regenerations of the "
+                          "unchanged prompt (or a span repair on a keeper take); until then the "
+                          "prompt stays as it is."),
+            "by_direction": persistent,
+        }
 
     if notes:
         result["notes"] = notes
@@ -590,6 +687,10 @@ Example:
         "(no dimensions input; run before presenting a refined package)",
     )
     input_group.add_argument(
+        "--list", action="store_true",
+        help="Print every dimension with its directions and accepted aliases (the vocabulary for --stdin input)",
+    )
+    input_group.add_argument(
         "--diff", action="store_true",
         help="Micro-diff --style-prompt (before) against --new-style-prompt (after), and --exclude against "
         "--new-exclude when either is given (no dimensions input)",
@@ -612,6 +713,9 @@ Example:
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output to stderr")
 
     args = parser.parse_args()
+    if args.list:
+        print(json.dumps(vocabulary(), indent=2))
+        return 0
 
     if args.diff:
         if args.style_prompt is None or args.new_style_prompt is None:
@@ -689,6 +793,11 @@ Example:
         sys.exit(1)
 
     dimensions = data["dimensions"]
+    # parse-feedback.py's `parsed.context` may come through nested; its fields count as top-level ones.
+    context = data.get("context") if isinstance(data.get("context"), dict) else {}
+    for key in ("original_style_prompt", "style_prompt", "model", "tier"):
+        if not data.get(key) and context.get(key):
+            data[key] = context[key]
     tier = data.get("tier", "")
     # CLI flags win; fall back to input-JSON keys (matching the headless contract's
     # original_style_prompt / model naming).

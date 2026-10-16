@@ -7,7 +7,7 @@
 Locate a song's feedback iteration log, and append rounds and notes to it.
 
 The iteration log is one markdown file per song:
-  {history-dir}/{band-or-session}/{song-slug}.md
+  {history-dir}/{band-slug or "no-band"}/{song-slug}.md
 with one heading per round:
   ## Round {n} — YYYY-MM-DD
 
@@ -38,6 +38,7 @@ from datetime import datetime
 from pathlib import Path
 
 SCRIPT_NAME = "feedback-log"
+NO_BAND = "no-band"
 VERSION = "1.1.0"
 ROUND_RE = re.compile(r"^##\s+Round\s+(\d+)\b(.*)$", re.MULTILINE)
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -80,7 +81,8 @@ def candidates(band_dir: Path, song_slug: str) -> list[str]:
 
 
 def locate(history_dir: Path, band: str, title: str, stamp: str) -> dict:
-    band_or_session = slugify(band) if band and slugify(band) else stamp
+    # A stable folder without a profile, so a later session finds the same song's log.
+    band_or_session = slugify(band) if band and slugify(band) else NO_BAND
     song_slug = slugify(title) if title and slugify(title) else stamp
     band_dir = history_dir / band_or_session
     path = band_dir / f"{song_slug}.md"
@@ -134,7 +136,10 @@ def append(history_dir: Path, band: str, title: str, stamp: str, date: str,
     if text.strip():
         parts.append(text.strip() + "\n")
     if snapshot is not None:
-        snapshot = {**snapshot, "round": n}
+        # session_id names the session the snapshot belongs to: always the stamp, so every
+        # round in every log uses one format (a hand-typed id is replaced).
+        snapshot = {"session_id": stamp,
+                    **{k: v for k, v in snapshot.items() if k not in ("session_id", "round")}, "round": n}
         parts.append("```json\n" + json.dumps(snapshot, ensure_ascii=False) + "\n```\n")
 
     lead = ""
@@ -194,6 +199,9 @@ Example:
     app.add_argument("--text", default="", help="The prose entry (what was tried and the reaction, or a note)")
     app.add_argument("--stdin", action="store_true", help="Read the prose entry from stdin instead of --text")
     app.add_argument("--snapshot", help="The per-round JSON snapshot (an object; its round is set for you)")
+    app.add_argument("--stdin-json", action="store_true",
+                     help='Read {"text": ..., "snapshot": {...}} from stdin (a quoted heredoc), so quotes and '
+                          "apostrophes in the user's words need no shell escaping")
     app.add_argument("-o", "--output", help="Write JSON to a file instead of stdout")
     args = parser.parse_args()
 
@@ -211,7 +219,16 @@ Example:
             date = args.date or datetime.now().strftime("%Y-%m-%d")
             text = sys.stdin.read() if args.stdin else args.text
             snapshot = None
-            if args.snapshot is not None:
+            if args.stdin_json:
+                try:
+                    payload = json.loads(sys.stdin.read())
+                except json.JSONDecodeError as e:
+                    _error(f"--stdin-json input is not valid JSON: {e}", 1)
+                if not isinstance(payload, dict) or not isinstance(payload.get("snapshot", {}), dict):
+                    _error('--stdin-json takes an object {"text": ..., "snapshot": {...}}', 1)
+                text = str(payload.get("text") or "")
+                snapshot = payload.get("snapshot")
+            elif args.snapshot is not None:
                 try:
                     snapshot = json.loads(args.snapshot)
                 except json.JSONDecodeError as e:

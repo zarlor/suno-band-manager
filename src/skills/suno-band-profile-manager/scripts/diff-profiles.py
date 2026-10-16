@@ -12,6 +12,7 @@ removed fields. Handles nested structures (vocal, sliders, etc.).
 """
 
 import argparse
+import difflib
 import json
 import sys
 from datetime import datetime, timezone
@@ -144,7 +145,23 @@ def main():
     parser.add_argument("modified", help="Path to the modified profile YAML file")
     parser.add_argument("-o", "--output", help="Output file (defaults to stdout)")
     parser.add_argument("--verbose", action="store_true", help="Print diagnostics to stderr")
+    parser.add_argument("--project-root", help="Accepted for consistency with the other scripts; the two paths are used as given")
+    parser.add_argument("--text", action="store_true",
+                        help="Print a unified diff of the two files (the lines to show the user) instead of JSON")
     args = parser.parse_args()
+
+    if args.text:
+        # The lines a user reads before an edit is applied: the files as written, comments included.
+        try:
+            before = Path(args.original).read_text(encoding="utf-8").splitlines(keepends=True)
+            after = Path(args.modified).read_text(encoding="utf-8").splitlines(keepends=True)
+        except OSError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(2)
+        lines = list(difflib.unified_diff(before, after, fromfile=f"{args.original} (before)",
+                                          tofile=f"{args.modified} (after)"))
+        print("".join(lines) if lines else "(no differences)")
+        sys.exit(0)
 
     original_path = Path(args.original)
     modified_path = Path(args.modified)

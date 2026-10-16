@@ -410,6 +410,7 @@ def main():
     )
     parser.add_argument("tier", choices=["free", "pro", "premier"], help="Suno subscription tier")
     parser.add_argument("-o", "--output", help="Output file (defaults to stdout)")
+    parser.add_argument("--project-root", help="Accepted for uniformity with the other scripts; tiers need no config")
     parser.add_argument("--verbose", action="store_true", help="Print diagnostics to stderr")
     args = parser.parse_args()
 

@@ -61,6 +61,23 @@ class CaptureWip(unittest.TestCase):
         for line in ("## Verse 2 — what it needs", "The turn.", "> **Status:** workshopping the second verse."):
             self.assertIn(line, text)
 
+    def test_capture_reports_each_sung_lines_syllables(self):
+        self.wip()
+        code, out = run(self.root, "--title", "Low Tide Ledger", "--source", "Mac", "--label", "Swing 2",
+                        stdin="[Verse 2]\nFound her ledger in a coffee can\n\nPaid in full\n")
+        self.assertEqual(code, 0)
+        self.assertEqual(out["line_syllables"], [
+            {"line": "Found her ledger in a coffee can", "syllables": 9},
+            {"line": "Paid in full", "syllables": 3}])
+
+    def test_dry_run_counts_and_writes_nothing(self):
+        path = self.wip()
+        code, out = run(self.root, "--title", "Low Tide Ledger", "--label", "draft", "--dry-run",
+                        stdin="Paid in full\n")
+        self.assertEqual((code, out["status"]), (0, "counted"))
+        self.assertEqual(out["line_syllables"], [{"line": "Paid in full", "syllables": 3}])
+        self.assertEqual(path.read_text(), WIP)
+
     def test_second_capture_appends_after_the_first(self):
         path = self.wip()
         run(self.root, "--title", "Low Tide Ledger", "--source", "Mac", "--label", "Swing 1", stdin="one\n")

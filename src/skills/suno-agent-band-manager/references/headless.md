@@ -21,7 +21,7 @@ No greeting, no menu, no sync-package prompt, no reconcile walk-through, and no 
 
 ## Result
 
-Return structured output, no conversational prose. **The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field (`warnings`, `decision_log`, `summary`).
+A heredoc's delimiter is quoted (`<<'EOF'`) so backticks and `$` in the text stay literal and never run. Scratch files (a lyric draft for a script, a package to pipe) go in a fresh `mktemp -d` folder, never a fixed `/tmp` name another run could share, no command runs in the background, and no message goes out before the reply (every tool call goes out with no words beside it: no "Now emitting…", no progress note): every tool call finishes before you return, so nothing reports after it. Return structured output, no conversational prose. **The reply is the JSON object alone:** no text before or after it and no code fence, so a script can parse it. Anything worth saying goes in a field (`warnings`, `decision_log`, `summary`).
 
 ```json
 {
@@ -30,6 +30,7 @@ Return structured output, no conversational prose. **The reply is the JSON objec
   "artifact_path": "the file the capability wrote, or null",
   "package": "the capability's own payload (create-song: its package object; refine-song: its delta JSON), or null",
   "summary": "one-line plain-language result",
+  "lyrics_changes": "create-song with transformed lyrics: the Lyric Transformer's `changes`, as returned; otherwise omitted",
   "warnings": ["non-fatal issues, staged-but-not-applied writes, skipped optional steps, an assumed tier"]
 }
 ```

@@ -12,13 +12,17 @@
       "validation.status in the emitted JSON is \"pass\"",
       "style_prompt and wild_card.style_prompt contain no band or artist name (neither 'Iron Bayou' nor 'Willow Creek')",
       "style_prompt contains none of: 'metal', 'sludge', 'down-tuned', 'swamp', 'distorted', 'saturated' (Iron Bayou's descriptors did not carry over)",
-      "Every entry in exclusion_rationale has a defends_against that names a word or phrase appearing verbatim in this run's style_prompt (a genre named there counts); no entry justifies its exclude by another band, another rendering, an earlier take or the profile alone",
+      "Every entry in exclusion_rationale has a defends_against that names a word or phrase appearing verbatim in this run's style_prompt (a genre named there counts); no entry justifies its exclude by another band, another rendering, an earlier take or the profile alone The quoted words must be what causes the drift (a genre, instrument, era or arrangement cue such as a final-chorus swell for 'key change'), not an unrelated phrase picked to satisfy the check.",
       "exclusion_prompt contains none of 'metal', 'heavy', 'distortion', 'distorted', 'sludge', 'screaming', 'growled' unless its defends_against quotes a word from this style_prompt that pulls toward it",
       "decisions[] contains an entry that declines (or narrows) the request to exclude Iron Bayou's sound, giving as the reason that Suno knows nothing of the other band's rendering (stateless / only the current prompt counts)",
       "sliders.reasoning.weirdness and sliders.reasoning.style_influence each name a property of this song (its type, arrangement or counter-genre needs) and neither cites the profile's stored values (62 / 58) or Iron Bayou's sliders (55 / 75) as the basis",
       "wild_card.style_prompt stays in the folk / acoustic family (no metal or hard-rock genre term) and wild_card.model equals model",
       "Character counts come from the validator: style_prompt_chars equals validation.metrics.style_prompt_chars and equals the actual length of style_prompt; style_prompt_limit equals validation.metrics.style_prompt_limit; and when a wild card is present, wild_card.style_prompt_chars equals validation.metrics.wild_card_prompt_chars and the actual length of wild_card.style_prompt",
-      "The transcript shows validate-prompt.py run with --stdin on the package that was emitted (same style_prompt and exclusion_prompt), and the emitted validation object matches that final run's output"
+      "The final message is exactly the JSON printed by the run's last `validate-prompt.py --stdin --emit` call that exited 0: the transcript shows that call with the package piped in (a heredoc or pipe, not a file under a fixed /tmp name), and the reply's style_prompt, exclusion_prompt, wild card and `validation` (status, metrics, findings) equal what it printed",
+      "Every medium finding in validation.findings has a decisions[] entry whose `finding` equals that finding's id, with a call and a reason",
+      "If wild_card.exclusion_prompt is non-null, each wild_card.exclusion_rationale entry quotes words from wild_card.style_prompt; if it is null (inherited), every inherited exclude's quoted words also appear in wild_card.style_prompt and any scream-trigger word the wild card adds is named in a rationale",
+      "The reply carries `tier`, and every 'key change' exclude is paired with a positive line in the prompt that holds the key",
+      "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)"
     ]
   },
   {
@@ -37,10 +41,14 @@
       "style_prompt does not ask for 'dual vocals', 'harmonies', 'harmony vocals' or 'backing vocals' (v6 doubles a Voice unasked)",
       "sliders.audio_source is \"voice\" and sliders.audio_influence is between 35 and 95 inclusive (the profile's stored 20 was not used), with a non-empty sliders.reasoning.audio_influence",
       "exclusion_prompt does not contain 'screaming' unless style_prompt contains one of metal, sludge, doom, death, thrash, black, or '!' (the clean Voice and trigger-free prompt make a harsh-vocal exclude a ghost)",
-      "Every entry in exclusion_rationale has a defends_against that names a word or phrase appearing verbatim in this run's style_prompt (a genre named there counts); no entry justifies its exclude by another band, another rendering, an earlier take or the profile alone",
+      "Every entry in exclusion_rationale has a defends_against that names a word or phrase appearing verbatim in this run's style_prompt (a genre named there counts); no entry justifies its exclude by another band, another rendering, an earlier take or the profile alone The quoted words must be what causes the drift (a genre, instrument, era or arrangement cue such as a final-chorus swell for 'key change'), not an unrelated phrase picked to satisfy the check.",
       "sliders.reasoning.weirdness and sliders.reasoning.style_influence each name a property of this song and neither cites the profile's stored 50 / 50 as the basis",
       "Character counts come from the validator: style_prompt_chars equals validation.metrics.style_prompt_chars and equals the actual length of style_prompt; style_prompt_limit equals validation.metrics.style_prompt_limit; and when a wild card is present, wild_card.style_prompt_chars equals validation.metrics.wild_card_prompt_chars and the actual length of wild_card.style_prompt",
-      "The transcript shows validate-prompt.py run with --stdin on the package that was emitted (same style_prompt and exclusion_prompt), and the emitted validation object matches that final run's output"
+      "The final message is exactly the JSON printed by the run's last `validate-prompt.py --stdin --emit` call that exited 0: the transcript shows that call with the package piped in (a heredoc or pipe, not a file under a fixed /tmp name), and the reply's style_prompt, exclusion_prompt, wild card and `validation` (status, metrics, findings) equal what it printed",
+      "Every medium finding in validation.findings has a decisions[] entry whose `finding` equals that finding's id, with a call and a reason",
+      "If wild_card.exclusion_prompt is non-null, each wild_card.exclusion_rationale entry quotes words from wild_card.style_prompt; if it is null (inherited), every inherited exclude's quoted words also appear in wild_card.style_prompt and any scream-trigger word the wild card adds is named in a rationale",
+      "The reply carries `tier`, and every 'key change' exclude is paired with a positive line in the prompt that holds the key",
+      "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)"
     ]
   },
   {
@@ -52,18 +60,22 @@
     ],
     "rubric": [
       "The final message contains a JSON object with status \"complete\" and mode \"build\"",
-      "validation.status in the emitted JSON is \"pass\" and validation.findings holds no high or critical finding",
+      "validation.status in the emitted JSON is \"pass\", or \"review\" with every medium finding judged in decisions[] (SKILL allows this), and validation.findings holds no high or critical finding",
       "Neither style_prompt nor wild_card.style_prompt contains 'Metallica', 'Black Album', 'Sad But True' or any other artist, album or song name (case-insensitive)",
       "The output records the reference's decomposition (in decisions[] or alongside the package) into at least three concrete dimensions among genre, era/production, vocal character, instrumentation, energy and emotional tone, and those descriptors appear in style_prompt",
       "For each of 'metal', 'sludge', 'doom', 'death', 'thrash', 'black' present as a word in style_prompt, style_prompt also contains a positive vocal pairing (e.g. 'raw melodic singing', 'melodic vocals', 'clean vocals', 'gritty male vocals') AND exclusion_prompt contains 'screaming' (or 'screamed vocals' / 'harsh vocals') with a defends_against naming that trigger word; if none is present, decisions[] records the substitution",
       "The same scream-trigger handling holds for wild_card.style_prompt",
       "Neither prompt contains '!' and neither contains an inline negative ('no ', 'without ', 'not ', 'avoid ')",
       "The chorus is described by its job (e.g. driving, hitting harder than the verses), not by 'big', 'emotional' or 'epic' as the chorus instruction",
-      "Every entry in exclusion_rationale has a defends_against that names a word or phrase appearing verbatim in this run's style_prompt (a genre named there counts); no entry justifies its exclude by another band, another rendering, an earlier take or the profile alone",
+      "Every entry in exclusion_rationale has a defends_against that names a word or phrase appearing verbatim in this run's style_prompt (a genre named there counts); no entry justifies its exclude by another band, another rendering, an earlier take or the profile alone The quoted words must be what causes the drift (a genre, instrument, era or arrangement cue such as a final-chorus swell for 'key change'), not an unrelated phrase picked to satisfy the check.",
       "sliders.reasoning.weirdness and sliders.reasoning.style_influence each name a property of this song and neither cites the profile's stored 45 / 70 as the basis",
       "wild_card.style_prompt is a subgenre shift that stays heavy (metal or hard rock anchored), keeps the song's subject, and wild_card.model equals model",
       "Character counts come from the validator: style_prompt_chars equals validation.metrics.style_prompt_chars and equals the actual length of style_prompt; style_prompt_limit equals validation.metrics.style_prompt_limit; and when a wild card is present, wild_card.style_prompt_chars equals validation.metrics.wild_card_prompt_chars and the actual length of wild_card.style_prompt",
-      "The transcript shows validate-prompt.py run with --stdin on the package that was emitted (same style_prompt and exclusion_prompt), and the emitted validation object matches that final run's output"
+      "The final message is exactly the JSON printed by the run's last `validate-prompt.py --stdin --emit` call that exited 0: the transcript shows that call with the package piped in (a heredoc or pipe, not a file under a fixed /tmp name), and the reply's style_prompt, exclusion_prompt, wild card and `validation` (status, metrics, findings) equal what it printed",
+      "Every medium finding in validation.findings has a decisions[] entry whose `finding` equals that finding's id, with a call and a reason",
+      "If wild_card.exclusion_prompt is non-null, each wild_card.exclusion_rationale entry quotes words from wild_card.style_prompt; if it is null (inherited), every inherited exclude's quoted words also appear in wild_card.style_prompt and any scream-trigger word the wild card adds is named in a rationale",
+      "The reply carries `tier`, and every 'key change' exclude is paired with a positive line in the prompt that holds the key",
+      "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)"
     ]
   },
   {
@@ -80,12 +92,16 @@
       "style_prompt contains a displacing guitar descriptor such as 'fingerpicked' or 'arpeggiated', not only 'clean guitars'",
       "style_prompt states at most one BPM figure, and it carries a rhythm noun or feel phrase (e.g. halftime, half-time, lilting, swaying, triplet feel)",
       "style_prompt contains no inline negative ('no ', 'without ', 'not ', 'avoid ', 'never ' as a prohibition); the 'no big band moment' ask is carried as positive phrasing and/or an exclude",
-      "If 'metal', 'sludge', 'doom', 'death', 'thrash' or 'black' appears in style_prompt, a positive vocal pairing is also present and 'screaming' is excluded with a defends_against naming that word",
-      "sliders.reasoning.weirdness addresses the counter-genre pull (genre gravity / normalization toward the band's default) and does not cite the profile's stored 45 as the basis; sliders.reasoning.style_influence names a property of this song",
-      "Every entry in exclusion_rationale has a defends_against that names a word or phrase appearing verbatim in this run's style_prompt (a genre named there counts); no entry justifies its exclude by another band, another rendering, an earlier take or the profile alone",
+      "If 'metal', 'sludge', 'doom', 'death', 'thrash' or 'black' appears in style_prompt, a positive vocal pairing is also present and 'screaming' is excluded with a defends_against naming that word; the same holds for wild_card.style_prompt",
+      "sliders.reasoning.weirdness addresses the counter-genre pull (genre gravity / normalization toward the band's default) and does not cite the profile's stored 45 as the basis; sliders.reasoning.style_influence names a property of this song; weirdness is 60 or above, or its reasoning explains from this song why it sits lower (exclude safety alone doesn't count)",
+      "Every entry in exclusion_rationale has a defends_against that names a word or phrase appearing verbatim in this run's style_prompt (a genre named there counts); no entry justifies its exclude by another band, another rendering, an earlier take or the profile alone The quoted words must be what causes the drift (a genre, instrument, era or arrangement cue such as a final-chorus swell for 'key change'), not an unrelated phrase picked to satisfy the check.",
       "wild_card.model equals model and wild_card keeps the song's subject (the storm lullaby)",
       "Character counts come from the validator: style_prompt_chars equals validation.metrics.style_prompt_chars and equals the actual length of style_prompt; style_prompt_limit equals validation.metrics.style_prompt_limit; and when a wild card is present, wild_card.style_prompt_chars equals validation.metrics.wild_card_prompt_chars and the actual length of wild_card.style_prompt",
-      "The transcript shows validate-prompt.py run with --stdin on the package that was emitted (same style_prompt and exclusion_prompt), and the emitted validation object matches that final run's output"
+      "The final message is exactly the JSON printed by the run's last `validate-prompt.py --stdin --emit` call that exited 0: the transcript shows that call with the package piped in (a heredoc or pipe, not a file under a fixed /tmp name), and the reply's style_prompt, exclusion_prompt, wild card and `validation` (status, metrics, findings) equal what it printed",
+      "Every medium finding in validation.findings has a decisions[] entry whose `finding` equals that finding's id, with a call and a reason",
+      "If wild_card.exclusion_prompt is non-null, each wild_card.exclusion_rationale entry quotes words from wild_card.style_prompt; if it is null (inherited), every inherited exclude's quoted words also appear in wild_card.style_prompt and any scream-trigger word the wild card adds is named in a rationale",
+      "The reply carries `tier`, and every 'key change' exclude is paired with a positive line in the prompt that holds the key",
+      "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)"
     ]
   },
   {
@@ -100,12 +116,18 @@
       "The refined style_prompt contains none of 'anthemic', 'stadium', 'festival', 'concert', 'crowd', 'audience', 'whole room singing', or any form of 'live'",
       "The refined style_prompt contains positive solo-singer language (e.g. 'solo lead vocal', 'one singer', 'single lead vocal') and says where the chorus energy comes from instead (instruments / arrangement)",
       "The refined style_prompt contains no inline negative ('no choir', 'without backing vocals', 'not ', 'avoid ')",
-      "Every entry in exclusion_rationale has a defends_against that names a word or phrase appearing verbatim in this run's style_prompt (a genre named there counts); no entry justifies its exclude by another band, another rendering, an earlier take or the profile alone (e.g. a choir exclude cites 'gospel' in the genre head, not 'the last take had choirs')",
+      "Every entry in exclusion_rationale has a defends_against that names a word or phrase appearing verbatim in this run's style_prompt (a genre named there counts); no entry justifies its exclude by another band, another rendering, an earlier take or the profile alone (e.g. a choir exclude cites 'gospel' in the genre head, not 'the last take had choirs') The quoted words must be what causes the drift (a genre, instrument, era or arrangement cue such as a final-chorus swell for 'key change'), not an unrelated phrase picked to satisfy the check.",
       "validation.status is \"pass\", or \"review\" where every medium finding (e.g. the exclusion item-count notice for a whole choir family) is named in decisions[] with its reason; never \"warning\" or \"fail\"",
       "handoff_notes contains a note for suno-lyric-transformer that one singer matters (section tags must not invite choirs or group vocals)",
       "sliders keep v1's 55 / 75 (or are null as untouched) or, if changed, the change carries reasoning from this song; nothing cites the profile's stored 48 / 68 as the basis",
       "Character counts come from the validator: style_prompt_chars equals validation.metrics.style_prompt_chars and equals the actual length of style_prompt; style_prompt_limit equals validation.metrics.style_prompt_limit; and when a wild card is present, wild_card.style_prompt_chars equals validation.metrics.wild_card_prompt_chars and the actual length of wild_card.style_prompt",
-      "The transcript shows validate-prompt.py run with --stdin on the package that was emitted (same style_prompt and exclusion_prompt), and the emitted validation object matches that final run's output"
+      "The final message is exactly the JSON printed by the run's last `validate-prompt.py --stdin --emit` call that exited 0: the transcript shows that call with the package piped in (a heredoc or pipe, not a file under a fixed /tmp name), and the reply's style_prompt, exclusion_prompt, wild card and `validation` (status, metrics, findings) equal what it printed",
+      "Every medium finding in validation.findings has a decisions[] entry whose `finding` equals that finding's id, with a call and a reason",
+      "Any exclude the profile's defaults or the input carried that the refined package drops is listed in exclusions.remove or decisions[] with its reason (nothing leaves silently)",
+      "The reply carries `tier`, and every 'key change' exclude is paired with a positive line in the prompt that holds the key",
+      "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)",
+      "When the exclusions name part of the group-vocal family, they name all of it (choir, backing vocals, gang vocals, layered vocals, crowd chants) or decisions[] says why not",
+      "Sliders the refine input left empty keep their current values: no slider change without a reason from this feedback"
     ]
   }
 ]

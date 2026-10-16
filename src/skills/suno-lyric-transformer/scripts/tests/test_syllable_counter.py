@@ -242,6 +242,13 @@ class TestLatinOnly(unittest.TestCase):
         self.assertGreater(latin_only["metrics"]["estimated_duration"]["max_seconds"],
                            just_latin["metrics"]["estimated_duration"]["max_seconds"])
 
+    def test_instrumental_sections_add_time(self):
+        sung = "[Verse 1]\nSalt on the sill again\nthe tide came in"
+        with_solo, _ = run_script("--text", "[Intro - guitar, 4 bars]\n\n" + sung + "\n\n[Guitar Solo: slide]\n\n[Outro]\n[End]")
+        plain, _ = run_script("--text", sung)
+        self.assertGreater(with_solo["metrics"]["estimated_duration"]["min_seconds"],
+                           plain["metrics"]["estimated_duration"]["min_seconds"] + 20)
+
     def test_without_flag_every_line_counts(self):
         report, _ = run_script("--text", self.MIXED)
         self.assertEqual(len(report["line_data"]), 4)

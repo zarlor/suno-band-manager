@@ -25,7 +25,7 @@ v6 follows the style field literally and fills whatever it leaves unsaid with it
 |---|---|---|
 | Vocal Gender | Empty with a Voice or an instrumental | The Voice defines the singer; a setting can fight it |
 | Duration | Auto | Custom when length is a requirement, or at sung length + 15–20 s when Auto pads a long tail (LOCAL) |
-| Max Mode | On for any take the user might keep | Applied at generation, so a finished take can't be upgraded; 2× credits (OFFICIAL). LOCAL: it separated usable takes from unusable |
+| Max Mode | On for any take the user might keep (Pro/Premier; Free has no Max Mode, Variety or Personalize control: `v6_options` values are `null` there) | Applied at generation, so a finished take can't be upgraded; 2× credits (OFFICIAL). LOCAL: it separated usable takes from unusable |
 | Weirdness | Chosen per song (safety tables) | Safe ↔ Chaos, 50 normal (OFFICIAL). v5.5's 60–75 counter-genre range and ~80 cliff are untested on v6 |
 | Style Influence | Chosen per song (safety tables) | Defaults to 50 (VENDOR ×2), so set it. Plateaus above ~80: 100 did no better than 85 (ANECDOTAL, controlled) |
 | Audio Influence | Persona 15–25%, Voice 35–95% | Only with audio attached; a value from the other slot's range is an error. Profile each voice on v6 |
@@ -49,7 +49,7 @@ Where the song calls for it:
 4. **An ending written as the singer's action plus the band leaving,** when a long instrumental tail must be avoided (LOCAL, n=1: it steered the last line, not the tail).
 5. **No bare "vocal" in the style field** when a wordless "ooooh" intro would hurt (ANECDOTAL, n=1); open the lyrics on a sung line.
 6. **A heavy chorus gets its job, not its feeling:** "big", "emotional" and "epic" slow it into a ballad (COMMUNITY; the rewrite is in the trigger table).
-7. **`key change` in Exclude Styles when the song must hold its key:** v6 adds unrequested modulations in some genres (ANECDOTAL). Leave it out where one would be welcome.
+7. **`key change` in Exclude Styles when the song must hold its key:** v6 adds unrequested modulations in some genres (ANECDOTAL). Pair it, like every exclude, with a positive line in the prompt ("stays in one key to the end"). Leave it out where one would be welcome.
 8. **With a Voice attached, add no vocal character the Voice lacks** ("gritty"): style words reshape the clone (ANECDOTAL + LOCAL). Words matching its real character may help.
 
 To try:

@@ -44,7 +44,7 @@ VERSION = "1.2.0"
 VALID_SECTIONS = {
     "intro", "verse", "verse 1", "verse 2", "verse 3", "verse 4",
     "pre-chorus", "chorus", "bridge", "breakdown", "build-up", "buildup",
-    "final chorus", "outro", "hook", "refrain", "interlude",
+    "final chorus", "final verse", "outro", "hook", "refrain", "interlude",
     "post-chorus", "solo",
     # Instrumental / solo variants
     "guitar solo", "piano solo", "sax solo", "saxophone solo",
@@ -90,14 +90,24 @@ STYLE_CONTAMINATION_PATTERNS = [
 ]
 
 # Section names, shared by the plain and parameterized forms.
-SECTION_BASE = (r'(?:verse|chorus|bridge|breakdown|build-up|buildup|pre-chorus|post-chorus|'
+SECTION_BASE = (r'(?:(?:guitar|piano|sax|saxophone|drum|bass|fiddle|violin|harmonica|organ|synth|trumpet|banjo|mandolin|steel guitar|slide guitar)\s+solo|'
+                r'verse|chorus|bridge|breakdown|build-up|buildup|pre-chorus|post-chorus|'
                 r'hook|refrain|interlude|solo|instrumental|break|drop|build|end|intro|outro|'
-                r'final chorus|fade\s*(?:out|in))')
+                r'final chorus|final verse|fade\s*(?:out|in))')
 PLAIN_SECTION_RE = re.compile(rf'^{SECTION_BASE}\s*\d*$', re.IGNORECASE)
 # [Verse 1: hushed], [Verse | whispered], [Verse 1 - riff continues], [Verse 1 — THE ROOM]
 PARAM_SECTION_RE = re.compile(rf'^{SECTION_BASE}\s*\d*\s*(?::|\||\s[-–—]\s?|[–—]).+$', re.IGNORECASE)
 DASH_LABEL_RE = re.compile(rf'^{SECTION_BASE}\s*\d*\s*[–—]\s*(?P<label>.+)$', re.IGNORECASE)
 COLON_LABEL_RE = re.compile(rf'^{SECTION_BASE}\s*\d*\s*:\s*(?P<label>.+)$', re.IGNORECASE)
+
+
+SUNG_SECTIONS = re.compile(r'^(?:final\s+)?(?:verse|chorus|pre-chorus|post-chorus|bridge|hook|refrain)\b', re.IGNORECASE)
+
+
+def _instrumental_section(tag_text: str) -> bool:
+    """True when a section is instrumental by nature or says so in its cue."""
+    tag = tag_text.strip()
+    return "instrumental" in tag.lower() or not SUNG_SECTIONS.match(tag)
 
 
 def is_section_tag(tag_text: str) -> bool:
@@ -271,7 +281,7 @@ def validate_lyrics(text: str) -> list[dict]:
         })
 
     # Character count check (Suno counts everything including metatags)
-    char_count = len(text)
+    char_count = len(text) - (1 if text.endswith("\n") else 0)  # closing newline not pasted
     if char_count > SUNO_LYRICS_HARD_LIMIT:
         findings.append({
             "severity": "high",
@@ -403,9 +413,10 @@ def validate_lyrics(text: str) -> list[dict]:
                 "fix": "End the lyrics block on [End] with nothing below it, not even a blank line."
             })
 
-    # Check for empty sections
+    # Check for empty sections. Instrumental-by-nature sections ([Intro - guitar, instrumental],
+    # [Guitar Solo], [Break], [Outro], [End]) are meant to be empty; only sung sections are flagged.
     for section in sections:
-        if not section["lyric_lines"]:
+        if not section["lyric_lines"] and not _instrumental_section(section["tag"]):
             findings.append({
                 "severity": "low",
                 "category": "structure",
@@ -444,7 +455,10 @@ def build_report(findings: list, text: str, skill_path: str = "") -> dict:
         len(line) for line in text.split('\n')
         if re.match(r'^\[.*\]$', line.strip())
     )
-    lyric_character_count = len(text) - metatag_character_count
+    # A file's or heredoc's closing newline isn't pasted into Suno: the count matches the
+    # lyrics as returned (no trailing newline).
+    pasted_length = len(text) - (1 if text.endswith("\n") else 0)
+    lyric_character_count = pasted_length - metatag_character_count
 
     return {
         "script": SCRIPT_NAME,
@@ -455,7 +469,7 @@ def build_report(findings: list, text: str, skill_path: str = "") -> dict:
         "metrics": {
             "total_lines": parsed["total_lines"],
             "lyric_lines": len(lyric_lines),
-            "character_count": len(text),
+            "character_count": pasted_length,
             "lyric_character_count": lyric_character_count,
             "metatag_character_count": metatag_character_count,
             "section_count": len(parsed["sections"]),

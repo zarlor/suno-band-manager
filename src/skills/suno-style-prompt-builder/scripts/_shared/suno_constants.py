@@ -135,6 +135,11 @@ GENRE_SIGNALS = frozenset({
     "power ballad", "dark alternative",
     # added 2026-09-12: lanes whose genre word was missing
     "thrash", "krautrock", "rockabilly",
+    # added 2026-10-15: roots, world and dance lanes that read as "no genre" (old-time string-band waltz)
+    "old-time", "string band", "string-band", "appalachian", "waltz", "celtic", "cajun", "zydeco",
+    "honky-tonk", "outlaw country", "western swing", "bossa nova", "samba", "flamenco", "tango",
+    "afrobeat", "ska", "dub", "trap", "drill", "metalcore", "industrial rock", "chamber pop",
+    "lullaby", "sea shanty", "shanty", "polka", "big band", "swing", "motown", "doo-wop",
 })
 
 

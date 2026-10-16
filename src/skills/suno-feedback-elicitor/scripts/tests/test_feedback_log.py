@@ -57,13 +57,22 @@ class FeedbackLogLocateTest(unittest.TestCase):
         self.assertIsNone(out["last_round"])
         self.assertEqual(out["candidates"], [str(band / "my-song-v2.md")])
 
-    def test_no_band_or_title_uses_session_stamp(self):
+    def test_no_band_or_title_uses_no_band_folder_and_stamp(self):
         tmp_path = self.tmp_path
         code, out = run(["--history-dir", str(tmp_path), "--stamp", "20261003-1500"])
         self.assertEqual(code, 0)
-        self.assertEqual(out["band_or_session"], "20261003-1500")
+        self.assertEqual(out["band_or_session"], "no-band")
         self.assertEqual(out["song_slug"], "20261003-1500")
-        self.assertEqual(out["path"], str(tmp_path / "20261003-1500" / "20261003-1500.md"))
+        self.assertEqual(out["path"], str(tmp_path / "no-band" / "20261003-1500.md"))
+
+    def test_no_band_log_is_found_by_a_later_session(self):
+        tmp_path = self.tmp_path
+        run_append(["--history-dir", str(tmp_path), "--title", "Low Country Drive", "--stamp", "20261003-1500",
+                    "--text", "round one"])
+        code, out = run(["--history-dir", str(tmp_path), "--title", "Low Country Drive", "--stamp", "20261009-0930"])
+        self.assertEqual(code, 0)
+        self.assertIs(out["exists"], True)
+        self.assertEqual(out["next_round"], 2)
 
     def test_round_heading_without_date(self):
         tmp_path = self.tmp_path
@@ -106,7 +115,24 @@ class FeedbackLogAppendTest(unittest.TestCase):
         self.assertTrue(text.startswith("# My Song\n"))
         self.assertIn("## Round 1 — 2026-10-15\n", text)
         self.assertIn("Tried rawer vocals. Liked it.", text)
-        self.assertIn('{"feedback_type": "vague", "round": 1}', text)  # round set from the log, not the input
+        self.assertIn('"feedback_type": "vague", "round": 1}', text)  # round set from the log, not the input
+        self.assertIn('"session_id": "', text)  # filled from the session stamp when left out
+
+    def test_stdin_json_keeps_apostrophes_and_sets_session_id(self):
+        payload = json.dumps({"text": "User: \"it doesn't hit, I don't know\"",
+                              "snapshot": {"session_id": "20261015", "user_intent": "it doesn't hit"}})
+        code, out = run_append([*self.base, "--stamp", "20261015-1725", "--stdin-json"], stdin=payload)
+        self.assertEqual(code, 0)
+        text = Path(out["path"]).read_text(encoding="utf-8")
+        self.assertIn("it doesn't hit, I don't know", text)
+        self.assertIn('"session_id": "20261015-1725"', text)
+
+    def test_snapshot_session_id_comes_from_the_stamp(self):
+        code, out = run_append([*self.base, "--stamp", "20261015-1605", "--text", "x",
+                                "--snapshot", '{"feedback_type": "clear"}'])
+        self.assertEqual(code, 0)
+        self.assertIn('{"session_id": "20261015-1605", "feedback_type": "clear", "round": 1}',
+                      self.log.read_text(encoding="utf-8"))
 
     def test_next_round_follows_last_and_locate_agrees(self):
         run_append([*self.base, "--date", "2026-10-14", "--text", "round one"])

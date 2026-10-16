@@ -14,14 +14,18 @@
       "No line of transformed_lyrics contains Japanese characters except the six source lines listed above (repeats of them are fine): no Japanese text was added, translated, split or altered",
       "decision_log records that the kiso-river-lights profile was found but has no writer_voice (voice) fields, and nothing in the return (caveats, decision_log, changes) claims the lyrics were checked against or aligned with the profile's writer voice",
       "transformation_summary is copied from the last assemble-summary.py run in the transcript: its character_count, section_count and transformations_applied equal that run's transformation_summary values",
-      "The last non-empty line of transformed_lyrics is [End], and validation_result.status equals the status of the last validate-lyrics.py run in the transcript"
+      "The last non-empty line of transformed_lyrics is [End], and validation_result.status equals the status of the last validate-lyrics.py run in the transcript",
+      "transformation_summary.character_count equals the length of the returned transformed_lyrics",
+      "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)"
     ]
   },
   {
     "id": "unbroken-prose-word-fidelity",
     "input": "Use the suno-lyric-transformer skill --headless. Band profiles for this run are in fixtures/band-profiles/ (no BMad config in this folder).\n\nthis is a paragraph i wrote on the ferry, i never wrote it as a poem. can it be a song? do NOT change my words, only shape it\n\n```json\n{\n  \"text\": \"The last ferry leaves at eleven forty and I am always on it, coat collar up, watching the city fold itself into a thin gold line behind the wake, and the deckhand who never speaks coils the rope the same way every night like a prayer he learned before he learned his name, and I think about my father who crossed this same water every morning for thirty one years with a thermos and a newspaper he never read, who told me once that the trick to living on an island is to love the leaving as much as the coming home, and I did not understand him then, but tonight the engine shudders under my feet and the gulls have gone quiet and the far shore is only a rumor of lights, and I finally understand that he was never talking about the ferry at all.\\n\",\n  \"options\": [\n    \"ST\",\n    \"WF\"\n  ],\n  \"band_profile\": \"harbor-static\",\n  \"direction\": \"late-night reflective indie folk, half-sung, steady pulse\",\n  \"model\": \"v6\"\n}\n```",
     "state_prefix": null,
-    "files": [],
+    "files": [
+      "fixtures/band-profiles/kiso-river-lights.yaml"
+    ],
     "rubric": [
       "The transcript shows analyze-input.py run on the source, and its output reports metrics.unbroken_prose true",
       "The final message contains a JSON object whose status is not \"blocked\" and whose transformed_lyrics has at least 8 non-empty lines that are not bracketed tags, none of them longer than 100 characters (the prose was segmented into singable lines)",
@@ -30,22 +34,32 @@
       "The return says the line breaks were inferred or added by the transformer (in caveats, decision_log or changes)",
       "decision_log records that band profile 'harbor-static' was not found and that the run proceeded without voice constraints",
       "transformation_summary.transformations_applied includes ST and WF and none of CC, CE, RE, FR",
-      "The last non-empty line of transformed_lyrics is [End]"
+      "The last non-empty line of transformed_lyrics is [End]",
+      "The run looks for the band profile only in the folder the input names (or the configured one): no find/ls/grep outside the working directory, and no command left running in the background",
+      "Nothing follows the JSON reply: the transcript's last assistant message is the JSON object",
+      "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)",
+      "If decision_log names a risk (lines that may rush, a voice concern), status is complete_with_caveats and caveats names it"
     ]
   },
   {
     "id": "short-poem-six-lines",
     "input": "Use the suno-lyric-transformer skill --headless. Band profiles for this run are in fixtures/band-profiles/ (no BMad config in this folder).\n\nshort one. 6 lines. i want it to feel like a whole song though, not a 40 second sketch\n\n```json\n{\n  \"text\": \"Salt on the Sill\\n\\nYou left the window open when you went\\nand the sea came in a little every night\\nsalt on the sill, salt on the sill\\nI never wiped it, never closed it tight\\nnow the paint is peeling where you leaned\\nand I keep the window open for the light\\n\",\n  \"direction\": \"slow coastal folk ballad, aching and sparse, female vocal\",\n  \"model\": \"v6\"\n}\n```",
     "state_prefix": null,
-    "files": [],
+    "files": [
+      "fixtures/band-profiles/kiso-river-lights.yaml"
+    ],
     "rubric": [
       "The transcript shows analyze-input.py run on the source, and its output reports metrics.estimated_structure \"short\"",
       "The transcript shows validate-options.py run on the final codes, and transformation_summary.transformations_applied includes ST and does not include CC",
       "decision_log names one short-poem strategy (split delivery, double delivery, chorus extraction or thesis isolation) and ties it to the input being short",
-      "Each of the six poem lines (\"You left the window open when you went\" through \"and I keep the window open for the light\") appears verbatim in transformed_lyrics",
-      "Every non-empty, non-tag line of transformed_lyrics is one of the six poem lines or the title (repeats allowed): no new lyric lines were written as padding",
+      "Each of the six poem lines (\"You left the window open when you went\" through \"and I keep the window open for the light\") appears in transformed_lyrics with its words in order (compare with whitespace and line breaks collapsed); a line split across two lines passes only when changes[] reports the split",
+      "No new lyric words: joining transformed_lyrics' non-tag lines, every word sequence comes from the six poem lines or the title (repeats and reported splits allowed); no padding lines were written",
       "At least one poem line appears two or more times in transformed_lyrics (the strategy supplies repetition for Suno to build on)",
-      "transformed_lyrics contains no [Instrumental Break] tag in any capitalization, and its last non-empty line is [End]"
+      "transformed_lyrics contains no [Instrumental Break] tag in any capitalization, and its last non-empty line is [End]",
+      "The run looks for the band profile only in the folder the input names (or the configured one): no find/ls/grep outside the working directory, and no command left running in the background",
+      "Nothing follows the JSON reply: the transcript's last assistant message is the JSON object",
+      "The length ask is honored: transformation_summary.estimated_duration reaches about two minutes or more, or caveats says why the six lines can't stretch that far",
+      "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)"
     ]
   },
   {
@@ -65,8 +79,9 @@
       "\"standing tall\" (an intentional keep in the existing decision log) still appears in transformed_lyrics, and the return lists it in intentional_keeps or cliche_report.kept",
       "fixtures/songbook/lantern-hollow/the-weir-keeper.decision-log.md still begins with the fixture's original content byte-for-byte (title, the '## Session 2026-10-01 (transform)' heading and both bullets), followed by a new '## Session YYYY-MM-DD (transform)' heading with at least one bullet; decision_log_path names this file",
       "fixtures/songbook/lantern-hollow/the-weir-keeper.md is byte-identical to the fixture (headless writes only the log)",
-      "The transcript contains an LT-STATE comment whose source_hash equals metrics.source_hash from an analyze-input.py run on the source, and the return's source_hash equals the same value",
-      "flat_copy_lyrics is absent or null (the lyrics are far under the 3,000-character budget)"
+      "flat_copy_lyrics is absent or null (the lyrics are far under the 3,000-character budget)",
+      "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)",
+      "The writer's blank lines between stanzas (including any double blank line) survive in transformed_lyrics; only section breaks add blank lines"
     ]
   }
 ]

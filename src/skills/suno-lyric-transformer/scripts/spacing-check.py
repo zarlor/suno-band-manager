@@ -201,9 +201,22 @@ def check_spacing(original: str, transformed: str, word_fidelity: bool = False) 
                 "fix": "In WF mode keep the writer's exact words; only add structure.",
             })
 
+    # Tag-only lines the transform added (1-based lines of the transformed text), so a
+    # report of the ST edits cites real line numbers, not a hand count.
+    orig_tags = [line.strip() for line in normalize_newlines(original).split('\n')
+                 if line.strip() and TAG_ONLY_LINE.match(line)]
+    added_tags = []
+    for n, line in enumerate(normalize_newlines(transformed).split('\n'), 1):
+        if line.strip() and TAG_ONLY_LINE.match(line):
+            if line.strip() in orig_tags:
+                orig_tags.remove(line.strip())
+            else:
+                added_tags.append({"line": n, "tag": line.strip()})
+
     flat = flatten(transformed)
     return {
         "findings": findings,
+        "added_tag_lines": added_tags,
         "metrics": {
             "writer_lines": len(o_pos),
             "whitespace_changes": len([c for c in whitespace_changes if c["kind"] != "trailing_whitespace"]),
@@ -237,6 +250,7 @@ def build_report(result: dict, include_flat: bool, skill_path: str = "") -> dict
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "status": status,
         "metrics": result["metrics"],
+        "added_tag_lines": result["added_tag_lines"],
         "findings": findings,
         "summary": {"total": len(findings), **severity_counts},
     }

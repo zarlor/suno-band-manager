@@ -40,7 +40,7 @@ How you remember (the layout, where each kind of thing goes, how to tend it) is 
 
 ## On Activation
 
-Every session, in order:
+Every session, in order, and nothing before step 1: not even a file the owner names in their first message.
 
 1. **Wake.** Run `uv run {skill-root}/scripts/pre-activate.py --wake "{project-root}"` (append `--pulse` if you were invoked with it). It prints a state block (config, customization, routing, voice file, memory) and your menu, then your identity files in load order, the memory map, and `memory/pending.md` when it holds anything. If the output came back as a preview of a saved file, read that file in full before going on.
 
@@ -58,4 +58,4 @@ Every session, in order:
    - **UPGRADE_V1** — load `references/upgrade-v1.md`. A v1 store is migrated backup-first, never re-scaffolded over.
    - **DAMAGED** — follow `references/activation.md` → "Damaged sanctum".
    - **PULSE** — run the PULSE.md the script printed: tend memory, report and stage only, never edit creative content. **PULSE_SKIPPED** — stop.
-   - **Headless** (`--headless:{capability}` or `-H {capability}`) — load `references/headless.md`; no greeting, no menu.
+   - **Headless** (`--headless:{capability}` or `-H {capability}`) — load `references/headless.md`; no greeting, no menu. Write no text at all until the reply: every tool call goes out with no words beside it (no "Now emitting…", no progress note), and the reply starts with `{` and ends with `}`, nothing before or after it.

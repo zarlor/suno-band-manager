@@ -21,18 +21,18 @@ Scripts run as `uv run {skill-root}/scripts/<name>.py`, print JSON, and document
 
 ## On Activation
 
-1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow`; if it can't run, use `customize.toml`'s defaults and say once that setting up BMad (the `bmad` skill) restores overrides. Run any `activation_steps_prepend`; load `persistent_facts`. To change a value (say, `on_complete`), the user invokes the `bmad-customize` skill naming the key (not installed: `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`).
-2. **Load config.** Run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` for `band_profiles_folder` (default `{project-root}/docs/band-profiles`) and `songbook_folder` (default `{project-root}/docs/songbook`). Unset values or a missing resolver take the defaults; with no resolver, offer `bmad setup suno` (the `bmad` skill) once.
-3. **Headless** (`--headless` / `-H`, or any `--headless:` variant): read `references/headless-contract.md` fully, run any `activation_steps_append`, and follow the steps without greeting or asking.
+1. **Resolve customization.** Run `uv run {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --project-root {project-root} --key workflow` (always run it; never decide it's missing from a directory listing, which may be cut short); if it can't run, use `customize.toml`'s defaults and say once that setting up BMad (the `bmad` skill) restores overrides. Run any `activation_steps_prepend`; load `persistent_facts`. To change a value (say, `on_complete`), the user invokes the `bmad-customize` skill naming the key (not installed: `npx skills add bmad-code-org/BMAD-METHOD --skill bmad-customize`).
+2. **Load config.** Always run `uv run {project-root}/_bmad/scripts/resolve_config.py --project-root {project-root} --key modules.suno` (never judge it missing from a listing) for `band_profiles_folder` (default `{project-root}/docs/band-profiles`) and `songbook_folder` (default `{project-root}/docs/songbook`). Unset values or a missing resolver take the defaults; with no resolver, offer `bmad setup suno` (the `bmad` skill) once in your first reply, even when the user opened with a request — in a headless run, as one `warnings` entry instead.
+3. **Headless** (`--headless` / `-H`, or any `--headless:` variant): read `references/headless-contract.md` fully, run any `activation_steps_append`, and follow the steps without greeting or asking. Write no text at all until the reply: every tool call goes out with no words beside it (no "Now emitting…", no progress note), and the reply starts with `{` and ends with `}`, nothing before or after it.
 4. **Interactive:** greet the user in their language, run any `activation_steps_append`, read `references/interactive-session.md` fully, then go to Step 1.
 
 ## Step 1: Analyze the Input
 
-Name the band profile's state (`{band_profiles_folder}/{name}.yaml`): **not found**, **malformed**, or **no `writer_voice` fields**; proceed with what exists, so Step 4 never passes a voice check against nothing.
+Name the band profile's state (`{band_profiles_folder}/{name}.yaml`, or a folder the input names; look only there, never search the disk): **not found**, **malformed**, or **no `writer_voice` fields**; proceed with what exists, so Step 4 never passes a voice check against nothing.
 
 In parallel: `analyze-input.py` on the source (exit 2: ask for a readable path; headless `blocked`), `syllable-counter.py --latin-only`, and read `references/section-jobs.md`. Its `metrics.source_hash` is the hash for LT-STATE and the headless return. Act on what it reports:
 
-- **`unbroken_prose`**: segment into lines on clause and breath boundaries before arc mapping or line-based scripts.
+- **`unbroken_prose`**: segment into lines on clause and breath boundaries before arc mapping or line-based scripts; `estimated_structure` counted the raw lines, so judge "short" again on the segmented lines.
 - **`script_type`**: non-Latin lines get structure and arc work only; the syllable, rhyme and cliche checks can't read them. `mixed`: `--latin-only` on every syllable and cliche run; report the split from `skipped_lines`.
 - **`has_existing_structure`**: default to RA + CD; run `validate-lyrics.py` on the source. A narrative label it flags (`[Verse 1 — THE ROOM]`) becomes direction (`[Verse 1: hushed, tense]`), because Suno may sing it; the label stays in songbook notes.
 - **`estimated_structure: short`** (under 16 content lines): Suno pads a short poem with looping instrumental, so lead with a short-poem strategy from `section-jobs.md`.
@@ -42,7 +42,7 @@ Done when you hold the metrics (or called them approximate), the profile's state
 
 ## Step 2: Select Transformations
 
-Defaults (`validate-options.py --list` prints the codes): raw text → ST + CC + RA + CD; pre-structured → RA + CD; short → ST + a short-poem strategy instead of CC; over ~2,500 characters → ST + RA + CD. Done when `validate-options.py "<codes>"` returns `pass` or `warning` (report any `removed_codes`) and LT-STATE holds the codes.
+Defaults (`validate-options.py --list` prints the codes): raw text → ST + CC + RA + CD; pre-structured → RA + CD; short → ST + CE + RA + CD with a short-poem strategy in place of CC (the strategies build their chorus from the writer's lines, which is CE); over ~2,500 characters → ST + RA + CD. Done when `validate-options.py "<codes>"` returns `pass` or `warning` (report any `removed_codes`) and LT-STATE holds the codes. A length the writer asks for ("a whole song, not a 40-second sketch") is a target: build toward it with repeats, a section from a repeated line, a named solo (`[Guitar Solo]`, never `[Instrumental Break]` in a short poem, per `section-jobs.md`) or a longer outro, and check `estimated_duration` against it.
 
 ## Step 3: Transform
 
@@ -60,11 +60,11 @@ Order: FR first; then ST, CE, CC; then RA, RE; CD on the near-final text. Re-emi
 - **CD:** `cliche-detector.py --latin-only`, 2-3 genre-aware alternatives per flag; Suno amplifies cliches in delivery.
 - **Under WF:** RA only breaks or joins lines (each break reported), RE only suggests, CD only flags.
 
-Done when each selected code is applied in order, each edit is noted with its code, LT-STATE matches the draft, and `validate-lyrics.py`'s `character_count` is under 3,000 or the sections to trim are named.
+Done when each selected code is applied in order, each edit is noted with its code, LT-STATE matches the draft (interactive sessions; a headless run returns `source_hash` instead), and `validate-lyrics.py`'s `character_count` is under 3,000 or the sections to trim are named.
 
 ## Step 4: Check and Present
 
-In parallel: `validate-lyrics.py`, `syllable-counter.py --latin-only`, `section-length-checker.py` (`--genre prog` relaxes it), `spacing-check.py --original <source> --transformed <draft>` (`--word-fidelity` under WF), `lyrics-diff.py`. Then `assemble-summary.py` on the saved validator, syllable and cliche JSON (no `--cliches` without CD) with `--transformations <codes>`: its `markdown` is the summary, its `transformation_summary` the headless field.
+In parallel: `validate-lyrics.py`, `syllable-counter.py --latin-only`, `section-length-checker.py` (`--genre prog` relaxes it), `spacing-check.py --original <source> --transformed <draft>` (source and draft files in a fresh `mktemp -d` folder, never a fixed `/tmp` name another run could share) (`--word-fidelity` under WF), `lyrics-diff.py --original <source> --transformed <draft>`. If the codes changed while you worked, re-run `validate-options.py` on the final set. Then `assemble-summary.py` on the saved validator, syllable and cliche JSON (no `--cliches` without CD) with `--transformations <codes>`: its `markdown` is the summary, its `transformation_summary` the headless field.
 
 Done when no high `spacing-check.py` finding remains (restore the writer's line or gap), every line edit it lists is among your changes, the validator's findings are fixed, the draft is checked against the profile's voice fields if any, and one read of original against transformed names the biggest risk (image weakened, core flattened, voice drifted) or says it held. Then present per the interactive session file, or return the headless contract.
 

@@ -517,6 +517,41 @@ def _load_input_data(args) -> dict:
     return data
 
 
+LAST_MODIFIED_RE = re.compile(r"^(#\s*Last modified:\s*).*$", re.MULTILINE)
+
+
+def touch_last_modified(text: str) -> str:
+    """Set a header '# Last modified: ...' comment, when the file has one, to today (UTC)."""
+    return LAST_MODIFIED_RE.sub(lambda m: m.group(1) + datetime.now(timezone.utc).strftime("%Y-%m-%d"), text, count=1)
+
+
+def cmd_drop(args) -> dict:
+    """Remove top-level keys from a profile or staged draft, every other block byte for byte.
+
+    The file is --in PATH (a draft) or the slug's profile; the result goes to --stage PATH,
+    or back to the --in file itself (never to a saved profile without --stage)."""
+    keys = [k.strip() for k in args.drop.split(",") if k.strip()]
+    if args.input:
+        source = Path(args.input)
+    else:
+        source = _resolve_profiles_dir(args) / f"{args.slug}.yaml"
+        if not args.stage:
+            return _fail("--drop on a saved profile needs --stage (validate the staged copy, then --set or --save it)")
+    if not source.is_file():
+        return _fail(f"File not found: {source}")
+    text = source.read_text(encoding="utf-8")
+    segs, tail = _segments(text)
+    present = {seg["key"] for seg in segs}
+    missing = [k for k in keys if k not in present]
+    kept = [seg for seg in segs if seg["key"] not in keys]
+    out = "".join("".join(seg["head"]) + "".join(seg["body"]) for seg in kept) + "".join(tail)
+    target = Path(args.stage) if args.stage else source
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(out, encoding="utf-8")
+    return {"script": SCRIPT_NAME, "status": "complete", "operation": "drop", "path": str(target),
+            "dropped": [k for k in keys if k in present], "not_present": missing, "timestamp": _now()}
+
+
 def _edit_profile(args, target: Path, mutate) -> dict:
     """Load target, apply mutate(tree) -> result fields, write comment-preserving."""
     if not target.exists():
@@ -531,6 +566,8 @@ def _edit_profile(args, target: Path, mutate) -> dict:
     except SchemaError as e:
         return _fail(str(e))
     rendered = render_preserving(orig_text, tree)
+    previous = LAST_MODIFIED_RE.search(rendered["text"])
+    rendered["text"] = touch_last_modified(rendered["text"])
     out_path = Path(args.stage) if getattr(args, "stage", None) else target
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(rendered["text"], encoding="utf-8")
@@ -538,6 +575,8 @@ def _edit_profile(args, target: Path, mutate) -> dict:
               "profile_path": str(target), **fields, "timestamp": _now()}
     if getattr(args, "stage", None):
         result["staged_path"] = str(out_path)
+    if previous:
+        result["last_modified_was"] = previous.group(0)[len(previous.group(1)):]
     warnings = []
     if rendered["relocated"]:
         warnings.append("Comments kept but moved to the end of their block: "
@@ -563,10 +602,19 @@ def cmd_save(args) -> dict:
     slug = args.slug or _derive_slug(str(data.get("name", "")))
     if not slug:
         return _fail("No slug provided and profile has no 'name' to derive one from.")
-    tmp = dict(data)
-    _check_caps(tmp)
     profiles_dir = _resolve_profiles_dir(args)
     target = profiles_dir / f"{slug}.yaml"
+    if getattr(args, "stage", None):
+        # Stage the YAML exactly as given (headless create): byte for byte, no cap
+        # checks, so the validator sees every conflict before anything is fixed.
+        staged = Path(args.stage)
+        staged.parent.mkdir(parents=True, exist_ok=True)
+        staged.write_text(raw if raw.endswith("\n") else raw + "\n", encoding="utf-8")
+        return {"script": SCRIPT_NAME, "status": "complete", "operation": "stage",
+                "slug": slug, "staged_path": str(staged), "profile_exists": target.exists(),
+                "timestamp": _now()}
+    tmp = dict(data)
+    _check_caps(tmp)
     if target.exists() and not args.force:
         return _fail(f"Profile already exists: {target}. Use --set to edit it, or pass "
                      "--force to overwrite it.")
@@ -575,7 +623,17 @@ def cmd_save(args) -> dict:
     result = {"script": SCRIPT_NAME, "status": "complete", "operation": "save",
               "slug": slug, "profile_path": str(target), "timestamp": _now()}
     log = profiles_dir / f"{slug}.decision-log.md"
-    if log.exists():
+    if log.exists() and getattr(args, "archive_existing_log", False):
+        # Headless: no one to ask, and appending would graft an earlier band's reasoning on.
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        archived = profiles_dir / f"{slug}.decision-log.prior-{stamp}.md"
+        log.rename(archived)
+        result["archived_decision_log"] = str(archived)
+        result["warnings"] = [f"An earlier decision log for slug '{slug}' was moved aside to "
+                              f"{archived}; start a fresh log for this band."]
+    elif log.exists() and getattr(args, "own_log", False):
+        result["decision_log"] = str(log)  # started earlier this session, as create-profile does
+    elif log.exists():
         result["existing_decision_log"] = str(log)
         result["warnings"] = [f"A decision log already exists for slug '{slug}'. It may "
                               "belong to an earlier band; confirm before appending to it."]
@@ -753,6 +811,9 @@ def main():
     ops.add_argument("--duplicate", metavar="NEW_NAME",
                      help="Copy the profile to NEW_NAME's slug and set its name to NEW_NAME.")
     ops.add_argument("--load", action="store_true", help="Emit the profile as JSON.")
+    ops.add_argument("--drop", metavar="KEYS",
+                     help="Remove these top-level keys (comma list) from --in PATH (a draft, edited in place or "
+                          "written to --stage) or from the slug's profile (needs --stage); other blocks byte for byte.")
     ops.add_argument("--delete", action="store_true",
                      help="Archive (or --purge) the profile, decision log, draft and playlist YAML.")
     parser.add_argument("--set-json", metavar="JSON", help="Inline JSON overrides for --set.")
@@ -763,7 +824,7 @@ def main():
                         help="Keep at most N entries after --append (default: schema cap, if any).")
     parser.add_argument("--bump-version", action="store_true", help="Increment version on --duplicate.")
     parser.add_argument("--stage", metavar="PATH",
-                        help="Write the --set/--append/--duplicate result to PATH instead of saving.")
+                        help="Write the --set/--append/--duplicate result to PATH instead of saving; with --save, stage the input YAML there byte for byte (headless create).")
     parser.add_argument("--confirm", action="store_true", help="Carry out --delete.")
     parser.add_argument("--purge", action="store_true", help="With --delete: delete instead of archive.")
     parser.add_argument("--in", dest="input", metavar="PATH", help="Read input YAML from a file.")
@@ -774,6 +835,11 @@ def main():
     parser.add_argument("--docs-dir", help="Folder holding {slug}-playlist.yaml "
                                            "(default: the profiles folder's parent).")
     parser.add_argument("--songbook-dir", help="Songbook folder (default: songbook_folder from config).")
+    parser.add_argument("--own-log", action="store_true",
+                        help="With --save: the slug's decision log was started this session; don't warn about it.")
+    parser.add_argument("--archive-existing-log", action="store_true",
+                        help="With --save: move an existing decision log for the slug aside to "
+                             "<slug>.decision-log.prior-<UTC stamp>.md (headless, where no one can be asked).")
     parser.add_argument("--force", action="store_true",
                         help="Allow --save/--duplicate to overwrite an existing profile.")
     parser.add_argument("-o", "--output", help="Write JSON result to a file instead of stdout.")
@@ -781,18 +847,20 @@ def main():
     args = parser.parse_args()
 
     selected = [args.save, args.do_set, bool(args.append), bool(args.duplicate),
-                args.load, args.delete]
+                args.load, args.delete, bool(args.drop)]
     if sum(bool(s) for s in selected) != 1:
-        parser.error("Exactly one of --save, --set, --append, --duplicate, --load, --delete is required.")
+        parser.error("Exactly one of --save, --set, --append, --duplicate, --load, --delete, --drop is required.")
     if args.slug and args.slug.endswith((".yaml", ".yml")):
         args.slug = Path(args.slug).stem
-    if not args.save and not args.slug:
+    if not args.save and not args.slug and not (args.drop and args.input):
         parser.error("This operation requires a <slug> positional argument.")
     if args.verbose:
         print(f"ruamel.yaml available: {HAVE_RUAMEL}", file=sys.stderr)
 
     try:
-        if args.save:
+        if args.drop:
+            result = cmd_drop(args)
+        elif args.save:
             result = cmd_save(args)
         elif args.do_set:
             result = cmd_set(args)

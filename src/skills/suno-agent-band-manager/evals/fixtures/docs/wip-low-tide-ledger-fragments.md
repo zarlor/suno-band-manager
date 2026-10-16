@@ -7,9 +7,9 @@
 ```
 [Verse 1]
 Mama kept a ledger by the kitchen door
-Every flood we lived through, every debt we swore
-Tide came in and took the porch, the tide went out again
-She wrote it down in pencil so she'd know where we had been
+Each flood we lived through, each debt we swore
+Tide took the porch and gave it back again
+She wrote it down so she'd know where we'd been
 
 [Chorus]
 Low tide, low tide

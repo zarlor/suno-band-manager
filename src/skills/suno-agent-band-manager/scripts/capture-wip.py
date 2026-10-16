@@ -15,7 +15,9 @@ conversation does not survive. This script makes that one step mechanical:
   - appends the material byte for byte in a fenced block under `## Swings tried`
     (created when missing; a lone `_(none yet)_` placeholder is replaced), headed
     with the label, the source and the date;
-  - leaves every other byte of the file as it was, and checks that it did.
+  - leaves every other byte of the file as it was, and checks that it did;
+  - reports each captured line's syllable count (`line_syllables`), the shared
+    heuristic the lyric transformer uses, so line-length judgments rest on a count.
 
 `--critique` adds the critique to an entry captured earlier (matched by its
 label), so a rejected swing keeps its text and the reason together.
@@ -37,6 +39,9 @@ import re
 import sys
 from datetime import date
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
+from syllables import count_line_syllables
 
 SECTION = "## Swings tried"
 PLACEHOLDER = "_(none yet)_"
@@ -121,11 +126,13 @@ def main() -> int:
     where = parser.add_mutually_exclusive_group(required=True)
     where.add_argument("--title", help="working title; the WIP file is docs/wip-<slug>-fragments.md")
     where.add_argument("--file", help="an explicit file to capture into (e.g. a songbook entry)")
-    parser.add_argument("--label", required=True, help='entry label, e.g. "Swing 4 — anchor X"')
+    parser.add_argument("--label", help='entry label, e.g. "Swing 4 — anchor X" (not needed with --dry-run)')
     parser.add_argument("--source", help='who wrote it: "Mac", "ChatGPT", "owner", ...')
     parser.add_argument("--framing", help="what prompted it / which iteration it came from")
     parser.add_argument("--text", help="the material (default: read stdin)")
     parser.add_argument("--critique", help="add this critique to the entry with --label instead of capturing")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="count the material's line syllables and write nothing (check your own swing before capturing it)")
     parser.add_argument("--date", default=date.today().isoformat())
     args = parser.parse_args()
 
@@ -137,6 +144,8 @@ def main() -> int:
         print(json.dumps({"status": "refused", "reason": f"{path} is outside the project"}))
         return 1
 
+    if not args.label and not args.dry_run:
+        parser.error("--label is required unless --dry-run")
     if args.critique:
         if not path.is_file():
             print(json.dumps({"status": "refused", "reason": f"no file at {path}"}))
@@ -150,12 +159,19 @@ def main() -> int:
         print(json.dumps({"status": "written", "path": str(path.relative_to(root)), "critique_added": args.label}))
         return 0
 
-    if not args.source:
+    if not args.source and not args.dry_run:
         parser.error("--source is required when capturing")
     material = args.text if args.text is not None else sys.stdin.read()
     if not material.strip():
         print(json.dumps({"status": "refused", "reason": "no material to capture (empty --text and stdin)"}))
         return 2
+
+    lines = [{"line": line.strip(), "syllables": count_line_syllables(line)}
+             for line in material.splitlines() if line.strip() and not line.strip().startswith("[")]
+    if args.dry_run:
+        # Count only: a swing you drafted is checked against the band's line rule before it is captured.
+        print(json.dumps({"status": "counted", "line_syllables": lines}))
+        return 0
 
     created = not path.is_file()
     if created and args.file:
@@ -178,6 +194,8 @@ def main() -> int:
         "created": created,
         "entry": f"{args.label} — {args.source}, {args.date}",
         "chars": len(material),
+        # Per sung line, so a critique or a counter-swing measures line length the same way.
+        "line_syllables": lines,
     }))
     return 0
 

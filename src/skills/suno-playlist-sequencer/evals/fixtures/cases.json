@@ -7,6 +7,7 @@
    "state_prefix": null,
    "files": [
     "_bmad/scripts/resolve_customization.py",
+    "_bmad/scripts/config_utils.py",
     "_bmad/scripts/memlog.py",
     "docs/copper-lantern-playlist.yaml",
     "docs/audio-analysis/playlists/copper-lantern.json"
@@ -21,8 +22,12 @@
     "decision_log has an entry saying Copperhead (felt_bpm_check true, measured 152, no felt_bpm) was sequenced on its measured tempo as an assumption",
     "No rationale states what a song is about (its lyrical theme or story) from its title, and decision_log records that thematic claims were left out because no songbook entries were available",
     "The transcript shows a read of references/playlist-sequencing-methodology.md before the first validate-sequence.py --order call",
-    "The transcript shows validate-sequence.py run with --order on a file whose lines match the emitted recommended_sequence, and that run's output is status \"ok\" (exit 0)",
-    "docs/copper-lantern-playlist.yaml and docs/audio-analysis/playlists/copper-lantern.json are byte-identical to their fixtures, no validate-sequence.py call passes --write, no Write/Edit tool call targets either file, and the emitted playlist_yaml_changed is false"
+    "The transcript shows validate-sequence.py run with --order on a file whose lines match the emitted recommended_sequence, and that run's output is status \"ok\" (exit 0); that run passes --archive with the playlist's archive JSON, so its output carries `seams`",
+    "docs/copper-lantern-playlist.yaml and docs/audio-analysis/playlists/copper-lantern.json are byte-identical to their fixtures, no validate-sequence.py call passes --write, no Write/Edit tool call targets either file, and the emitted playlist_yaml_changed is false",
+    "Every seam the output characterizes (smooth, clean, ok, a jump) uses the label validate-sequence.py's `seams` gave that pair, and every `jump` beside the new track names its percentage",
+    "Claims about rejected slots match validate-sequence.py --slot-table output (each slot's seam labels), and a validate-sequence.py --rationale run on the returned rationale/trade-offs exits 0",
+    "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)",
+    "The chosen slot is one of --slot-table's slot_summary.slots_at_fewest (or, if no run printed slot_summary, adds no new jump seam per the slot table), and any comparative claim about other slots matches the slot table"
    ]
   },
   {
@@ -31,6 +36,7 @@
    "state_prefix": null,
    "files": [
     "_bmad/scripts/resolve_customization.py",
+    "_bmad/scripts/config_utils.py",
     "_bmad/scripts/memlog.py",
     "docs/salt-hollow-playlist.yaml",
     "docs/audio-analysis/playlists/salt-hollow.json"
@@ -39,15 +45,17 @@
     "The final message contains a JSON object with status \"complete\" whose recommended_sequence has exactly 8 entries naming each playlist track once",
     "Undertow, Breakwater and Driftwood Psalm appear consecutively and in that order in recommended_sequence",
     "Every validate-sequence.py invocation in the transcript passes --locked \"Undertow > Breakwater > Driftwood Psalm\" (the arc is not in the YAML, so a call without it cannot catch a split)",
-    "The last validate-sequence.py --order run checks a file whose lines match recommended_sequence, outputs status \"ok\" with that arc \"intact\", and locked_arcs_respected contains \"Undertow > Breakwater > Driftwood Psalm\"",
+    "A validate-sequence.py --order run after the final edits checks a file whose lines match recommended_sequence, outputs status \"ok\" with that arc \"intact\", and locked_arcs_respected contains \"Undertow > Breakwater > Driftwood Psalm\"",
     "The transcript shows a read of references/album-craft.md before the last validate-sequence.py --order call",
     "Tidewater, Lamp Oil and Brine (all 5A, the archive's same-key run) are not three in a row in recommended_sequence, or trade_offs gives a stated reason for keeping that run",
     "The output names the shape of the proposed order's energy arc (for example a W, an inverted U, a front-loaded peak or a descent) in trade_offs, a rationale or the summary",
     "The rationale for position 1 or for position 8 speaks to that slot's role (the opener setting the tone, or the closer resolving)",
     "flagged_transitions or trade_offs names at least one jarring seam the locked arc forces (Undertow -> Breakwater is 70 -> 150 BPM and +9.2 LU; Breakwater -> Driftwood Psalm is 150 -> 72 and -10.6 LU) rather than presenting the arc's seams as smooth",
-    "decision_log records that Signal Flare and Breakwater (felt_bpm_check true) were sequenced on measured tempo as an assumption",
+    "decision_log records that the tracks with felt_bpm_check true (and no felt_bpm) were sequenced on measured tempo as an assumption, naming them",
     "No rationale states what a song is about from its title (no songbook here), and decision_log records that thematic claims were left out",
-    "docs/salt-hollow-playlist.yaml and docs/audio-analysis/playlists/salt-hollow.json are byte-identical to their fixtures, no validate-sequence.py call passes --write, no Write/Edit tool call targets either file, and the emitted playlist_yaml_changed is false"
+    "docs/salt-hollow-playlist.yaml and docs/audio-analysis/playlists/salt-hollow.json are byte-identical to their fixtures, no validate-sequence.py call passes --write, no Write/Edit tool call targets either file, and the emitted playlist_yaml_changed is false",
+    "The output carries arc_shape naming the whole order's energy shape (not only the peaks slot by slot)",
+    "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)"
    ]
   },
   {
@@ -56,6 +64,7 @@
    "state_prefix": null,
    "files": [
     "_bmad/scripts/resolve_customization.py",
+    "_bmad/scripts/config_utils.py",
     "_bmad/scripts/memlog.py",
     "docs/bramble-union-playlist.yaml",
     "docs/audio-analysis/playlists/bramble-union.json",
@@ -73,21 +82,23 @@
     "The final message contains a JSON object with status \"complete\" whose recommended_sequence has exactly 9 entries, and with Homecoming Parade removed the other eight stay in the YAML's current order",
     "The transcript shows docs/songbook/bramble-union/homecoming-parade.md read in full before the first validate-sequence.py --order call",
     "The transcript shows the songbook entries of Homecoming Parade's final neighbors in recommended_sequence read before the last validate-sequence.py --order call",
-    "Homecoming Parade's rationale describes it as a funeral (a soldier coming home in a coffin, the town mourning), and no output text calls the song celebratory, triumphant, feel-good, a party or a victory",
+    "Homecoming Parade's rationale describes it as a funeral (a soldier coming home in a coffin, the town mourning), and no output text calls the song celebratory, triumphant, feel-good, a party or a victory Negated or attributed uses (\"not a celebration\", the caller's \"feel-good bop\") don't count.",
     "Homecoming Parade is not the last track in recommended_sequence (Lantern Walk Home, written as the closer, keeps the close)",
     "Homecoming Parade is not placed immediately after Saturday Payday (the same-key, 98 -> 96 BPM seam the surface read favors), unless its rationale frames that adjacency explicitly as a deliberate party-to-funeral contrast",
     "decision_log or trade_offs says the songbook entry contradicts the caller's feel-good-closer read",
     "Any lyric line quoted as evidence for Homecoming Parade (for example \"The whole town turned out to bring him home\") comes with the context that shows its funeral function",
-    "The transcript shows validate-sequence.py run with --order on a file whose lines match the emitted recommended_sequence, and that run's output is status \"ok\" (exit 0)",
-    "docs/bramble-union-playlist.yaml and docs/audio-analysis/playlists/bramble-union.json are byte-identical to their fixtures, no validate-sequence.py call passes --write, no Write/Edit tool call targets either file, and the emitted playlist_yaml_changed is false"
+    "The transcript shows validate-sequence.py run with --order on a file whose lines match the emitted recommended_sequence, and that run's output is status \"ok\" (exit 0); that run passes --archive with the playlist's archive JSON, so its output carries `seams`",
+    "docs/bramble-union-playlist.yaml and docs/audio-analysis/playlists/bramble-union.json are byte-identical to their fixtures, no validate-sequence.py call passes --write, no Write/Edit tool call targets either file, and the emitted playlist_yaml_changed is false",
+    "The final JSON reply is the only assistant text in the transcript: no assistant text block comes before it (not one progress note between tool calls)"
    ]
   },
   {
    "id": "signoff-copper-lantern-interactive",
-   "state_prefix": "[Interactive session with the suno-playlist-sequencer skill, not headless. Intake and the sequencing data are done for Copper Lantern (docs/copper-lantern-playlist.yaml); nothing has been logged to a workspace memlog yet. The archive docs/audio-analysis/playlists/copper-lantern.json is current, and the mp3s live on the studio box, so the sequencing script can't analyze anything on this machine. No BMad config in this folder: module defaults. The proposal presented last turn: slot 'Gravel Road Hymn' right after 'Rust Belt Waltz' (keeps the Widow's Porch > Rust Belt Waltz arc; 78 -> 76 BPM and about 1 LU across the seam), everything else unchanged. Rejected alternative: after 'Last Call at Dutch's' as the closer, for its 126 -> 76 BPM drop and 6.4 LU fall. The user replied:]",
+   "state_prefix": "[Interactive session with the suno-playlist-sequencer skill, not headless. Activation ran in the first turn (customization and config resolved; BMad isn't set up here, and the one-time `bmad setup suno` offer was already made). Intake and the sequencing data are done for Copper Lantern (docs/copper-lantern-playlist.yaml); nothing has been logged to a workspace memlog yet. The archive docs/audio-analysis/playlists/copper-lantern.json is current, and the mp3s live on the studio box, so the sequencing script can't analyze anything on this machine. No BMad config in this folder: module defaults. The proposal presented last turn: slot 'Gravel Road Hymn' right after 'Rust Belt Waltz' (keeps the Widow's Porch > Rust Belt Waltz arc; 78 -> 76 BPM and about 1 LU across the seam), everything else unchanged. It also named the one new seam the slot makes, Gravel Road Hymn -> Night Freight (76 -> 124 BPM, +7.5 LU), as a deliberate wake-up jump into the side-B opener, and the user had said that jump was fine. It also said Rust Belt Waltz -> Gravel Road Hymn sits in distant keys (Camelot 3.5 apart), softened by the 78 -> 76 BPM match, and the user accepted that too. Rejected alternative: after 'Last Call at Dutch's' as the closer, for its 126 -> 76 BPM drop and 6.4 LU fall. The user replied:]",
    "input": "yep thats the one. lock it in and write it to the playlist",
    "files": [
     "_bmad/scripts/resolve_customization.py",
+    "_bmad/scripts/config_utils.py",
     "_bmad/scripts/memlog.py",
     "docs/copper-lantern-playlist.yaml",
     "docs/audio-analysis/playlists/copper-lantern.json"
@@ -95,7 +106,7 @@
    "rubric": [
     "docs/copper-lantern-playlist-sequencing/accepted-order.txt exists and lists the 9 tracks one per line: Kerosene Morning, Switchyard, Tin Roof Psalm, Copperhead, Widow's Porch, Rust Belt Waltz, Gravel Road Hymn, Night Freight, Last Call at Dutch's",
     "The transcript shows validate-sequence.py run with --order on that accepted-order.txt, outputting status \"ok\", before any validate-sequence.py call with --write",
-    "docs/copper-lantern-playlist.yaml's tracks are now in the accepted order, the change was made by validate-sequence.py --write (its output shows \"written\": true) and no Write/Edit tool call targets the YAML",
+    "docs/copper-lantern-playlist.yaml's tracks are now in the accepted order, the change was made by validate-sequence.py --write after the passing preview (its output shows \"written\": true), and no Write/Edit tool call targets the YAML. The item fails when no --write call happens.",
     "The rewritten YAML still has felt_bpm: 84 on Tin Roof Psalm and the locked_arcs entry \"Widow's Porch > Rust Belt Waltz\"",
     "docs/copper-lantern-playlist-sequencing/.memlog.md exists (created through memlog.py) and holds a decision entry placing Gravel Road Hymn after Rust Belt Waltz that names the rejected closer slot and why",
     "The final message tells the user the archive and companion were not refreshed because the audio isn't on this machine (or shows the sequencing re-run with --no-compare failing for that reason), and docs/audio-analysis/playlists/copper-lantern.json is byte-identical to its fixture",

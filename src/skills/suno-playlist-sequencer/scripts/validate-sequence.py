@@ -13,10 +13,16 @@ of truth, so a reorder is a batch edit to it. This script is the gate:
   - With --order FILE: checks the proposed order is a permutation of the
     current tracks (nothing dropped, duplicated, or unknown) and that every
     locked arc stays together and in order. Prints a preview of the moves.
+  - With --archive PATH (the playlist's audio archive,
+    docs/audio-analysis/playlists/<album-slug>.json): adds `seams`, the measured
+    transition across every adjacent pair of the proposed order (or the current one):
+    tempo folded to felt BPM with its `bpm_quality` (smooth < 3%, ok < 6%, else
+    "jump (N%)"), the loudness step with its `loudness_quality`, and the key relation.
+    Describe seams with these labels; new seams a reorder creates are covered too.
   - With --order FILE --write: rewrites the YAML's `tracks:` list in the new
     order, only if every check passed. Everything outside the list (album,
     audio_dir, comments above it, later keys) is kept verbatim, and each track
-    keeps all its fields. Comments inside the list are not kept.
+    keeps its own text: quoting, field order and the comment lines just above it.
 
 Locked arcs come from `--locked "A > B > C"` (repeatable) and from an optional
 top-level `locked_arcs:` list in the YAML (each item a list of names or an
@@ -34,6 +40,7 @@ Exit codes:
 """
 
 import argparse
+import importlib.util
 import json
 import re
 import sys
@@ -128,6 +135,53 @@ def moves(current, proposed):
     return out
 
 
+def _reorder_items(block_lines, new_order):
+    """Reorder a block list's items as written: each item keeps its own text (quoting,
+    comments, field order). Comment lines just above an item travel with it. Returns
+    None when the block isn't a plain `- ` list whose items each name one track."""
+    import yaml
+
+    starts = [i for i, l in enumerate(block_lines) if re.match(r"^\s+- ", l)]
+    if not starts:
+        return None
+    indent = len(block_lines[starts[0]]) - len(block_lines[starts[0]].lstrip())
+    starts = [i for i in starts if len(block_lines[i]) - len(block_lines[i].lstrip()) == indent]
+    # Each item's text runs from its comment lead-in to the line before the next item's lead-in.
+    def lead(i):
+        j = i
+        while j > 0 and block_lines[j - 1].strip().startswith("#"):
+            j -= 1
+        return j
+    bounds = [lead(i) for i in starts]
+    preamble = block_lines[:bounds[0]]
+    chunks = [block_lines[b:e] for b, e in zip(bounds, bounds[1:] + [len(block_lines)])]
+    trailing = []
+    while chunks[-1] and not chunks[-1][-1].strip():  # blank lines after the list stay at the end
+        trailing.insert(0, chunks[-1].pop())
+    by_name = {}
+    for chunk in chunks:
+        body = [l for l in chunk if not l.strip().startswith("#")]
+        try:
+            item = yaml.safe_load("".join(l[indent:] if len(l) > indent else l.lstrip() for l in body))
+        except yaml.YAMLError:
+            return None
+        if not isinstance(item, list) or len(item) != 1 or not isinstance(item[0], dict):
+            return None
+        name = str(item[0].get("name") or "").strip()
+        if not name or name in by_name:
+            return None
+        while chunk and not chunk[-1].strip():  # one item's trailing blanks are separators, not content
+            chunk = chunk[:-1]
+        by_name[name] = chunk
+    if sorted(by_name) != sorted(new_order):
+        return None
+    sep = "\n" if any(not l.strip() for c in chunks for l in c) else ""
+    out = "".join(preamble)
+    for k, n in enumerate(new_order):
+        out += "".join(by_name[n]) + (sep if k < len(new_order) - 1 else "")
+    return out + "".join(trailing)
+
+
 def render(original_text, tracks, new_order):
     """The YAML text with only the `tracks:` list reordered."""
     import yaml
@@ -137,16 +191,159 @@ def render(original_text, tracks, new_order):
     if start is None:
         raise ValueError("no top-level `tracks:` key found")
     end = next((i for i in range(start + 1, len(lines)) if re.match(r"^[A-Za-z_]", lines[i])), len(lines))
-    by_name = {}
-    for t in tracks:
-        by_name.setdefault(str(t["name"]).strip(), t)
-    body = yaml.safe_dump([by_name[n] for n in new_order], allow_unicode=True, sort_keys=False,
-                          default_flow_style=False, width=10_000)
-    block = "".join(f"  {l}\n" for l in body.splitlines())
+    block = _reorder_items(lines[start + 1:end], new_order)
+    verbatim = block is not None
+    if block is None:  # not a plain block list: re-render it
+        by_name = {}
+        for t in tracks:
+            by_name.setdefault(str(t["name"]).strip(), t)
+        body = yaml.safe_dump([by_name[n] for n in new_order], allow_unicode=True, sort_keys=False,
+                              default_flow_style=False, width=10_000)
+        block = "".join(f"  {l}\n" for l in body.splitlines())
     tail = lines[end:]
-    if tail and not block.endswith("\n\n") and tail[0].strip():
+    if not verbatim and tail and not block.endswith("\n\n") and tail[0].strip():
         block += "\n"
     return "".join(lines[:start + 1]) + block + "".join(tail)
+
+
+def _sequencing_data():
+    """playlist-sequencing-data.py, loaded for its seam math (one home for the thresholds)."""
+    here = Path(__file__).resolve().parent
+    spec = importlib.util.spec_from_file_location("playlist_sequencing_data", here / "playlist-sequencing-data.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def seams(order, archive, tracks):
+    """Measured transition data for each adjacent pair in `order`, from the archive."""
+    data = _sequencing_data()
+    by_name = {str(t.get("name")).strip(): t for t in archive.get("tracks") or [] if isinstance(t, dict)}
+    felt = {str(t["name"]).strip(): t.get("felt_bpm") for t in tracks if t.get("felt_bpm")}
+    out = []
+    for a, b in zip(order, order[1:]):
+        ra, rb = by_name.get(a), by_name.get(b)
+        if not ra or not rb or ra.get("bpm") is None or rb.get("bpm") is None:
+            out.append({"from": a, "to": b, "missing": "no analysis for " + (a if not ra or ra.get("bpm") is None else b)})
+            continue
+
+        def flat(t, name):
+            key = t.get("key") or {}
+            return {**t, "felt_bpm": felt.get(name) or t.get("felt_bpm"),
+                    "exit_camelot": key.get("exit_camelot") or key.get("overall_camelot"),
+                    "entry_camelot": key.get("entry_camelot") or key.get("overall_camelot"),
+                    "exit_key": key.get("exit") or key.get("overall"),
+                    "entry_key": key.get("entry") or key.get("overall")}
+        seam = data.transition_between(flat(ra, a), flat(rb, b))
+        out.append({"from": a, **seam})
+    return out
+
+
+NEGATED = re.compile(r"\b(?:not|isn't|is\s+not|never|no\s+longer|anything\s+but|far\s+from)\s+(?:\w+\s+){0,2}"
+                     r"(?:smooth|seamless|clean|best|strongest|ideal|natural|easy)", re.I)
+LEVEL_WORDS = re.compile(r"\b(?:loudness|level|levels|lufs|lu|volume)\b", re.I)
+TEMPO_WORDS = re.compile(r"\b(?:tempo|bpm|pace|groove|feel)\b", re.I)
+SMOOTH_WORDS = re.compile(r"\b(smooth(?:est|ly)?|seamless(?:ly)?|clean(?:est)?|best|strongest|ideal|natural|easy)\b", re.I)
+
+
+def slot_table(order, name, archive, tracks, arcs):
+    """For each slot `name` could take in `order`, the seams it makes and the one it replaces."""
+    base = [t for t in order if t != name]
+    rows = []
+    for k in range(len(base) + 1):
+        prev = base[k - 1] if k > 0 else None
+        nxt = base[k] if k < len(base) else None
+        trial = ([prev] if prev else []) + [name] + ([nxt] if nxt else [])
+        made = seams(trial, archive, tracks)
+        replaced = seams([prev, nxt], archive, tracks)[0] if prev and nxt else None
+        split = [" > ".join(a) for a in arcs if prev in a and nxt in a and abs(a.index(prev) - a.index(nxt)) == 1]
+        jumps = sum(1 for sm in made for key in ("bpm_quality", "loudness_quality") if "jump" in str(sm.get(key) or ""))
+        was = sum(1 for key in ("bpm_quality", "loudness_quality") if replaced and "jump" in str(replaced.get(key) or ""))
+        rows.append({"position": k + 1, "after": prev, "before": nxt, "seams": made,
+                     "replaces": replaced, "splits_locked_arc": split,
+                     "jump_labels_made": jumps, "jump_labels_removed": was, "net_jump_labels": jumps - was})
+    return rows
+
+
+def slot_summary(rows):
+    """Comparative facts across slots, so "the only slot that..." claims come from here."""
+    ok = [r for r in rows if not r["splits_locked_arc"]]
+    best = min((r["net_jump_labels"] for r in ok), default=None)
+    return {
+        "note": "slots_at_fewest and slots_adding_no_jump_label count only slots that keep every locked arc; "
+                "net_by_slot lists every slot, arc-splitting ones included",
+        "slots_adding_no_jump_label": [r["position"] for r in ok if r["jump_labels_made"] == 0],
+        "fewest_net_jump_labels": best,
+        "slots_at_fewest": [r["position"] for r in ok if r["net_jump_labels"] == best],
+        "slots_splitting_a_locked_arc": [r["position"] for r in rows if r["splits_locked_arc"]],
+        "net_by_slot": {str(r["position"]): r["net_jump_labels"] for r in rows},
+    }
+
+
+SMOOTHNESS = re.compile(r"\b(?:smooth(?:est|ly)?|seamless(?:ly)?|clean(?:est)?)\b", re.I)
+SLOT_REF = re.compile(r"\b(?:slot|position)\s+(\d+)\b", re.I)
+
+
+PERCENT = re.compile(r"(\d+(?:\.\d+)?)\s*%")
+
+
+def rationale_flags(text, seam_rows, order=None, slot_rows=None):
+    """Clauses that call a seam smooth/seamless/clean when its label isn't `smooth`, or call
+    a `jump` seam the best or strongest. A clause naming "slot N" with no track pair is read
+    against the seams around position N of `order`."""
+    flags = []
+    # Clauses, so a sentence that praises one seam and names another isn't misread.
+    clauses = [c.strip() for c in re.split(r"(?<=[.!?;:])\s+|\n+|,\s+|\s+(?:and|but|while|whereas)\s+", text) if c.strip()]
+    for clause in clauses:
+        low = clause.lower()
+        by_pair = {}
+        for seam in seam_rows:
+            a, b = seam["from"].lower(), seam["to"].lower()
+            if a in low and b in low:
+                ordered = low.index(a) < low.index(b)
+                pair = frozenset((a, b))
+                # The seam named in reading order wins over the reverse direction.
+                if pair not in by_pair or (ordered and not by_pair[pair][0]):
+                    by_pair[pair] = (ordered, seam)
+        if not by_pair and slot_rows:
+            # "Slot N" in a slot-table answer is the table's row N: the seams that slot makes.
+            for m in SLOT_REF.finditer(clause):
+                row = next((r for r in slot_rows if r["position"] == int(m.group(1))), None)
+                for seam in (row or {}).get("seams", []):
+                    by_pair[frozenset((seam["from"].lower(), seam["to"].lower()))] = (True, seam)
+        # Without a slot table, "slot N" is ambiguous (a candidate slot or a position), so it isn't read.
+        calls_smooth = bool(SMOOTHNESS.search(clause))
+        # A clause about the level ("a smooth loudness step") is judged on the loudness
+        # label, one about tempo on the tempo label, one about the whole seam on both.
+        about_level = bool(LEVEL_WORDS.search(clause)) and not TEMPO_WORDS.search(clause)
+        about_tempo = bool(TEMPO_WORDS.search(clause)) and not LEVEL_WORDS.search(clause)
+        # A percentage beside a named seam is the label's own, never one worked out.
+        quoted_pct = [float(x) for x in PERCENT.findall(clause)]
+        if quoted_pct and by_pair:
+            label_pct = [float(x) for _, sm in by_pair.values() for key in ("bpm_quality", "loudness_quality")
+                         for x in PERCENT.findall(str(sm.get(key) or ""))]
+            for q in quoted_pct:
+                if not any(abs(q - lp) < 0.05 for lp in label_pct):
+                    seam = next(iter(by_pair.values()))[1]
+                    flags.append({"seam": f"{seam['from']} > {seam['to']}", "label": "", "kind": "percentage",
+                                  "detail": f"{q}% is not a figure its labels give", "clause": clause})
+        if not SMOOTH_WORDS.search(clause) or NEGATED.search(clause):
+            continue
+        for _, seam in by_pair.values():
+            keys = (("loudness_quality",) if about_level else ("bpm_quality",) if about_tempo
+                    else ("bpm_quality", "loudness_quality"))
+            for key in keys:
+                label = str(seam.get(key) or "")
+                base = label.split(" (")[0]
+                # "smooth" and its kin need a smooth label; "best"/"strongest" only rule out a jump.
+                bad = (base not in ("", "smooth")) if (about_level or calls_smooth) else ("jump" in label)
+                if bad:
+                    flags.append({"seam": f"{seam['from']} > {seam['to']}", "label": label, "clause": clause})
+                    break
+    return flags
+
+
+BRIEF_KEYS = ("status", "errors", "locked_arcs", "seams", "moves", "slot_summary", "rationale_flags", "written")
 
 
 def main(argv=None):
@@ -157,10 +354,22 @@ def main(argv=None):
                         help='A locked arc as "A > B > C" (repeatable). Adds to the YAML\'s locked_arcs.')
     parser.add_argument("--write", action="store_true",
                         help="Rewrite the YAML in the new order if every check passes (needs --order).")
+    parser.add_argument("--archive", help="The playlist's audio archive JSON; adds measured `seams` for the order.")
+    parser.add_argument("--slot-table", metavar="TRACK",
+                        help="With --archive: every slot TRACK could take in the current order, with the seams each makes, "
+                             "the seam it replaces and any locked arc it splits.")
+    parser.add_argument("--rationale", metavar="FILE",
+                        help="With --archive: flag sentences in FILE (the rationale and trade-offs you will return) that call "
+                             "a measured `jump` seam smooth, clean or the best. Any flag fails the check.")
     parser.add_argument("-o", "--output", help="Write the JSON report here instead of stdout.")
+    parser.add_argument("--brief", action="store_true",
+                        help="Print only status, errors, locked_arcs, seams, moves, slot_summary, rationale_flags and written: "
+                             "the fields a reply cites, so nothing needs filtering.")
     args = parser.parse_args(argv)
 
     def emit(report, code):
+        if args.brief:
+            report = {k: report[k] for k in BRIEF_KEYS if k in report}
         text = json.dumps(report, indent=2, ensure_ascii=False)
         if args.output:
             Path(args.output).write_text(text + "\n", encoding="utf-8")
@@ -215,6 +424,35 @@ def main(argv=None):
     }
     if proposed is not None and not errors:
         report["unchanged"] = len(current) - len(report["moves"])
+    if args.archive:
+        try:
+            archive = json.loads(Path(args.archive).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return error(f"archive unreadable: {exc}")
+        report["seams"] = seams(proposed if proposed is not None else current, archive, tracks)
+        if args.slot_table:
+            if args.slot_table not in current:
+                return error(f"--slot-table: {args.slot_table!r} is not in the playlist")
+            report["slot_table"] = slot_table(current, args.slot_table, archive, tracks, arcs)
+            report["slot_summary"] = slot_summary(report["slot_table"])
+        if args.rationale:
+            try:
+                text = Path(args.rationale).read_text(encoding="utf-8")
+            except OSError as exc:
+                return error(f"rationale unreadable: {exc}")
+            rows = list(report["seams"])
+            for row in report.get("slot_table", []):
+                rows += row["seams"] + ([row["replaces"]] if row["replaces"] else [])
+            flags = rationale_flags(text, rows, proposed or current, report.get("slot_table"))
+            report["rationale_flags"] = flags
+            if flags:
+                report["status"] = "fail"
+                report["errors"] = report["errors"] + [
+                    (f"{f['seam']}: {f['detail']}: {f['clause']!r}" if f.get("kind") == "percentage"
+                     else f"{f['seam']} is a {f['label']} seam, called smooth/clean/best: {f['clause']!r}") for f in flags]
+                errors = report["errors"]
+    elif args.slot_table or args.rationale:
+        return error("--slot-table and --rationale need --archive")
     if errors or not args.write:
         return emit(report, 1 if errors else 0)
 

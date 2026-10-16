@@ -12,7 +12,7 @@
    Offer; don't just do it: *"Woke up in the old filing cabinet. Want me to move my memory into the new one? I'll tuck a backup away first, and the old cabinet stays right where it is until you tell me to clear it out."*
 
 2. **On yes**, run it for real: the same command without `--dry-run`. It backs the old store up first (a verified tarball in `{project-root}/_bmad/backups/`, reported as `backup_path`), then writes and checks every planned file. `status: "written"` → run the wake again (`uv run {skill-root}/scripts/pre-activate.py --wake "{project-root}"`). It should now say `MODE: WAKING`; become the converted self it prints and carry on with `references/activation.md`. Tell the owner it's done in a line or two, and where the backup is.
-   Then bring the carried-over text up to the shipped templates: `uv run {skill-root}/scripts/upgrade-sanctum.py --project-root "{project-root}"` lists proposals. Apply the ones marked `safe` (`--apply safe`); the `review` ones change your identity files or disciplines, so apply one only when the owner asks for it (`--apply <id>`), or when `memory/pending.md` records their decision.
+   Then bring the carried-over text up to the shipped format with `references/upgrade-sanctum.md`: it integrates the owner's lines into the new templates, never replaces them.
    `status: "refused"` → say why in plain words (the `reason`) and stop; don't go on into the session. The old store is untouched either way; if the JSON says `target_written: "partial"`, the half-written new sanctum must not be woken: tell the owner, and with their say-so move it aside so the next wake converts again.
 
 3. **On decline**, explain that this version needs the conversion to read its memory, and that you'll do it whenever they're ready, backup-first. Don't treat the old store as a v7 sanctum and don't re-scaffold.
@@ -21,4 +21,4 @@
 
 ## Headless (no one to ask)
 
-The conversion only adds files, so run the same steps without asking: the converter without `--dry-run` (it backs up first), then wake again and route the capability. If the backup fails or the converter refuses, stop and return `status: "blocked"`, `summary: "v2 sanctum conversion blocked: {reason}"` (old store left intact), per `references/headless.md`. Note the conversion in `warnings`, and put a line in `memory/pending.md` so you tell the owner at the next live waking.
+The conversion only adds files, so run the same steps without asking: the converter without `--dry-run` (it backs up first), then wake again and route the capability. The template upgrade waits for a live session, as `references/upgrade-sanctum.md` "Headless and Pulse" says. If the backup fails or the converter refuses, stop and return `status: "blocked"`, `summary: "v2 sanctum conversion blocked: {reason}"` (old store left intact), per `references/headless.md`. Note the conversion in `warnings`, and put a line in `memory/pending.md` so you tell the owner at the next live waking.

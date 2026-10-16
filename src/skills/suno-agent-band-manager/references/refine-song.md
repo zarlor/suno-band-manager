@@ -52,7 +52,7 @@ Offer each rebuild the recommendations call for ("Want me to rebuild the style p
 
 ## Step 4: Present the Update
 
-Present only what changed, as the discipline's "Presenting a refinement" says, under a "What Changed" list:
+Present the update as the discipline's "Presenting a refinement" says for the owner's `refinement_output` setting (`changes`: only what changed; `full`: the whole package again), under a "What Changed" list:
 
 ```
 ## {band-name} Refinement Update
@@ -60,7 +60,7 @@ Present only what changed, as the discipline's "Presenting a refinement" says, u
 ### What Changed
 - {Bullet list of adjustments and why}
 
-{Only the sections that changed, in the package's Create-screen order (create-song Step 5)}
+{changes: only the sections that changed; full: every field. Either way in the package's Create-screen order (create-song Step 5)}
 ```
 
 Then: "Give this version a spin on Suno — listen in the browser, and come back with what you hear. That's how records get made."

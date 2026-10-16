@@ -13,8 +13,8 @@
 > pointer to the story); everything from that heading down is the story (seeded to
 > `memory/incidents/`). Keep the rule part to the rule, its triggers, its ordered steps
 > and one clause of why; the story goes below the marker. To carry a change here into an
-> existing sanctum, run `uv run {skill-root}/scripts/upgrade-sanctum.py` and apply what
-> the owner confirms.
+> existing sanctum, follow `references/upgrade-sanctum.md`: it integrates the owner's own
+> lines into the new text, never replaces them.
 
 ## Mission
 
@@ -204,12 +204,14 @@ The core rule — the pipeline skills build every package, the why, and the pre-
 
 **Quick refinement exception:** a single specific change to a package the pipeline built — a slider, a swapped word, the title — can be made inline. A change to the style prompt, the genre direction or the structure re-runs the relevant skill.
 
-**Presenting a refinement:** only what changed, with a "What Changed" list at the top — the owner already has the rest, and re-presenting everything buries the deltas.
+**Presenting a refinement:** a "What Changed" list at the top, then what the owner's `refinement_output` setting (in the wake's `config`) asks for:
 
-- Lyrics only → the updated lyrics.
-- Style only → the updated style prompt and Exclude Styles.
-- Both → the full package.
-- Settings or sliders only (no skill re-run) → a short note with the new values.
+- `full` → the whole copy-paste package again, in Create-screen order, every field — nothing for the owner to piece together.
+- `changes` (the default) → only what changed, since the owner already has the rest:
+  - Lyrics only → the updated lyrics.
+  - Style only → the updated style prompt and Exclude Styles.
+  - Both → the full package.
+  - Settings or sliders only (no skill re-run) → a short note with the new values.
 
 ## Pre-Presentation Review
 

@@ -35,6 +35,7 @@ import argparse
 import json
 import sys
 import warnings
+from datetime import date
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
@@ -132,6 +133,10 @@ def scaffold(project_root: Path, skill_path: Path) -> dict:
         _seed.generate_capabilities_md(capabilities), encoding="utf-8"
     )
     created.append("CAPABILITIES.md")
+
+    # The shipped text this sanctum took, so upgrade-sanctum.py can tell an
+    # untouched older template from the owner's own text.
+    created.append(_seed.record_seeded_base(sanctum_path, date.today().isoformat()))
 
     return {
         "status": "created",

@@ -41,9 +41,13 @@ and checks the archive lists every file; no verified backup, no conversion.
 exist with the planned content (copies: the source's size). The JSON carries
 `backup_path`; any failure is `status: "refused"` with a `reason`.
 
-The converted sanctum gets `memory/.tended` (the conversion is a tending) and
+The converted sanctum gets `memory/.tended` (the conversion is a tending),
 `memory/.born` (the birth date from the old CREED.md or PERSONA.md
-`**Born:**` line, else --today), so the wake reads it as a finished birth.
+`**Born:**` line, else --today), so the wake reads it as a finished birth, and
+`memory/.template-base.json`, which records the template text it was given
+(HOW-I-REMEMBER.md, PULSE.md apart from the owner's preferences). The carried
+over identity files and disciplines get no base: they are the owner's text,
+which upgrade-sanctum.py integrates into the new format, never overwrites.
 
 Exit codes: 0 ok, 1 refused (target exists / source missing / backup failed /
 post-write check failed), 2 bad input.
@@ -206,13 +210,20 @@ def build_plan(source: Path, skill_path: Path, today: str, project_root: Path | 
             out.append(f"## {heading}\n\n{body}")
         plan.add("CREED.md", None, "CREED.md", rewrite_refs("\n\n".join(out), session_map))
 
+    # Files written from the templates are filled in the way First Breath fills
+    # them, and recorded as the base upgrade-sanctum.py compares against. The
+    # copied files get no base: their text is the owner's until an upgrade
+    # integrates it.
+    variables = _seed.template_variables(project_root, _seed.resolve_config(project_root, source))
+    variables["birth_date"] = _born(read("CREED.md") or "") or variables["birth_date"]
+    base: dict[str, dict] = {}
+
     # PULSE.md from the new template (the routine changed), keeping the owner's preferences.
     pulse_template = skill_path / "assets" / "PULSE-template.md"
     old_pulse = read("PULSE.md")
     if pulse_template.is_file():
-        variables = _seed.template_variables(project_root, _seed.resolve_config(project_root, source))
-        variables["birth_date"] = _born(read("CREED.md") or "") or variables["birth_date"]
-        pulse = _seed.substitute_vars(pulse_template.read_text(encoding="utf-8"), variables)
+        shipped_pulse = _seed.substitute_vars(pulse_template.read_text(encoding="utf-8"), variables)
+        pulse = shipped_pulse
         if old_pulse is not None:
             kept = dict(split_sections(old_pulse)[1]).get("Owner Preferences")
             if kept:
@@ -221,12 +232,14 @@ def build_plan(source: Path, skill_path: Path, today: str, project_root: Path | 
                 plan.entries.append({"from": "PULSE.md", "section": "Owner Preferences", "to": "PULSE.md",
                                      "bytes": len(kept.encode())})
         plan.add("assets/PULSE-template.md", None, "PULSE.md", pulse)
+        base.update(_seed.base_entries("PULSE.md", plan.files["PULSE.md"], today, shipped_pulse))
 
     # HOW-I-REMEMBER.md from the skill's template.
     template = skill_path / "assets" / "HOW-I-REMEMBER-template.md"
     if template.is_file():
-        plan.add("assets/HOW-I-REMEMBER-template.md", None, "HOW-I-REMEMBER.md",
-                 template.read_text(encoding="utf-8"))
+        how = _seed.substitute_vars(template.read_text(encoding="utf-8"), variables)
+        plan.add("assets/HOW-I-REMEMBER-template.md", None, "HOW-I-REMEMBER.md", how)
+        base.update(_seed.base_entries("HOW-I-REMEMBER.md", plan.files["HOW-I-REMEMBER.md"], today))
 
     # MEMORY.md -> standing files.
     memory = read("MEMORY.md")
@@ -290,6 +303,8 @@ def build_plan(source: Path, skill_path: Path, today: str, project_root: Path | 
 
     # The conversion is itself a tending; the birth date carries over, so the
     # wake reads the converted sanctum as a finished First Breath.
+    plan.files[_seed.TEMPLATE_BASE_REL] = json.dumps(
+        {"version": 1, "units": dict(sorted(base.items()))}, indent=2, ensure_ascii=False) + "\n"
     plan.files["memory/.tended"] = today + "\n"
     plan.files["memory/.born"] = (_born(read("CREED.md") or "") or _born(read("PERSONA.md") or "") or today) + "\n"
 

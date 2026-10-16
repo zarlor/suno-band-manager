@@ -234,6 +234,7 @@ OWNER_KEYS = ("user_name", "communication_language", "document_output_language")
 SUNO_KEYS = (
     "suno_tier",
     "default_mode",
+    "refinement_output",
     "band_profiles_folder",
     "songbook_folder",
     "pytorch_audio_tools",
@@ -245,6 +246,7 @@ CONFIG_DEFAULTS = {
     "output_folder": "{project-root}/_bmad-output",
     "suno_tier": None,
     "default_mode": "demo",
+    "refinement_output": "changes",
     "band_profiles_folder": "{project-root}/docs/band-profiles",
     "songbook_folder": "{project-root}/docs/songbook",
     "pytorch_audio_tools": "off",
@@ -758,6 +760,94 @@ def render_dominion(assets_dir: Path, variables: dict) -> str:
         return "_The access-boundaries template is missing; reinstall the skill._"
     parts = [p for p in SECTION_SPLIT_RE.split(body) if p.strip().startswith("##")]
     return "\n\n".join("#" + p.strip() for p in parts)
+
+
+# ---------------------------------------------------------------------------
+# Template base: the shipped text each sanctum file last took
+# ---------------------------------------------------------------------------
+
+# upgrade-sanctum.py compares three texts, not two: the live file, the text the
+# skill ships now, and the shipped text the sanctum last took (its base). Live
+# equal to its base means nobody changed it, so a newer template replaces it
+# safely; live different from its base is the owner's (or Mac's) own text and
+# is never replaced without the owner. An owner's "keep" records the current
+# template as the base, so the same proposal doesn't come back until the
+# template changes again.
+TEMPLATE_BASE_REL = "memory/.template-base.json"
+TEMPLATED_IDENTITY = ("PERSONA.md", "CREED.md", "BOND.md", "HOW-I-REMEMBER.md", "PULSE.md")
+PREAMBLE = "(preamble)"
+
+
+def template_units(text: str) -> list[tuple[str, str]]:
+    """[(heading, text)] of an identity file, the text before the first `## ` as the preamble."""
+    out: list[tuple[str, str]] = []
+    for i, part in enumerate(SECTION_SPLIT_RE.split(text)):
+        if not part:
+            continue
+        if i == 0 and not part.startswith("## "):
+            out.append((PREAMBLE, part))
+        else:
+            out.append((part.splitlines()[0].strip(), part))
+    return out
+
+
+def unit_key(name: str, heading: str | None = None) -> str:
+    """The base key of a section (`CREED.md ## Principles`) or a whole file (`memory/disciplines/x.md`)."""
+    return name if heading is None else f"{name} {heading}"
+
+
+def load_template_base(sanctum: Path) -> dict[str, dict]:
+    """{unit key: {"text", "status", "date"}}; empty when there is no record (older sanctums)."""
+    path = Path(sanctum) / TEMPLATE_BASE_REL
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    units = data.get("units") if isinstance(data, dict) else None
+    return {k: v for k, v in (units or {}).items() if isinstance(v, dict) and isinstance(v.get("text"), str)}
+
+
+def save_template_base(sanctum: Path, units: dict[str, dict]) -> None:
+    path = Path(sanctum) / TEMPLATE_BASE_REL
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"version": 1, "units": dict(sorted(units.items()))}
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def base_entries(name: str, text: str, today: str, template_text: str | None = None) -> dict[str, dict]:
+    """Base records for one file just written from the templates.
+
+    With `template_text`, only the units identical to the template are
+    recorded (a converter that kept some owner sections records just the rest).
+    """
+    if name.startswith("memory/"):
+        if template_text is not None and text.strip() != template_text.strip():
+            return {}
+        return {unit_key(name): {"text": text, "status": "taken", "date": today}}
+    shipped = dict(template_units(template_text)) if template_text is not None else None
+    out = {}
+    for heading, body in template_units(text):
+        if shipped is not None and (heading not in shipped or shipped[heading].strip() != body.strip()):
+            continue
+        out[unit_key(name, heading)] = {"text": body, "status": "taken", "date": today}
+    return out
+
+
+def record_seeded_base(sanctum: Path, today: str) -> str:
+    """Record a freshly seeded sanctum's identity files and disciplines as its base."""
+    sanctum = Path(sanctum)
+    units: dict[str, dict] = {}
+    for name in TEMPLATED_IDENTITY:
+        path = sanctum / name
+        if path.is_file():
+            units.update(base_entries(name, path.read_text(encoding="utf-8"), today))
+    disciplines = sanctum / "memory" / "disciplines"
+    if disciplines.is_dir():
+        for path in sorted(disciplines.glob("*.md")):
+            rel = path.relative_to(sanctum).as_posix()
+            units.update(base_entries(rel, path.read_text(encoding="utf-8"), today))
+    save_template_base(sanctum, units)
+    return TEMPLATE_BASE_REL
 
 
 # ---------------------------------------------------------------------------

@@ -54,4 +54,4 @@ Load the relevant shard when its trigger context arises:
 | `memory/disciplines/package-assembly.md` | Running the pipeline (Agent, not Skill), signs it was skipped, where it gets skipped, presenting a refinement | Assembling or refining any Suno package |
 | `memory/incidents/` | The story behind a discipline (each discipline file points to its own) | Auditing or questioning a rule |
 
-The shards are the living disciplines — they may accrue new learnings. The Constitution above does not. When the skill ships newer shard or template text, `uv run {skill-root}/scripts/upgrade-sanctum.py` shows the differences and applies only what the owner confirms.
+The shards are the living disciplines — they may accrue new learnings. The Constitution above does not. When the skill ships newer shard or template text, `references/upgrade-sanctum.md` carries it in, integrating my own lines and the owner's, never replacing them.

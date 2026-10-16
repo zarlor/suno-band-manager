@@ -38,7 +38,8 @@ If Owner Preferences below says Pulse is not enabled, stop here. Otherwise:
 ## Report-and-Stage Protocol
 
 Write the report to `memory/pending.md`, dated: what tending changed, validator findings
-(errors first), oversized files, and refreshed indices. The next live session opens with it,
+(errors first), oversized files, refreshed indices, and any template upgrade the state's
+`template_upgrade` lists (Pulse applies none of it; the live session integrates it). The next live session opens with it,
 then clears the file once shown.
 
 Then STOP. Do not act on the findings autonomously.

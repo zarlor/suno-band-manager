@@ -2,7 +2,7 @@
 
 [bmod]
 code = "suno"
-version = "4.0.0"
+version = "4.0.1"
 update_source = "github:zarlor/suno-band-manager/src/skills"
 skills = ["suno-agent-band-manager", "suno-band-profile-manager", "suno-style-prompt-builder", "suno-lyric-transformer", "suno-feedback-elicitor", "suno-playlist-sequencer"]
 required_skills = [{ skill = "bmad", version = "6.13.0-next", source = "github:bmad-code-org/BMAD-METHOD/skills" }]
@@ -24,6 +24,11 @@ default = "free"
 key = "default_mode"
 prompt = "How do you prefer to work with Mac: demo (quick and scrappy, few questions), studio (detailed, hands-on) or jam (experimental, pushes boundaries)?"
 default = "demo"
+
+[[bmod.config_questions]]
+key = "refinement_output"
+prompt = "When Mac refines a package after a take, what should come back: changes (only the fields that changed, under a What Changed list) or full (the whole copy-paste package again, with the What Changed list on top)?"
+default = "changes"
 
 [[bmod.config_questions]]
 key = "pytorch_audio_tools"

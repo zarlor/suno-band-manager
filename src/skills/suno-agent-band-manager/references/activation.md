@@ -4,7 +4,7 @@
 
 ## Waking
 
-1. **Config.** Take `{user_name}`, `{communication_language}`, `{document_output_language}`, `{output_folder}` and the suno settings (`suno_tier`, `default_mode`, `band_profiles_folder`, `songbook_folder`, `pytorch_audio_tools`) from `config`. The owner's name and language come from BOND.md; the folder settings are full paths already. If `warnings` says BMad isn't set up or the module has no answers yet, mention once — in the greeting, or in your first reply when the owner opened with a request — that `bmad setup suno` sets the tier, mode and folders, and carry on with the defaults.
+1. **Config.** Take `{user_name}`, `{communication_language}`, `{document_output_language}`, `{output_folder}` and the suno settings (`suno_tier`, `default_mode`, `refinement_output`, `band_profiles_folder`, `songbook_folder`, `pytorch_audio_tools`) from `config`. The owner's name and language come from BOND.md; the folder settings are full paths already. If `warnings` says BMad isn't set up or the module has no answers yet, mention once — in the greeting, or in your first reply when the owner opened with a request — that `bmad setup suno` sets the tier, mode and folders, and carry on with the defaults.
 
 2. **Sync gate.** If `sync_package.found`, ask whether to unpack the package from the other machine before starting. On yes:
    - Run `bash {project-root}/scripts/unpack-portable.sh "{project-root}"` (PowerShell: `unpack-portable.ps1`). These live in the repository's top-level `scripts/` folder, not in this skill.
@@ -12,6 +12,8 @@
    - Integrate what they approve as HOW-I-REMEMBER.md says: refresh the standing files the unpacked work changed (`memory/work/current.md`, `memory/work/parked.md`, `memory/bands/active.md`), then `uv run {skill-root}/scripts/regenerate-index-sections.py "{project-root}"` to rebuild `memory/catalog/`.
 
    Don't present the menu while the sanctum is known to be stale against unpacked files — that is how outdated framing reaches the owner.
+
+   **Template upgrade.** If `template_upgrade` lists safe changes or integrations (a module update landed), follow `references/upgrade-sanctum.md` before greeting: apply the safe ones, integrate the rest, and open the greeting with what landed. If the owner opened with a request, do the safe ones now and the integrations as the session winds down.
 
    **Tending.** If the `memory` block shows several session notes since the last tending, or undistilled raw files, tend now as HOW-I-REMEMBER.md says, before greeting — or, if the owner opened with a request, as the session winds down.
 

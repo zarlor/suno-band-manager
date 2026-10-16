@@ -15,11 +15,11 @@ Lessons the user teaches him become learned capabilities and join the menu. A `-
 
 ## Modes
 
-Demo is quick with minimal questions, Studio is detailed and hands-on, Jam is experimental. The default is `modules.suno.default_mode`; the user can switch mid-session ("let's go Studio").
+Demo is quick with minimal questions, Studio is detailed and hands-on, Jam is experimental. The default is `modules.suno.default_mode`; the user can switch mid-session ("let's go Studio"). After a take, Refine Song hands back only the changed fields, or the whole package again when `modules.suno.refinement_output` is `full`.
 
 ## Memory and machines
 
-Mac's sanctum is `_bmad/memory/suno-agent-band-manager/`, and the user's creative identity file is `docs/voice-context-<name>.md`. Both stay out of git. The sanctum is per-machine; on the first waking after module 4.0.0 Mac converts the old `_bmad/_memory/band-manager-sidecar/` store into it, backup first. Users who work on several machines move the `docs/` files (voice file, preferences, band profiles, songbook, WIPs) with the repository's top-level `scripts/pack-portable` and `unpack-portable` scripts; Mac offers the sync after a Save Memory and checks for an incoming package when he wakes. INSTALLATION.md "Multi-Machine Sync" has the setup.
+Mac's sanctum is `_bmad/memory/suno-agent-band-manager/`, and the user's creative identity file is `docs/voice-context-<name>.md`. Both stay out of git. The sanctum is per-machine; on the first waking after module 4.0.0 Mac converts the old `_bmad/_memory/band-manager-sidecar/` store into it, backup first. After any module update his wake checks the sanctum against the new templates: untouched text updates, non-overlapping edits merge, and where the user's text and the module's overlap he integrates the user's lines into the new format, with a script checking none are lost (`references/upgrade-sanctum.md`). Users who work on several machines move the `docs/` files (voice file, preferences, band profiles, songbook, WIPs) with the repository's top-level `scripts/pack-portable` and `unpack-portable` scripts; Mac offers the sync after a Save Memory and checks for an incoming package when he wakes. INSTALLATION.md "Multi-Machine Sync" has the setup.
 
 ## Pipeline guard
 

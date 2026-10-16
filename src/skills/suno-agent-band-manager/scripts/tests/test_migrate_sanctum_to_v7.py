@@ -241,7 +241,12 @@ class MigrateSanctumToV7Tests(TempDirMixin, unittest.TestCase):
         t = target_of(project)
         assert (t / "PERSONA.md").read_text() == "# Persona\n\nNOLA soul.\n"
         how = (t / "HOW-I-REMEMBER.md").read_text()
-        assert how == (SKILL_DIR / "assets" / "HOW-I-REMEMBER-template.md").read_text()
+        assert "{project-root}" not in how and str(project) in how  # filled in, as First Breath does
+        assert how.replace(str(project), "{project-root}") == (SKILL_DIR / "assets" / "HOW-I-REMEMBER-template.md").read_text()
+        base = json.loads((t / "memory" / ".template-base.json").read_text())["units"]
+        assert "HOW-I-REMEMBER.md ## Layout" in base
+        assert "PULSE.md ## Owner Preferences" not in base  # the owner's, not the template's
+        assert not any(k.startswith(("PERSONA.md", "CREED.md", "memory/disciplines/")) for k in base)
         pulse = (t / "PULSE.md").read_text()
         assert "memory/pending.md" in pulse and "Old routine" not in pulse
         assert "no, never at night" in pulse  # the owner's preferences survive

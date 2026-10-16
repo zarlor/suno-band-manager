@@ -4,6 +4,49 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [4.0.1] - 2026-10-15
+
+A patch that protects your own work in Mac's memory. **If you use Mac, update before you run his sanctum upgrade.**
+
+**The problem it fixes.** Mac's memory (his sanctum) is built from templates the module ships: his creed, his disciplines and the other identity files. Mac and the owner then grow those files — a rule overridden for this owner, the real songs behind a discipline's warning, a learning added after a mistake. In 4.0.0, `upgrade-sanctum.py` compared each file only with the module's current text, so it couldn't tell those lines from an older version of the module's own wording. Every difference was offered as a plain replacement, and applying one dropped the owner's lines (a hidden backup aside). Two shapes made it worse:
+
+- **A converted 3.x memory.** In the 3.x layout, a discipline's rule and its real-world stories often lived in one file. The upgrade first created the 4.0.0 incident file from the module's *illustrative* examples, then offered to replace the discipline with the shipped rule text — so accepting both left made-up examples where the owner's own cases had been.
+- **Lines the owner kept on purpose** were offered for removal again on every run, with no way to say "this is mine."
+
+**What changes.** The upgrade now compares three texts, not two: the live file, the text the module ships now, and the text the sanctum last took from the module (recorded in `memory/.template-base.json` by First Breath, the 3.x converter and every upgrade).
+
+- **Text nobody changed** updates on its own.
+- **The owner's edits and the module's edits in different places** merge, both kept. When they so much as touch, it's treated as an overlap, never guessed at.
+- **An owner edit where the module changed nothing** is the owner's, and is no longer proposed at all.
+- **Overlaps, and any text with no record behind it** (every 4.0.0 or converted sanctum, the first time) are **integrated**: Mac rebuilds the text in the new format with each of the owner's lines carried in — rules and overrides stay in place, stories go to the incident file, a preference the module now offers as a setting becomes that setting — and the script checks that every one of those lines landed before it writes. A line may drop only when Mac lists it as earlier module wording, with the reason; anything unaccounted for refuses the write and is listed. The previous text is kept in the sanctum's `raw/` folder as a record of what went where, beside the usual backup. Integration never happens unattended: headless and Pulse runs leave a note for the next live session.
+- **`--keep`** leaves the owner's version exactly as it is, on purpose; it comes back only when the module changes that text again.
+- **The wake checks.** Each waking now reports a pending template upgrade, so a module update reaches the sanctum the next time Mac wakes, not only when someone remembers to run the script. The check takes a few tens of milliseconds.
+- **New reference:** `references/upgrade-sanctum.md`, the integration flow Mac follows.
+
+Also fixed in the 3.x → 4.0 converter: `HOW-I-REMEMBER.md` was written with its `{project-root}` placeholders unfilled.
+
+**New setting: `refinement_output`** (`changes` or `full`, default `changes`). `bmad setup suno` asks it. With `full`, Refine Song hands back the whole copy-paste package after every change, under the What Changed list, instead of only the fields that changed.
+
+**Also in this release: fixes from the post-4.0.0 eval runs**, across all six skills, mostly by moving checks from instructions into scripts:
+
+- **Style Prompt Builder:** `validate-prompt.py` catches more — group-vocal coverage and contradictions, scream-trigger naming, "never X" negations, genre-gravity words, stale decision ids, a missing tier, wild-card labelling, inherited excludes that don't fit.
+- **Playlist Sequencer:** `validate-sequence.py --brief`, per-slot summaries, and checks that a move's rationale matches its numbers.
+- **Lyric Transformer:** `validate-lyrics.py` accepts Final Verse and cued solo tags and counts duration with instrumental sections; spacing-check reports added tag lines.
+- **Feedback Elicitor:** more adjustment aliases, artifact fixes held until an artifact persists, and a feedback log that works without a band folder.
+- **Band Profile Manager:** staged saves keep text verbatim; profile diffs as text; pre-approved edits show the diff and offer undo.
+- **Mac:** new `update-current.py` for the work checkpoint; `capture-wip.py` counts syllables per line and has `--dry-run`; Free-tier package rules.
+
+1,209 tests pass.
+
+### Upgrade at a glance (existing installs)
+
+1. **Update the module:** `git pull` (rerun `./link-skills.sh` only if you link by hand), or `npx skills update`.
+2. **Run `bmad setup suno`** to answer the new `refinement_output` question (or skip it: the default keeps 4.0.0's behavior).
+3. **Wake Mac.** He reports the template upgrade, applies what's safe, integrates the rest with you, and shows you where your lines went. On a converted 3.x memory, expect him to list some lines as earlier module wording the first time — the base record starts then, so later upgrades are mostly automatic.
+4. **Already applied a 4.0.0 upgrade proposal?** The previous text is in the hidden `.suno-agent-band-manager-upgrade-backup-*` folder beside the sanctum (`_bmad/memory/`), and a converted 3.x memory is also in its `_bmad/backups/` tarball and the old `_bmad/_memory/band-manager-sidecar/` folder. Ask Mac to fold anything of yours back in from there.
+
+---
+
 ## [4.0.0] - 2026-10-15
 
 A major release: the module moves to **BMad v7**. The v6 installer, BMad Builder and the module's own setup skill are gone; the module now ships as a v7 module record (`bmod-suno`), set up by BMad's `bmad` skill, and Mac lives in the v7 memory-agent layout. Every skill was then reviewed with BMad's Toolsmith and the leanness cuts were measured with `bmad-eval` before they landed. It also carries the sixth Suno v6 research sweep and new Custom Models guidance.

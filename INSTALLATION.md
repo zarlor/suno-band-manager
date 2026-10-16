@@ -71,7 +71,7 @@ Then ask it, in your LLM CLI:
 bmad setup suno
 ```
 
-It asks the five questions described under [Configuration](#configuration) and writes the answers to `_bmad/config.toml`. Standalone: skip this step, and every skill runs on the default answers. You can come back to it any time.
+It asks the questions described under [Configuration](#configuration) and writes the answers to `_bmad/config.toml`. Standalone: skip this step, and every skill runs on the default answers. You can come back to it any time.
 
 ### 4. First run
 
@@ -148,6 +148,7 @@ Then install the `suno-band-manager` plugin. The Codex manifest follows BMad's o
 |---|---|---|---|
 | `suno_tier` | `free`, `pro`, `premier` | `free` | Which Suno models and features Mac recommends |
 | `default_mode` | `demo`, `studio`, `jam` | `demo` | Mac's starting interaction mode |
+| `refinement_output` | `changes`, `full` | `changes` | What a refinement shows: only the changed fields, or the whole copy-paste package again |
 | `pytorch_audio_tools` | `on`, `off` | `off` | Whether the audio scripts take tempo from Beat This! and the Demucs tools are available (see [Optional: Audio Analysis](#optional-audio-analysis)) |
 | `band_profiles_folder` | folder path (holds `{project-root}`) | `{project-root}/docs/band-profiles` | Where band profiles are stored |
 | `songbook_folder` | folder path (holds `{project-root}`) | `{project-root}/docs/songbook` | Where saved songs and lyrics are stored |
@@ -158,6 +159,7 @@ The answers live in `_bmad/config.toml` under `[modules.suno]`:
 [modules.suno]
 suno_tier = "pro"
 default_mode = "studio"
+refinement_output = "changes"
 pytorch_audio_tools = "off"
 band_profiles_folder = "docs/band-profiles"
 songbook_folder = "docs/songbook"
@@ -319,6 +321,8 @@ Symlinks point into `src/skills/`, so changes are picked up immediately. When a 
 
 Then run `bmad setup suno`. It asks any new questions, keeps your existing answers, and offers to delete skills the module has retired.
 
+**Mac's memory after an update.** When a release changes the text Mac's memory is built from (his creed, disciplines and other identity files), his next waking checks his memory against it. Text you never touched updates on its own; your additions and the module's changes merge when they sit in different places; and where both changed the same text, Mac rebuilds it in the new format with every line of yours carried in (rules stay in place, stories move to the incident files, a preference that became a setting becomes that setting) and shows you what went where. A script checks each of your lines landed before anything is written, the previous text is kept in his `raw/` folder, and every file is backed up first. Want a section left exactly as you have it? Tell Mac to keep it; it stays until the module changes that text again.
+
 Keep `uv` current as well (`uv self update`). The first audio-script run after an update fetches any new dependency versions automatically. Check the release's **Upgrade at a glance** block in `CHANGELOG.md` for anything else to do.
 
 ### Upgrading from module 3.x (BMad v6)
@@ -327,7 +331,7 @@ Module 4.0.0 drops BMad v6 support and the `suno-setup` skill.
 
 1. Install BMad's `bmad` skill: `npx skills add bmad-code-org/BMAD-METHOD --skill bmad`.
 2. `git pull`, then rerun `./link-skills.sh` (or `./link-skills.ps1`). It removes the dangling `suno-setup` links and links `bmod-suno`.
-3. Ask `bmad setup suno`. It doesn't read the old `_bmad/config.yaml`, so answer the five questions again (see [Configuration](#configuration)). It offers to delete the retired `suno-setup` skill and to remove other v6 leftovers (it backs up `_bmad/` first).
+3. Ask `bmad setup suno`. It doesn't read the old `_bmad/config.yaml`, so answer the setup questions again (see [Configuration](#configuration)). It offers to delete the retired `suno-setup` skill and to remove other v6 leftovers (it backs up `_bmad/` first).
 4. If you used the pipeline guard, nothing changes: the hook still runs `suno-agent-band-manager/scripts/pipeline-guard.py`.
 
 Band profiles, songbook and voice files are not touched. Mac's memory moves: 4.0.0 keeps it at `_bmad/memory/suno-agent-band-manager/` in the BMad v7 layout. The first time Mac wakes after the upgrade he finds the old store at `_bmad/_memory/band-manager-sidecar/`, backs it up to `_bmad/backups/`, shows you the conversion plan, and converts it on your yes. The old folder stays as the rollback until you tell him to remove it.

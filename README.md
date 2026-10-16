@@ -163,12 +163,13 @@ Then ask it to set up the module:
 bmad setup suno
 ```
 
-It asks five questions:
+It asks six questions:
 
 | Answer | Values | Default |
 |---|---|---|
 | `suno_tier` | `free`, `pro`, `premier` | `free` |
 | `default_mode` | `demo`, `studio`, `jam` | `demo` |
+| `refinement_output` | `changes`, `full` | `changes` |
 | `pytorch_audio_tools` | `on`, `off` | `off` |
 | `band_profiles_folder` | a folder path (holds `{project-root}`) | `{project-root}/docs/band-profiles` |
 | `songbook_folder` | a folder path (holds `{project-root}`) | `{project-root}/docs/songbook` |
@@ -227,11 +228,13 @@ bmad setup suno
 
 It asks only the questions you haven't answered yet and keeps the rest, and it offers to remove retired skills. To change an answer, run it and say which one (for example, "set suno_tier to pro"). Your preferences, band profiles, songbook, and memory are all preserved.
 
+**Mac's memory after an update.** When a release changes the text Mac's memory is built from (his creed, disciplines and other identity files), his next waking checks his memory against it. Text you never touched updates on its own; your additions and the module's changes merge when they sit in different places; and where both changed the same text, Mac rebuilds it in the new format with every line of yours carried in (rules stay in place, stories move to the incident files, a preference that became a setting becomes that setting) and shows you what went where. A script checks each of your lines landed before anything is written, the previous text is kept in his `raw/` folder, and every file is backed up first. Want a section left exactly as you have it? Tell Mac to keep it; it stays until the module changes that text again.
+
 Keep `uv` current too (`uv self update`). After an update that raises an audio dependency, the first audio-script run downloads the new versions into uv's cache on its own. Each release's **Upgrade at a glance** block in [CHANGELOG.md](CHANGELOG.md) lists anything else to do.
 
 ### Upgrading from module 3.x (BMad v6)
 
-Module 4.0.0 drops BMad v6 support. Install the `bmad` skill (`npx skills add bmad-code-org/BMAD-METHOD --skill bmad`), pull the module, rerun `./link-skills.sh` (it drops the old `suno-setup` link), and run `bmad setup suno`. The old `_bmad/config.yaml` answers are not read any more, so answer the five questions again. `bmad` offers to remove the retired `suno-setup` skill and other v6 leftovers. On his first waking after the upgrade, Mac converts his memory from `_bmad/_memory/band-manager-sidecar/` to the BMad v7 sanctum at `_bmad/memory/suno-agent-band-manager/`: backup first, the plan shown before anything is written, and the old folder kept until you say to remove it.
+Module 4.0.0 drops BMad v6 support. Install the `bmad` skill (`npx skills add bmad-code-org/BMAD-METHOD --skill bmad`), pull the module, rerun `./link-skills.sh` (it drops the old `suno-setup` link), and run `bmad setup suno`. The old `_bmad/config.yaml` answers are not read any more, so answer the setup questions again. `bmad` offers to remove the retired `suno-setup` skill and other v6 leftovers. On his first waking after the upgrade, Mac converts his memory from `_bmad/_memory/band-manager-sidecar/` to the BMad v7 sanctum at `_bmad/memory/suno-agent-band-manager/`: backup first, the plan shown before anything is written, and the old folder kept until you say to remove it.
 
 ## Multi-LLM Compatibility
 
@@ -285,13 +288,14 @@ src/skills/
 │   │   ├── init.md                 # First Breath — first-run setup
 │   │   ├── upgrade-v1.md           # v1 memory store → v2 (then v7 on the next wake)
 │   │   ├── upgrade-v2.md           # v2 sanctum → v7 sanctum
+│   │   ├── upgrade-sanctum.md      # Carrying a module update into the sanctum, owner's lines integrated
 │   │   ├── pipeline-guard.md       # Setting up the pipeline guard
 │   │   ├── SUNO-REFERENCE.md       # Suno platform reference
 │   │   └── STUDIO-EDITOR-REFERENCE.md # Studio 2.0 and Song Editor reference
 │   └── scripts/
 │       ├── pre-activate.py         # The wake: config, sanctum state, menu (--wake, --pulse)
 │       ├── init-sanctum.py         # Scaffolds a fresh sanctum
-│       ├── upgrade-sanctum.py      # Updates an existing sanctum from the shipped templates
+│       ├── upgrade-sanctum.py      # Three-way upgrade of an existing sanctum: updates, merges, checked integrations
 │       ├── migrate-sidecar-to-v2.py # v1 → v2 migration
 │       ├── migrate-sanctum-to-v7.py # v2 → v7 conversion
 │       ├── validate-sidecar.py     # Sanctum + catalog parity checks

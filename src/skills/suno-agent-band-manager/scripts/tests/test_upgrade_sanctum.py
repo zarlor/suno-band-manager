@@ -66,11 +66,12 @@ class TestUpgradeSanctum(TempDirMixin, unittest.TestCase):
 
     def test_dry_run_writes_nothing(self):
         root, sanctum = _born(self.tmp_path)
+        (sanctum / "memory" / ".template-base.json").unlink()  # an older sanctum: no base on record
         creed = sanctum / "CREED.md"
         creed.write_text(creed.read_text().replace("present no package", "improvise a package"))
         before = snapshot(sanctum)
         report = mod.plan(root, sanctum, SKILL_DIR)
-        assert any(c["kind"] == "replace-section" for c in report["changes"])
+        assert any(c["kind"] == "integrate-section" for c in report["changes"])
         assert snapshot(sanctum) == before
 
     def test_missing_section_is_safe_add_and_applies(self):
@@ -91,19 +92,6 @@ class TestUpgradeSanctum(TempDirMixin, unittest.TestCase):
         assert backup.parent == sanctum.parent and backup.name.startswith(".suno-agent-band-manager-upgrade-backup-")
         assert (backup / "CREED.md").is_file()
         assert mod.plan(root, sanctum, SKILL_DIR)["changes"] == []
-
-    def test_replacement_needs_its_id(self):
-        root, sanctum = _born(self.tmp_path)
-        persona = sanctum / "PERSONA.md"
-        persona.write_text(persona.read_text().replace("SUNO-REFERENCE.md", "v5.5 (paid)"))
-        report = mod.plan(root, sanctum, SKILL_DIR)
-        (change,) = [c for c in report["changes"] if c["file"] == "PERSONA.md"]
-        assert change["kind"] == "replace-section" and change["safe"] is False
-        mod.apply_changes(sanctum, report, {"safe"})
-        assert "v5.5 (paid)" in persona.read_text()
-        mod.apply_changes(sanctum, report, {change["id"]})
-        assert "v5.5 (paid)" not in persona.read_text()
-        assert "SUNO-REFERENCE.md" in persona.read_text()
 
     def test_owner_sections_are_never_proposed(self):
         root, sanctum = _born(self.tmp_path)
@@ -168,20 +156,6 @@ class TestUpgradeSanctum(TempDirMixin, unittest.TestCase):
         assert (sanctum / "memory" / "disciplines" / "package-assembly.md").is_file()
         assert (sanctum / "memory" / "incidents" / "workshop-capture.md").is_file()
         assert "A learning the owner taught." in grown.read_text()  # only missing files written
-
-    def test_changed_discipline_is_a_reviewed_replacement(self):
-        root, sanctum = _born(self.tmp_path)
-        discipline = sanctum / "memory" / "disciplines" / "thematic-discipline.md"
-        discipline.write_text(discipline.read_text() + "\n- A learning the owner taught.\n")
-        report = mod.plan(root, sanctum, SKILL_DIR)
-        (change,) = report["changes"]
-        assert change["kind"] == "replace-file" and change["safe"] is False
-        assert "A learning the owner taught." in change["diff"]
-        mod.apply_changes(sanctum, report, {"safe"})
-        assert "A learning" in discipline.read_text()
-        result = mod.apply_changes(sanctum, report, {change["id"]})
-        assert "A learning" not in discipline.read_text()
-        assert (Path(result["backup_path"]) / "memory" / "disciplines" / "thematic-discipline.md").is_file()
 
     def test_incident_stories_are_create_only(self):
         root, sanctum = _born(self.tmp_path)

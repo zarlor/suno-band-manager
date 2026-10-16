@@ -30,7 +30,9 @@ The very first time you invoke Mac, he runs through a setup flow to learn how yo
 
 If that first session gets cut short, the next one picks up where it stopped: Mac asks only for what he hasn't learned yet.
 
-If you used Mac before module 4.0.0, his memory sits in the old place (`_bmad/_memory/band-manager-sidecar/`). On the first waking after the upgrade he offers to convert it: he backs it up to `_bmad/backups/`, shows you what goes where, and converts on your yes. The old folder stays until you tell him to remove it.
+If you used Mac before module 4.0.0, his memory sits in the old place (`_bmad/_memory/band-manager-sidecar/`). On the first waking after the upgrade he offers to convert it: he backs it up to `_bmad/backups/`, shows you what goes where, and converts on your yes. The old folder stays until you tell him to remove it. Right after converting, he brings the carried-over text up to the new templates, integrating your own lines into the new format rather than replacing them (see below).
+
+When a later module update changes the templates his memory is built from, Mac's next waking catches it. Untouched text updates; your edits and the module's merge when they don't overlap; where they do, or where there's no record of what the module last shipped (a converted memory), Mac carries every line of yours into the new format, a script checks none went missing, and he tells you what landed where. Say "keep that one as it is" and he leaves it until the module changes it again.
 
 ### Setup: Your Name, One Question, Then Learning as You Go
 
@@ -463,6 +465,8 @@ Mac handles a slider tweak or a word swap on the spot. Anything that changes the
 
 **If you are starting fresh:**
 Select **RS** from the menu or say "I want to refine a song." Mac looks the song up in your songbook first and asks only what he can't find. You don't need to download the take to refine it -- only when a measurement would settle the question, and Mac will say it costs a download.
+
+**What comes back.** A refinement opens with a What Changed list. By default you then get only the fields that changed; set `refinement_output` to `full` (`bmad setup suno`) to get the whole copy-paste package every time.
 
 **What plays isn't always what was asked for.** The style text on a Suno song page shows what you typed (or Suno's rewrite of it), not what actually landed. Mac goes by the audio and your ear. If a take is nearly right but its ending, final chorus or vocal level lets it down, Mac can suggest repairs to try before a full re-roll: Extend from before the last section, Fade Out, and a few others.
 

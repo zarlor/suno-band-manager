@@ -123,6 +123,22 @@ def detect_sync_package(project_root: Path) -> dict:
     return {"found": False, "path": None}
 
 
+def template_upgrade(project_root: Path, sanctum: Path, skill_dir: Path) -> dict | None:
+    """What a module update left for this sanctum: safe template changes, and
+    changes holding the owner's own lines that Mac integrates (upgrade-sanctum.py).
+    None when it can't be checked; the wake never fails over it."""
+    try:
+        spec = spec_from_file_location("upgrade_sanctum", Path(__file__).resolve().parent / "upgrade-sanctum.py")
+        mod = module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        report = mod.plan(project_root, sanctum, skill_dir)
+    except Exception:  # noqa: BLE001 — a broken upgrade check must not stop the wake
+        return None
+    if report.get("status") != "dry-run":
+        return None
+    return mod.pending_summary(report)
+
+
 def locate(project_root: Path, sanctum_dir: str | None = None) -> tuple[Path, dict]:
     """The sanctum to wake from: the v7 path, or a v1/v2 store at the legacy path."""
     return _seed.locate_sanctum(project_root, sanctum_dir)
@@ -338,6 +354,14 @@ def build_state(args, project_root: Path, skill_dir: Path) -> dict:
         mode = "FIRST_BREATH"
     if scaffold is not None and not scaffold.get("scaffolded"):
         mode = "SCAFFOLD_FAILED"
+    upgrade = None
+    if sidecar["sidecar_format"] == "v7" and mode in ("WAKING", "PULSE"):
+        upgrade = template_upgrade(project_root, sanctum, skill_dir)
+        if upgrade and (upgrade["safe"] or upgrade["integrate"]):
+            warnings.append(
+                f"Template upgrade pending: {upgrade['safe']} safe change(s), "
+                f"{len(upgrade['integrate'])} to integrate. Follow references/upgrade-sanctum.md."
+            )
     state = {
         "mode": mode,
         "resume": resume,
@@ -358,6 +382,7 @@ def build_state(args, project_root: Path, skill_dir: Path) -> dict:
             else PULSE_LOAD_ORDER if pulse else SANCTUM_LOAD_ORDER
         ),
         "memory": _seed.tending_state(sanctum) | {"undistilled_raw": len(_seed.undistilled_raw(sanctum))},
+        "template_upgrade": upgrade,
         "warnings": warnings,
     }
     if scaffold is not None:

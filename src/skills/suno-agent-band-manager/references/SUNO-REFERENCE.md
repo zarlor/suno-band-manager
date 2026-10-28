@@ -108,6 +108,16 @@ Community testing (JG BeatsLab, March 2026) puts diminishing returns past ~70%, 
 
 ---
 
+## Platform Changes — 2026-10-28 (week-eight check)
+
+Graded as elsewhere in this file.
+
+- **No model change** (OFFICIAL, by absence): no new model or deprecation, and no change to pricing (the pricing page text is identical from 2026-10-14 to 10-28), the Create page, or the help center beyond one playback-only article (iOS AirPlay, 2026-10-23). Speech still has no help article or published terms.
+- **Sharing, read from the release note's raw text** (OFFICIAL, [release note](https://suno.com/release-notes/collaboration-on-suno)): shareable Workspaces are *"Pro and Premier users only"*; shareable Custom Models *"Now, with 2x the inputs. Premier users only."* The Custom Models help article, the [suno.com/custom-models](https://suno.com/custom-models) FAQ (*"can't be shared, published or selected by other creators"*) and the Workspaces help article (no sharing language) all still lag it. On Pro, only Workspaces sharing applies.
+- **Voices FAQ is stale** (OFFICIAL, [Voices FAQ](https://help.suno.com/en/articles/11362433), last edited 2026-03-26): it still says to select v5.5 and that *"Other models do not support"* Voices, while every pre-v6 model is retired. Official v6 support for Voices is therefore undocumented; Voices work on v6 in this module's own testing. See "Voices on v6" in the style prompt builder's `model-prompt-strategies.md`.
+- **Studio 2.0 video, 2026-10-19** (OFFICIAL): automation, the expanded wavetable synth, and the gate — all Studio, so Premier only.
+- **For Mac:** when a help article and a release note disagree, the release note is the newer source. Say which one a claim comes from, with its date.
+
 ## Platform Changes — 2026-10-15 (week-six check)
 
 Graded as elsewhere in this file. The repair guidance from this check lives in the feedback elicitor and the style prompt builder.

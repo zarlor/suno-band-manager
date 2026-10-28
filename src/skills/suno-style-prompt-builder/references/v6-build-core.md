@@ -55,3 +55,4 @@ Where the song calls for it:
 To try:
 
 9. **Carry "unresolved" as harmony** ("ends off the home chord"), not as a mood word: a mood tag on a bare verse made it the loudest section (LOCAL, n=1).
+10. **For distorted guitars, spend the words on guitar tone, not on the genre label** (ANECDOTAL, one tester, 2026-10; another user in the same thread found the opposite): drums responded to prompting and exclusions where distorted guitars mostly didn't, and a detailed guitar-tone description kept the guitars intact through mid-song better than "modern heavy metal" did. Both still degraded toward the end (see the feedback elicitor's late-song degradation).

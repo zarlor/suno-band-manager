@@ -626,6 +626,23 @@ Both syntaxes are confirmed working on v5. On v6, a dash form — `[Verse 1 - ri
 
 **Relationship to BPM tags:** Note that `[Verse 1: 65 BPM]` style BPM parameterization remains ineffective (see Experimental Section Tags below). The parameterized syntax works for arrangement/feel instructions, not for tempo numbers.
 
+### Heavy genres on v6: per-section blocks (to try)
+
+For metal sub-genres that keep collapsing into one generic sound, four users (COMMUNITY, qualitative, 2026-10) report more control from a block of descriptor lines under each section tag than from a genre list in the style field:
+
+```
+[Chorus 1]
+[Genre: ...]
+[Mood: ...]
+[Instruments: ...]
+[Vocals: ...]
+[Production: ...]
+```
+
+One of them: it "doesn't do it perfectly but gives much more control than just asking : [metal, deathmetal, growls, heavy guitar]". Two other users suggest keeping each bracketed instruction to about seven descriptors (untested). `[Mood: ...]` and `[Instrument: ...]` are established descriptor families (below); `[Genre: ...]` and `[Production: ...]` are not validated here, so try the block on one Create before building a package around it.
+
+**Harsh vocals, stepped rather than switched** (ANECDOTAL, one tester, 2026-10): moving the delivery up across sections (clean → powerful clean → slight grit → raspy belt → heavily distorted belt) instead of tagging `[Scream]` or `[Death Growl]`, which "sometimes made V6 switch to what sounded like a completely different vocalist."
+
 ### CONTESTED — don't adopt new colon-modifier tag forms on vendor evidence
 
 **Status as of 2026-08-13: CONTESTED, actively disputed.** A family of colon-modifier tags — `[Chorus: powerful]`, `[Energy: High]`, `[Tempo: 90 BPM]` and similar — circulates widely, but it is **asserted only by tag-generator vendors with a commercial interest in a large tag vocabulary.** Two independent exhaustive metatag references contain **no** colon syntax at all, and one explicitly flags invented tags as a common user mistake. There is no neutral source confirming that Suno parses a colon modifier as a modifier rather than as text.
@@ -757,6 +774,7 @@ When stretching a word with hyphenated letters for dramatic effect (e.g., `to-o-
 - **Long-paren fold-back fails as backing vocal (single data point):** A 10-syllable parenthetical like `(or at least that you think you need to be)` on its own line pulled as primary vocal rather than backing vocal interjection, even with triple-reinforcement (position-1 style-prompt descriptor + global `[Vocal Arrangement]` tag + per-section `[Vocal Style]` tags + paren-split into two shorter parens). Short parens (1-4 syllables) land as backing vocal interjections reliably; long parens (10+ syllables) pull as primary vocal continuation. The boundary is approximate — probably 5-7 syllables depending on context. When the fold-back logic requires a longer response phrase, the backing-vocal call-and-response effect may not land even with triple-reinforcement.
 - **Genre-dependent:** Parentheses produce true backing vocals in pop/R&B/soul/gospel/hip-hop contexts. In thrash/metal they come in as whispered phrases or ambience rather than a second voice. Not suitable for rapid intrusive-voice dialogue in heavy genres — see Dual Vocals section above for genre-appropriate alternatives.
 - **Risk framing from primary sources (2026-08):** experienced users describe parentheses as an **ad-lib trigger, not a control** — "Suno treats empty space or parentheses as room to improvise." That is the opposite of our catalog's experience, and the likely difference is discipline: our reliable results all use the space-before-paren and paren-at-end-of-line rules above, which the complaining reports do not mention following. **Keep the discipline; treat undisciplined parens as an invitation to improvise.** If a generation is coming back with unrequested ad-libs, parenthetical density is a reasonable first thing to cut. Suppression levers live style-side: that's a style-field fix, so invoke the `suno-style-prompt-builder` skill.
+- **On v6, instructions in parentheses may be sung** (COMMUNITY-compiled, 2026-09, plus one first-hand report, 2026-10; no controlled test): a compilation of v6 tips marks as consensus, by tallying sources rather than testing, that parentheses hold sung text and that "Instructions in parentheses get sung, sometimes as gang vocals". One user's `(Hey!)` came out as crowd shouts. Keep arrangement and performance directions in square brackets on v6, and test the end-of-line performance cues below on one Create before relying on them.
 
 **Doubled-word parentheticals — atmospheric/ritualistic backing (April 2026 production observation):**
 

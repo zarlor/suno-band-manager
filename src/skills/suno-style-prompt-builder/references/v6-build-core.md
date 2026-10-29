@@ -32,7 +32,7 @@ v6 follows the style field literally and fills whatever it leaves unsaid with it
 | Variety | Exact style | Any higher notch rewrites the prompt before generating (OFFICIAL; LOCAL: negatives flipped, details invented) |
 | Personalize | Off | My Taste makes the package irreproducible across accounts |
 
-Exclude Styles, the panel's first row, survives the Variety rewrite intact (155 of 156 pairs, ANECDOTAL, controlled). It still steers rather than mutes: on v6, users report the bass kick, vocal gender, vocal repeats, synth loops and the opening swell coming through anyway (COMMUNITY, 2026-10). Keep negatives there, and for an element the song can't have, also say in the style what plays instead.
+Exclude Styles, the panel's first row, survives the Variety rewrite intact (155 of 156 pairs, ANECDOTAL, controlled). It still steers rather than mutes: on v6, users report the bass kick, vocal gender, vocal repeats, synth loops and the opening swell coming through anyway. It fails for about 21 users and works for 6, all with short, concrete lists (COMMUNITY, 2026-10): "yelling, screaming, shouting, belting" removed a strained vocal, and "oohs, aahs, yeahs, humming intro, hum, humming, vocalise…" cut intro humming. A broad list misses: "orchestral, percussion, cinematic, harp, piano" still left harp in a sparse cello-and-flute piece. Keep negatives there, short and concrete, and for an element the song can't have, also say in the style what plays instead.
 
 ## Guidelines from testing
 
@@ -41,7 +41,7 @@ Guidelines, not laws: a song that wants otherwise wins.
 Use generally:
 
 1. **Describe the band's part, not song-wide gravity words:** `heavy`, `doom`, `crushing`, `massive`, `epic`, `cinematic` and `industrial` pull stock conventions (COMMUNITY) and measured the vocal under the band (LOCAL, small n). Put the weight on moments.
-2. **Choose the era anchor for its production habits** (`80s hair metal` brought a gated snare, ANECDOTAL); name an amp or tone character over "distortion" (ANECDOTAL ×3).
+2. **Name the sounds, not just the genre or the mood** (COMMUNITY, 13 users, all genres, 2026-10): signature sounds, instruments, drum patterns and textures ("squelchy 303 bassline, 909 drums"); "'303 bassline' or 'chord stabs' tells the model far more than 'dark' or 'energetic'." Users split on prompt length; they agree on specific words. Choose the era anchor for its production habits (`80s hair metal` brought a gated snare, ANECDOTAL); name an amp or tone character over "distortion" (ANECDOTAL ×3).
 
 Where the song calls for it:
 
@@ -56,3 +56,12 @@ To try:
 
 9. **Carry "unresolved" as harmony** ("ends off the home chord"), not as a mood word: a mood tag on a bare verse made it the loudest section (LOCAL, n=1).
 10. **For distorted guitars, spend the words on guitar tone, not on the genre label** (ANECDOTAL, one tester, 2026-10; another user in the same thread found the opposite): drums responded to prompting and exclusions where distorted guitars mostly didn't, and a detailed guitar-tone description kept the guitars intact through mid-song better than "modern heavy metal" did. Both still degraded toward the end (see the feedback elicitor's late-song degradation).
+
+## Genre notes (few reports)
+
+COMMUNITY or ANECDOTAL, 2026-10; things to try.
+
+- **Ambient:** describe the texture, not the genre; "cyberpunk" pulls in a beat (COMMUNITY, 8 users).
+- **Orchestral and cinematic:** sparse beats dense, "The less sound density, the better" (COMMUNITY, 5 users). One user keeps orchestras dry ("close mic, dry") because "orchestras drown in reverb" (ANECDOTAL).
+- **Solo piano** (ANECDOTAL, two prompts with outcomes): "solo cinematic piano, expressive, film score, melancholic, minimalist, pure acoustic"; "Dry Close-Mic Upright Piano… Zero Electronic Elements, 96 Bpm".
+- **Classical and Baroque:** no community craft with outcomes; for counterpoint, "the '2nd melody' dies" (one report).

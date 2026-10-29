@@ -19,9 +19,11 @@ Certain words reliably trigger unwanted screaming or harsh vocals, even when the
 
 **Fix:** Always pair heavy genre terms with explicit positive vocal instructions. For example, `heavy swamp metal, raw melodic singing` or `sludge metal, gritty male vocals` (plus "screaming" in Exclude Styles — on v6 the negative goes only there, never inline). Telling Suno what you DO want from the vocals is more reliable than only excluding what you don't. For heavy without the word, use `progressive heavy groove` or `heavy groove`. An instrumental has no vocal to protect, so it skips the pairing.
 
+**On v6, choruses belt by default** (COMMUNITY, 17 users, 2026-10): "it's literally ALL CAPS IN THE CHORUS". `epic`, `cinematic`, `power ballad` and `post-hardcore` are reported to bring belting or screams (3 users, low confidence; production testing here uses `power ballad` as the rock-opera substitute below, and that stands). For a clean or soft lead, keep those words out and put `yelling, screaming, shouting, belting` in Exclude Styles, which fixed it for one user.
+
 ### The "live" Word Family Triggers Crowd Noise (LOCAL-CONFIRMED, recurring)
 
-**Any** form of the word — `live-band drums`, `live recording`, `live energy`, `live in the room` — pulls audience noise, crowd texture and crowd-vocal bleed, even when the intent is band-in-a-room energy: the word carries "live album" as its dominant association, and one instance is enough.
+**Any** form of the word — `live-band drums`, `live recording`, `live energy`, `live in the room` — pulls audience noise, crowd texture and crowd-vocal bleed, even when the intent is band-in-a-room energy: the word carries "live album" as its dominant association, and one instance is enough. Community reports agree (COMMUNITY, 10 users, 2026-10): "live", "live drums" and "unplugged" bring crowd noise or a singalong, "Never ever ever use the term live drums unless you want crowd noise and cheers"; two say "live" no longer does.
 
 **Say the quality, not the venue.** `unpolished room sound`, `natural room ambience`, `single-take band performance`, `minimal overdubs`, `dry close-mic drums with room bleed` all get the intended texture without the word.
 

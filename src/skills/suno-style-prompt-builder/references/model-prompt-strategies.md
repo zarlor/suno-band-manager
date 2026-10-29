@@ -36,7 +36,7 @@ Style field 1,000 characters, lyrics 5,000 (VENDOR); a generation runs up to 8 m
 
 ## Suno v6 Family (current — PREVIEW guidance)
 
-Grades: OFFICIAL (Suno-documented), VENDOR (guide sites' own tests), COMMUNITY (several independent users), ANECDOTAL (one report), LOCAL-OBSERVED (this module's own renders, measured). Where these sections conflict with the retired-model findings, they win for v6. The six habits, the Controls defaults, tempo as feel and the nine guidelines are in `references/v6-build-core.md`.
+Grades: OFFICIAL (Suno-documented), VENDOR (guide sites' own tests), COMMUNITY (several independent users), ANECDOTAL (one report), LOCAL-OBSERVED (this module's own renders, measured). Where these sections conflict with the retired-model findings, they win for v6. The six habits, the Controls defaults, tempo as feel, the guidelines and the genre notes are in `references/v6-build-core.md`.
 
 ### True tempo change
 
@@ -56,7 +56,7 @@ Studio's BPM-aware tools are Premier-only (OFFICIAL).
 - **Grit words roughen a Voice sample** (LOCAL-OBSERVED). "Grit", "gravel" and "rasp" anywhere near the vocal description or the genre head make a clean-leaning Voice sing rougher. Attach grit to instruments ("guitars with a gritty saturated tone") and keep the vocal line clean.
 - **Blend:** on v6 the Voice sat at the old heavy-genre Persona's level against the band. The same voice on v5.5 sat well forward (LOCAL-OBSERVED, one song). Harsh-vocal triggers such as "metal" fired less often with the clean-leaning Voice than they did with the Persona (LOCAL-OBSERVED, owner's read).
 - **Loudness:** both v6 renders came out about 3 LU quieter than the same band's v5-era catalog (LOCAL-OBSERVED, n=2). Check playlist loudness seams when mixing eras.
-- **Official status:** Suno's Voices FAQ (last edited 2026-03-26) still says to select v5.5 and that *"Other models do not support"* Voices, although every pre-v6 model is retired, so official v6 support is undocumented. Voices work on v6 in this module's own testing (above). The Voice profile also has an optional *"Skill level"* field (beginner / intermediate / advanced); Suno doesn't say what it changes, and one user suggests moving it when a Voice misbehaves (ANECDOTAL).
+- **Official status:** Suno's Voices FAQ (last edited 2026-03-26) still says to select v5.5 and that *"Other models do not support"* Voices, although every pre-v6 model is retired, so official v6 support is undocumented. Voices work on v6 in this module's own testing (above). The Voice profile also has an optional *"Skill level"* field (beginner / intermediate / advanced), which users call "Singer level"; Suno doesn't say what it changes. One user suggests moving it when a Voice misbehaves, and another uploads "as professional level and not beginner", with Audio Influence raised, for a closer likeness (ANECDOTAL each; it matches the v5.5 "Professional, always" finding below).
 - **Voice drift:** a saved voice sample can drift subtly across a song, away from the singer's true voice (LOCAL-OBSERVED, owner's ear). Other users report stronger drift with some Personas and Voices — lost rasp, identity changing mid-line (COMMUNITY). Regenerate, or accept it if the take works.
 
 ### Mix balance for heavy material (PREVIEW)
@@ -69,10 +69,10 @@ A shorter, partial version at the end of the style prompt fits a tight character
 
 ### Known weak spots (COMMUNITY, launch week)
 
-- **Late-song degradation** — the mix muffles, cymbals turn tinny, drums go synthetic in the back half, worst in rock/metal and past ~2-4 minutes. Reported mitigations: Max Mode (mixed results), shorter songs, extending the back half with v6-mini (ANECDOTAL), and Song Editor section re-rolls.
+- **Late-song degradation** — the mix muffles, cymbals turn tinny, drums go synthetic in the back half, past ~2-4 minutes. First reported worst in rock/metal; by 2026-10 it is the most-reported defect in every genre (COMMUNITY, about 90 users). Symptoms, counts and repairs (split-Cover-stitch, songs under about 4 minutes, Max Mode split) are in the feedback elicitor's `technical-resolution.md`.
 - **Narrower genre reach** — metal and high-gain guitar, DnB/EDM, reggae skank, Italo disco, and glam are the most-reported failures; pop, lighter rock, and folk the strongest. High-gain metal users report that any Persona or Voice pulls guitars and drums toward a synthetic timbre.
 - **Take-to-take variance can exceed the effect of a prompt edit** (VENDOR). Judge both takes, and change one control per generation.
-- **v6-wild on covers — contradiction, not a rule** (ANECDOTAL, 2026-10-14): one user's cover recipe (v6-wild, Weirdness 50, Variety 25, My Taste off, plain-language style box) says wild "seems to follow instructions better" than v6, and two or three others prefer wild for covers or first drafts. Suno describes wild as pushing "further from the prompt." Nobody confirmed the numbers; a reasonable thing to try on a cover that v6 keeps ignoring, not a default.
+- **v6-wild on covers — contradiction, not a rule** (ANECDOTAL, 2026-10-14): one user's cover recipe (v6-wild, Weirdness 50, Variety 25, My Taste off, plain-language style box) says wild "seems to follow instructions better" than v6, and two or three others prefer wild for covers or first drafts. Suno describes wild as pushing "further from the prompt." One user has since tried the recipe and "got it working in one go" (ANECDOTAL, 2026-10); a reasonable thing to try on a cover that v6 keeps ignoring, not a default.
 - **Voices** — reports are split between clones that stay themselves and clones that "sound like another artist." LOCAL-OBSERVED (one Professional clone, 2026-09-12): the clone blended into mixes better on v6 than it had on v5.5, including in a heavier band's lane.
 
 Lyric-side v6 findings (section cues, `[Silence]`, comma placement, edge templates) belong to the `suno-lyric-transformer` skill.
@@ -158,7 +158,7 @@ v5.5 Voice cloning trains on the user's vocal samples and captures **vocal chara
 
 **When to use one:**
 - **Use it** when a band has a settled sound and enough finished tracks in that one lane to train on — 10–15 consistent finished mixes is the common advice; 6 is only the floor. It suits continuity work (the next song on an album, more songs in an established sound) better than exploration: a tightly trained model pulls other genres back toward its own (ANECDOTAL).
-- **On v6 it is the most-recommended fix for v6's generic default sound** (COMMUNITY, about 7 users, 2026-09/10): a model trained on the user's own pre-v6 Suno songs got them "genuinely close" to their old sound, usually not all the way. **Later October reports are split** (COMMUNITY, disputed, no counts): three to five users report gains, and about four say the output "sounds exactly the same" as plain v6 or is "totally irrelevant". Offer it as worth a try, not as the fix.
+- **On v6, reports lean to gains** (COMMUNITY, disputed, about 16 users against 6, 2026-10), mostly from models trained on the user's own pre-v6 Suno songs: "I trained a V6 model on my best 30 tracks from 4.5+ and it's a huge gap up." Users trained on 25 to 70 tracks. Against: no audible change, or songs that fall apart even when the model sounds like itself. A model can't add a trait its material lacks: one trained on 50 drumless ambient tracks "still adds drums". Offer it as worth a try, not as the fix.
 - **Skip it** while a band is still finding its sound, for a one-off song, or for a catalog that mixes unrelated styles (a mixed 8-track set gave "mush", ANECDOTAL). A strong style prompt plus a Voice is the lighter route there.
 - **Watch for copying:** three users report a model reproducing recognizable melodies or chord progressions from its training songs (one estimates about 1 in 5 tracks); smaller sets copy more. Listen for it before publishing.
 - **Heavy genres on v6:** one report keeps the musical identity but turns high-gain guitars into "a distorted synth or keyboard patch"; the same shift is reported with Personas and Voices. Results elsewhere are split (positive for emo/orchestral and symphonic rock, failure reported for indie rock).
@@ -455,6 +455,8 @@ Stated principle: "protect the most important result, run a controlled compariso
 
 **Upload-context Audio Influence (ANECDOTAL, distinct from our Voice-clone standard):** a ~55% sweet spot for uploaded audio, with sample-length thresholds — under 15s tends to loop the sample verbatim, 30-60s is optimal, over 60s fragments. This is the *upload* case; our Voice-clone Audio Influence guidance in the "Voices" section is separate and stands.
 
+**On v6, an upload steers more than text** (COMMUNITY, about 50 users, 9 noting limits, 2026-10): a hum, a rough demo, table-banging or noodling — "It doesn't even have to be a great upload." To keep the user's melody, playing or voice, 17 users run Audio Influence at 75–100, above the ~55% upload sweet spot, with Style Influence low ("audio influence at 80 with style at 20, and it still sounded like my stuff"); 8 use lower values. When the upload carries the song, a short or blank style box works (7 users). Uploads can be flagged as copyrighted; see the feedback elicitor's `technical-resolution.md`.
+
 **Upper-end behavior, re-confirmed by primary sources (2026-08).** Our Weirdness-80 cliff finding holds, and field reports suggest the practical ceiling may be **lower** than 80: an unlistenable second half at 78, excludes reportedly overridden above ~40 (see the Exclude Styles section), and Weirdness at 100 breaking the Duration slider into 7:59 runaways. Our production table's 60-75 counter-genre range is unaffected; treat 78+ as the danger zone rather than 85.
 
 **Weirdness is strongest during Extend and Bridge generation** — this is the primary cause of style drift in extended tracks. High Weirdness during Extend is more destabilizing than during initial generation. Keep Weirdness conservative during Extend operations; too-high Weirdness during Replace Section can also cause Persona/Voice identity shifts. Use callback phrasing ("continue same chorus energy") and re-inject genre/mood every 1-2 extends to prevent drift.
@@ -566,6 +568,8 @@ The full treatment of Voices (gender-drop, Audio Influence ranges, delivery-meta
 ## Cover Feature
 
 Cover re-performs an existing song in a new style — it preserves the melody, lyrics, and structure while changing genre, instrumentation, vocal character, and production. Cover prompts use production language, clear genre descriptors, and specific instrumentation.
+
+**Instrumental first, then Cover it with lyrics** (COMMUNITY, 6 users, 2026-10): "if you start with a musically rich instrumental and then make a cover of it while adding lyrics, you can get a much richer, more musically interesting song." The upload settings are under "Slider Guidelines".
 
 **CRITICAL: Covers are NOT eligible for commercial use — even on your own songs.** For commercial releases, create a fresh generation instead. This is a Suno platform restriction, not a suggestion.
 

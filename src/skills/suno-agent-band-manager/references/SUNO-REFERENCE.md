@@ -348,17 +348,17 @@ The Exclude Styles field is a dedicated exclusion input separate from the style 
 | `[Final Chorus]` | Closing payoff -- often bigger than earlier choruses |
 | `[Outro]` | Resolution -- brings the song to a close |
 | `[Instrumental]` | Instrumental section -- no vocals |
-| `[Instrumental Break]` | A mid-song instrumental passage, often a solo or riff |
+| `[Instrumental Break]` | A mid-song instrumental passage, often a solo or riff. Use one at most, and keep it out of a short poem: the tag invites Suno to noodle, and several of them, or one in a short lyric, can turn the song mostly instrumental. Naming the instrument (`[Guitar Solo]`) is the tighter ask |
 | `[Interlude]` | Transitional palette cleanser -- defaults instrumental, lighter treatment if lyrics provided |
 | `[Solo]` / `[Guitar Solo]` | Instrumental solo section |
 | `[Break]` | Brief pause or stripped-back moment. Useful as energy-bleed buffer between aggressive and clean sections |
 | `[Drop]` | Sudden energy release (EDM/electronic) |
 | `[Hook]` | Short catchy phrase or motif |
-| `[Fade In]` | Gradual volume increase — **weak signal**; never use alone, and primary-source users report it working in no configuration. Apply real fades in the editor |
+| `[Fade In]` | Gradual volume increase at the start. **Untested here, and no first-hand reports either way.** The dependable fade in is the editor's Fade In on a finished take (see "Fade In / Fade Out" under Platform Changes — 2026-09-09 above, and the Studio editor reference) |
 | `[Fade Out]` | Gradual volume decrease — **weak signal**; never use alone, and primary-source users report it working in no configuration. Apply real fades in the editor |
 | `[End]` | Signal to stop the song — place on the absolute last line, nothing beneath it |
-| `[Reprise]` | A return to an earlier section, often the chorus or intro theme |
-| `[Coda]` | An extended ending or **epilogue** section. This can prompt Suno to add a concluding musical phase beyond the last chorus/outro |
+| `[Reprise]` | A return to an earlier section, often the chorus or intro theme. Guide-sourced, untested on v6. Repeating the earlier lines under the tag tells Suno what is coming back; a cue (`[Reprise: quieter]`) can set how |
+| `[Coda]` | An extended ending or **epilogue** section. This can prompt Suno to add a concluding musical phase beyond the last chorus/outro. Guide-sourced, untested on v6. Use it when the song wants a longer close, not to stop one: an ending that plays out a conclusion is what buys the long tail (see the ending recipes in the lyric transformer's `metatag-reference.md`). Pair with `[End]` and expect to crop |
 
 **Bridge vs Breakdown:** Bridge gives you something NEW (new chords, perspective). Breakdown gives you LESS (strips arrangement). Need both? Use `[Bridge | Half-Time]` + `[Energy: stripped, minimal]`.
 

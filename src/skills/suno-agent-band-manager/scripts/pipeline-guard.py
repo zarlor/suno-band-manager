@@ -127,7 +127,7 @@ def note(message: str) -> None:
 SECTION_TAG_RE = re.compile(
     r"^\s*\[(?:Intro|Verse|Pre-Chorus|Chorus|Post-Chorus|Final Chorus|Bridge|"
     r"Outro|Hook|Refrain|Breakdown|Interlude|Instrumental Break|Solo|Drop|"
-    r"Build)\b",
+    r"Build|Reprise|Coda)\b",
     re.IGNORECASE | re.MULTILINE,
 )
 INSTRUMENTAL_RE = re.compile(r"Instrumental \(no vocals\)", re.IGNORECASE)

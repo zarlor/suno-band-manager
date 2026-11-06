@@ -38,7 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "_shared"))
 from suno_constants import SUNO_LYRICS_HARD_LIMIT, SUNO_LYRICS_QUALITY_BUDGET
 
 SCRIPT_NAME = "validate-lyrics"
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 # Valid section metatags (case-insensitive matching)
 VALID_SECTIONS = {
@@ -48,10 +48,12 @@ VALID_SECTIONS = {
     "post-chorus", "solo",
     # Instrumental / solo variants
     "guitar solo", "piano solo", "sax solo", "saxophone solo",
-    "drum solo", "bass solo", "instrumental",
+    "drum solo", "bass solo", "instrumental", "instrumental break",
     # Structural tags
     "build", "drop", "break", "end",
     "fade out", "fade in",
+    # Return and ending sections (guide-sourced, untested on v6)
+    "reprise", "coda",
 }
 
 # Valid vocal delivery cues (inline metatags, not section tags)
@@ -92,7 +94,7 @@ STYLE_CONTAMINATION_PATTERNS = [
 # Section names, shared by the plain and parameterized forms.
 SECTION_BASE = (r'(?:(?:guitar|piano|sax|saxophone|drum|bass|fiddle|violin|harmonica|organ|synth|trumpet|banjo|mandolin|steel guitar|slide guitar)\s+solo|'
                 r'verse|chorus|bridge|breakdown|build-up|buildup|pre-chorus|post-chorus|'
-                r'hook|refrain|interlude|solo|instrumental|break|drop|build|end|intro|outro|'
+                r'hook|refrain|interlude|solo|instrumental break|instrumental|reprise|coda|break|drop|build|end|intro|outro|'
                 r'final chorus|final verse|fade\s*(?:out|in))')
 PLAIN_SECTION_RE = re.compile(rf'^{SECTION_BASE}\s*\d*$', re.IGNORECASE)
 # [Verse 1: hushed], [Verse | whispered], [Verse 1 - riff continues], [Verse 1 — THE ROOM]

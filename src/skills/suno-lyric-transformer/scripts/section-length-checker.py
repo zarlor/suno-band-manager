@@ -53,6 +53,9 @@ SECTION_RANGES = {
     "drum solo": (0, 2),
     "bass solo": (0, 2),
     "instrumental": (0, 4),
+    "instrumental break": (0, 4),
+    "reprise": (1, 6),
+    "coda": (0, 6),
     "build": (2, 4),
     "drop": (0, 4),
     "break": (0, 4),
@@ -67,7 +70,7 @@ SECTION_RANGES = {
 SECTION_HEAD_RE = re.compile(
     r'^(?P<head>(?:final\s+)?(?:verse|chorus|bridge|breakdown|build-up|buildup|pre-chorus|post-chorus|'
     r'hook|refrain|interlude|guitar solo|piano solo|sax solo|saxophone solo|drum solo|bass solo|solo|'
-    r'instrumental|break|drop|build|end|intro|outro|fade\s*(?:out|in))\s*\d*)'
+    r'instrumental break|instrumental|reprise|coda|break|drop|build|end|intro|outro|fade\s*(?:out|in))\s*\d*)'
     r'(?:\s*(?::|\||\s[-–—]\s?|[–—]).*)?$', re.IGNORECASE)
 
 

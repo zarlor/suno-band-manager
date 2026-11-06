@@ -78,11 +78,13 @@ When a source (a songbook entry, or another band's version) carries em-dashed la
 | `[Hook]` | Short catchy phrase | Distinct from chorus — can be a repeated motif |
 | `[Refrain]` | Repeated line or phrase | Simpler than a full chorus. **In heavy genres this is the tag for a quiet repeating section** — see "[Chorus] Peak-Default in Heavy Lanes" below (LOCAL-CONFIRMED). External sources document `[Refrain]` only as a genre-tied structural tag (blues, folk, hymns) |
 | `[Instrumental Intro]` | Instrumental-only opening | More reliable than bare `[Intro]` for ensuring no vocals (HIGH) |
-| `[Instrumental Break]` | Explicit instrumental mid-song break | Clearer intent than `[Break]` alone (HIGH) |
+| `[Instrumental Break]` | Explicit instrumental mid-song break | Clearer intent than `[Break]` alone (HIGH). One at most, and none in a short poem — see the note on multiple `[Instrumental break]` tags below |
 | `[Drum Break]` | Percussion-only break section | Strips everything except drums (HIGH) |
 | `[Percussion Break]` | Percussion-focused break | Similar to Drum Break but may include auxiliary percussion (HIGH) |
 | `[Build]` | Rising energy section | Shorthand for `[Build-Up]`; confirmed on v5 (HIGH) |
 | `[Big Finish]` | Grand climactic ending section | Signals a big, climactic ending (HIGH) |
+| `[Reprise]` | Return of an earlier section (often the chorus or intro theme) | Repeat the returning lines under it; a cue sets the treatment (`[Reprise: quieter]`). Guide-sourced, untested on v6 (LOW) |
+| `[Coda]` | Extended ending or epilogue beyond the last chorus/outro | For a song that wants a longer close; it works against a short stop (see Ending Control). Pair with `[End]`, expect to crop. Guide-sourced, untested on v6 (LOW) |
 | `[Chorus x2]` | Repeat chorus twice | Chorus doubling without rewriting lyrics (HIGH) |
 
 ### [Bridge] vs [Breakdown] — Functional Distinction
@@ -388,7 +390,7 @@ Tags that control energy flow and transitions within the song.
 
 | Tag | Effect |
 |-----|--------|
-| `[Fade In]` | Gradual volume increase at start |
+| `[Fade In]` | Gradual volume increase at start (untested; the editor's Fade In on a finished take is the dependable route) |
 | `[Fade Out]` / `[Fade]` | Gradual volume decrease |
 | `[Swell]` | Gradual intensity increase |
 | `[Crescendo]` | Building volume/intensity |

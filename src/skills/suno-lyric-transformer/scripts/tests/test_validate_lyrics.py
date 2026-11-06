@@ -219,6 +219,7 @@ class TestValidateLyrics(unittest.TestCase):
             "Drum Solo", "Bass Solo", "Solo", "Instrumental", "Interlude",
             "Build", "Build-Up", "Buildup", "Drop", "Hook", "Refrain",
             "Post-Chorus", "End", "Fade Out", "Fade In", "Break",
+            "Instrumental Break", "Reprise", "Coda", "Reprise: quieter",
         ]
         for tag in new_tags:
             with self.subTest(tag=tag):

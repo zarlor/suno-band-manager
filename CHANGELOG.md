@@ -4,6 +4,33 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [4.0.2] - 2026-11-06
+
+A patch that ships the reference-doc updates from two more rounds of Suno v6 research, plus new section tags. BMad v7 is taking longer to go stable than expected, so this goes out on the same early v7 build 4.0.0 targets rather than waiting. A follow-up release is still expected when v7 is stable.
+
+**What changed is mostly guidance, not behavior.** The skills read these reference docs when they build style prompts, place lyrics and diagnose takes, so packages and diagnoses will draw on the newer findings. Each finding keeps its grade (OFFICIAL, VENDOR, COMMUNITY, ANECDOTAL) and its sample size, and they read as things to try, not rules.
+
+**From the community and official checks (2026-10-15 to 10-28, including a full read of 642 r/SunoAI threads and a re-check of the 72 claims earlier sweeps made):**
+
+- **Late-song degradation** is now the most-reported v6 defect in every genre (about 90 users), not just rock and metal: drums turning thin or synthetic, the mix narrowing and the level creeping up, usually from 2–3 minutes in. The repair with the most reported outcomes is **split, Cover, stitch**: cut the song in any audio editor, upload the back half, Cover it with its remaining lyrics, and join the halves at a zero crossing. No Studio needed, so it works on Pro. Songs under about 4 minutes mostly avoid the problem.
+- **Uploads steer more than text** (about 50 users): a hum or rough demo shapes the result more than the prompt does. "Instrumental first, then Cover it with lyrics" is a reported way to get a richer song. Uploads, including the user's own recordings, can be flagged as copyrighted, and support says the flag can't be cleared per upload.
+- **Exclude Styles works only with short, concrete lists**, and still steers rather than mutes. **Choruses belt by default** on v6, and words like `epic`, `cinematic` and `post-hardcore` are reported to bring belting or screams. **"Live"** in any form still pulls crowd noise.
+- **Name the sounds, not the genre or mood**: a "squelchy 303 bassline, 909 drums" tells v6 more than "dark" or "energetic". New genre notes cover ambient, orchestral, solo piano, and classical and Baroque, where the community had no tested craft at all.
+- **Lyrics field:** bar counts and timestamps aren't followed; `[Spoken, not sung]` works on plain conversational lines; duets stay unreliable; v6 sometimes sings different words than the sheet, so check what was sung; write years as digits; public-domain texts are often blocked.
+- **Editing:** Simple mode with the song attached can fix one passage from a plain timestamped instruction. On v6, no route for "different words, same melody" works reliably. Remaster tends to make v6 songs worse, so offer it last. v6 often adds a stripped-down breakdown before the final chorus; the reported workaround is to write one more chorus than needed and trim the stripped one.
+- **Platform:** no model or pricing change in the window. The sharing release note says shareable Workspaces are Pro and Premier and shareable Custom Models are Premier only, while several help pages still lag it. The Voices FAQ still names the retired v5.5, so official v6 support for Voices is undocumented (they work on v6 in our testing). Custom Models reports lean to gains, about 16 users against 6.
+
+**New section tags** (contributed by @andrey-helldar in #33). `SUNO-REFERENCE.md` now lists `[Instrumental Break]`, `[Fade In]`, `[Reprise]` and `[Coda]`, with caveats added: `[Instrumental Break]` at most once and never in a short lyric, or the song can come back mostly instrumental; `[Fade In]` untested, with the editor's Fade In as the dependable route; `[Reprise]` and `[Coda]` taken from tag guides and untested on v6, and `[Coda]` works against a short ending. The lyric validator, the section-length checker and the pipeline guard now recognize all three section tags. Before this, the validator flagged `[Instrumental Break]` as unrecognized even though the metatag reference rated it HIGH.
+
+1,210 tests pass.
+
+### Upgrade at a glance (existing installs)
+
+1. **Update the module:** `git pull` (rerun `./link-skills.sh` only if you link by hand), or `npx skills update`.
+2. Nothing else. No new settings, and no sanctum template changes for Mac.
+
+---
+
 ## [4.0.1] - 2026-10-15
 
 A patch that protects your own work in Mac's memory. **If you use Mac, update before you run his sanctum upgrade.**

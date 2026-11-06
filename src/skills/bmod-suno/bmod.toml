@@ -2,7 +2,7 @@
 
 [bmod]
 code = "suno"
-version = "4.0.1"
+version = "4.0.2"
 update_source = "github:zarlor/suno-band-manager/src/skills"
 skills = ["suno-agent-band-manager", "suno-band-profile-manager", "suno-style-prompt-builder", "suno-lyric-transformer", "suno-feedback-elicitor", "suno-playlist-sequencer"]
 required_skills = [{ skill = "bmad", version = "6.13.0-next", source = "github:bmad-code-org/BMAD-METHOD/skills" }]

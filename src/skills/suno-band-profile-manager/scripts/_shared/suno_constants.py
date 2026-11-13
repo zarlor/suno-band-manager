@@ -151,7 +151,7 @@ GENRE_SIGNALS = frozenset({
 # live-band drums, live energy...); crowd/audience words invite group vocals
 # and audience noise by association.
 CROWD_NOISE_WORDS = frozenset({
-    "live", "crowd", "audience", "concert", "festival", "stadium", "anthemic",
+    "live", "crowd", "audience", "concert", "festival", "stadium", "arena", "anthemic",
 })
 
 # Audio Influence effective ranges by slot. A Persona works at 15-25%; a Voice

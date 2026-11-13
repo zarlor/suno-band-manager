@@ -46,9 +46,10 @@ A standards pass. The module was reviewed against the current BMad v7 skill stan
 - **Downloads:** Suno's rule is one download per song, whatever the files or formats; a re-download and the stems use no further download.
 - **Late-song degradation:** this window's counts (68 users report it, 9 don't hear it) sit beside October's, with each reported fix shown with the users for and against it. No fix is settled.
 - **Controls, style prompt and lyrics field:** updated counts for Variety, My Taste, Audio Influence, Exclude Styles, Max Mode and Style Influence; prompt length is now stated as a disagreement (short against long) instead of one recommendation; parenthesised text being sung, the voice descriptor repeated in each section tag, and inline chord brackets are added as things to try, the last on thin evidence.
+- **Validator, from the same sweep:** `validate_prompt.py` now flags `arena` with the other crowd-noise words, and notes an Exclude Styles item written as a negative ("no organ", "-sax"): the field takes the bare term, and users report the negative form can bring the sound back. The note is low severity and never blocks a package.
 - **Also updated:** Voices and Custom Models (sharing is Premier-only, up to 10 people), Covers and editing, intros and endings, genre notes (metal still the weakest area; no community reports on Baroque), lyric and upload false flags with the workarounds users report, and the 2026-10-29 Studio items.
 
-**Tests.** 1,845 tests, up from 1,210, all on `unittest`; the BMad manifest, path and script scanners report no findings.
+**Tests.** 1,848 tests, up from 1,210, all on `unittest`; the BMad manifest, path and script scanners report no findings.
 
 ---
 

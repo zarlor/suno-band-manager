@@ -329,6 +329,17 @@ class TestValidateExclusionPrompt(unittest.TestCase):
         medium = [f for f in findings if f["severity"] == "medium" and "many" in f["issue"].lower()]
         self.assertEqual(len(medium), 1)
 
+    def test_negated_items_are_a_low_note(self):
+        """'no X' in Exclude Styles is a double negative: noted, never blocking."""
+        findings = validate_prompt.validate_exclusion_prompt("no organ, -sax, without reverb, steel guitar")
+        note = [f for f in findings if "written as negatives" in f["issue"]]
+        self.assertEqual([f["severity"] for f in note], ["low"])
+        self.assertEqual(note[0]["data"]["items"], ["no organ", "-sax", "without reverb"])
+
+    def test_bare_items_and_words_starting_with_no_are_not_negatives(self):
+        findings = validate_prompt.validate_exclusion_prompt("organ, noise, nu metal, notch filter, non-diegetic sound")
+        self.assertFalse([f for f in findings if "written as negatives" in f["issue"]])
+
     def test_vague_terms_caught(self):
         """Vague exclusion terms should be flagged."""
         prompt = "no instruments, nothing bad"
@@ -515,6 +526,11 @@ class TestCrowdNoiseWords(unittest.TestCase):
         crowd = [f for f in findings if "crowd-noise" in f["issue"].lower()][0]
         self.assertGreaterEqual(set(crowd["data"]["words"]), {"anthemic", "stadium", "crowd", "audience"})
         self.assertEqual(crowd["severity"], "medium")
+
+    def test_arena_flagged(self):
+        findings = validate_prompt.validate_style_prompt("hard rock, arena-sized chorus, big drums")
+        crowd = [f for f in findings if "crowd-noise" in f["issue"].lower()]
+        self.assertEqual([f["data"]["words"] for f in crowd], [["arena"]])
 
     def test_lively_and_alive_not_flagged(self):
         findings = validate_prompt.validate_style_prompt("folk rock, lively strummed guitar, alive and bright")

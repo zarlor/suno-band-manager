@@ -85,7 +85,7 @@ CROWD_NOISE_WORDS = getattr(suno_constants, "CROWD_NOISE_WORDS", frozenset({
     # the "live" word family pulls "live album" crowd texture (live recording,
     # live-band drums, live energy...); crowd/audience words invite group
     # vocals and audience noise by association
-    "live", "crowd", "audience", "concert", "festival", "stadium", "anthemic",
+    "live", "crowd", "audience", "concert", "festival", "stadium", "arena", "anthemic",
 }))
 PERSONA_AUDIO_INFLUENCE_RANGE = getattr(suno_constants, "PERSONA_AUDIO_INFLUENCE_RANGE", (15, 25))
 VOICE_AUDIO_INFLUENCE_RANGE = getattr(suno_constants, "VOICE_AUDIO_INFLUENCE_RANGE", (35, 95))
@@ -582,6 +582,20 @@ def validate_exclusion_prompt(text: str) -> list[dict]:
                     "(e.g. choir, backing vocals, gang vocals for a one-singer song) can justify more; "
                     "log why if they stay."),
             "data": {"item_count": counted, "notice_above": EXCLUSION_ITEM_NOTICE},
+        })
+
+    # The field already means "leave this out", so an item written as a negative is a
+    # double negative. Users report it bringing the thing back (5 users, 2026-11, none
+    # with a tested outcome), so this is a note, not a blocker.
+    negated = [i for i in items if re.match(r"(?:no|not|without|minus)\s+\S|-\s*\S", i.lower())]
+    if negated:
+        findings.append({
+            "severity": "low",
+            "category": "consistency",
+            "issue": (f"Exclude item(s) written as negatives: {negated}. Exclude Styles takes the bare term; "
+                      "users report that 'no X' there reads as a double negative and can bring X."),
+            "fix": "Write the bare term: 'organ', not 'no organ' or '-organ'.",
+            "data": {"items": negated},
         })
 
     vague_terms = ["no music", "no sound", "no instruments", "no singing", "nothing bad"]

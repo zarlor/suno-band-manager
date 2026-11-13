@@ -23,7 +23,7 @@ Certain words reliably trigger unwanted screaming or harsh vocals, even when the
 
 ### The "live" Word Family Triggers Crowd Noise (LOCAL-CONFIRMED, recurring)
 
-**Any** form of the word — `live-band drums`, `live recording`, `live energy`, `live in the room` — pulls audience noise, crowd texture and crowd-vocal bleed, even when the intent is band-in-a-room energy: the word carries "live album" as its dominant association, and one instance is enough. Community reports agree (COMMUNITY, 10 users, 2026-10): "live", "live drums" and "unplugged" bring crowd noise or a singalong, "Never ever ever use the term live drums unless you want crowd noise and cheers"; two say "live" no longer does.
+**Any** form of the word — `live-band drums`, `live recording`, `live energy`, `live in the room` — pulls audience noise, crowd texture and crowd-vocal bleed, even when the intent is band-in-a-room energy: the word carries "live album" as its dominant association, and one instance is enough. Community reports agree (COMMUNITY, 10 users, 2026-10): "live", "live drums" and "unplugged" bring crowd noise or a singalong, "Never ever ever use the term live drums unless you want crowd noise and cheers"; two say "live" no longer does. Other single words are read as literally (COMMUNITY, 8 users, 2026-11): `crowd`, `arena`, `live instrumentation`, `epic`, `cinematic` and `stadium` brought crowds or a huge room. `arena` is not in the validator's list, so check for it by hand.
 
 **Say the quality, not the venue.** `unpolished room sound`, `natural room ambience`, `single-take band performance`, `minimal overdubs`, `dry close-mic drums with room bleed` all get the intended texture without the word.
 
@@ -41,7 +41,7 @@ The lyric side of this stack — section-tag wording that invites choirs, and th
 
 ### No Inline Negatives
 
-Suno keeps the noun and drops the negation, so "no screaming" or "without reverb" asks for screaming and reverb. Write what you want instead ("raw melodic singing", "dry, close-mic'd") and put the negative in Exclude Styles. The validator flags "no X" and "without X" as high, and "not X", "avoid X", any "-n't X" contraction, "X-free" and "minus X" as medium. Persistence phrasing ("the riff continues under the verse, never stops") is direction, not a negative.
+Suno keeps the noun and drops the negation, so "no screaming" or "without reverb" asks for screaming and reverb. Write what you want instead ("raw melodic singing", "dry, close-mic'd") and put the negative in Exclude Styles. Users report the same on v6: negatives in the style text backfired for 8, "'No drums' = you're getting drums" (COMMUNITY, 2026-11). The validator flags "no X" and "without X" as high, and "not X", "avoid X", any "-n't X" contraction, "X-free" and "minus X" as medium. Persistence phrasing ("the riff continues under the verse, never stops") is direction, not a negative.
 
 ### One Tempo Per Song
 
@@ -65,7 +65,7 @@ Certain words reliably pull Suno into unwanted instrumental territory — typica
 | `rock opera` | Pulls keyboard/synth-heavy, theatrical arrangements | Use `power ballad`, `dynamic shifts`, `building from gentle to crushing` instead |
 | `big`, `emotional`, `epic` as the **chorus** instruction (v6) | Rock and metal choruses slow into a dramatic ballad (COMMUNITY) | Write the chorus's job: `choruses stay rhythmically driving and hit harder than the verses` |
 
-**"Baroque" workaround in detail:** If the song concept calls for Baroque-influenced metal, never use the word. Instead, describe the specific qualities you want — `intricate interlocking guitar and bass melodies` for counterpoint, `dark minor key, precise and ornate` for ornamentation. For orchestral weight, specify instruments that live in metal's frequency range: `cello, heavy strings, kettle drums`. Avoid `orchestral` as a standalone descriptor.
+**"Baroque" workaround in detail:** If the song concept calls for Baroque-influenced metal, never use the word. Instead, describe the specific qualities you want — `intricate interlocking guitar and bass melodies` for counterpoint, `dark minor key, precise and ornate` for ornamentation. For orchestral weight, specify instruments that live in metal's frequency range: `cello, heavy strings, kettle drums`. Avoid `orchestral` as a standalone descriptor. No community report covers prompting Baroque, harpsichord or counterpoint on v6 in the 2026-11 sweep, and earlier sweeps found no method with outcomes, so no outside evidence confirms or contradicts this workaround.
 
 ### Genre Term Behavior Table
 

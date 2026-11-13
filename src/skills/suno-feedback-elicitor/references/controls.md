@@ -6,10 +6,10 @@ Many v6 complaints trace to a control, not to wording, so check these before rew
 
 | Feedback | First check | Then |
 |---|---|---|
-| "It changed my style prompt" / "it keeps adding things I removed" / "the song page says X but it doesn't sound like X" | **Variety** above *Exact style* rewrites the style prompt before generating (OFFICIAL); prohibitions and vague voice words drop out, while Exclude Styles came through unchanged in 155 of 156 pairs (ANECDOTAL-controlled). The song page shows the input or the rewrite, not what landed: trust the audio and the user's ear over the displayed text | Variety to *Exact style*, regenerate, and keep negatives in Exclude Styles |
+| "It changed my style prompt" / "it keeps adding things I removed" / "the song page says X but it doesn't sound like X" | **Variety** above *Exact style* rewrites the style prompt before generating (OFFICIAL); prohibitions and vague voice words drop out, while Exclude Styles came through unchanged in 155 of 156 pairs (ANECDOTAL-controlled). The song page shows the input or the rewrite, not what landed: trust the audio and the user's ear over the displayed text | Variety to *Exact style*, regenerate, and keep negatives in Exclude Styles. Variety off keeps the style prompt for 24 users; 5 report the opposite (COMMUNITY, 2026-11) |
 | "The prompt is being ignored" / "it came out generic" | **Style Influence** reportedly defaults to 50 (VENDOR ×2) | Raise to ~80–90 with Variety at *Exact*. Community obedience settings: Variety 0 · Weirdness ~20–50 · Style Influence 80–95 |
-| "It sounds like someone else's taste" | **Personalize** on | Turn it off |
-| "Great start, falls apart by the end" | Song length and **Max Mode** | Max Mode is applied at generation (2× credits), so a finished take can't be upgraded; this module's v6 tests found it the difference between usable and unusable takes, but many users say it doesn't cure late-song degradation — keep it on for adherence. Late-song repairs are a technical path |
+| "It sounds like someone else's taste" | **Personalize** (My Taste) on | Turn it off; 6 users also turn it off to stop the style being rewritten (COMMUNITY, 2026-11) |
+| "Great start, falls apart by the end" | Song length and **Max Mode** | Max Mode is applied at generation (2× credits), so a finished take can't be upgraded; this module's v6 tests found it the difference between usable and unusable takes, but as a fix for late-song degradation users are split (5 for, 8 against; COMMUNITY, 2026-11) — keep it on for adherence. Late-song repairs are a technical path |
 | "The two takes are nothing alike" | Normal on v6: take-to-take spread can exceed a prompt edit's effect (VENDOR; ANECDOTAL-controlled) | Judge both takes before changing anything, and change one control per generation. For a one-change test suggest about 4 takes (two Creates) per variant, since the ranking flipped between 2 and 4 takes in one measured series. How many to run is the user's call |
 
 ## Sliders (Pro and Premier)
@@ -35,7 +35,7 @@ Sliders control predictability (Weirdness) and prompt adherence (Style Influence
 | Too literal / constrained | ↓ | 25–40 |
 | Prompt vague, output scattered | ↑ and rewrite the prompt | 60–70 |
 
-It plateaus in the 80s: 100 did no better than 85 on v6 (ANECDOTAL-controlled). 70 gave metal weight while staying in the genre lane; 45–65 allowed more interpretation on bridges and contrasting sections.
+It plateaus in the 80s: 100 did no better than 85 on v6 (ANECDOTAL-controlled). Three users go further: "moving it from 0 to 100 barely changed the output" (COMMUNITY, 2026-11). 70 gave metal weight while staying in the genre lane; 45–65 allowed more interpretation on bridges and contrasting sections.
 
 **Production-tested combinations:**
 
@@ -51,10 +51,12 @@ It plateaus in the 80s: 100 did no better than 85 on v6 (ANECDOTAL-controlled). 
 
 **Per section** (Replace Section at Pro and Premier; Studio at Premier only): Verse W 35–50 / SI 55–70 · Chorus W 25–40 / SI 70–85 · Bridge W 55–70 / SI 45–65 · Intro/Outro W 40–60 / SI 50–65 · Breakdown W 60–80 / SI 35–55.
 
-**Audio Influence with a Persona (default 25%):** effective range 15–25%; above 25% the take gets no more Persona-like while the prompt loses influence, and below 15% the Persona adds little. Standard and acoustic tracks 25% (a Persona is safe at full Audio Influence when the prompt clearly defines a non-heavy genre); genre-pushing tracks 20%; era mismatch 10–15%. Never omit it from a package with a Persona. A Voice runs much higher (start around 50%).
+**Audio Influence with a Persona (default 25%):** effective range 15–25%; above 25% the take gets no more Persona-like while the prompt loses influence, and below 15% the Persona adds little. Standard and acoustic tracks 25% (a Persona is safe at full Audio Influence when the prompt clearly defines a non-heavy genre); genre-pushing tracks 20%; era mismatch 10–15%. Never omit it from a package with a Persona. A Voice runs much higher (start around 50%). To hold an upload, a Cover source or a Voice, 25 users run Audio Influence at 75–100; 7 report limits (COMMUNITY, 2026-11).
 
 **Style Influence and Audio Influence compete** (COMMUNITY): never both at 100. If both are high and the output is incoherent, unwind that first: sample-primary work sits around AI 60–70 / SI 30–40, tags-primary around AI 30–40 / SI 60–70.
 
 ## Exclude Styles (Pro and Premier)
 
 Prioritize 2–3 specific items over filling the field; too many destabilize the arrangement. Excludes reduce probability rather than ban, so an excluded element may still appear and regeneration may be needed. On Free there is no field: carry the intent as positive phrasing in the prompt.
+
+On v6, Excludes are unreliable for 16 users and worked for 9 (COMMUNITY, 2026-11). Two things to check when one misses: that it is written as bare words, not "no X" (5 users, no tested outcome), and that no related word sits in the style prompt, where one user finds the Exclude loses out (ANECDOTAL).

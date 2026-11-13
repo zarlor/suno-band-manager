@@ -24,7 +24,7 @@ This file is too large to read whole. Refine Song loads a section when a take ne
 | Slider values for a generation inside Studio | Creative Sliders in Studio Context |
 | Where a claim came from | Sources |
 
-> **Last validated:** August 14, 2026 for the body of this file (Suno Studio **2.0**, Song Editor / Legacy Editor, v5.5 Pro; day-one primary-source field reports folded in), plus **Suno's September and October 2026 Studio release notes (latest added 2026-10-15)** and a v6 Remaster community note — see "Studio updates since 2.0 shipped" below. **Since 2026-09-09 every generation — including edits and extends of older songs — runs on the v6 family**; see "Editing Workflow Paradigm" for what v6 adds. Suno updates Studio features frequently — use web search to verify capabilities against current documentation when uncertain.
+> **Last validated:** August 14, 2026 for the body of this file (Suno Studio **2.0**, Song Editor / Legacy Editor, v5.5 Pro; day-one primary-source field reports folded in), plus **Suno's Studio release notes through 2026-10-29 (latest added 2026-11-13)** and v6 community notes dated where they appear — see "Studio updates since 2.0 shipped" below. **Since 2026-09-09 every generation — including edits and extends of older songs — runs on the v6 family**; see "Editing Workflow Paradigm" for what v6 adds. Suno updates Studio features frequently — use web search to verify capabilities against current documentation when uncertain.
 
 > **Studio 2.0 shipped 2026-08-13, and the Studio 1.x features are no longer documented here.** Suno "totally overhauled" Studio on 2026-08-13 ([release note](https://suno.com/release-notes/studio-2), [blog](https://suno.com/blog/studio-2) — OFFICIAL). Suno's own help centre now splits into a **"Studio 2.0"** category (11 articles) and a **"Studio Archive"** (14 articles) — [help.suno.com/en/categories/1708865](https://help.suno.com/en/categories/1708865). The Studio 1.x features (Warp Markers, Remove FX, Alternates, Quick Replace, EQ, Context Window, Sounds Mode, Stem Cover, Heal Edits, MILO-1080, 12-track stem export) **no longer appear in current official Suno copy**, so this file describes only what is current. **Take Lanes and comping are the exception — they survived into the current docs and are safe to recommend**; only the *Alternates* / *Quick Replace* names went away. If the owner asks for a 1.x feature by name, say it is not in Suno's current documentation and have them check the live UI before relying on it. **Field evidence is day-one only** — a primary-source pass on 2026-08-14 captured first user reports (see "Day-one field reports" below), but the software was hours old. Re-verify in a few weeks; this remains the highest-value open question in the module's Suno knowledge.
 
@@ -101,6 +101,8 @@ The most important editing feature. Regenerates a selected portion while preserv
 Even at the documented sweet-spot scale (single-word / short-phrase target), Replace Section can produce **audible transition seams at the section boundaries**. Module production fix attempt: targeted a single word (`-ing` suffix dropped on "They call it living") with phonetic anchor `They call it liv-ing` in the Replace Lyrics box. **Both returned variations correctly fixed the targeted word** but **both also produced obviously audible joins** where the new replacement section met the surrounding original audio. Replace Section's localized-fix value is therefore bounded by transition-quality, not just by section size.
 
 **Practical takeaway:** Even within Replace Section's documented sweet-spot, expect to evaluate transition smoothness alongside content correctness. If the fix lands the content but the seams are obvious, the song-level result may not be acceptable — fall back to Cover (full re-render preserving structure) or full re-gen with phonetic anchor in lyric source. Cover and re-gen produce single-coherent audio without seams; Replace Section's localized scope means transition seams are an inherent risk.
+
+**On v6, users are split on section replace** (COMMUNITY, 2026-11): 6 report it corrupting the song, 3 report it working. Keep the original version, and judge each replacement by ear before building on it.
 
 **Cost:** Pro and Premier currently receive free replacements up to 1,000 sections daily. After promotional period, each replacement costs 5 credits per Suno's documentation (4 credits / 2 variations observed in production 2026-04-29 — verify current cost via Suno UI before estimating credit budget).
 
@@ -182,10 +184,11 @@ Select the **Studio** icon under **Create** in the left sidebar at suno.com. Des
 - **Audio-to-MIDI transcription** of existing clips.
 - Web MIDI hardware controllers, plus **musical typing** with arpeggiator and chord mode.
 - **MIDI as prompt:** a played or imported MIDI clip can be used as the prompt for a new audio generation, in place of text. This appears in the release note and blog but is *not* repeated in the MIDI help article. Suno's own framing de-emphasizes text prompting here ("no substitute" for playing the part) — vendor claim, ANECDOTAL as to how well it works, since no field testing exists yet.
+- **MIDI in Create is a separate feature.** Since 2026-11-04 the Create form takes a `.mid` or `.midi` upload on Pro and Premier (Simple mode, v6-wild, desktop web; OFFICIAL). It doesn't open Studio's timeline MIDI to Pro, and it has its own limits — see `references/SUNO-REFERENCE.md` → "MIDI and Audio Guides". No user in the 2026-11-13 check reports importing a `.mid` into Studio.
 
 ### Chat bar
 
-A session-aware chat bar that can "generate instruments and vocals, create new and totally unique plugins and synth presets." It is grounded in context (the focused track, the current selection, the project tempo), every chat edit is undoable, and chat history persists per project ([help](https://help.suno.com/en/articles/13670721)).
+A session-aware chat bar that can "generate instruments and vocals, create new and totally unique plugins and synth presets." It is grounded in context (the focused track, the current selection, the project tempo), every chat edit is undoable, and chat history persists per project ([help](https://help.suno.com/en/articles/13670721)). Suno's blog covers it as "Chat": [Meet Chat: Our In-house Studio Assistant](https://suno.com/blog/studio-chat-assistant) (2026-10-29).
 
 **VERIFIED-ABSENT:** no model name, credit cost, or usage limit is published for Studio Chat.
 
@@ -235,7 +238,20 @@ MusicTech's 6/10 review of the Studio 1.x beta (2026-01-13) reported smeared tra
 
 ## Studio updates since 2.0 shipped (OFFICIAL release notes; not testable here)
 
-**Read this as vendor copy, not field evidence.** The entries below come from [Suno's release notes](https://suno.com/release-notes). **This module's own testing is on Pro, where Studio is not available** — nothing here has been verified in a live session, and no Studio claim should be presented to a user as confirmed. Suno's blog carries no Studio post after the 2026-08-13 Studio 2.0 launch.
+**Read this as vendor copy, not field evidence.** The entries below come from [Suno's release notes](https://suno.com/release-notes). **This module's own testing is on Pro, where Studio is not available** — nothing here has been verified in a live session, and no Studio claim should be presented to a user as confirmed. The one Suno blog post listed here is "Meet Chat" (2026-10-29), under the entry for that date.
+
+### Studio release note — 2026-10-29
+
+- **Clip Settings sidebar** and **Clip Info panel**.
+- **Auto-stretch** of added audio.
+- **Fine pitch**, in semitones and cents.
+- **Show/hide tracks**.
+- **Grid density**.
+- **Studio Chat** got a Suno blog post the same day: [Meet Chat: Our In-house Studio Assistant](https://suno.com/blog/studio-chat-assistant). Suno's help centre added six Studio articles on the same date.
+
+### Watch: Studio V1 is said to close in December (SECONDHAND, user-relayed, 2026-11)
+
+A user relays that Studio V1 closes in December. Suno's release notes through 2026-11-13 announce no deprecation, so don't state it as fact. If a Premier owner asks, say what is reported and have them check [Suno's release notes](https://suno.com/release-notes).
 
 ### "Tighter timing, clip stretching and fade curves" — 2026-10-08 (Improvement / Bug Fix; Studio, Performance, Web)
 
@@ -253,7 +269,7 @@ MusicTech's 6/10 review of the Studio 1.x beta (2026-01-13) reported smeared tra
 - **Bring in outside compositions:** upload work written outside Suno and reimagine it — Suno's example is converting a synth part into a different instrumental arrangement.
 - **Clip renaming:** rename clips individually, or through the chat bar in bulk (e.g. "rename all my clips to reflect the track names").
 
-**Why it matters for this module:** the MIDI path is the one route that takes a user's own composition *into* Suno's generative stack rather than editing what Suno produced. For a user who writes parts, this is the closest thing to arrangement control that exists — worth naming when a Premier user asks about getting their own musical ideas (not just prompts) into a track.
+**Why it matters for this module:** the MIDI path is the one route that takes a user's own composition *into* Suno's generative stack rather than editing what Suno produced. For a user who writes parts, this is the closest thing to arrangement control that exists — worth naming when a Premier user asks about getting their own musical ideas (not just prompts) into a track. (Since 2026-11-04 Create also takes a MIDI upload on Pro and Premier, a separate feature: see "MIDI" under "Suno Studio 2.0" above.)
 
 ### "Updates to Suno Studio" — 2026-09-02 (Improvement / Bug Fix; Studio, Web, Performance)
 
@@ -272,6 +288,8 @@ MusicTech's 6/10 review of the Studio 1.x beta (2026-01-13) reported smeared tra
 ### What It Does
 
 AI-powered separation of a mixed track into individual component tracks. Suno exports individual generation layers directly rather than performing post-hoc source separation, yielding cleaner results than third-party tools like LALAL.AI or Demucs.
+
+**Users on v6 mostly disagree** (COMMUNITY, 2026-11): 21 call Suno's stem separation weak, 4 report the opposite. One user describes it as "regenerating new stems" (ANECDOTAL). Have the owner listen to a stem set against the mix before planning a DAW workflow around it.
 
 ### Three Modes (current — replaces the old 2-stem / 12-stem framing)
 
@@ -407,6 +425,8 @@ Recreates an existing song in a new musical style while preserving melody and st
 
 **Compatible inputs:** Suno-generated songs, uploaded audio (demos, voice memos, loops), instrumentals, vocal tracks.
 
+**How close a Cover stays, on v6** (COMMUNITY, 2026-11): users disagree — 19 report that a Cover reinterprets the source, 12 that it follows it closely. Expect either, and check the take against the source. Starting from audio and Covering it steers better than text alone for 45 users, against 9 who report otherwise.
+
 Covers have been documented as **not eligible for commercial use**, even of your own songs. That was not re-checked against the September 2026 terms, so have the owner check Suno's current terms before a commercial release, and prefer a fresh generation.
 
 **Related, from the Sept 3 2026 ToS (OFFICIAL, [terms](https://suno.com/terms-september-2026)):** **Remixes** — where another user remixes your song or you remix theirs — are a *joint work owned jointly and equally by you and the Remixer* and "may only be used for lawful, personal and non-commercial purposes," on every tier. This is a separate restriction from the Cover limitation above; both point the same way, which is that anything derived from another rendering is off the commercial path.
@@ -433,7 +453,7 @@ Audio Influence is only active when an upload or recording is used as a source.
 
 ## Editing Workflow Paradigm (v5.5 onward, including v6)
 
-**v6 addition (OFFICIAL, 2026-09-09):** plain-language section editing and single-lyric or single-word updates without regenerating the song. Launch-week users report the edits as uneven — some come back as a different take with the same voice, or spill past the selected section (COMMUNITY). The Song Editor's trim and Replace Section stay the deterministic path.
+**v6 addition (OFFICIAL, 2026-09-09):** plain-language section editing and single-lyric or single-word updates without regenerating the song. Launch-week users report the edits as uneven — some come back as a different take with the same voice, or spill past the selected section (COMMUNITY). The Song Editor's trim and Replace Section stay the deterministic path. Simple mode takes a file plus a timed plain-language edit (COMMUNITY, 5 users, none reporting the opposite, 2026-11).
 
 Since v5.5, Suno has favored an iterative **generate → inspect → section replace → refine** workflow over full regeneration. This preserves good material and spends fewer credits.
 
@@ -518,6 +538,13 @@ Current as of 2026-08-13. Prices, credit allowances and download counts are in `
 - [Stem separation modes and credits — Suno Help](https://help.suno.com/en/articles/12702337)
 - [Suno Studio 2.0 coverage — MusicTech](https://musictech.com/news/gear/suno-studio-2-0-upgrade-new-features/) (COMMUNITY)
 - [Suno Studio review (1.x beta, 6/10) — MusicTech](https://musictech.com/reviews/digital-audio-workstations/suno-studio-review/) (ANECDOTAL, pre-2.0)
+
+### Studio updates and MIDI in Create (2026-11-13 check)
+
+- [Suno release notes](https://suno.com/release-notes) (Studio, 2026-10-29)
+- [Meet Chat: Our In-house Studio Assistant — Suno Blog](https://suno.com/blog/studio-chat-assistant) (2026-10-29)
+- [Start Songs with MIDI — Suno Blog](https://suno.com/blog/MIDI-in-create) (2026-11-04)
+- [Using MIDI files in Create — Suno Help](https://help.suno.com/en/articles/14594177)
 
 ### Studio 1.x era (archived — several now live in Suno's "Studio Archive")
 

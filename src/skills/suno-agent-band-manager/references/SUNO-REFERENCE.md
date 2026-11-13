@@ -9,18 +9,21 @@ This file is too large to read whole. List the headings with `grep -n '^##' {ski
 | When | Load |
 |------|------|
 | Which models exist, which are retired, character limits, what a Voice, Custom Model or My Taste does | Model Comparison |
-| What a plan includes, credits per Create, download allowances, prices, slider and Controls availability by tier | Plan Comparison |
+| What a plan includes, credits per Create, download allowances and what counts as one download, prices, slider and Controls availability by tier | Plan Comparison |
 | A claim is time-sensitive, or the owner asks what changed lately | The newest Platform Changes section, then older ones as the question reaches back |
 | A spoken piece (Speech), a Persona with a Voice, Custom Models on v6, the Exclude Styles cap | Platform Changes — 2026-10-03 |
+| MIDI upload in Create or the Suno MCP as launched, Studio Chat, Speech plans, how many people a Workspace or Custom Model can be shared with | Platform Changes — 2026-11-13 |
 | Publishing an album, sharing a Workspace or a Custom Model, Exclude or Remaster misbehaving on v6 | Platform Changes — 2026-10-15 · Platform Changes — 2026-10-28 |
 | The v6 Create screen layout, where section editing lives, what v6 added | Platform Changes — 2026-09-09 (v6) |
 | Download rules, commercial rights, watermarking, Lyricist, My Taste controls, the artist-name policy, the API | Platform Changes — 2026-08-13 |
 | Where a package field goes on the Create screen | Package Field Mapping |
 | A take has a problem that is Suno's, not the package's | Troubleshooting Suno Issues |
 | A Cover, Extend, Remix or Inspo is being considered | Covers, Remixes, and Inspo |
+| The user has written music (a MIDI file, a part, a guide track) for Suno to follow, or an upload was flagged | MIDI and Audio Guides |
+| The user has Suno connected to an assistant, or asks what the Suno MCP does, costs or cannot do | Suno MCP (beta) |
 | Where a claim came from | Community Research Sources & Further Reading |
 
-> **Platform state as of 2026-10-28** (the date of the newest "Platform Changes" section; no model change since v6 launched; Speech beta 2026-10-01, Albums 2026-10-05, Workspace and Custom Model sharing 2026-10-15 — see "Platform Changes — 2026-10-28", "— 2026-10-15" and "— 2026-10-03"). **Suno launched the v6 family (v6, v6-wild, v6-mini) on 2026-09-09 and retired every earlier model.** The v6 Controls panel (formerly "More Options") adds **Max Mode**, **Variety**, and **Personalize** alongside Duration, and v6 is reported to want a different prompt shape — see "Platform Changes — 2026-09-09 (v6)" below; the suno-style-prompt-builder skill carries the v6 prompting guidance (**PREVIEW**). Earlier changes still in force: **downloads capped from 2026-09-03** with commercial rights attached to the download; **Studio 2.0** Premier-only. Verify anything time-sensitive against [suno.com/release-notes](https://suno.com/release-notes) before telling a user.
+> **Platform state as of 2026-11-13** (the date of the newest "Platform Changes" section; no model change announced since v6 launched; Speech beta 2026-10-01, Albums 2026-10-05, Workspace and Custom Model sharing 2026-10-15, Suno MCP beta 2026-10-28, MIDI upload in Create 2026-11-04 — see "Platform Changes — 2026-11-13", "— 2026-10-28", "— 2026-10-15" and "— 2026-10-03"). **Suno launched the v6 family (v6, v6-wild, v6-mini) on 2026-09-09 and retired every earlier model.** The v6 Controls panel (formerly "More Options") adds **Max Mode**, **Variety**, and **Personalize** alongside Duration, and v6 is reported to want a different prompt shape — see "Platform Changes — 2026-09-09 (v6)" below; the suno-style-prompt-builder skill carries the v6 prompting guidance (**PREVIEW**). Earlier changes still in force: **downloads capped from 2026-09-03** with commercial rights attached to the download; **Studio 2.0** Premier-only. Verify anything time-sensitive against [suno.com/release-notes](https://suno.com/release-notes) before telling a user.
 
 ---
 
@@ -62,7 +65,7 @@ This file is too large to read whole. List the headings with `grep -n '^##' {ski
 - More varied output per generation -- each Create produces 2 songs; 2-3 Creates (20-30 credits) gives 4-6 takes to pick from
 - v5.5-optimized prompts can be more specific: "deep sub 808s, glitchy hi-hat rolls, pitched vocal chops" where v5 would use simpler "808s, hi-hats"
 - **Voices** (a distinct feature alongside Personas — Personas were **not** removed, they live inside the Voices menu): actual voice cloning with anti-deepfake verification, 15s-4min audio sample required. Clone creation and use are Pro/Premier; since 2026-08-07 the feature is on iOS and Android and "available to try on free plans," with more on paid plans — the free/paid line is not documented, so check the live UI rather than promising a free user what they can do. **Skill Level dropdown** (Beginner/Intermediate/Advanced/Professional) actively reshapes how the model interprets your voice — always select **Professional** regardless of actual ability for the most stable, usable results.
-- **Custom Models**: train on 6+ tracks (UI: "Upload 24+ songs for best results"; per-account maximum, 100 by default), **100 credits per model**, 2-5 min training time, up to 3 at a time. Pro/Premier only. Existing Custom Models were upgraded to v6 automatically (2026-09-09), and Premier can share one with collaborators (2026-10-15). Created from the Create form's model picker ("Create Custom Model"); the user's own Suno songs count as eligible, but the picker lists only uploaded songs, so generated songs have to be downloaded and re-uploaded, which spends download allowance. How to make one and when it's worth it: the suno-style-prompt-builder's strategies, "Custom Models". **Privacy/consent note (AudioNewsRoom):** consent grants Suno permission to use your data for training their global models — not optional, not a private silo.
+- **Custom Models**: train on 6+ tracks (UI: "Upload 24+ songs for best results"; per-account maximum, 100 by default), **100 credits per model**, 2-5 min training time, up to 3 at a time. Pro/Premier only. Existing Custom Models were upgraded to v6 automatically (2026-09-09), and Premier can share one with up to 10 people (2026-10-15; the limit from Suno's help article, 2026-11-06). Created from the Create form's model picker ("Create Custom Model"); the user's own Suno songs count as eligible, but the picker lists only uploaded songs, so generated songs have to be downloaded and re-uploaded, which spends one download per song. How to make one and when it's worth it: the suno-style-prompt-builder's strategies, "Custom Models". **Privacy/consent note (AudioNewsRoom):** consent grants Suno permission to use your data for training their global models — not optional, not a private silo.
   - **Training data:** WAV at 44.1kHz preferred (Suno auto-normalizes with RMS leveling, DC offset removal, spectral masking, onset detection, key/scale estimation). 8-12 stylistically consistent tracks is the inferred sweet spot. Dynamic range preservation matters more than loudness since the system normalizes internally.
   - **Overfitting risk:** Training data too narrow/homogeneous produces repetitive output. Include variety within your style lane — different tempos, moods, arrangements.
   - **Prompt strategy shift with Custom Models:** Priority order changes from genre-first to **mood/production-first** since genre is already encoded in the model. Simpler natural-language prompts may outperform tag-heavy prompts because the model handles the foundational style. Core formula: MOOD + PRODUCTION TEXTURE + ENERGY/TEMPO + INSTRUMENTS + VOCAL DIRECTION.
@@ -86,7 +89,7 @@ A Style Persona and Lyricist are identity layers too, and stacking layers create
 | **Model access** | v6-mini | v6 and v6-wild (plus v6-mini) — every pre-v6 model retired 2026-09-09 | Same as Pro |
 | **Credits** | 50/day (~10 songs) | 2,500/mo (~500 songs) | 10,000/mo (~2,000 songs) |
 | **Credit cost** | 10 credits per Create (produces 2 songs) | Same | Same |
-| **Song downloads** (from 2026-09-03) | 7 lifetime trial downloads | 20/month | 60/month, Studio exports exempt |
+| **Song downloads** (from 2026-09-03; a song counts once, whatever the files or formats) | 7 lifetime trial downloads | 20/month | 60/month, Studio exports exempt |
 | **Commercial use** | No | Yes — only for outputs obtained as a permitted download | Same as Pro |
 | **Weirdness slider** | No | Yes (0-100) | Yes (0-100) |
 | **Style Influence slider** | No | Yes (0-100) | Yes (0-100) |
@@ -96,8 +99,11 @@ A Style Persona and Lyricist are identity layers too, and stacking layers create
 | **Song Editor / Legacy Editor** | No | Yes (section replace, rearrange, crop, fade) | Yes |
 | **Personas** | No | Yes (inside the Voices menu, not removed; how a pre-v6 Persona carries over to v6 is undocumented) | Same |
 | **Voices** | No | Yes (voice cloning; works on v6 in this module's testing, though Suno's FAQ still documents v5.5 only; recording entry point now also on free) | Same |
-| **Custom Models** | No | Yes (up to 3; 100 cr to train) | Yes (up to 3; 100 cr to train); shareable with collaborators |
-| **Shareable Workspaces** (from 2026-10-15) | No | Yes | Yes |
+| **Custom Models** | No | Yes (up to 3; 100 cr to train) | Yes (up to 3; 100 cr to train); shareable with up to 10 people per model |
+| **Shareable Workspaces** (from 2026-10-15) | No | Yes (up to 10 collaborators) | Same as Pro |
+| **MIDI upload in Create** (from 2026-11-04) | No | Yes (Simple mode, v6-wild, desktop web) | Same as Pro |
+| **Speech (beta)** | Yes | Yes | Yes |
+| **Suno MCP (beta)** | Yes (early-access sign-up; songs use credits) | Same | Same |
 | **My Taste** | Yes (passive) | Yes (passive) | Yes (passive) |
 | **Stem separation** | No | Auto Split (up to 12), Split from Mix — credit costs are in the Studio & Editor reference, "Stems" | + Advanced Split (~100 instruments, Premier only) |
 | **Audio upload** | 8 min | 30 min | 30 min |
@@ -106,9 +112,11 @@ A Style Persona and Lyricist are identity layers too, and stacking layers create
 | **Queue** | Shared | Priority | Priority, 10 concurrent |
 | **Add-on credits** | No | Yes | Yes |
 
-**Pricing display:** the pricing page shows $8 / $24 with a "Monthly / Annual save 20%" toggle, while press consistently reports $10 / $30 month-to-month. The likely reading is annual-vs-monthly, but two fetches on 2026-08-13 did not confirm it — quote the displayed figure and the toggle, don't assert a single monthly price.
+**Pricing display:** the pricing page shows $8 / $24 with a "Monthly / Annual save 20%" toggle, while press consistently reports $10 / $30 month-to-month. The likely reading is annual-vs-monthly, but two fetches on 2026-08-13 did not confirm it — quote the displayed figure and the toggle, don't assert a single monthly price. On 2026-11-13 the page newly shows $10 and $30 beside the yearly-billed $8 and $24 (OFFICIAL, [pricing](https://suno.com/pricing)).
 
 **Credit model:** Every press of the Create button costs **10 credits** and produces **2 songs** (a pair to choose from — Suno always generates two takes for variety). This means: 50 credits/day = 5 Creates = 10 songs to evaluate. 2,500 credits/mo = 250 Creates = 500 songs. When budgeting credits for a session, count in **Creates (10 credits each)**, not individual songs. Replace Section and Extend also cost credits (amount varies by section length). On v6, Max Mode doubles the cost of a Create, and image or video inputs can cost more. **When daily credits run low:** Suno provides 50 bonus credits per day on all tiers, refreshing daily.
+
+**What counts as one download** (OFFICIAL, [What counts as one download?](https://help.suno.com/en/articles/13926145), edited 2026-09-09): *"One song counts as one download, regardless of how many files or formats you download for that song."* *"Once a song has counted toward your download allowance, you can download it again without using another download."* A song's stems are part of the same download. Suno states no time window for the re-download. So the allowance counts songs, not files: a second format, a repeat download or the stem set of a song already downloaded uses nothing further, while each different song uses one. A download made through the Suno MCP is covered under "Suno MCP (beta)".
 
 Free-tier Controls panel (formerly "More Options") includes: Vocal Gender, Manual/Auto Lyrics mode, Song Title only.
 
@@ -129,6 +137,21 @@ Community testing (JG BeatsLab, March 2026) puts diminishing returns past ~70%, 
 **Intent-split values:** 70+ to preserve source character, 80 to stop invented intros on covers, 50+ to stop invented lyrics, 30-40 to let a strong style prompt through. The suno-style-prompt-builder skill holds the full table and returns the value for a package; use what it returns rather than a range from memory.
 
 ---
+
+## Platform Changes — 2026-11-13 (week-ten check)
+
+Graded as elsewhere in this file; SECONDHAND marks a claim one user relays from someone else. What users report about the two new features is in "MIDI and Audio Guides" and "Suno MCP (beta)".
+
+- **No model change announced** (OFFICIAL, by absence): the release notes from 2026-10-28 to 11-13 are Suno MCP (10-28), a Studio update (10-29) and the Daily Song Challenge (11-06) — no new model, no deprecation. The Terms are unchanged (last revised 2026-08-10, effective 2026-09-03).
+- **MIDI upload in Create, 2026-11-04** (OFFICIAL, [blog](https://suno.com/blog/MIDI-in-create), [help](https://help.suno.com/en/articles/14594177)): a `.mid` or `.midi` file starts a song. *"At launch, MIDI uses Simple Create mode with v6-wild"*; it is *"available to all Pro and Premier subscribers"*, and *"MIDI upload is available on desktop web"*. *"Your MIDI shapes the bones of the song. Your prompt shapes everything else."* *"We plan to expand MIDI capabilities over time"*. No release note covers the launch. See "MIDI and Audio Guides".
+- **Suno MCP (beta), 2026-10-28** (OFFICIAL, [help](https://help.suno.com/en/categories/2817153-suno-mcp-beta), [suno.com/mcp](https://suno.com/mcp)): *"Connect Suno to Claude, ChatGPT, Claude Code and other MCP clients"*. *"Available on all Suno plans. Songs use your credits."* Access is by *"Sign up for early access"*. The server is `https://api.suno.com/mcp`, with an OAuth sign-in and no API key; in Claude Code, `claude mcp add --transport http suno https://api.suno.com/mcp`, then `/mcp`. See "Suno MCP (beta)".
+- **Studio, 2026-10-29** (OFFICIAL, release note): Clip Settings sidebar, Clip Info panel, auto-stretch of added audio, fine pitch in semitones and cents, show/hide tracks, grid density — all Studio, so Premier only. **Studio Chat** got a blog post the same day: [Meet Chat: Our In-house Studio Assistant](https://suno.com/blog/studio-chat-assistant). See the Studio & Editor reference, "Studio updates since 2.0 shipped".
+- **Speech (beta) is on all plans** (OFFICIAL, [help](https://help.suno.com/en/articles/14617089)). Speech now has help articles (new 2026-11-06 to 11-07), which replaces the 2026-10-28 note that it had none.
+- **Shareable Workspaces** (OFFICIAL, [help](https://help.suno.com/en/articles/14616961)): up to 10 collaborators. Sharing one still takes Pro or Premier.
+- **Custom Model sharing** (OFFICIAL, [help](https://help.suno.com/en/articles/14616897), 2026-11-06): Premier only, up to 10 people per model. The [Custom Models page](https://suno.com/custom-models) still says models *"can't be shared"*, and *"2x the inputs"* is still explained nowhere — don't quote a number for it.
+- **Pricing and download caps unchanged** (OFFICIAL, [pricing](https://suno.com/pricing), page captures 2026-10-25 to 11-13): Pro 2,500 credits and 20 downloads a month, Premier 10,000 and 60. What counts as one download is under "Plan Comparison".
+- **No official text names a v6 model for Voices** (OFFICIAL, by absence): the [Voices FAQ](https://help.suno.com/en/articles/11362433) (edited 2026-03-26) still says v5.5, and ["How do I change models?"](https://help.suno.com/en/articles/13924993) (edited 2026-11-06) says only *"make sure you're on a compatible model"*.
+- **Watch items — user reports, not announcements** (2026-11, low confidence): users report new model names in the front end ("junco", "junco wild", "v6-i"); one relayed claim speaks of a *"silent update within the v6 family"* (SECONDHAND); and Studio V1 is said to close in December (SECONDHAND). Suno has announced none of them. **For Mac:** don't state any of these as fact. If a user asks whether the model changed, say Suno has announced nothing, say what users report, and point to the [release notes](https://suno.com/release-notes).
 
 ## Platform Changes — 2026-10-28 (week-eight check)
 
@@ -210,7 +233,7 @@ Sources: [Download limits FAQ](https://help.suno.com/en/articles/13614785), [ToS
 
 - Free: **7 lifetime** trial downloads, personal and non-commercial, no reset. Pro: **20/month**. Premier: **60/month**. Allowances reset on the billing date with **no carryover**; extra downloads are purchasable. **Studio exports are exempt** (Premier).
 - **Retroactive to the entire back catalogue** — the cap applies to songs made before September 3 too.
-- One song counts once regardless of format or repeat downloads; **all stems of a song are part of that song's single download**; failed downloads don't count. Streaming and on-platform sharing stay unlimited.
+- One song counts once regardless of format or repeat downloads; **all stems of a song are part of that song's single download**; failed downloads don't count. Streaming and on-platform sharing stay unlimited. Suno's own wording, from [What counts as one download?](https://help.suno.com/en/articles/13926145) (edited 2026-09-09): *"One song counts as one download, regardless of how many files or formats you download for that song."* and *"Once a song has counted toward your download allowance, you can download it again without using another download."* No time window is stated.
 - **Commercial rights now attach to the download, not the tier.** The new ToS permits commercial exploitation only of outputs obtained through a permitted download; obtaining a copy any other way is prohibited, and so is removing or obscuring fingerprints, watermarks, or metadata. Downloaded outputs keep perpetual commercial rights even after a downgrade.
 - **Remixes are jointly owned and non-commercial on every tier** — "a joint work owned jointly and equally by you and the Remixer," for "personal and non-commercial purposes" only.
 
@@ -266,9 +289,11 @@ The profile-edit screen also exposes a **"Genre Overrides" free-text field** (ob
 
 Consequence for packages: vague prompts are no longer reproducible across accounts, detailed ones are — an argument for the fully-specified package, not against it. If a whole catalog starts sounding same-y and the My Taste controls don't help, one competing hypothesis with community support is **per-workspace accumulation** — a fresh workspace is reported to restore variety (mechanism unverified).
 
-### Ecosystem: still no public API
+### Ecosystem: still no public API *(2026-10-28: an official MCP connection now exists — see "Suno MCP (beta)")*
 
 Suno announced on 2026-07-01 that it is "exploring a developer API" beginning with a curated partner group, with an interest intake form. As of 2026-08-13 there is **no public launch date, pricing, portal, endpoint list, or documentation**. COMMUNITY. Every "Suno API" sold today is a third-party wrapper with no official standing — do not present one as a supported integration path.
+
+**Update, 2026-11-13 check:** the paragraph above is the 2026-08-13 state, kept as history. On 2026-10-28 Suno shipped the **Suno MCP (beta)**: an official server that MCP clients connect to with an OAuth sign-in on the user's own account and no API key (OFFICIAL). That is now the supported way for an assistant to act on a Suno account — see "Suno MCP (beta)". This check did not revisit the developer API or the third-party wrappers.
 
 ---
 
@@ -364,6 +389,7 @@ This table covers problems with Suno's output, not with Mac himself.
 - Step-by-step: three-dot menu → Create → Cover Song → describe the new style → generate
 - **Covers have been documented as not eligible for commercial use** — even of your own songs. That was not re-checked against the September 2026 terms (which make Remixes non-commercial on every tier), so have the owner check Suno's current terms before a commercial release, and prefer a fresh generation from the original lyrics.
 - Stacking Covers (re-covering within the same genre) can smooth cohesion
+- To carry music written in advance (a MIDI part rendered to audio) through a Cover, see "MIDI and Audio Guides" below
 
 ### Remix Umbrella — Four Workflows
 - **Cover** — re-sing in a different style/genre (preserves melody)
@@ -386,9 +412,103 @@ This table covers problems with Suno's output, not with Mac himself.
 
 ---
 
+## MIDI and Audio Guides
+
+For a user who has already written the music — a melody, a part, a pattern — and wants Suno to follow it. There are two routes: upload the MIDI file in Create, or render the part to audio and Cover it. On the 2026-11 evidence the audio route is the one more users report working, and both rest on a handful of users, so offer them as options to test, not as settled practice.
+
+### MIDI upload in Create (OFFICIAL, 2026-11-04)
+
+Sources: [Start Songs with MIDI](https://suno.com/blog/MIDI-in-create) (blog), [Using MIDI files in Create](https://help.suno.com/en/articles/14594177) (help).
+
+- **Limits at launch:** *"At launch, MIDI uses Simple Create mode with v6-wild"*; *"available to all Pro and Premier subscribers"*; *"MIDI upload is available on desktop web"*. Upload a `.mid` or `.midi` file, or drag it onto the Create form, then write a plain-language prompt.
+- *"Your MIDI shapes the bones of the song. Your prompt shapes everything else."* The prompt sets how closely the file is followed, from *"play your notes exactly as you wrote them"* to *"take a motif from the file and develop it into something new"*.
+- Suno calls it *"different from existing Create modes, such as using Remix or Cover to adapt an uploaded audio (WAV or MP3) file"*, and says *"We plan to expand MIDI capabilities over time"*.
+- **Not stated:** neither page mentions tempo, tempo changes, time signature, key, markers, velocities (beyond a generic "how hard"), lyrics, vocals, sliders or any file limit.
+- **Not the same as MIDI in Studio**, which is Premier only: see the Studio & Editor reference, "Suno Studio 2.0" → "MIDI".
+
+### What users report about MIDI upload (2026-11)
+
+- **No Advanced mode, no sliders, no Custom Models** (COMMUNITY, 4 users, 2026-11). It is locked to v6-wild (2 first-hand users, 1 relaying), and *"Variety appears to be off by default"* (ANECDOTAL, one user).
+- **Original files are often flagged** (COMMUNITY, 3 first-hand users, 2026-11): *"Most of them were flagged"*; *"every single original MIDI file flagged"*; and *"Our system matched this upload to a known recording"* on a file that had never been rendered to audio. No reported workaround for a flagged `.mid` states its result.
+- **Outcomes are one user each** (ANECDOTAL, 2026-11). Short single-instrument patterns (40–60 second stems, no vocals) gave *"the best adherence I've seen in v6 so far"*. In a full song, another user *"cannot even hear the original midi itself"* and found Voices ignored. A third preferred running the MIDI through a soundfont and uploading the audio.
+- **Through the Suno MCP** (ANECDOTAL, one user, one take measured): a 32-note melody uploaded as MIDI passed a copyright check and came back as two short instrumentals; all 32 notes sounded in order at pitch, plus 2 extra notes.
+- **Nobody has reported** trying a tempo-only, marker-only or click-track file, how closely the notes are followed in general, or any size or length limit.
+
+### Render the part to audio, then Cover it
+
+Render the MIDI part to audio, upload it, and Cover it. This route keeps Advanced mode and the sliders (COMMUNITY, 4 users report it working and give results; 1 reports the opposite for orchestral music; 2026-11).
+
+- **One user's settings** (ANECDOTAL): Weirdness 0, Audio Influence 85, Variety Off, with the note *"You don't need a full studio quality for input"*. In the same user's comparison this route kept their Voice where MIDI upload did not.
+- **Audio rendered from MIDI gets flagged too** (COMMUNITY, 4 users, 2026-11), so the route doesn't avoid the upload filter.
+
+### When an upload is flagged
+
+Upload false flags are widely reported (COMMUNITY, 31 users; 3 report the opposite; 2026-11). Workarounds whose reporters state the result:
+
+- **Trim the file, or retry the upload:** worked for 2 users.
+- **Change the instrument sounds:** worked for one user, who gives only their own theory of the cause.
+- **Chunk the file and rejoin the pieces** (contested): 1 user for, 1 against.
+
+Suno's support, as one user relays it (SECONDHAND): *"There's no way to manually clear the flag for a specific upload right now."*
+
+**For Mac:** offer the two routes with their evidence and let the user choose. Say that MIDI upload gives up Advanced mode and the sliders by users' accounts, and the Voice for the one user who compared. Don't promise that Suno reads a tempo map or a click track: nobody has reported trying one. Either upload may be flagged, so plan for a second attempt.
+
+---
+
+## Suno MCP (beta)
+
+An official connection that lets an MCP client (an AI assistant) act on a Suno account, launched 2026-10-28. **The user connects their own Suno account from their own client.** Suno publishes no tool list, parameter schema, limits or download rule, and users saw the surface change twice between 2026-10-28 and 11-13. So read the tools and their parameters from the connected server, and treat every user-reported line below as a dated snapshot, not as documentation.
+
+### What Suno states (OFFICIAL)
+
+Sources: [Suno MCP (Beta) help articles](https://help.suno.com/en/categories/2817153-suno-mcp-beta), [suno.com/mcp](https://suno.com/mcp), the 2026-10-28 release note.
+
+- *"Connect Suno to Claude, ChatGPT, Claude Code and other MCP clients"*. *"Available on all Suno plans. Songs use your credits."* Access is by *"Sign up for early access"*.
+- **Server:** `https://api.suno.com/mcp`. Sign-in is OAuth; there is no API key. In Claude Code: `claude mcp add --transport http suno https://api.suno.com/mcp`, then `/mcp`.
+- **Stated abilities:** songs from ideas, lyrics and conversation; covers, extends and mashups; speech; *"Upload audio and build on it"*; *"Check your plan and remaining credits"*; saved Voices.
+- **Scopes** in the server's OAuth discovery document (read 2026-11-13): `api:v0`, `credits:spend`, `download`, `library:read`, `library:search`, `library:write`, `offline_access`, `profile:read`.
+
+### Getting access (user reports, 2026-11)
+
+The sign-up is a real gate (COMMUNITY): 6 users report getting in after signing up, one of them about a day later; 3 report no reply or no working connection. For one more user, account linking failed until Suno's acceptance email arrived (ANECDOTAL).
+
+### What users report it exposes (2026-11)
+
+- **A create tool** taking model, Voice, style, negative style, lyrics and sliders — one of 32 tools that one user's assistant listed on 2026-11-04 (ANECDOTAL, one user). Sliders take exact numbers (COMMUNITY, 2 users, 2026-11). For one user, separate lyrics and style with a named Voice worked in one call, and it made one song instead of two when asked (ANECDOTAL).
+- **Variety** was absent on 2026-11-04 and present by 11-06 as a whole number from 0 to 4. **Max Mode** was missing from the 11-04 list, yet worked for one user at double the cost (ANECDOTAL, one user, about 150 clips). **Personalize (My Taste)** is absent in every report.
+- **Edits, by 2026-11-07:** replace a lyric line, regenerate or add a section, remove an instrument, stems, MIDI. One user's outcomes (ANECDOTAL): replacing a line and adding a section worked; regenerating a 15-second section damaged the song; removing an instrument did not work; the four edits cost 75 credits.
+- **Read-backs** of BPM, key, beats, sections, audio-derived tags and word timings (COMMUNITY, 3 users, 2026-11), free according to one of them. Their limits: the confidence value is always 1, beat numbering breaks, and the key may come back as the relative major. Word timings are contested: one user says they merely align the submitted lyrics to the audio; another says they *"show what was actually sung"*, including added lines.
+- **A free "listen" tool** — Suno's agent answering questions about a clip — is inconsistent (COMMUNITY, 2 users, 2026-11). It *"contradicted itself between two listens of the same clip"*, and over ten runs it called a straight 88 BPM beat halftime eight times, while the measured BPM and key read-backs did not change.
+- **How well a request is met** (ANECDOTAL, one user, about 150 clips): a requested tempo about 70% of the time, a requested key about 25%.
+
+### What it costs (user reports, 2026-11)
+
+- **Credits** (ANECDOTAL, one user's figures; a second user's 5 credits per song is the same rate): 10 credits a job for two clips whatever the length; 20 in Max Mode; joins and the listen tool free; stems and MIDI 10 each.
+- **MIDI export is plan-gated for at least one user.** Of the 3 users who report exporting MIDI through it, the one who gives a cost paid 10 credits, on Premier. Another user, on Pro, was refused MIDI export as a Premier feature (ANECDOTAL).
+- **Bad requests are run and charged** (ANECDOTAL, one user): a retired model, and an impossible extend point.
+- **A download uses the download allowance, and the connector asks first** (COMMUNITY, 3 independent users, 2026-11): *"It can't stream or fetch audio, so anything that needs the actual file costs a download credit"*. One user's stem downloads did not reduce the allowance (ANECDOTAL). Suno states no download rule for the MCP, so how the one-song-one-download rule ("Plan Comparison") applies to a song downloaded through it is not established.
+
+### What it cannot do (user reports, 2026-11)
+
+- **Clips keep no record of what was sent** (COMMUNITY, 3 users): not the model, the sliders or the Exclude Styles. *"Keep your own log of what you sent"* — the package is that log.
+- **No Studio access** (COMMUNITY, 2 users).
+- **Excludes sent through it are not reliably honoured** (COMMUNITY, 3 users).
+- **Uploads:** the upload filter applied through it for one user; one unverified report says uploads go through.
+- **Assistants misread results** (ANECDOTAL, one user): one treated the prompt as the truth and called the audio wrong.
+
+**For Mac:** when a user has this connected, list the server's tools before naming one, and say that the detail above is user-reported and dated. Keep the package as the record of what was sent, since the clip won't hold it. Use the read-backs (free, by one user's account) before anything that spends a download, and don't rest a diagnosis on a single listen-tool answer.
+
+---
+
 ## Community Research Sources & Further Reading
 
-> **Last updated:** October 3, 2026 (the newest source list below; the 2026-10-15 and 2026-10-28 checks cite their sources inline in their Platform Changes sections). These sources informed the findings in this reference. Suno evolves fast — verify claims against current platform behavior.
+> **Last updated:** November 13, 2026 (the newest source list below; the 2026-10-15 and 2026-10-28 checks cite their sources inline in their Platform Changes sections). These sources informed the findings in this reference. Suno evolves fast — verify claims against current platform behavior.
+
+### Official Suno Documentation — 2026-11-13 check
+
+- [Start Songs with MIDI (blog)](https://suno.com/blog/MIDI-in-create) · [Using MIDI files in Create](https://help.suno.com/en/articles/14594177) · [Suno MCP (Beta) help articles](https://help.suno.com/en/categories/2817153-suno-mcp-beta) · [Suno MCP page](https://suno.com/mcp)
+- [What counts as one download?](https://help.suno.com/en/articles/13926145) · [Sharing Custom Models](https://help.suno.com/en/articles/14616897) · [Shareable Workspaces](https://help.suno.com/en/articles/14616961) · [Speech (beta)](https://help.suno.com/en/articles/14617089) · [How do I change models?](https://help.suno.com/en/articles/13924993)
+- [Meet Chat: Our In-house Studio Assistant (blog)](https://suno.com/blog/studio-chat-assistant) · [Release notes](https://suno.com/release-notes) (Suno MCP 10-28, Studio 10-29, Daily Song Challenge 11-06) · [Pricing](https://suno.com/pricing)
 
 ### Official Suno Documentation — 2026-10-03 check
 

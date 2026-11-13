@@ -1,6 +1,6 @@
 # Map: Vocals
 
-Vocal level, placement, delivery and timbre, and feedback on a Voice, Persona or Custom Model. Grades: COMMUNITY is several users, ANECDOTAL one report, LOCAL this module's own renders.
+Vocal level, placement, delivery and timbre, and feedback on a Voice, Persona or Custom Model. Grades: COMMUNITY is several users, ANECDOTAL one report, LOCAL this module's own renders. A pair of counts is users reporting the effect against users reporting the opposite.
 
 ## Style prompt adjustments
 
@@ -23,7 +23,10 @@ Vocal level, placement, delivery and timbre, and feedback on a Voice, Persona or
 | "It reads instead of sings" / "rushed, no held notes" | Lyric density and missing delivery direction | Fewer syllables per line; write the holds on the page (`sta-a-ay`); describe the performance in the style field; `[Silence]` at the end of each line has one careful tester's backing |
 | "Too many backing vocals" / "it doubles everything" | v6 adds doubling and backing unasked (LOCAL-OBSERVED); remove any dual or harmony asks first | Then test "backing vocals" in Exclude Styles, changing nothing else |
 | "Vocals are screaming when they shouldn't be" | `metal`, `sludge`, `doom` in the style prompt; `!` or ALL CAPS in the lyrics — scream triggers | Remove the triggers, add a positive instruction ("clean vocals, melodic singing"), and use `[Vocal Style: whispered]` to reset after an aggressive section |
-| "The male vocal sounds generic" / "autotuned" (stock voice, no Voice) | v6's stock male voices are widely reported as generic or glossy unless steered hard (COMMUNITY, 6+ users, with counter-examples); they also measured about a semitone lower and darker (ANECDOTAL-controlled) | Generate the vocal a cappella first, then Cover it with the band (2 users); or a detailed vocal description at Weirdness 0, Variety *Exact style*, Style Influence 100 (1 user). A saved Voice avoids the stock voice |
+| "The male vocal sounds generic" / "autotuned" (stock voice, no Voice) | v6's stock male voices are widely reported as generic or glossy unless steered hard (COMMUNITY, 6+ users, with counter-examples); they also measured about a semitone lower and darker (ANECDOTAL-controlled) | Generate the vocal a cappella first, then Cover it with the band (2 users); or a detailed vocal description at Weirdness 0, Variety *Exact style*, Style Influence 100 (1 user). The user's own Voice avoids the stock v6 vocal for 12 users; 4 report the opposite (COMMUNITY, 2026-11) |
+| "The voice changes partway through" / "it switched from a man to a woman" | The voice or its gender changing mid-song is a v6 report (COMMUNITY, 16 users against 4, 2026-11) | Something to try once, changing nothing else: repeat the voice descriptor in every section tag. 12 users say it helped; 7 say tags don't hold a voice |
+| "It stutters on a word" / "it repeats a word" | Line length: word stutter is a v6 report (COMMUNITY, 8 users, 2026-11) | Shorter lines eased it for 5 users |
+| "It mispronounces a word" | — | Phonetic respelling in the lyrics fixed pronunciation for 12 users and not for 5 (COMMUNITY, 2026-11) |
 | "My voice sample sounds grittier than it should" | Grit, gravel or rasp words near the vocal description or the genre head (LOCAL-OBSERVED) | Move the grit onto instrument descriptors and keep the vocal line clean |
 
 ## Inline performance modifiers
@@ -39,6 +42,9 @@ Parenthetical cues after a lyric line direct that line's delivery: `(breathy)` o
 | "Vocals don't sound like me" | Audio Influence too low, a poor source recording, or style words overriding the Voice | Raise Audio Influence first (Suno's official escalation for this complaint). Start a Voice around 50% and move in 5–10% steps against the complaint: identity loss argues up, artefacts argue down. Community testing puts diminishing returns past ~70%, but one profiled voice was clean at 85% where 55% showed artefacts, so it isn't a ceiling. If raising it doesn't recover identity, Suno's next step is rebuilding the voice profile from a clean acapella. Recommend a direction and a start point; the builder sets the final number |
 | "Voice sounds right but delivery is wrong" | Style-prompt vocal descriptors fighting the Voice | Remove them; use delivery metatags |
 | "The Voice sounds like someone else" / "it added grit I don't have" | Vocal character words the Voice doesn't have (ANECDOTAL: *"style can influence how they sound"*) | Take out character the Voice lacks ("gritty"); words matching character it has may help. Keep range and placement guards |
+| "My old Voice / Persona doesn't sound the same on v6" | Voices and Personas made before v6 no longer match for 9 users; 5 find them better in v6 (COMMUNITY, 2026-11) | Say that both are reported, then work it as "Vocals don't sound like me" above; no fix specific to this is reported |
+| "I want two of my Voices on one song" | One song cannot take two Voices (COMMUNITY, 6 users, 2026-11) | Say so before trying prompt changes; no workaround is reported |
+| "It won't let me make a Voice from this song" | A Voice cannot be created from a song with an upload in its history (COMMUNITY, 3 users, 2026-11) | Say that this is the reported limit; a song with no upload in its history is the source to try |
 
 **Custom Model:** it has learned a production DNA, so generic descriptors ("polished production", "raw mix") get absorbed. Be more specific: name the element ("reduce distorted guitar layers, more acoustic presence"; "push vocals forward, pull back drum room reverb"). If it consistently misses, retrain on a better-curated catalog (a new model: delete the old one, another 100 credits). If takes echo a melody or chord progression from the training songs, that's the model copying (COMMUNITY): a larger, more varied training set in the same lane reduces it.
 

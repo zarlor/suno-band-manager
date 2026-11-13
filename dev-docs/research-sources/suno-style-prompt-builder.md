@@ -2,7 +2,7 @@
 
 > Provenance for `src/skills/suno-style-prompt-builder/references/v6-build-core.md`, `src/skills/suno-style-prompt-builder/references/model-prompt-strategies.md`, `src/skills/suno-style-prompt-builder/references/safety-tables.md` and `src/skills/suno-style-prompt-builder/references/retired-model-strategies.md`. Kept outside the installed skill; not read at runtime.
 
-> **Last updated:** August 13, 2026. These informed the findings above. Verify against current Suno behavior.
+> **Last updated:** November 13, 2026. These informed the findings above. Verify against current Suno behavior.
 
 ### Added in the 2026-08-13 sweep
 
@@ -18,6 +18,16 @@
 ### Added 2026-08-14 — primary-source pass (r/SunoAI)
 
 A direct primary-source sweep (38 fetches, 22 threads, findings read from post and comment text rather than aggregations) contributed the v5.5 quality characterization, the within-track degradation reports, the duration-slider adherence split and its Custom-style requirement, the intent-split Audio Influence values, the My Taste controls resolution, the ad-lib suppression levers, the negation-in-brackets behavior, the hyphen-prefix excludes, the Weirdness upper-end reports, and the BPM contradiction. These are individual user experiences, not controlled tests — graded inline as COMMUNITY where several independent users agree and ANECDOTAL where one does. Where they contradict an aggregation-based claim (My Taste), the primary source wins.
+
+### Added in the 2026-11-13 sweep
+
+Window 2026-10-28 → 2026-11-13; Suno announced no model change in it. Figures from this sweep are dated 2026-11 in the reference files.
+
+- [Suno blog: Start Songs with MIDI](https://suno.com/blog/MIDI-in-create) + [Suno Help: Using MIDI files in Create](https://help.suno.com/en/articles/14594177) (OFFICIAL, 2026-11-04) — MIDI upload in Create: Simple mode, v6-wild only at launch, Pro and Premier, desktop web
+- [Suno Help: Sharing Custom Models](https://help.suno.com/en/articles/14616897) (OFFICIAL, 2026-11-06) + [Suno Custom Models page](https://suno.com/custom-models) (OFFICIAL, undated, read 2026-11-13) — sharing is Premier-only, up to 10 people per model; the marketing page still says models "can't be shared"; "2x the inputs" explained nowhere
+- **r/SunoAI primary-source sweep** (COMMUNITY where two or more independent users agree, ANECDOTAL where one does) — 372 discussion threads read in full (6,361 comments), Song, Meme and Compilation flairs excluded; counts are distinct users, de-duplicated, and are floors; a pair such as 24 against 5 is users reporting an effect against users reporting the opposite. Contributed: the controls counts (Variety and My Taste rewriting, Audio Influence 75–100, Weirdness, Max Mode, Exclude Styles, Style Influence, set duration); the style-prompt findings (the prompt-length contradiction, single words read literally, negatives backfiring, sound and recording situation over a genre label, BPM held or not); the genre notes (metal and hard rock, era styles, "chamber music", v6-wild and v6-mini off the mainstream, classical from text); the Voice and Custom Model counts; the Cover settings and the audio-then-Cover route for prewritten music. Individual user experiences, not controlled tests.
+- **Web lanes** (blogs, note.com, one X post; all dated 2026-09, before the window; ANECDOTAL) — one user's estimate for full-song Covers at Weirdness 0, Style Influence 0, Audio Influence 100. No non-Reddit source dated inside the window carried a tested prompting or controls finding.
+- **Not found / verified-absent (2026-11-13):** no text-prompting report for Baroque, harpsichord, counterpoint or continuo in the 372 threads or the web lanes; no controlled comparison of short against long style prompts; no official text naming a v6 model for Voices (the Voices FAQ, edited 2026-03-26, still says v5.5).
 
 ### Promoted from module production testing (2026-07/08)
 

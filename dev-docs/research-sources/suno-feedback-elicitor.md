@@ -8,6 +8,7 @@
 - v6 controls and symptoms compiled 2026-09-12 from Suno's v6 docs, vendor day-one testing and community reports; v6 rows added from the 2026-10-03 research sweep (no model change since launch).
 - Studio 2.0 and the Song Editor validated 2026-08-13 (Replace Section at Pro re-confirmed official that day, no deprecation announced); download cap from 2026-09-03; v6 repair ladder and late-song reports from the 2026-10-03 sweep.
 - Duration slider: shipped 2026-07-20 ([release note](https://suno.com/release-notes/duration-slider-on-web)); range 0:10–6:00 verified in the live UI on a Pro account 2026-08-14; the 5-second granularity is COMMUNITY-attested only. Suno published no range. Adherence reports are starkly split (a controlled batch 4 of 40, others near-perfect); an earlier account described silence padding where primary sources describe end-then-restart.
+- Community sweep 2026-11-13 (window 2026-10-28 → 2026-11-13; Suno announced no model change in it): the 2026-11 counts in `technical-resolution.md` (late-song degradation and its options, quality change, Covers and editing, upload and lyric false flags), `feedback-triage-guide.md` (v6 intros and endings), `map-vocals.md` (Voices and vocal symptoms) and `controls.md` (Variety, My Taste, Audio Influence, Style Influence, Exclude Styles, Max Mode). Re-check by 2027-02-13.
 - Suno's EQ post (OFFICIAL, 2026-09-29, Studio) for the muddy-vocal mix fix.
 - Replace Section seams: this module's production test, 2026-04-29.
 
@@ -16,6 +17,7 @@
 - **Style Influence plateau:** Style Influence 100 vs 85 on v6 — 6 of 12 vs 7 of 12 takes followed the instruction (ANECDOTAL-controlled, one outside channel, 2026-10-03).
 - **Take variance and off-tempo takes:** an outside series of 24 takes of one song: the spread between takes beat the effect of rewording; the ranking flipped between 2 and 4 takes; every take's page said "99 bpm" including takes at 117; every off-tempo take had also dropped a requested instrument; the misses ran 13–24% fast, not double (ANECDOTAL-controlled, n=24).
 - **Late-song degradation:** 15+ community threads; "like switching from stereo to mono" (4 users), steps "every 30 seconds" (several; the "chunked decoding" explanation is unverified), "20% from start to finish" level rise (1 user). Max Mode helped for 2 users. Extend from the last clean point: 3+ users.
+- **Late-song degradation, 2026-11 window:** 68 users report it and 9 deny it; fixes with stated outcomes run from rebuilding the drums outside Suno (5 for, none against) to Max Mode (5 for, 8 against) and Remaster (2 for, 4 against); the split-and-Cover recipe and the v6-mini Cover pass are one user each. One user measured a 6:51 track rising from about −20 to −12 dBFS while energy above 3,500 Hz fell from 10.45% to 0.94% (ANECDOTAL, 8 generations). Quality change: 27 better (14 of them in one cluster around 11-04 to 11-06), 11 worse, 8 unchanged; six users name the confound of their own prompting improving.
 - **Final chorus stripped:** 4 users in 4 threads (2026-10-03); production testing n=10 full-cued final choruses, none stripped.
 - **Key change:** one report, "usually at 3rd verse".
 - **librosa slow-prior reading:** on a 34-track reference catalog with ear-verified tempos, the default read 10 on the felt tempo and 14 double; the 80-BPM start read 17 on it and 1 double, but halved 4 fast songs.
@@ -29,5 +31,7 @@
 ## Sources
 
 [Suno 4.5 Plus Extend — Jack Righteous](https://jackrighteous.com/en-us/blogs/guides-using-suno-ai-music-creation/suno-45-plus-extend-tool) | [Outro Prompts — Jack Righteous](https://jackrighteous.com/en-us/blogs/guides-using-suno-ai-music-creation/suno-ai-outro-prompt-guide) | [End Prompts — Jack Righteous](https://jackrighteous.com/en-us/blogs/guides-using-suno-ai-music-creation/suno-ai-end-prompt-guide) | [Fade Out Prompts — Jack Righteous](https://jackrighteous.com/en-us/blogs/guides-using-suno-ai-music-creation/suno-ai-fade-out-prompt-guide)
+
+Community sweep, 2026-11-13: r/SunoAI discussion threads dated 2026-10-28 → 2026-11-13, 372 read in full (Song, Meme and Compilation flairs not read), plus Suno's release notes and help centre for the same window. Counts are distinct users, de-duplicated by name, and are floors; a pair is users reporting the effect against users reporting the opposite. COMMUNITY is two or more independent users, ANECDOTAL one, SECONDHAND relayed.
 
 Goal-keyed slider recipes (clean/predictable, strong genre, stable hook with variation, adventurous bridge, uploaded-melody-leads, upload-as-loose-inspiration): ANECDOTAL, single source, updated 2026-08; held by the style prompt builder.

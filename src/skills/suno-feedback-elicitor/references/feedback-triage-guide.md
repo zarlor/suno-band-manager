@@ -18,6 +18,7 @@ First check for dynamic contrast: "Sounds like you might want quiet verses build
 
 **Technical** — quality words ("glitchy", "robotic", "clipping", "cuts off", "muffled", "tinny"), timestamps ("at 1:23"), mispronunciations: generation-specific issues distinct from creative direction.
 Set expectations first: "Audio artifacts are usually specific to a particular generation, not the prompt itself." Then resolve each issue by the technical paths: regeneration first, editor or Studio by tier, and the prompt-fixable part of a dual-path issue mapped alongside. Two v6 habits arrive sounding like creative feedback but triage as technical: an excluded element that plays anyway ("I excluded it and it's still there") and the stock opening swell or an intro that won't stay drums-only — Exclude is guidance on v6, not a mute, so route both to the technical paths rather than adding more excludes.
+v6 intro and ending complaints triage as technical the same way. These are reported tendencies (2026-11), so confirm what the take does before working one: an intro that fades in (COMMUNITY, 5 users; 2 report the opposite), worked like the opening swell; a final chorus that comes back stripped (COMMUNITY, 5 users), for which the technical paths hold partial fixes only, so say that; an ending that loops or stops dead (COMMUNITY, 4 users), where one user's ending to offer is `[Outro]` plus one plain instruction (ANECDOTAL); and a song that cuts off near 6:00–6:56 (COMMUNITY, 2 users), worked as a length issue.
 
 ## Elicitation techniques
 

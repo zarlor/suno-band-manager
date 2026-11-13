@@ -38,6 +38,16 @@ A standards pass. The module was reviewed against the current BMad v7 skill stan
 - Transient working files (the style-prompt ledger, the sequencing workspace) default to the BMad output folder; an existing file at the old location is continued. Songbook, profiles, feedback history and audio analysis stay under `docs/`.
 - `assets/menu.csv` columns are now `code,name,description,action,skill,prompt`. Mac's creed source moved to `assets/creed.md`. The Studio 1.x archive and both `research-sources.md` files moved out of the installed skills into `dev-docs/`.
 
+**Reference updates from the 2026-11-13 research sweep** (Suno's own pages, plus 372 r/SunoAI discussion threads read in full; community findings carry their user counts and stay guidelines, with both sides kept where users disagree)
+
+- **Two new Suno features are documented.** `SUNO-REFERENCE.md` gains "Platform Changes — 2026-11-13", "MIDI and Audio Guides" and "Suno MCP (beta)".
+  - *MIDI upload in Create* (2026-11-04) is Simple mode and v6-wild only at launch, on Pro and Premier, desktop web. Users report no sliders and original files often flagged; rendering the part to audio and Covering it is the route more of them report working.
+  - *Suno MCP* (beta, 2026-10-28) lets an assistant act on the user's own Suno account. Suno publishes no tool list, so what it exposes, costs and can't do is recorded as dated user reports. Mac does not use it yet.
+- **Downloads:** Suno's rule is one download per song, whatever the files or formats; a re-download and the stems use no further download.
+- **Late-song degradation:** this window's counts (68 users report it, 9 don't hear it) sit beside October's, with each reported fix shown with the users for and against it. No fix is settled.
+- **Controls, style prompt and lyrics field:** updated counts for Variety, My Taste, Audio Influence, Exclude Styles, Max Mode and Style Influence; prompt length is now stated as a disagreement (short against long) instead of one recommendation; parenthesised text being sung, the voice descriptor repeated in each section tag, and inline chord brackets are added as things to try, the last on thin evidence.
+- **Also updated:** Voices and Custom Models (sharing is Premier-only, up to 10 people), Covers and editing, intros and endings, genre notes (metal still the weakest area; no community reports on Baroque), lyric and upload false flags with the workarounds users report, and the 2026-10-29 Studio items.
+
 **Tests.** 1,845 tests, up from 1,210, all on `unittest`; the BMad manifest, path and script scanners report no findings.
 
 ---

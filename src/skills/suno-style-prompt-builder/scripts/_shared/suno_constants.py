@@ -144,7 +144,7 @@ GENRE_SIGNALS = frozenset({
 
 
 # ---------------------------------------------------------------------------
-# Crowd-noise words and Audio Influence ranges (validate-prompt.py).
+# Crowd-noise words and Audio Influence ranges (validate_prompt.py).
 # ---------------------------------------------------------------------------
 
 # The "live" word family pulls "live album" crowd texture (live recording,

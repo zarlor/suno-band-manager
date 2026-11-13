@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["pyyaml>=6.0"]
 # ///
-"""Tests for list-profiles.py"""
+"""Tests for list_profiles.py"""
 
 import json
 import subprocess
@@ -19,7 +19,7 @@ from importlib.util import spec_from_file_location, module_from_spec
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fake_resolver import install_resolver  # noqa: E402
 
-SCRIPT_PATH = Path(__file__).parent.parent / "list-profiles.py"
+SCRIPT_PATH = Path(__file__).parent.parent / "list_profiles.py"
 
 spec = spec_from_file_location(
     "list_profiles",
@@ -235,6 +235,51 @@ class TestListProfiles(TmpPathTestCase):
         result = check_profile(profiles_dir, "Ember Hollow - Redux")
         self.assertEqual(result["slug"], "ember-hollow-redux")
 
+    def test_yml_file_is_skipped_with_the_rename_it_needs(self):
+        # The other scripts read {slug}.yaml only, so a .yml is not a usable profile.
+        profiles_dir = self._store(**{"good": "Good Band"})
+        (profiles_dir / "odd-band.yml").write_text(yaml.dump({**SAMPLE_PROFILE, "name": "Odd Band"}))
+        listing = list_profiles(profiles_dir)
+        self.assertEqual((listing["count"], listing["status"]), (1, "warning"))
+        self.assertEqual([s["file"] for s in listing["skipped"]], ["odd-band.yml"])
+        self.assertIn("rename it to odd-band.yaml", listing["skipped"][0]["reason"])
+        for query in ("odd-band", "Odd Band", "odd-band.yml"):
+            with self.subTest(query=query):
+                result = check_profile(profiles_dir, query)
+                self.assertIs(result["exists"], False)
+                self.assertEqual((result["status"], result["yml_file"]), ("warning", "odd-band.yml"))
+                self.assertIn("rename it to odd-band.yaml", result["message"])
+
+    def test_check_flags_a_match_that_cannot_be_read(self):
+        profiles_dir = self._store()
+        (profiles_dir / "broken.yaml").write_text(": {{invalid")
+        (profiles_dir / "notes.yaml").write_text("- just\n- a list\n")
+        broken = check_profile(profiles_dir, "broken")
+        self.assertIs(broken["exists"], True)
+        self.assertEqual(broken["status"], "warning")
+        self.assertIn("unreadable", broken["unreadable"])
+        self.assertIn("not a YAML mapping", check_profile(profiles_dir, "notes")["unreadable"])
+        (profiles_dir / "fine.yaml").write_text(yaml.dump(SAMPLE_PROFILE))
+        fine = check_profile(profiles_dir, "fine")
+        self.assertEqual(fine["status"], "pass")
+        self.assertNotIn("unreadable", fine)
+
+    def test_check_finds_a_name_with_no_derivable_slug(self):
+        profiles_dir = self._store(**{"tokyo-jihen": "東京事変", "other": "Other Band"})
+        result = check_profile(profiles_dir, "東京事変")
+        self.assertIs(result["exists"], True)
+        self.assertEqual((result["slug"], result["matched_by"]), ("tokyo-jihen", "name"))
+        self.assertIs(check_profile(profiles_dir, "椎名林檎")["exists"], False)
+
+    def test_check_accented_name_finds_its_folded_slug(self):
+        profiles_dir = self._store(**{"sigur-ros": "Sigur Rós"})
+        result = check_profile(profiles_dir, "Sigur Rós")
+        self.assertEqual((result["exists"], result["slug"]), (True, "sigur-ros"))
+
+    def test_check_explicit_filename_is_reported_as_such(self):
+        profiles_dir = self._store(**{"test-band": "Test Band"})
+        self.assertEqual(check_profile(profiles_dir, "test-band.yaml")["matched_by"], "filename")
+
     def test_check_ignores_drafts(self):
         profiles_dir = self._store()
         (profiles_dir / "drafts").mkdir()
@@ -264,6 +309,23 @@ class TestCli(TmpPathTestCase):
         payload = json.loads(proc.stdout)
         self.assertEqual(payload["count"], 1)
         self.assertEqual(payload["profiles_dir"], str(profiles_dir))
+
+    def test_cli_band_name_as_positional_is_an_error_pointing_at_check(self):
+        # Before: read as an empty folder, "no band profiles created yet", status pass.
+        store = self.tmp_path / "docs" / "band-profiles"
+        store.mkdir(parents=True)
+        (store / "test-band.yaml").write_text(yaml.dump(SAMPLE_PROFILE))
+        proc = subprocess.run([sys.executable, str(SCRIPT_PATH), "Test Band"],
+                              capture_output=True, text=True, cwd=str(self.tmp_path))
+        self.assertEqual(proc.returncode, 2)
+        payload = json.loads(proc.stdout)
+        self.assertEqual(payload["status"], "error")
+        self.assertIn('--check "Test Band"', payload["error"])
+
+    def test_cli_profiles_dir_flag_may_name_a_folder_not_yet_created(self):
+        proc = _run("--profiles-dir", str(self.tmp_path / "not-yet"))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(json.loads(proc.stdout)["count"], 0)
 
     def test_cli_profiles_dir_flag_overrides_positional(self):
         tmp_path = self.tmp_path

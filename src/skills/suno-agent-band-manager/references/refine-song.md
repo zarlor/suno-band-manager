@@ -1,11 +1,4 @@
----
-name: refine-song
-description: Bring back a Suno take — diagnose what's off through the Feedback Elicitor and rebuild only the changed parts of the package through the pipeline.
-code: RS
----
-
 **Language:** Use `{communication_language}` for all output.
-**Variables:** `{project-root}`, `{communication_language}`
 
 **Preference shard first.** If `{project-root}/docs/mac-preferences-packages.md` exists (the wake lists it under `voice_context.preference_shards`), read it in full before anything else here: it holds the owner's package, prompt, slider and pipeline rules. The pipeline guard blocks a package presented without it.
 
@@ -17,9 +10,9 @@ The owner has tried a package on Suno and is back with a take. This is the one p
 
 **From this session** (create-song ran earlier): the package, model, settings, band profile and intent are already in context.
 
-**Starting fresh:** look the song up before asking for technical details. `memory/catalog/recently-published.md` lists the latest; for anything else run `uv run {skill-root}/scripts/songbook-catalog.py "{project-root}" --title "<words they used>"` (or `--band <slug> --since <date>` for "the one from last week"). Confirm: "Is this the one you're refining? {title / style prompt preview}". If nothing matches, ask what they generated and with which prompts.
+**Starting fresh:** look the song up before asking for technical details. `memory/catalog/recently-published.md` lists the latest; for anything else run `uv run {skill-root}/scripts/songbook_catalog.py "{project-root}" --title "<words they used>"` (or `--band <slug> --since <date>` for "the one from last week"). Confirm: "Is this the one you're refining? {title / style prompt preview}". If nothing matches, ask what they generated and with which prompts.
 
-**Minimal context path:** If the user can't give details ("I just hit Create"), work with what they have: infer the model from tier (Free = v6-mini; paid = v6 unless the package ran on v6-wild), don't ask about sliders on Free, and accept a plain reaction — "I pasted X and got Y, but it sounds too Z" is enough. The Feedback Elicitor handles vague feedback.
+**Minimal context path:** If the user can't give details ("I just hit Create"), work with what they have: infer the model from the tier (its default model, unless the package ran on another; `references/SUNO-REFERENCE.md` → "Model Comparison" has the line-up), don't ask about sliders on Free, and accept a plain reaction — "I pasted X and got Y, but it sounds too Z" is enough. The Feedback Elicitor handles vague feedback.
 
 **Downloads:** the take is heard in the browser; refinement doesn't need it downloaded. Measuring it does (the `suno-feedback-elicitor` skill's Analyze Audio, `--headless:audio`, on a file the owner already has) — when a script reading would settle the question (tempo, loudness, a section that ran together), say that downloading it uses one of the cycle's downloads (the count is in `memory/work/downloads.md`) and update the count if they download.
 
@@ -43,12 +36,13 @@ Load the sanctum's `memory/disciplines/package-assembly.md`: re-running the pipe
 
 Offer each rebuild the recommendations call for ("Want me to rebuild the style prompt with these changes?"):
 
-- **Style prompt or exclusion changes** → `suno-style-prompt-builder --headless:refine`, passing the Feedback Elicitor's `adjustment_recommendations` straight through (the builder accepts that shape).
+- **Style prompt or exclusion changes** → `suno-style-prompt-builder --headless:refine`, passing the Feedback Elicitor's `adjustment_recommendations` straight through (the builder accepts that shape), with the `tier` (the builder returns `blocked` with `missing: ["tier"]` when none resolves).
 - **Lyric changes** → `suno-lyric-transformer --headless:refine` with the current lyrics as `source_lyrics`, the adjustments, and `song_path` when the song has a songbook entry (the transformer then appends its decision log beside it and won't undo a logged intentional keep).
 - **Both** → run them in parallel when independent; when a lyric change shapes the style (a new bridge needs a musical transition), run lyrics first.
 - **Slider or setting changes only** → no skill re-run; present them as a short note.
-- **Model suggestion** → "The Feedback Elicitor thinks {v6-wild | v6 | v6-mini} might handle this better because of [reason]. Want to try the next generation on it?"
+- **Model suggestion** → say which model the Feedback Elicitor suggests and its reason, and offer to run the next generation on it.
 - **Studio features** → present the workflow (e.g., "Try Replace Section on the chorus instead of regenerating the whole song"). Replace Section and stems are Pro **and** Premier; **Suno Studio is Premier-only** and nothing in Studio 2.0 reaches Pro — don't offer a Studio workflow to a Pro user.
+- **An edit in Suno instead of a new generation** — the diagnosis recommends a Studio or editor feature, the fix is Replace Section, Extend, Crop, a fade, stems, Remaster, Add Vocals or a Cover, or the owner asks how one of those works → before describing the steps, load the matching section of `references/STUDIO-EDITOR-REFERENCE.md`; its "How to Load This File" table names the section for each case. The steps and their limits change with Suno's releases, so they come from that file and not from memory.
 
 ## Step 4: Present the Update
 
@@ -60,7 +54,7 @@ Present the update as the discipline's "Presenting a refinement" says for the ow
 ### What Changed
 - {Bullet list of adjustments and why}
 
-{changes: only the sections that changed; full: every field. Either way in the package's Create-screen order (create-song Step 5)}
+{changes: only the sections that changed; full: every field. Either way in the Create-screen order the sanctum's CREED.md gives (Package Assembly Rule core)}
 ```
 
 Then: "Give this version a spin on Suno — listen in the browser, and come back with what you hear. That's how records get made."
@@ -69,7 +63,7 @@ Then: "Give this version a spin on Suno — listen in the browser, and come back
 
 If the feedback revealed a **systematic preference** rather than a one-song tweak, suggest a profile update ("You've mentioned wanting rawer vocals twice now — want me to update your band profile's vocal direction?") and make it through `suno-band-profile-manager`.
 
-**Published songs:** a refinement that edits a song already in the songbook is a published-attribute change. Its cross-file updates (playlist YAML, voice file, songbook Settings block) go in the same write batch — the sanctum `CREED.md` "Sync at the point of change" principle — and a rename runs `references/reconcile.md` in that batch. Afterwards, `uv run {skill-root}/scripts/validate-sidecar.py "{project-root}" --format json` is the backstop. A refinement of the current, not-yet-saved iteration has nothing to sync.
+**Published songs:** a refinement that edits a song already in the songbook is a published-attribute change. Its cross-file updates (playlist YAML, voice file, songbook Settings block) go in the same write batch — the sanctum `CREED.md` "Sync at the point of change" principle — and a rename runs `references/reconcile.md` in that batch. Afterwards, `uv run {skill-root}/scripts/validate_sanctum.py "{project-root}" --format json` is the backstop. A refinement of the current, not-yet-saved iteration has nothing to sync.
 
 **A keeper downloaded or published:** load `references/post-publish.md`.
 

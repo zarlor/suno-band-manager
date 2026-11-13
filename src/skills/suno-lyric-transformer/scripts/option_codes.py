@@ -5,8 +5,8 @@
 # ///
 """The transformation option codes: the one table the skill and its scripts share.
 
-validate-options.py checks selections against it and prints it as the menu
-(`--list`); assemble-summary.py renders applied codes from it. Edit codes,
+validate_options.py checks selections against it and prints it as the menu
+(`--list`); assemble_summary.py renders applied codes from it. Edit codes,
 names or effects here only.
 """
 
@@ -24,9 +24,10 @@ OPTION_CODES = {
 
 CODE_NAMES = {code: name for code, (name, _) in OPTION_CODES.items()}
 
-# The selection rules validate-options.py enforces, as the menu states them.
+# The selection rules validate_options.py enforces, as the menu states them.
 RULES = [
     "FR and WF exclude each other.",
+    "CC and WF exclude each other (a new chorus is new words; under WF, CE promotes the writer's own lines).",
     "FR drops CE (a full rewrite has no existing hook to promote).",
     "CC may drop when CE finds a strong chorus; the user can keep both.",
 ]

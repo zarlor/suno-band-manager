@@ -1,6 +1,6 @@
 # Poem-to-Song Strategies
 
-What Suno does with a poem's shape, and the structures that work around it. Section line ranges live in `section-length-checker.py`.
+What Suno does with a poem's shape, and the structures that work around it. Section line ranges live in `section_length_checker.py`.
 
 ## Let the Words Set the Length
 

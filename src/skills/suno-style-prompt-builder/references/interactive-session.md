@@ -2,9 +2,9 @@
 
 Read at the start of an interactive run. Headless runs return JSON instead (`references/headless-contract.md`).
 
-## Intake (Step 1)
+## Intake (Step 1: Gather Inputs)
 
-**Open the floor first.** Invite everything in one go: genre, mood, "sounds like X meets Y", a band profile, reference tracks, target model, exclusions. Then ask only for what's missing. With a profile in hand, ask what this song should do differently from the baseline. If the opening already gives model, direction and creativity intent, go straight to building and confirm only genuine ambiguities. If the profile isn't found, list the profiles folder and fill missing fields from the conversation.
+**Open the floor first.** Invite everything in one go: genre, mood, "sounds like X meets Y", a band profile, reference tracks, target model, exclusions. Then ask only for what's missing. With a profile in hand, ask what this song should do differently from the baseline. If the opening already gives model, direction and creativity intent, go straight to building and confirm only genuine ambiguities. If the profile isn't found or won't parse as YAML, say which, list the profiles folder and fill missing fields from the conversation.
 
 **Show a reference decomposition before building on it,** so the user can confirm or correct your read of the artist.
 
@@ -63,6 +63,11 @@ After presenting, advise 3–5 Suno takes before editing the prompt, changing on
 
 Regenerate only what the change touches: a creativity change redoes the style prompt and the wild card; a model change redoes the formatting; an exclusion change redoes the excludes. Re-run the validator on anything regenerated. Before switching models mid-refinement, preview what the switch changes.
 
-**Version ledger.** As each version is presented, append `vN | {key change} | {variable changed}` to `{workflow.ledger_output_path}`. `{song-slug}` is the working title (or, with no title, the profile name and the genre joined by a space) lowercased, each run of characters other than `a-z` and `0-9` replaced by one hyphen, and hyphens trimmed from both ends: "Sightless Black (v2)" becomes `sightless-black-v2`. Start the file fresh on v1 of a new song; a refine of the same song appends. The end-of-session summary of versions and their deltas reads from this file, so it survives compaction however long the loop runs.
+**Version ledger.** As each version is presented, append `vN | {key change} | {variable changed}` to `{workflow.ledger_output_path}`, so the end-of-session summary of versions and their deltas reads from a file and survives compaction however long the loop runs.
+
+- `{output_folder}` and `{active_initiative}` in that path come from activation's config load; with no active initiative, drop that segment.
+- `{song-slug}` is the working title (or, with no title, the profile name and the genre joined by a space) lowercased, each run of characters other than `a-z` and `0-9` replaced by one hyphen, and hyphens trimmed from both ends: "Sightless Black (v2)" becomes `sightless-black-v2`. A title that leaves nothing (no `a-z` or `0-9` in it) takes `untitled-` plus today's date, so two such songs don't share an empty name.
+- Start the file fresh on v1 of a new song; a refine of the same song appends.
+- A ledger already at `{project-root}/.style-prompt-ledger-{song-slug}.md`, the earlier default, is continued where it is.
 
 The session is complete when the user accepts the package, ends the session, or hands off to another skill. Then run `{workflow.on_complete}` if it's set.

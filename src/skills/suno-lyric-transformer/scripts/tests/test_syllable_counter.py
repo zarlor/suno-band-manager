@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for syllable-counter.py"""
+"""Tests for syllable_counter.py"""
 
 import json
 import subprocess
@@ -11,7 +11,7 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "syllable-counter.py")
+SCRIPT = str(Path(__file__).parent.parent / "syllable_counter.py")
 
 
 def run_script(*args):
@@ -25,7 +25,7 @@ def run_script(*args):
 
 # Also test the count_syllables function directly
 import importlib.util
-_spec = importlib.util.spec_from_file_location("syllable_counter", Path(__file__).parent.parent / "syllable-counter.py")
+_spec = importlib.util.spec_from_file_location("syllable_counter", Path(__file__).parent.parent / "syllable_counter.py")
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 count_syllables = _mod.count_syllables
@@ -75,6 +75,53 @@ class TestLyricsAnalysis(unittest.TestCase):
         self.assertEqual(report["script"], "syllable-counter")
         self.assertEqual(report["metrics"]["total_lyric_lines"], 2)
         self.assertGreater(report["metrics"]["total_syllables"], 0)
+
+    def test_min_max_and_average(self):
+        report, _ = run_script("--text", "[Verse 1]\ncat dog\nhello window morning\n")
+        m = report["metrics"]
+        self.assertEqual([d["syllables"] for d in report["line_data"]], [2, 6])
+        self.assertEqual((m["min_syllables"], m["max_syllables"], m["average_syllables_per_line"]), (2, 6, 4.0))
+        self.assertEqual(m["total_syllables"], 8)
+
+    def test_accents_and_curly_apostrophes_count_like_plain_text(self):
+        # The shared counter folds these itself; the script passes lines through untouched.
+        fancy, _ = run_script("--text", "[Verse 1]\nmeet me at the café\nwe didn’t stay\n")
+        plain, _ = run_script("--text", "[Verse 1]\nmeet me at the cafe\nwe didn't stay\n")
+        self.assertEqual([d["syllables"] for d in fancy["line_data"]], [6, 4])
+        self.assertEqual(fancy["line_data"][0]["text"], "meet me at the café")
+        self.assertEqual(plain["line_data"][1]["syllables"], 4)
+
+    def test_average_keeps_one_decimal(self):
+        report, _ = run_script("--text", "[Verse 1]\ncat dog\ncat dog bird\n")
+        self.assertEqual(report["metrics"]["average_syllables_per_line"], 2.5)
+
+    def test_line_without_countable_syllables_is_set_aside(self):
+        # Digits, punctuation and emoji count 0: such a line must not become the minimum.
+        report, _ = run_script("--text", "[Verse 1]\ncat dog\n1999\n...\n\U0001F525\U0001F525\nhello window morning\n")
+        m = report["metrics"]
+        self.assertEqual([d["line_number"] for d in report["line_data"]], [2, 6])
+        self.assertEqual((m["min_syllables"], m["max_syllables"], m["average_syllables_per_line"]), (2, 6, 4.0))
+        self.assertEqual([(d["line_number"], d["script"]) for d in report["skipped_lines"]],
+                         [(3, "uncountable"), (4, "uncountable"), (5, "uncountable")])
+        self.assertEqual(m["skipped_line_count"], 3)
+
+    def test_uncountable_lines_still_count_toward_duration(self):
+        with_digits, _ = run_script("--text", "[Verse 1]\ncat dog\n1999\n")
+        without, _ = run_script("--text", "[Verse 1]\ncat dog\n")
+        self.assertGreater(with_digits["metrics"]["estimated_duration"]["max_seconds"],
+                           without["metrics"]["estimated_duration"]["max_seconds"])
+
+    def test_cued_section_tag_starts_a_section(self):
+        lyrics = "[Verse 1]\nshort line here\nanother short one\n\n[Chorus: anthemic]\nthe chorus comes in strong\n"
+        report, _ = run_script("--text", lyrics)
+        self.assertEqual([(s["section"], s["line_count"]) for s in report["section_analysis"]],
+                         [("[Verse 1]", 2), ("[Chorus: anthemic]", 1)])
+
+    def test_cue_tag_does_not_split_a_section(self):
+        lyrics = "[Verse 1]\nshort line here\n[Harmonized]\nanother short one\n[Banana]\nand one more line\n"
+        report, _ = run_script("--text", lyrics)
+        self.assertEqual([(s["section"], s["line_count"]) for s in report["section_analysis"]],
+                         [("[Verse 1]", 3)])
 
     def test_section_grouping(self):
         lyrics = (
@@ -154,16 +201,23 @@ class TestDurationEstimation(unittest.TestCase):
         self.assertEqual(max_s, 0)
 
     def test_one_line(self):
-        # 7.0 avg syllables = mid range (3.0-4.5 secs/line)
+        # 7.0 avg syllables is still the low-density range (3.5-5.5 secs/line)
         min_s, max_s = estimate_duration(1, 7.0)
-        self.assertEqual(min_s, round(1 * 3.5))  # low-density range
+        self.assertEqual(min_s, round(1 * 3.5))
         self.assertEqual(max_s, round(1 * 5.5))
 
-    def test_typical_song(self):
-        # 20 lines at 7.0 avg syllables (mid range)
-        min_s, max_s = estimate_duration(20, 7.0)
-        self.assertEqual(min_s, round(20 * 3.5))  # 70
-        self.assertEqual(max_s, round(20 * 5.5))  # 110
+    def test_low_density_song(self):
+        # 20 lines at 7.0 avg syllables: the upper edge of the low-density range
+        self.assertEqual(estimate_duration(20, 7.0), (70, 110))
+
+    def test_mid_density_song(self):
+        # Above 7 and up to 10 avg syllables: 3.0-4.5 secs/line
+        self.assertEqual(estimate_duration(20, 9.0), (60, 90))
+
+    def test_density_range_edges(self):
+        self.assertEqual(estimate_duration(20, 7.1), (60, 90))    # just into mid
+        self.assertEqual(estimate_duration(20, 10.0), (60, 90))   # top of mid
+        self.assertEqual(estimate_duration(20, 10.1), (50, 80))   # just into high
 
     def test_high_density_faster(self):
         # High syllable density = faster delivery = less time per line
@@ -249,10 +303,13 @@ class TestLatinOnly(unittest.TestCase):
         self.assertGreater(with_solo["metrics"]["estimated_duration"]["min_seconds"],
                            plain["metrics"]["estimated_duration"]["min_seconds"] + 20)
 
-    def test_without_flag_every_line_counts(self):
+    def test_without_flag_only_a_line_with_nothing_to_count_is_skipped(self):
         report, _ = run_script("--text", self.MIXED)
-        self.assertEqual(len(report["line_data"]), 4)
-        self.assertEqual(report["skipped_lines"], [])
+        # The mixed line still counts its Latin words; the all-Japanese line counts 0
+        # and is listed with its script class rather than dragging the minimum to 0.
+        self.assertEqual([d["line_number"] for d in report["line_data"]], [2, 4, 5])
+        self.assertEqual([(d["line_number"], d["script"]) for d in report["skipped_lines"]], [(3, "non_latin")])
+        self.assertGreater(report["metrics"]["min_syllables"], 0)
         self.assertIs(report["metrics"]["latin_only"], False)
 
     def test_findings_exit_zero(self):

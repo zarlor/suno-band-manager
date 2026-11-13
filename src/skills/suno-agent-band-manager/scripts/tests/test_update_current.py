@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # ///
-"""Tests for update-current.py — one song's bullet in current.md, changed in place."""
+"""Tests for update_current.py — one song's bullet in current.md, changed in place."""
 
 import json
 import subprocess
@@ -11,8 +11,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parent.parent / "update-current.py"
-REL = Path("_bmad/memory/suno-agent-band-manager/memory/work/current.md")
+SCRIPT = Path(__file__).resolve().parent.parent / "update_current.py"
+SANCTUM = Path("_bmad/memory/suno-agent-band-manager")
+REL = SANCTUM / "memory/work/current.md"
 
 CURRENT = """# Current Work
 
@@ -36,6 +37,8 @@ class UpdateCurrent(unittest.TestCase):
         self.path = self.root / REL
         self.path.parent.mkdir(parents=True)
         self.path.write_text(CURRENT, encoding="utf-8")
+        # A checkpoint needs a v7 sanctum: its CREED.md is the marker.
+        (self.root / SANCTUM / "CREED.md").write_text("# Creed\n", encoding="utf-8")
 
     def test_replaces_only_that_songs_bullet_and_continuation(self):
         code, out = run(self.root, "--song", "low tide ledger", "--text", "(Tidewater Rail) — swing 3 captured.")
@@ -70,6 +73,41 @@ class UpdateCurrent(unittest.TestCase):
         with tempfile.TemporaryDirectory() as bare:
             code, _ = run(bare, "--song", "x", "--text", "y")
         self.assertEqual(code, 2)
+
+    def test_empty_entry_is_bad_input(self):
+        code, out = run(self.root, "--song", "Salt Road", "--text", "   ")
+        self.assertEqual((code, out["status"]), (2, "error"))
+        self.assertEqual(self.path.read_text(encoding="utf-8"), CURRENT)
+
+    def test_no_v7_sanctum_is_refused_and_nothing_is_created(self):
+        """A checkpoint before the sanctum exists (an old store still to convert, or no
+        birth yet) must not leave a stub sanctum behind."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            legacy = root / "_bmad" / "_memory" / "band-manager-sidecar"
+            legacy.mkdir(parents=True)
+            (legacy / "MEMORY.md").write_text("# old\n", encoding="utf-8")
+            for args in (("--text", "brief."), ("--remove",)):
+                with self.subTest(args=args):
+                    code, out = run(root, "--song", "Salt Road", *args)
+                    self.assertEqual((code, out["status"]), (1, "refused"))
+                    self.assertIn("no v7 sanctum", out["reason"])
+                    self.assertFalse((root / "_bmad" / "memory").exists())
+            self.assertEqual(sorted(p.name for p in (root / "_bmad").iterdir()), ["_memory"])
+
+    def test_sanctum_without_its_creed_is_refused(self):
+        (self.root / SANCTUM / "CREED.md").unlink()
+        code, out = run(self.root, "--song", "Salt Road", "--text", "brief.")
+        self.assertEqual((code, out["status"]), (1, "refused"))
+        self.assertEqual(self.path.read_text(encoding="utf-8"), CURRENT)
+
+    def test_unreadable_current_file_is_refused_and_left_alone(self):
+        raw = b"# Current Work\n\n- **Salt Road** caf\xe9 brief.\n"
+        self.path.write_bytes(raw)
+        code, out = run(self.root, "--song", "Salt Road", "--text", "new brief.")
+        self.assertEqual((code, out["status"]), (1, "refused"))
+        self.assertIn("could not be read or written", out["reason"])
+        self.assertEqual(self.path.read_bytes(), raw)
 
 
 if __name__ == "__main__":

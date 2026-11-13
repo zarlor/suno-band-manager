@@ -65,26 +65,26 @@ The orchestrating agent and each skill have their own documentation:
 
 | Component | Purpose | Key Scripts |
 |-----------|---------|-------------|
-| [**Mac (Band Manager)**](USAGE.md) | Orchestrating agent — guides the full song creation workflow across all skills | `pre-activate.py` (the wake: `--wake`, `--pulse`), `validate-sidecar.py`, `songbook-catalog.py`, `find-stale-refs.py`, `upgrade-sanctum.py`, `check-memory-health.py`, `validate-path.py`, `configure-guard.py` (installs the pipeline guard) |
-| [**Band Profile Manager**](src/skills/suno-band-profile-manager/SKILL.md) | CRUD for band identity profiles, writer voice analysis, tier feature awareness, per-band playlist YAML | `apply-profile.py`, `validate-profile.py`, `list-profiles.py`, `tier-features.py`, `diff-profiles.py`, `scaffold-playlist.py` |
-| [**Style Prompt Builder**](src/skills/suno-style-prompt-builder/SKILL.md) | Model-aware style prompt generation with creativity modes and wild card variants | `validate-prompt.py` |
-| [**Lyric Transformer**](src/skills/suno-lyric-transformer/SKILL.md) | Poem/text to Suno-ready structured lyrics with metatags and cliché detection | `validate-lyrics.py`, `cliche-detector.py`, `syllable-counter.py`, `analyze-input.py`, `section-length-checker.py`, `lyrics-diff.py`, `spacing-check.py` (the writer's spacing survives verbatim), `validate-options.py`, `assemble-summary.py` |
-| [**Feedback Elicitor**](src/skills/suno-feedback-elicitor/SKILL.md) | Post-generation feedback triage and guided refinement with musical vocabulary translation. Also hosts the audio-analysis toolkit and multi-machine audio verification scripts | `parse-feedback.py`, `map-adjustments.py`, `feedback-log.py`, `analyze-audio.py`, `audio-deep-analysis.py`, `chord-progression.py`, `tempo-detail.py`, `beat-grid.py`, `vocal-placement.py`, `section-map.py`, `audio-files-manifest.py`, `verify-audio-files.py` |
-| [**Playlist Sequencer**](src/skills/suno-playlist-sequencer/SKILL.md) | Album-craft track ordering: energy arcs, key moves, locked arcs, encore design | `playlist-sequencing-data.py`, `batch-full-analysis.py`, `validate-sequence.py` |
+| [**Mac (Band Manager)**](USAGE.md) | Orchestrating agent — guides the full song creation workflow across all skills | `pre_activate.py` (the wake: `--wake`, `--pulse`), `validate_sanctum.py`, `songbook_catalog.py`, `find_stale_refs.py`, `upgrade_sanctum.py`, `check_memory_health.py`, `validate_path.py`, `configure_guard.py` (installs the pipeline guard) |
+| [**Band Profile Manager**](src/skills/suno-band-profile-manager/SKILL.md) | CRUD for band identity profiles, writer voice analysis, tier feature awareness, per-band playlist YAML | `apply_profile.py`, `validate_profile.py`, `list_profiles.py`, `tier_features.py`, `diff_profiles.py`, `scaffold_playlist.py` |
+| [**Style Prompt Builder**](src/skills/suno-style-prompt-builder/SKILL.md) | Model-aware style prompt generation with creativity modes and wild card variants | `validate_prompt.py`, `strategy_sections.py` |
+| [**Lyric Transformer**](src/skills/suno-lyric-transformer/SKILL.md) | Poem/text to Suno-ready structured lyrics with metatags and cliché detection | `validate_lyrics.py`, `cliche_detector.py`, `syllable_counter.py`, `analyze_input.py`, `section_length_checker.py`, `lyrics_diff.py`, `spacing_check.py` (the writer's spacing survives verbatim), `validate_options.py`, `assemble_summary.py` |
+| [**Feedback Elicitor**](src/skills/suno-feedback-elicitor/SKILL.md) | Post-generation feedback triage and guided refinement with musical vocabulary translation. Also hosts the audio-analysis toolkit and multi-machine audio verification scripts | `parse_feedback.py`, `map_adjustments.py`, `feedback_log.py`, `analyze_audio.py`, `audio_deep_analysis.py`, `chord_progression.py`, `tempo_detail.py`, `beat_grid.py`, `vocal_placement.py`, `section_map.py`, `audio_files_manifest.py`, `verify_audio_files.py` |
+| [**Playlist Sequencer**](src/skills/suno-playlist-sequencer/SKILL.md) | Album-craft track ordering: energy arcs, key moves, locked arcs, encore design | `playlist_sequencing_data.py`, `batch_full_analysis.py`, `validate_sequence.py` |
 | **Module record** (`src/skills/bmod-suno/`) | BMad v7 record: `bmod.toml` (module code `suno`, version, update source, the five setup questions), `roster.toml` (Mac), `help/` (what `bmad` tells users about the module), `retired.toml` (retires `suno-setup`) | — |
 
 Each skill (not the module record) can be invoked directly for standalone use — see the linked `SKILL.md` files (each routes to its references, including its headless contract) and [USAGE.md](USAGE.md).
 
 ### Per-band playlist sequencing methodology
 
-Each band has a canonical `docs/{band-slug}-playlist.yaml` as its single source of truth. The `playlist-sequencing-data.py` script reads it and produces:
+Each band has a canonical `docs/{band-slug}-playlist.yaml` as its single source of truth. The `playlist_sequencing_data.py` script reads it and produces:
 
 - A persistent JSON archive at `docs/audio-analysis/playlists/{band-slug}.json` (durable raw data — read it directly to answer different questions of the same audio without re-running)
 - An auto-refreshed Markdown summary at `docs/{band-slug}-playlist-sequencing.md` (Camelot key moves rated `key_compat` compatible / near / distant — the key relationship only — plus the BPM change, the loudness step, energy levels and intro/outro percentages, each read separately)
 
 The album-craft methodology (per-track variables, energy arc models including W-shape, key positions, locked-arc preservation, sonic palette variety, encore structure) is documented at [`src/skills/suno-playlist-sequencer/references/playlist-sequencing-methodology.md`](src/skills/suno-playlist-sequencer/references/playlist-sequencing-methodology.md). Multi-band projects keep each band's playlist independent — there's no shared global file that drifts between bands.
 
-For multi-machine projects, `audio-files-manifest.py` generates a small `docs/audio-files-manifest.yaml` (audio MP3s are too large to ship in the sync archive) and `verify-audio-files.py` runs on the receiving machine after sync-unpack to flag missing / wrong-gen / extra files. The verifier is filename-normalization-aware (`Foo.mp3` ≡ `Foo-v2.mp3` ≡ `Foo (NSFW).mp3` for song-identity matching) and size-tolerance-aware (absorbs Suno's per-download ID3 metadata variance so identical-audio doesn't false-positive as different gen).
+For multi-machine projects, `audio_files_manifest.py` generates a small `docs/audio-files-manifest.yaml` (audio MP3s are too large to ship in the sync archive) and `verify_audio_files.py` runs on the receiving machine after sync-unpack to flag missing / wrong-gen / extra files. The verifier is filename-normalization-aware (`Foo.mp3` ≡ `Foo-v2.mp3` ≡ `Foo (NSFW).mp3` for song-identity matching) and size-tolerance-aware (absorbs Suno's per-download ID3 metadata variance so identical-audio doesn't false-positive as different gen).
 
 ## Prerequisites
 
@@ -100,7 +100,7 @@ For multi-machine projects, `audio-files-manifest.py` generates a small `docs/au
 | Python — core scripts | 3.11+ | Most scripts are dependency-free or need only `pyyaml` ≥ 6.0 |
 | Python — audio analysis | **3.12+** | Required by librosa 1.0; `uv run` downloads a suitable Python on its own if your system one is older |
 | Audio libraries | `librosa` ≥ 1.0, `numpy` ≥ 2.1, `pyloudnorm` ≥ 0.2 | Optional — only for the audio-analysis and playlist-sequencing scripts; auto-provisioned by `uv run` |
-| Optional heavy tools | PyTorch ≥ 2.1 with `beat-this` ≥ 1.1 (`beat-grid.py`) `demucs` ≥ 4.0.1 (`vocal-placement.py`), or `demucs` plus `faster-whisper` ≥ 1.1 (`section-map.py`) | Opt-in only — nothing else pulls them in. First run provisions 1–3 GB plus the model weights; a CUDA GPU helps (Demucs on CPU takes minutes per track) |
+| Optional heavy tools | PyTorch ≥ 2.1 with `beat-this` ≥ 1.1 (`beat_grid.py`) `demucs` ≥ 4.0.1 (`vocal_placement.py`), or `demucs` plus `faster-whisper` ≥ 1.1 (`section_map.py`) | Opt-in only — nothing else pulls them in. First run provisions 1–3 GB plus the model weights; a CUDA GPU helps (Demucs on CPU takes minutes per track) |
 - **BMad Method v7** (the standard setup) — BMad's `bmad` skill, version 6.13.0-next or later (v7 is published under that version string; this release is built on that early v7 build), sets the module's answers (`bmad setup suno`), checks for updates, and answers "what next?" questions. The skills also run without it, on their default answers — see [Standalone, without BMad](#standalone-without-bmad). BMad v6 (6.12 and earlier) is not supported from module 4.0.0
 
 ### Optional: Audio Analysis
@@ -119,9 +119,9 @@ This unlocks:
 - **Catalog-wide batch analysis** — tempo stability, dynamic character (FLAT / MODERATE / DYNAMIC / HIGHLY-DYNAMIC), energy shifts >20%, section boundary detection across every track at once
 - **JSON archive layer** — every analysis is persisted to `docs/audio-analysis/{songs,playlists,catalog}/` so future sessions read the archive instead of re-running the script
 - **Auto-refreshed Markdown summaries** — each script writes a human-readable companion doc (per-band for playlist sequencing, catalog-wide for the others) that auto-refreshes between AUTOGEN markers; hand-curated content outside the markers is preserved
-- **Multi-machine audio file verification** — `audio-files-manifest.py` + `verify-audio-files.py` close the audio-drift gap when MP3s are too large to ship in the portable sync archive
+- **Multi-machine audio file verification** — `audio_files_manifest.py` + `verify_audio_files.py` close the audio-drift gap when MP3s are too large to ship in the portable sync archive
 
-Three further tools are opt-in because they need PyTorch: **`beat-grid.py`** (Beat This! neural beat and downbeat tracking — a second opinion on tempo and bar grouping), **`vocal-placement.py`** (Demucs stem separation — how loud the voice sits against the band), and **`section-map.py`** (Demucs plus Whisper — lines a render up with its lyrics to show when each tagged section lands and how it sounds). Run them through `uv run` like the others; the first run provisions PyTorch and downloads the model weights. Turn on **PyTorch audio tools** with `bmad setup suno` and the other audio scripts take their tempo from Beat This! instead of librosa; leave it off and they stay librosa-only.
+Three further tools are opt-in because they need PyTorch: **`beat_grid.py`** (Beat This! neural beat and downbeat tracking — a second opinion on tempo and bar grouping), **`vocal_placement.py`** (Demucs stem separation — how loud the voice sits against the band), and **`section_map.py`** (Demucs plus Whisper — lines a render up with its lyrics to show when each tagged section lands and how it sounds). Run them through `uv run` like the others; the first run provisions PyTorch and downloads the model weights. Turn on **PyTorch audio tools** with `bmad setup suno` and the other audio scripts take their tempo from Beat This! instead of librosa; leave it off and they stay librosa-only.
 
 First run provisions PyTorch (about 3 GB with the CUDA build) and downloads the model weights (the Beat This! checkpoint; about 80 MB for Demucs htdemucs). **GPU:** on Linux and WSL, PyPI's current PyTorch build targets CUDA 13, which needs NVIDIA driver 580 or newer; with an older driver (or no NVIDIA GPU) the tools fall back to CPU automatically. Native Windows gets PyPI's CPU-only PyTorch build (use WSL for the GPU), and Apple Silicon Macs run on CPU. **Intel Macs are not supported** for these tools: PyTorch's last Intel-Mac build predates numpy 2, which librosa 1.0 requires. On CPU, Beat This! takes a few seconds per track; Demucs takes minutes. Demucs's first run may print an "unauthenticated requests to the HF Hub" warning — harmless.
 
@@ -270,7 +270,8 @@ src/skills/
 │   ├── SKILL.md                    # Lean bootloader — identity seed, activation routing
 │   ├── bmod.toml                   # Skill record (every skill has one): module, source, skills it needs
 │   ├── customize.toml              # Agent customization surface
-│   ├── assets/                     # Sanctum templates seeded at First Breath; menu.csv (Mac's menu)
+│   ├── assets/                     # Sanctum templates seeded at First Breath; creed.md (seed source for the
+│   │                               # creed disciplines, not loaded on waking); menu.csv (Mac's menu)
 │   ├── references/
 │   │   ├── activation.md           # Waking — identity files, memory map, greeting, menu
 │   │   ├── headless.md             # Headless capability runs (routes to the *-headless.md contracts)
@@ -282,58 +283,64 @@ src/skills/
 │   │   ├── browse-songbook.md      # SB — creative history browsing
 │   │   ├── save-memory.md          # SM — tending pass and session note
 │   │   ├── reconcile.md            # Stale-reference reconciliation
+│   │   ├── completed-wip.md        # The COMPLETED marker on a finished WIP
+│   │   ├── songbook-entry.md       # A songbook entry's path, frontmatter and body
 │   │   ├── capability-authoring.md # Authoring a capability the owner teaches Mac
 │   │   ├── prompt-quality-canon.md # Outcome-driven prompt quality
-│   │   ├── creed.md                # Seed source for the sanctum's creed disciplines (not loaded on waking)
 │   │   ├── init.md                 # First Breath — first-run setup
 │   │   ├── upgrade-v1.md           # v1 memory store → v2 (then v7 on the next wake)
 │   │   ├── upgrade-v2.md           # v2 sanctum → v7 sanctum
 │   │   ├── upgrade-sanctum.md      # Carrying a module update into the sanctum, owner's lines integrated
+│   │   ├── damaged-sanctum.md      # A sanctum with identity files missing, or an old store beside it
+│   │   ├── companion-files.md      # The preference and voice files beside the sanctum
 │   │   ├── pipeline-guard.md       # Setting up the pipeline guard
 │   │   ├── SUNO-REFERENCE.md       # Suno platform reference
 │   │   └── STUDIO-EDITOR-REFERENCE.md # Studio 2.0 and Song Editor reference
 │   └── scripts/
-│       ├── pre-activate.py         # The wake: config, sanctum state, menu (--wake, --pulse)
-│       ├── init-sanctum.py         # Scaffolds a fresh sanctum
-│       ├── upgrade-sanctum.py      # Three-way upgrade of an existing sanctum: updates, merges, checked integrations
-│       ├── migrate-sidecar-to-v2.py # v1 → v2 migration
-│       ├── migrate-sanctum-to-v7.py # v2 → v7 conversion
-│       ├── validate-sidecar.py     # Sanctum + catalog parity checks
-│       ├── find-stale-refs.py      # Old-value search for reconciliation
-│       ├── songbook-catalog.py     # Per-song catalog lookups
-│       ├── genre-coverage.py, scan-wip-status.py, reconcile-sidecar.py,
-│       │   regenerate-index-sections.py, check-memory-health.py, _sanctum_seed.py
-│       ├── pipeline-guard.py       # Stop hook: package pipeline + order guard (runs on bare python3)
-│       ├── configure-guard.py      # Installs the guard: AGENTS.md standing order + Claude Code Stop hook
-│       └── validate-path.py        # Access boundary check
+│       ├── pre_activate.py         # The wake: config, sanctum state, menu (--wake, --pulse)
+│       ├── init_sanctum.py         # Scaffolds a fresh sanctum
+│       ├── upgrade_sanctum.py      # Three-way upgrade of an existing sanctum: updates, merges, checked integrations
+│       ├── migrate_sidecar_to_v2.py # v1 → v2 migration
+│       ├── migrate_sanctum_to_v7.py # v2 → v7 conversion
+│       ├── validate_sanctum.py     # Sanctum + catalog parity checks
+│       ├── find_stale_refs.py      # Old-value search for reconciliation
+│       ├── songbook_catalog.py     # Per-song catalog lookups
+│       ├── genre_coverage.py, scan_wip_status.py, reconcile_sanctum.py,
+│       │   regenerate_index_sections.py, check_memory_health.py, _sanctum_seed.py
+│       ├── pipeline_guard.py       # Stop hook: package pipeline + order guard (runs on bare python3)
+│       ├── configure_guard.py      # Installs the guard: AGENTS.md standing order + Claude Code Stop hook
+│       └── validate_path.py        # Access boundary check
 ├── suno-band-profile-manager/ # Band profile CRUD and writer voice analysis
 │   ├── references/                 # create-profile, profile-schema, playlist-yaml, tier-features, headless
-│   └── scripts/                    # apply-profile, validate-profile, list-profiles, diff-profiles,
-│                                   # tier-features, scaffold-playlist, profile_paths, _shared/
+│   └── scripts/                    # apply_profile, validate_profile, list_profiles, diff_profiles,
+│                                   # tier_features, scaffold_playlist, profile_paths, _shared/
 ├── suno-style-prompt-builder/ # Model-aware style prompt generation
-│   ├── references/                 # model-prompt-strategies, safety-tables, retired-model-strategies,
-│   │                               # research-sources, interactive-session, headless-contract
-│   └── scripts/                    # validate-prompt, _shared/
+│   ├── references/                 # v6-build-core, model-prompt-strategies, safety-tables,
+│   │                               # retired-model-strategies, interactive-session, headless-contract
+│   └── scripts/                    # validate_prompt, strategy_sections, _shared/
 ├── suno-lyric-transformer/    # Poem/text to Suno-ready lyrics
 │   ├── references/                 # metatag-reference, section-jobs, interactive-session, headless-contract
-│   └── scripts/                    # validate-lyrics, cliche-detector, syllable-counter, analyze-input,
-│                                   # section-length-checker, lyrics-diff, spacing-check,
-│                                   # validate-options, assemble-summary, _shared/
+│   └── scripts/                    # validate_lyrics, cliche_detector, syllable_counter, analyze_input,
+│                                   # section_length_checker, lyrics_diff, spacing_check,
+│                                   # validate_options, assemble_summary, metatag_sections,
+│                                   # tag_vocab (the one tag vocabulary), script_io, option_codes, _shared/
 ├── suno-feedback-elicitor/    # Post-generation feedback refinement + audio analysis
 │   ├── references/                 # feedback-triage-guide, map-vocals, map-arrangement, map-energy-structure,
 │   │                               # map-production-mood, controls, technical-resolution, audio-analysis-scripts,
 │   │                               # gemini-audio-analysis, output-template, durable-writes, headless-contract,
-│   │                               # retired-models, research-sources
-│   └── scripts/                    # parse-feedback, map-adjustments, feedback-log, analyze-audio,
-│                                   # audio-deep-analysis, chord-progression, tempo-detail, beat-grid,
-│                                   # vocal-placement, section-map, audio-files-manifest,
-│                                   # verify-audio-files, _shared/
+│   │                               # retired-models
+│   └── scripts/                    # parse_feedback, map_adjustments, feedback_log, analyze_audio,
+│                                   # audio_deep_analysis, chord_progression, tempo_detail, beat_grid,
+│                                   # vocal_placement, section_map, audio_files_manifest,
+│                                   # verify_audio_files, _shared/
 └── suno-playlist-sequencer/   # Album-craft playlist ordering
-    ├── references/                 # playlist-sequencing-methodology, headless-contract
-    └── scripts/                    # playlist-sequencing-data, batch-full-analysis, validate-sequence, _shared/
+    ├── references/                 # playlist-sequencing-methodology, album-craft, playlist-input,
+    │                               # interactive-session, headless-contract
+    └── scripts/                    # playlist_sequencing_data, batch_full_analysis, validate_sequence, _shared/
 src/_shared/                   # Canonical shared Python helpers (edit here only)
 dev-tools/sync-shared.py       # Copies src/_shared/ into each skill's scripts/_shared/ (--check reports drift)
-dev-docs/                      # Development records: decision-logs/ (frozen) and memlog/
+dev-docs/                      # Development records: decision-logs/ (frozen), memlog/, research-sources/
+                               # (provenance for the skills' references) and reference-archive/
 ```
 
 BMad installs each skill folder on its own, so every skill whose scripts need the shared helpers carries a vendored copy in `scripts/_shared/` (among them `bmad_config.py`, which reads the `[modules.suno]` answers from BMad's TOML config layers). The canonical copies live in `src/_shared/`, outside `src/skills/`, because BMad's validator requires every folder under `src/skills/` to be a skill or a module record. Edit `src/_shared/` and run `uv run dev-tools/sync-shared.py`; a test fails if a copy drifts.

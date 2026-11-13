@@ -1,6 +1,6 @@
 # Map: Production, Mix and Mood
 
-Production character, mix space, era, and mood or vibe. The opposing-pairs table in the triage guide carries the core descriptor mappings (atmospheric, punchy, lush, lo-fi warmth and the rest); this file adds the rows it doesn't.
+Production character, mix space, era, and mood or vibe. These rows add to the opposing-pairs table (atmospheric, punchy, lush, lo-fi warmth and the rest) in `references/feedback-triage-guide.md`, which the entry loads beside this file; if it has left context, read it again before mapping.
 
 ## Production and mix
 

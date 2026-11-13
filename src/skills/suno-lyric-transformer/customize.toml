@@ -10,13 +10,14 @@
 #   scalars: override wins • arrays (persistent_facts, activation_steps_*): append
 #   arrays-of-tables with `code`/`id`: replace matching items, append new ones.
 
-# Steps to run before the standard activation (config load, greet).
-# Overrides append. Applied in headless runs too.
+# Steps run as soon as customization resolves, before config loads and before
+# any greeting. Overrides append. Applied in headless runs too.
 
 activation_steps_prepend = []
 
-# Steps to run after greet (headless: after config load) but before Step 1.
-# Overrides append. Applied in headless runs too.
+# Steps run after the greeting (headless: after the headless contract is
+# read, with no greeting) and before the input is analyzed. Overrides append.
+# Applied in headless runs too.
 
 activation_steps_append = []
 
@@ -27,9 +28,10 @@ activation_steps_append = []
 
 persistent_facts = []
 
-# Run once the lyrics are delivered: after the Step 5 handoff (and songbook
-# save, if any) interactively, or just before the headless JSON is returned,
-# e.g. "commit the songbook entry". Override wins.
+# Run once the lyrics are delivered: after the handoff (and songbook save, if
+# any) interactively, or just before the headless JSON is returned,
+# e.g. "commit the songbook entry". Not run for an analyze-only request, which
+# stops after the analysis. Override wins.
 
 on_complete = ""
 

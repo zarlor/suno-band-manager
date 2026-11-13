@@ -20,7 +20,10 @@ Archive layout:
       songs/[<band-slug>/]<song-slug>.json  (per-song scripts: audio-deep-analysis; band
                                        sub-folder when the audio lives in docs/audio/<band-slug>/)
       playlists/<album-slug>.json      (playlist-sequencing-data per album)
-      catalog/<YYYY-MM-DD>.json        (batch-full-analysis snapshots, dated)
+      catalog/<YYYY-MM-DD>-<script>[-<folder-slug>].json
+                                       (directory runs, dated; the folder slug is added for
+                                       any folder but the `audio/` catalog root, so two bands
+                                       run on one day keep separate snapshots)
 
 The archive is the durable raw-data layer; the companion `.md` files
 (see companion_writer.py) are the human-readable summaries derived from
@@ -70,16 +73,51 @@ def archive_path(category: str, identifier: str, project_root: str = ".") -> str
     return os.path.join(project_root, ARCHIVE_ROOT, category, *dirs, f"{slug}.json")
 
 
+def find_project_root(start: Optional[str] = None, default: str = ".") -> str:
+    """The project root for `start`: the nearest folder at or above it that holds `_bmad/`.
+
+    `start` is a file or a folder (it need not exist); None means the working
+    directory. Pass an audio path so a script run from another directory still
+    writes under the project the audio belongs to. Returns "." when that root is
+    the working directory, so paths print as they always have, and the absolute
+    path otherwise. `default` comes back when no folder above `start` holds `_bmad/`.
+    """
+    here = Path(os.path.abspath(start if start is not None else os.getcwd()))
+    for folder in (here, *here.parents):
+        if (folder / "_bmad").is_dir():
+            return "." if os.path.samefile(folder, os.getcwd()) else str(folder)
+    return default
+
+
+def folder_scope(folder: str) -> Optional[str]:
+    """The slug that tells one scanned folder's outputs from another's, or None.
+
+    The catalog root is an `audio/` folder: None, so its outputs keep their
+    catalog-wide names. A band folder (audio/<band-slug>/) or any other folder
+    gets its own slug.
+    """
+    name = Path(os.path.abspath(folder)).name
+    return None if name == "audio" else _slugify(name)
+
+
+def catalog_identifier(suffix: str, scope: Optional[str] = None) -> str:
+    """<YYYY-MM-DD>-<suffix>[-<scope>]: the dated catalog/ archive name for a directory run."""
+    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return f"{date}-{suffix}-{scope}" if scope else f"{date}-{suffix}"
+
+
 def input_archive_identifier(input_path: str, suffix: str) -> tuple:
     """(category, identifier) for archiving a script run over a file or a directory.
 
-    A directory run archives to catalog/<YYYY-MM-DD>-<suffix>. A single-file run
-    archives to songs/, keeping the band folder when the file sits in the
+    A directory run archives to catalog/<YYYY-MM-DD>-<suffix> for the `audio/`
+    catalog root and catalog/<YYYY-MM-DD>-<suffix>-<folder-slug> for any other
+    folder, so runs over two bands on one day never overwrite each other. A
+    single-file run archives to songs/, keeping the band folder when the file sits in the
     per-band layout (docs/audio/{band-slug}/Song.mp3 -> songs/{band-slug}/song-<suffix>).
     """
-    p = Path(input_path)
+    p = Path(os.path.abspath(input_path))
     if p.is_dir():
-        return "catalog", datetime.now(timezone.utc).strftime("%Y-%m-%d") + f"-{suffix}"
+        return "catalog", catalog_identifier(suffix, folder_scope(str(p)))
     stem = f"{p.stem}-{suffix}"
     if p.parent.parent.name == "audio":
         return "songs", f"{p.parent.name}/{stem}"
@@ -95,7 +133,7 @@ def write_archive(target_path: str, data: dict, indent: int = 2) -> dict:
     parent.mkdir(parents=True, exist_ok=True)
 
     body = json.dumps(data, indent=indent)
-    with open(target_path, "w") as f:
+    with open(target_path, "w", encoding="utf-8") as f:
         f.write(body)
         if not body.endswith("\n"):
             f.write("\n")
@@ -119,6 +157,10 @@ def resolve_archive_arg(
         None       -> archive mode not requested
         ""         -> use canonical archive path (archive_path(category, identifier))
         "<path>"   -> use the user-supplied path verbatim
+
+    `project_root` is where the canonical path starts. The default "." is the
+    working directory; pass find_project_root(<audio path>) so a run from another
+    directory still archives under the project.
     """
     if arg_value is None:
         return None

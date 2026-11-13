@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for cliche-detector.py"""
+"""Tests for cliche_detector.py"""
 
 import json
 import subprocess
@@ -11,7 +11,7 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "cliche-detector.py")
+SCRIPT = str(Path(__file__).parent.parent / "cliche_detector.py")
 
 
 def run_script(*args):
@@ -124,6 +124,46 @@ class TestClicheDetector(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0)
         self.assertIn("cliche", result.stdout.lower())
+
+
+class TestMatching(unittest.TestCase):
+    def matched(self, text):
+        report, _ = run_script("--text", text)
+        self.assertEqual(report["metrics"]["total_cliches_found"], len(report["findings"]))
+        return [f["data"]["matched_text"].lower() for f in report["findings"]]
+
+    def test_one_phrase_is_flagged_once(self):
+        # Two patterns cover this phrase; the longer match is the one cliche.
+        self.assertEqual(self.matched("There is a light at the end of the tunnel"),
+                         ["light at the end of the tunnel"])
+        self.assertEqual(self.matched("Nothing can mend my broken heart"), ["mend my broken heart"])
+
+    def test_one_phrase_is_one_category_count(self):
+        report, _ = run_script("--text", "a light at the end of the tunnel")
+        self.assertEqual(sum(report["metrics"]["categories"].values()), 1)
+
+    def test_separate_cliches_on_one_line_both_count(self):
+        self.assertEqual(self.matched("my broken heart will never give up"),
+                         ["broken heart", "never give up"])
+
+    def test_no_match_inside_longer_words(self):
+        for text in ("we walked along roads of dust", "I understand tall tales",
+                     "an unbroken heart", "the abundance in the rainbow", "you complete mess"):
+            with self.subTest(text=text):
+                self.assertEqual(self.matched(text), [])
+
+    def test_plural_and_inflected_forms_still_match(self):
+        cases = {
+            "down long roads we go": "long roads",
+            "burning brightly in the night": "burning brightly",
+            "the spark that ignites it all": "spark that ignites",
+            "your love is eternal": "your love is eternal",
+            "chasing the sunset again": "chasing the sunset",
+            "we arise from the ashes": "arise from the ashes",
+        }
+        for text, phrase in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(self.matched(text), [phrase])
 
 
 if __name__ == "__main__":

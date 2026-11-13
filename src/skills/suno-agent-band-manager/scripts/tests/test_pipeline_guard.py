@@ -2,9 +2,10 @@
 # /// script
 # requires-python = ">=3.11"
 # ///
-"""Tests for pipeline-guard.py: package structure, structural skill evidence,
+"""Tests for pipeline_guard.py: package structure, structural skill evidence,
 turn scoping, fail-open on unreadable transcripts, and the Dominion hook."""
 
+import html
 import io
 import json
 import os
@@ -17,7 +18,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 SCRIPTS = Path(__file__).resolve().parent.parent
-spec = spec_from_file_location("pipeline_guard", SCRIPTS / "pipeline-guard.py")
+spec = spec_from_file_location("pipeline_guard", SCRIPTS / "pipeline_guard.py")
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -98,12 +99,22 @@ class GuardTestCase(TempDirMixin, unittest.TestCase):
     """Shared plumbing: a temp dir, env patching, running main(), and the
     Dominion project."""
 
+    def setUp(self):
+        super().setUp()
+        # The guard reads $CLAUDE_PROJECT_DIR. Inside a Claude Code session (or
+        # any shell that exports it) the ambient value names a real project, so
+        # every test starts without it; a test that needs one calls setenv().
+        patcher = patch.dict(os.environ)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        os.environ.pop("CLAUDE_PROJECT_DIR", None)
+
     def setenv(self, key, value):
         patcher = patch.dict(os.environ, {key: value})
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def run_main(self, payload, argv=("pipeline-guard.py",)):
+    def run_main(self, payload, argv=("pipeline_guard.py",)):
         out, err = io.StringIO(), io.StringIO()
         with patch.object(sys, "argv", list(argv)), \
                 patch.object(sys, "stdin", io.StringIO(json.dumps(payload))), \
@@ -128,7 +139,7 @@ class GuardTestCase(TempDirMixin, unittest.TestCase):
         root = self.tmp_path / "proj"
         (root / "_bmad").mkdir(parents=True)
         (root / "docs").mkdir()
-        (root / "docs" / "mac-preferences-packages.md").write_text("# package rules\n")
+        (root / "docs" / "mac-preferences-packages.md").write_text("# package rules\n", encoding="utf-8")
         self.setenv("CLAUDE_PROJECT_DIR", str(root))
         return root
 
@@ -297,7 +308,7 @@ class StructuralEvidenceTests(GuardTestCase):
         subagent_file(self.tmp_path, "a1", [tool_use(
             "Read", {"file_path": f"/repo/.claude/skills/{mod.STYLE_SKILL}/SKILL.md"}, isSidechain=True)])
         subagent_file(self.tmp_path, "a2", [tool_use(
-            "Bash", {"command": f"cd /repo/.claude/skills/{mod.LYRIC_SKILL} && uv run scripts/spacing-check.py x"},
+            "Bash", {"command": f"cd /repo/.claude/skills/{mod.LYRIC_SKILL} && uv run scripts/spacing_check.py x"},
             isSidechain=True)])
         self.assertEqual(mod.check_skill_invocations(path), {mod.STYLE_SKILL, mod.LYRIC_SKILL})
 
@@ -346,10 +357,45 @@ class StructuralEvidenceTests(GuardTestCase):
                           timestamp="2026-10-01T10:00:10Z")
         subagent_file(self.tmp_path, "agrey-style-1", [before], meta={"name": "grey-style"})
         self.assertEqual(mod.check_skill_invocations(path), set())
-        after = tool_use("Bash", {"command": f"uv run /r/{mod.STYLE_SKILL}/scripts/validate-prompt.py --stdin"},
+        after = tool_use("Bash", {"command": f"uv run /r/{mod.STYLE_SKILL}/scripts/validate_prompt.py --stdin"},
                          isSidechain=True, timestamp="2026-10-01T11:01:00Z")
         subagent_file(self.tmp_path, "agrey-style-1", [before, after], meta={"name": "grey-style"})
         self.assertEqual(mod.check_skill_invocations(path), {mod.STYLE_SKILL})
+
+    def test_plugin_qualified_skill_names_count(self):
+        """Installed as a plugin, the Skill tool names a skill `<plugin>:<skill>`."""
+        path = transcript(self.tmp_path, [
+            user("make a song"),
+            skill(f"suno:{mod.STYLE_SKILL}"),
+            agent("lyrics", "toolu_b"), agent_result("toolu_b", "launched", agent_id="a2"),
+        ])
+        subagent_file(self.tmp_path, "a2", [skill(f"bmad-suno-band-manager:{mod.LYRIC_SKILL}", isSidechain=True)])
+        self.assertEqual(mod.check_skill_invocations(path), {mod.STYLE_SKILL, mod.LYRIC_SKILL})
+        # Another plugin's skill that only ends with the name is a different skill.
+        other = transcript(self.tmp_path, [user("go"), skill(f"suno:not-{mod.STYLE_SKILL}")], name="other")
+        self.assertNotIn(mod.STYLE_SKILL, mod.check_skill_invocations(other))
+
+    def test_html_escaped_return_in_a_task_notification_counts(self):
+        path = transcript(self.tmp_path, [
+            user("go"),
+            agent("lyrics", "toolu_b"), agent_result("toolu_b", "Async agent launched", agent_id="a2"),
+            notification("toolu_b", "a2", html.escape(json.dumps(LYRIC_RETURN))),
+        ])
+        self.assertIn("&quot;", Path(path).read_text(encoding="utf-8"))
+        session = mod.scan_session(path)
+        self.assertEqual(session.turns[-1].skills, {mod.LYRIC_SKILL})
+        # The returned text is kept too, for the unchanged-re-show allowance.
+        self.assertEqual(session.returned[mod.LYRIC_SKILL], {mod.normalize(LYRIC_RETURN["transformed_lyrics"])})
+
+    def test_return_nested_inside_another_object_counts(self):
+        path = transcript(self.tmp_path, [
+            user("go"),
+            agent("style", "toolu_a"),
+            agent_result("toolu_a", json.dumps({"result": {"package": STYLE_RETURN}})),
+        ])
+        session = mod.scan_session(path)
+        self.assertEqual(session.turns[-1].skills, {mod.STYLE_SKILL})
+        self.assertIn(mod.normalize(STYLE_RETURN["style_prompt"]), session.returned[mod.STYLE_SKILL])
 
     def test_inline_sidechain_entries_count(self):
         path = transcript(self.tmp_path, [
@@ -384,6 +430,28 @@ class TurnScopingTests(GuardTestCase):
             skill(mod.LYRIC_SKILL, "toolu_skill2"),
         ])
         self.assertEqual(mod.check_skill_invocations(path), {mod.STYLE_SKILL, mod.LYRIC_SKILL})
+
+    def test_compaction_local_command_and_reminder_do_not_reset_turn(self):
+        """Each of these lands between the skill runs and the package on a long
+        session; none is the owner speaking."""
+        interruptions = {
+            "compact summary": user("This session is being continued from a previous conversation...",
+                                    isCompactSummary=True),
+            "local command": user("<local-command-stdout>ok</local-command-stdout>"),
+            "system reminder": user("<system-reminder>x</system-reminder>"),
+        }
+        for label, entry in interruptions.items():
+            with self.subTest(entry=label):
+                self.assertFalse(mod.is_owner_prompt(entry))
+                path = transcript(self.tmp_path, [
+                    user("make me a song"),
+                    skill(mod.STYLE_SKILL),
+                    entry,
+                    skill(mod.LYRIC_SKILL, "toolu_skill2"),
+                ], name=label.replace(" ", "-"))
+                self.assertEqual(mod.check_skill_invocations(path), {mod.STYLE_SKILL, mod.LYRIC_SKILL})
+        # The owner's own words still start a turn.
+        self.assertTrue(mod.is_owner_prompt(user("now another one")))
 
 
 # ---------------------------------------------------------------------------
@@ -545,6 +613,31 @@ class UnchangedReshowTests(GuardTestCase):
         self.assertIn(mod.LYRIC_SKILL, decision["reason"])
         self.assertNotIn(mod.STYLE_SKILL, decision["reason"])
 
+    def test_swapped_lyric_word_reshown_as_a_tagged_lyrics_block_blocks(self):
+        """A hand-swapped word is a changed Lyrics section: the tagged block may
+        only be re-presented from a Lyric Transformer run."""
+        edited = package(lyrics=LYRICS_TEXT.replace("flickers", "shivers"))
+        path = transcript(self.tmp_path, earlier_turn_with_returns() + [user("swap flickers for shivers")])
+        decision = json.loads(self.run_main(stop_payload(edited, path)).out)
+        self.assertEqual(decision["decision"], "block")
+        self.assertIn(mod.LYRIC_SKILL, decision["reason"])
+        self.assertIn("Lyrics", decision["reason"])
+        self.assertNotIn(mod.STYLE_SKILL, decision["reason"])
+
+    def test_swapped_lyric_word_passes_through_the_transformer_or_as_a_bare_line(self):
+        """The two ways a quick word swap gets past the guard: the transformer's
+        refine run this turn, or the changed line alone (no tagged Lyrics block)."""
+        swapped = LYRICS_TEXT.replace("flickers", "shivers")
+        refine_return = {**LYRIC_RETURN, "transformed_lyrics": swapped}
+        via_skill = transcript(self.tmp_path, earlier_turn_with_returns() + [
+            user("swap flickers for shivers"),
+            agent("refine", "toolu_c"), agent_result("toolu_c", fenced(refine_return)),
+        ], name="via-skill")
+        self.assertEqual(self.run_main(stop_payload(package(lyrics=swapped), via_skill)).out.strip(), "")
+        bare = transcript(self.tmp_path, earlier_turn_with_returns() + [user("swap flickers for shivers")], name="bare")
+        line_only = "Done. Verse 1, line 1 now reads:\n\n> The porch light shivers on\n\nEverything else in the package is unchanged."
+        self.assertEqual(self.run_main(stop_payload(line_only, bare)).out.strip(), "")
+
     def test_presented_text_from_a_turn_without_the_skill_is_not_approved(self):
         """A hand-built package shown earlier doesn't become approved by being shown."""
         path = transcript(self.tmp_path, [
@@ -617,6 +710,15 @@ class DominionHookTests(GuardTestCase):
         via_skill = _write(self.tmp_path / "skill.jsonl", [user("talk to Mac"), skill(mod.AGENT_SKILL)])
         self.assertIsNotNone(mod.run_dominion_hook(write_payload(root / "src" / "x.py", via_skill)))
 
+    def test_dominion_plugin_qualified_activation_counts_as_awake(self):
+        root, _, _, _ = self.make_project()
+        via_skill = _write(self.tmp_path / "plugin-skill.jsonl", [user("talk to Mac"), skill(f"suno:{mod.AGENT_SKILL}")])
+        self.assertIsNotNone(mod.run_dominion_hook(write_payload(root / "src" / "x.py", via_skill)))
+        via_command = _write(self.tmp_path / "plugin-command.jsonl", [
+            user(f"<command-message>suno:{mod.AGENT_SKILL}</command-message>\n"
+                 f"<command-name>/suno:{mod.AGENT_SKILL}</command-name>")])
+        self.assertIsNotNone(mod.run_dominion_hook(write_payload(root / "src" / "x.py", via_command)))
+
     def test_dominion_silent_when_mac_is_not_awake(self):
         root, _, _, asleep = self.make_project()
         self.assertIsNone(mod.run_dominion_hook(write_payload(root / "src" / "x.py", asleep)))
@@ -639,7 +741,7 @@ class DominionHookTests(GuardTestCase):
         empty.mkdir()
         with redirect_stderr(io.StringIO()) as err:
             self.assertIsNone(mod.run_dominion_hook(write_payload(root / "src" / "x.py", awake), script_dir=empty))
-        self.assertIn("validate-path.py", err.getvalue())
+        self.assertIn("validate_path.py", err.getvalue())
 
     def test_dominion_fails_open_without_transcript(self):
         root, _, _, _ = self.make_project()
@@ -650,11 +752,31 @@ class DominionHookTests(GuardTestCase):
     def test_dominion_main_prints_decision(self):
         root, _, awake, _ = self.make_project()
         out = self.run_main(write_payload(root / "src" / "x.py", awake),
-                       argv=("pipeline-guard.py", "--dominion"))
+                       argv=("pipeline_guard.py", "--dominion"))
         self.assertEqual(json.loads(out.out)["hookSpecificOutput"]["permissionDecision"], "ask")
 
 
 # --- the packages shard of the owner's preferences must be read before a package ---
+
+
+class AmbientEnvironmentTests(unittest.TestCase):
+    def test_guard_tests_do_not_inherit_the_ambient_project_dir(self):
+        """With $CLAUDE_PROJECT_DIR naming a project that has the packages shard,
+        a Stop-hook test that sets no project still sees none."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "ambient"
+            (root / "_bmad").mkdir(parents=True)
+            (root / "docs").mkdir()
+            (root / "docs" / "mac-preferences-packages.md").write_text("# package rules\n", encoding="utf-8")
+            with patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": str(root)}):
+                result = unittest.TestResult()
+                StopHookEndToEndTests("test_main_passes_auto_lyrics_package_with_style_builder_this_turn").run(result)
+                self.assertEqual(result.testsRun, 1)
+                self.assertEqual(result.failures + result.errors, [])
+                # The ambient value is back once the test has cleaned up.
+                self.assertEqual(os.environ["CLAUDE_PROJECT_DIR"], str(root))
 
 
 class PackagesShardTests(GuardTestCase):

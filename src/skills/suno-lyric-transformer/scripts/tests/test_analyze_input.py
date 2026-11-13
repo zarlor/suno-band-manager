@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for analyze-input.py"""
+"""Tests for analyze_input.py"""
 
 import hashlib
 import json
@@ -12,7 +12,7 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "analyze-input.py")
+SCRIPT = str(Path(__file__).parent.parent / "analyze_input.py")
 
 
 def run_script(*args):
@@ -207,6 +207,79 @@ class TestAnalyzeInput(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0)
         self.assertIn("analyze", result.stdout.lower())
+
+
+class TestBoundariesAndWords(unittest.TestCase):
+    def metrics(self, *args):
+        report, code = run_script(*args)
+        self.assertEqual(code, 0)
+        return report["metrics"]
+
+    def test_empty_text_is_analyzed(self):
+        m = self.metrics("--text", "")
+        self.assertEqual((m["character_count"], m["word_count"], m["script_type"]), (0, 0, "none"))
+
+    def test_hard_limit_boundary(self):
+        at_limit = self.metrics("--text", "x" * 5000)
+        over = self.metrics("--text", "x" * 5001)
+        self.assertEqual((at_limit["character_count"], at_limit["over_hard_limit"]), (5000, False))
+        self.assertEqual((over["character_count"], over["over_hard_limit"]), (5001, True))
+        self.assertEqual(run_script("--text", "x" * 5000)[0]["status"], "warning")  # over the budget only
+        self.assertEqual(run_script("--text", "x" * 5001)[0]["status"], "fail")
+
+    def test_quality_budget_boundary(self):
+        self.assertIs(self.metrics("--text", "x" * 3000)["over_quality_budget"], False)
+        self.assertIs(self.metrics("--text", "x" * 3001)["over_quality_budget"], True)
+
+    def test_closing_newline_is_not_counted(self):
+        # The same rule validate_lyrics.py applies: a file's last newline isn't pasted.
+        m = self.metrics("--text", "x" * 5000 + "\n")
+        self.assertEqual((m["character_count"], m["over_hard_limit"]), (5000, False))
+        self.assertIs(self.metrics("--text", "x" * 3000 + "\n")["over_quality_budget"], False)
+
+    def test_character_count_agrees_with_validate_lyrics(self):
+        validator = str(Path(SCRIPT).parent / "validate_lyrics.py")
+        for text in ("[Verse 1]\nHello world\n", "[Verse 1]\nHello world", "[Verse 1]\nHello world\n\n"):
+            with self.subTest(text=text):
+                out = subprocess.run([sys.executable, validator, "--text", text], capture_output=True, text=True)
+                self.assertEqual(self.metrics("--text", text)["character_count"],
+                                 json.loads(out.stdout)["metrics"]["character_count"])
+
+    def test_short_poem_threshold(self):
+        fifteen = "\n".join(f"Line {i}" for i in range(15))
+        sixteen = "\n".join(f"Line {i}" for i in range(16))
+        self.assertEqual(self.metrics("--text", fifteen)["estimated_structure"], "short")
+        self.assertEqual(self.metrics("--text", sixteen)["estimated_structure"], "medium")
+        self.assertEqual(self.metrics("--text", "\n".join(f"Line {i}" for i in range(30)))["estimated_structure"], "medium")
+        self.assertEqual(self.metrics("--text", "\n".join(f"Line {i}" for i in range(31)))["estimated_structure"], "long")
+
+    def test_tags_and_blank_lines_do_not_count_toward_the_threshold(self):
+        text = "[Verse 1]\n" + "\n\n".join(f"Line {i}" for i in range(15)) + "\n[End]"
+        self.assertEqual(self.metrics("--text", text)["estimated_structure"], "short")
+
+    def test_tags_that_mark_existing_structure(self):
+        for text in ("[Intro]\nla\n[Bridge]\nla", "[Final Chorus]\nla", "[Guitar Solo]\n",
+                     "[Verse 1 — THE ROOM]\nla", "[Chorus: anthemic]\nla", "[Refrain]\nla"):
+            with self.subTest(text=text):
+                self.assertIs(self.metrics("--text", text)["has_existing_structure"], True)
+
+    def test_tags_that_do_not_mark_structure(self):
+        for text in ("[Mood: dark]\nla la", "[Whispered]\nla la", "[End]", "a line [sic] here",
+                     "[bridge of sighs]\nla", "[Banana]\nla"):
+            with self.subTest(text=text):
+                self.assertIs(self.metrics("--text", text)["has_existing_structure"], False)
+
+    def test_accented_words_stay_whole(self):
+        text = "meet me at the café\npour another rosé\nmeet me at the café\nso blasé"
+        m = self.metrics("--text", text)
+        self.assertIn("meet me at the café", [p["phrase"] for p in m["repeated_phrases"]])
+        self.assertEqual(m["suffix_matches"],
+                         [{"words": ["rosé", "blasé"], "ending_match": "sé", "pattern": "alternating"}])
+
+    def test_curly_apostrophes_match_straight_ones(self):
+        text = "we didn’t stay the night\nwe didn't stay the night"
+        m = self.metrics("--text", text)
+        self.assertEqual(m["repeated_phrases"], [{"phrase": "we didn't stay the night", "count": 2}])
 
 
 if __name__ == "__main__":

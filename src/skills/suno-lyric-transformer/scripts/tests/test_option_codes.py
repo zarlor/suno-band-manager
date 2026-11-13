@@ -30,7 +30,8 @@ class TestOptionCodes(unittest.TestCase):
                                    "effect": "Section tags on the arc, sparse descriptors"})
 
     def test_rules_present(self):
-        self.assertEqual(len(option_codes.RULES), 3)
+        self.assertEqual(len(option_codes.RULES), 4)
+        self.assertTrue(any("CC and WF" in rule for rule in option_codes.RULES))
 
 
 if __name__ == "__main__":

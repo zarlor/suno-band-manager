@@ -4,6 +4,44 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
+## [Unreleased]
+
+A standards pass. The module was reviewed against the current BMad v7 skill standards and every finding was fixed: 325 findings plus a restructuring of the prompt files. Version files are not bumped yet.
+
+**Breaking: every script is renamed to snake_case.** `pre-activate.py` is now `pre_activate.py`, `validate-lyrics.py` is `validate_lyrics.py`, and so on for all 53 scripts, so each script's test is `scripts/tests/test_<name>.py` as the BMad scanner expects. `validate-sidecar.py` and `reconcile-sidecar.py` become `validate_sanctum.py` and `reconcile_sanctum.py`. Each report's `script` label, the AUTOGEN markers and the archive file names keep their hyphenated form, so existing archives and companion docs still match.
+
+- **If you installed the pipeline guard, set it up again.** The Stop hook in `.claude/settings.local.json` names `pipeline-guard.py`, which no longer exists. Ask Mac to "set up the pipeline guard": `configure_guard.py` finds the old hook and repoints it. The guard path is no longer hardcoded to `.claude/skills/`, and plugin-qualified skill names are recognised.
+- **Mac's next waking offers a template upgrade** (about 18 safe changes and one to integrate). Take it: his creed, Pulse and memory guide name the scripts, and the old names no longer run.
+
+**Fixes that protect your files**
+
+- The v1-to-v2 memory migration now carries every extra file, subfolder and any text above the first heading across, and blocks the swap if one is missing. Its `--out` option only clears an empty folder or a staging folder.
+- The v2-to-v7 conversion builds the new sanctum beside the target and moves it into place only after checking it, so an interrupted run leaves nothing half-written. A partial or unconverted old store is never reported as a first run or scaffolded over.
+- `validate_path.py` collapses `..` before matching and no longer treats an unresolved `{skill-root}/` entry as "anything".
+- Mac's scripts and his access boundaries follow the `songbook_folder` and `band_profiles_folder` setup answers instead of assuming `docs/`.
+- Companion docs and archives: text outside the AUTOGEN markers is kept under test; a run where every track fails archives nothing; a band-folder run of `analyze_audio.py` writes its own companion (`docs/audio-analysis-reference-<band>.md`) instead of replacing the catalog-wide one; scripts write under the project the audio sits in, whatever the working directory.
+- Band profiles: slugs that are not a plain file name are refused; `--save --force` and playlist `--force` keep a `.bak`; a delete no longer lets a draft replace the archived profile; a no-op edit writes nothing.
+
+**Guardrails**
+
+- `validate_prompt.py` gains a named-reference check: names the request gave go in `reference_names`, and one that appears in the style prompt, wild card or excludes blocks the package. It also catches bracketed tags, more inline negatives, out-of-range sliders, Free-tier packages carrying paid settings, and excludes with no rationale.
+- The lyric scripts share one tag vocabulary (`tag_vocab.py`), so the validator, section-length checker, syllable counter and diff agree, and the validator accepts the tags `metatag-reference.md` rates reliable.
+- Bad input (missing, malformed, not UTF-8, a byte-order mark) gives a reason instead of a traceback across the module. Audio scripts accept `.wav`, `.flac`, `.ogg` and `.m4a` in any letter case. A mistyped flag exits 1 with a reason; exit 2 means only "audio libraries missing".
+
+**Behaviour you may notice**
+
+- `create-song` runs the Style Prompt Builder first and the Lyric Transformer second, passing the builder's section cues.
+- With no plan tier known, feedback advice is given as tier-unknown instead of assuming Free.
+- Headless profile edits validate before they write and return `blocked` on a failing profile.
+- Accented band names keep their letters in the profile slug (`Sigur Rós` becomes `sigur-ros`); existing files are still found and get a rename suggestion.
+- A playlist's track names must be unique. A playlist YAML with no `album:` now archives under its own file name, so its first run after the update reports no prior baseline: add `album:` or rename the old archive to keep it.
+- Transient working files (the style-prompt ledger, the sequencing workspace) default to the BMad output folder; an existing file at the old location is continued. Songbook, profiles, feedback history and audio analysis stay under `docs/`.
+- `assets/menu.csv` columns are now `code,name,description,action,skill,prompt`. Mac's creed source moved to `assets/creed.md`. The Studio 1.x archive and both `research-sources.md` files moved out of the installed skills into `dev-docs/`.
+
+**Tests.** 1,845 tests, up from 1,210, all on `unittest`; the BMad manifest, path and script scanners report no findings.
+
+---
+
 ## [4.0.2] - 2026-11-06
 
 A patch that ships the reference-doc updates from two more rounds of Suno v6 research, plus new section tags. BMad v7 is taking longer to go stable than expected, so this goes out on the same early v7 build 4.0.0 targets rather than waiting. A follow-up release is still expected when v7 is stable.

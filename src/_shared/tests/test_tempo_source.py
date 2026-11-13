@@ -6,8 +6,8 @@
 """Tests for _shared/tempo_source.py: Beat This! when opted in, librosa otherwise.
 
 Pins the opt-in reading (BMad's TOML config layers, walked up from the
-working directory), the --tempo-source override, and the beat-grid.py hand-off
-and its fallbacks. A stand-in script plays beat-grid.py, so no PyTorch is needed.
+working directory), the --tempo-source override, and the beat_grid.py hand-off
+and its fallbacks. A stand-in script plays beat_grid.py, so no PyTorch is needed.
 """
 
 import argparse

@@ -1,6 +1,6 @@
 # Suno Band Manager knowledge
 
-This document covers the skills of the `suno` module: what each one gives the user, when to recommend it, and what to offer next. The module turns a user's creative ideas (a poem, a feeling, a genre mashup) into Suno-ready song packages: a style prompt, structured lyrics and generation settings, built around reusable band identities. It is a BMad module, created with the BMad Method, and also runs standalone on its defaults.
+This document covers the skills of the `suno` module: what each one gives the user, when to recommend it, and what to offer next. The module turns a user's creative ideas (a poem, a feeling, a genre mashup) into Suno-ready song packages: a style prompt, structured lyrics and generation settings, built around reusable band identities. By design the skills also run where BMad is not set up, on their built-in defaults; this is a deliberate exception to offering setup first. So recommend the skill the request needs even before `bmad setup suno` has run, and mention that setup is what makes the user's plan, folders and mode stick.
 
 ## The skills
 
@@ -13,7 +13,9 @@ This document covers the skills of the `suno` module: what each one gives the us
 
 ## Where things land
 
-Band profiles go to the folder chosen at setup as `modules.suno.band_profiles_folder` (default `{project-root}/docs/band-profiles`), and a band's playlist file sits beside that folder in `docs/`. Saved songs and lyrics go to `modules.suno.songbook_folder` (default `{project-root}/docs/songbook`). Audio analysis lands in `docs/audio-analysis/`. Mac's memory lives in `_bmad/memory/suno-agent-band-manager/` (from module 4.0.0; on his first waking after the upgrade he converts the old `_bmad/_memory/band-manager-sidecar/` store, backup first). The other answers are `modules.suno.suno_tier` (which models Mac recommends), `modules.suno.default_mode` (demo, studio or jam) and `modules.suno.pytorch_audio_tools` (on or off). `bmad setup suno` shows and changes the answers.
+The creative catalog lives under `docs/`, because it is the user's durable work and travels with the project: band profiles in the folder chosen at setup as `modules.suno.band_profiles_folder` (default `{project-root}/docs/band-profiles`), with each band's playlist file beside that folder; saved songs and lyrics in `modules.suno.songbook_folder` (default `{project-root}/docs/songbook`); work-in-progress fragments, feedback history and audio analysis in `docs/` too. Transient working files (the style prompt builder's ledger, the playlist sequencer's working notes) go under the BMad output folder instead. Mac's memory lives in `_bmad/memory/suno-agent-band-manager/`.
+
+The other answers are `modules.suno.suno_tier` (which models and features Mac recommends), `modules.suno.default_mode` (demo, studio or jam), `modules.suno.refinement_output` (changes or full) and `modules.suno.pytorch_audio_tools` (on or off). `bmad setup suno` shows and changes the answers.
 
 ## More detail
 
@@ -21,5 +23,5 @@ This document should be enough to route the user. Read a topic file only when th
 
 | Topic file | Read when the user asks about |
 |---|---|
-| `help/suno-agent-band-manager.md` | Mac's menu, his modes, memory and portable sync across machines, the pipeline guard |
+| `help/suno-agent-band-manager.md` | Mac's menu, his modes, his memory (including the store an older version left behind), portable sync across machines, the pipeline guard |
 | `help/suno-band-profile-manager.md` | What a band profile holds, writer-voice analysis, profile health checks, playlist files |

@@ -10,13 +10,14 @@
 #   scalars: override wins • arrays (persistent_facts, activation_steps_*): append
 #   arrays-of-tables with `code`/`id`: replace matching items, append new ones.
 
-# Steps to run before the standard activation (config load, greet).
-# Overrides append. Applied in headless runs too.
+# Steps to run right after customization resolves, before config is loaded
+# and the request is routed. Overrides append. Applied in headless runs too.
 
 activation_steps_prepend = []
 
-# Steps to run after greet but before Step 1 of the workflow.
-# Overrides append. Applied in headless runs too.
+# Steps to run after config is loaded and before the request is routed, so
+# before the greeting (interactive) and before the headless contract or the
+# audio reference is read. Overrides append. Applied in headless runs too.
 
 activation_steps_append = []
 

@@ -6,4 +6,11 @@ source = "github:zarlor/suno-band-manager/src/skills"
 # source; a table names one from elsewhere: { skill = "...", source = "github:<owner>/<repo>/<path>" }.
 # Mac's packages are assembled only through the production skills (the Package Assembly Rule).
 required_skills = ["suno-style-prompt-builder", "suno-lyric-transformer", "suno-feedback-elicitor"]
-recommended_skills = ["suno-band-profile-manager", "suno-playlist-sequencer"]
+
+# Skills his menu routes to when they're installed, and bmad-customize, which
+# writes the overrides his activation reads.
+recommended_skills = [
+  "suno-band-profile-manager",
+  "suno-playlist-sequencer",
+  { skill = "bmad-customize", source = "github:bmad-code-org/BMAD-METHOD/skills" },
+]

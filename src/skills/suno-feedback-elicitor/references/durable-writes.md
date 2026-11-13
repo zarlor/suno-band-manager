@@ -6,10 +6,13 @@ What this skill writes outside the conversation, and how. Two stores: the song's
 
 One markdown file per song under `{workflow.feedback_history_output_path}`, the canonical memory of multi-round refinement: `{band-or-session}/{song-slug}.md`, where `{band-or-session}` is the band-profile name (or `no-band` with no profile, so a later session finds the same song's log) and `{song-slug}` the kebab-cased title (or the session stamp `YYYYMMDD-HHMM` when untitled). The script derives both, so never build the path by hand.
 
-- **Locate:** `uv run {skill-root}/scripts/feedback-log.py locate --band {profile} --title {title} --history-dir {workflow.feedback_history_output_path}` returns the path, whether it exists, the last round and date, the next round number, the `stamp` it used, and near-match `candidates` when the exact file is missing (the title may be fuzzy — pick among them, and pass the chosen one's title from then on).
-- **Open a round:** `uv run {skill-root}/scripts/feedback-log.py append --band {profile} --title {title} --history-dir {workflow.feedback_history_output_path} --text "<entry>" --snapshot '<json>'` writes the `## Round {n} — YYYY-MM-DD` heading, the prose entry and the snapshot, numbering the round from the log itself.
+- **Locate:** `uv run {skill-root}/scripts/feedback_log.py locate --band {profile} --title {title} --history-dir {workflow.feedback_history_output_path}` returns the path, whether it exists, the last round and date, the next round number, the `stamp` it used, and near-match `candidates` when the exact file is missing (the title may be fuzzy — pick among them, and pass the chosen one's title from then on).
+- **Open a round:** `uv run {skill-root}/scripts/feedback_log.py append --band {profile} --title {title} --history-dir {workflow.feedback_history_output_path} --text "<entry>" --snapshot '<json>'` writes the `## Round {n} — YYYY-MM-DD` heading, the prose entry and the snapshot, numbering the round from the log itself.
 - **Add to the current round:** the same command with `--round last --text "<anchor>"` for a mid-elicitation anchor (a narrowed dimension, a reference, a locked keeper, a technical attempt) as it lands.
 - With no profile or no title, pass `--stamp` with the `stamp` locate returned, so every write lands in the same session file.
+- When the caller named the log (`--iteration-log <path>`), add `--log-path <path>` to every call: the round then lands in the file they read from, even where the band and title would derive a different one.
+
+A non-zero exit wrote nothing, and its JSON `error` says why (an unwritable folder, a log that isn't UTF-8 text). Say the round wasn't saved and carry on: the diagnosis doesn't depend on the log.
 
 **Entry.** The prose says what was tried this round and how the user reacted, in their words. The snapshot is the same round in machine-readable form; it doubles as the headless `iteration_log` payload, and the script sets its `round`:
 
@@ -28,11 +31,13 @@ A `blocked` return names the problem in `reason`: tell the user and leave the pr
 
 ## Headless runs
 
-A headless run writes the same records, so a caller such as the Band Manager's refine flow keeps the song's history without extra work:
+A headless run writes the same records an interactive one does, so a caller such as the Band Manager's refine flow keeps the song's history without extra work:
 
-- the iteration-log round (needs `--band-profile` or `--title`; with neither, skip it);
+- the iteration-log round (needs `--band-profile`, `--title` or `--iteration-log`; with none of them, skip it);
 - the `generation_history` snapshot (only with `--band-profile`).
 
-Record each write in `decision_log` and list the paths in `written_paths`. **`generation_learnings` is never written headless** — a durable pattern needs the owner's agreement, so return it in `suggested_profile_learnings` for the caller to offer. `--headless:analyze` writes nothing (no round happened).
+Record each write in `decision_log` and list the paths in `written_paths`. A write that fails (a non-zero exit from `feedback_log.py`, a `blocked` return from the profile manager) stays out of `written_paths` and goes into `warnings` with its error, and `status` stays `complete`, because the adjustments don't depend on the write. **`generation_learnings` is never written headless** — a durable pattern needs the owner's agreement, so return it in `suggested_profile_learnings` for the caller to offer. `--headless:analyze` writes nothing (no round happened).
 
-With `--no-write`, write nothing durable: skip both writes, pass `--no-archive --no-companion` to any audio script, and return the round in `iteration_log` and, when a band profile is in play, the snapshot in `suggested_generation_history` for the caller to apply (`null` without a profile).
+`suggested_generation_history` is the round's snapshot whenever a band profile is in play, and `null` with no profile, since there's no profile to append it to.
+
+With `--no-write`, write nothing durable: skip both writes, pass `--no-archive` to any audio script you run (and `--no-companion` too to `analyze_audio.py`, the only script that has the flag), and return the round in `iteration_log` and the snapshot in `suggested_generation_history` for the caller to apply.

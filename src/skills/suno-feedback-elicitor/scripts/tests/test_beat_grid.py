@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for beat-grid.py (Beat This! beat tracking).
+"""Tests for beat_grid.py (Beat This! beat tracking).
 
 The model needs PyTorch, which is too heavy to provision in the suite, so these
 pin the pure logic (tempo and bar grouping from beat times, the librosa
@@ -18,7 +18,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).parent.parent / "beat-grid.py"  # the CLI wrapper
+SCRIPT = Path(__file__).parent.parent / "beat_grid.py"  # the CLI wrapper
 IMPL = Path(__file__).parent.parent / "_shared" / "beat_grid.py"
 spec = importlib.util.spec_from_file_location("beat_grid", IMPL)
 bg = importlib.util.module_from_spec(spec)

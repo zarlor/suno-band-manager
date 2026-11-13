@@ -46,7 +46,7 @@ Write-Output ('{"status": "success", "files_unpacked": ' + $fileCount + '}')
 # Post-unpack reconciliation — warn if the sanctum memory may be stale
 # relative to the unpacked files. Never blocks: reconciliation is the agent's
 # job, not the script's. Bypass with $env:BMAD_SKIP_RECONCILE=1.
-$reconcile = Join-Path $ProjectRoot '.claude/skills/suno-agent-band-manager/scripts/reconcile-sidecar.py'
+$reconcile = Join-Path $ProjectRoot '.claude/skills/suno-agent-band-manager/scripts/reconcile_sanctum.py'
 if ($env:BMAD_SKIP_RECONCILE -ne '1' -and (Test-Path $reconcile)) {
     $py = $null
     foreach ($candidate in @('python3', 'python')) {
@@ -58,7 +58,7 @@ if ($env:BMAD_SKIP_RECONCILE -ne '1' -and (Test-Path $reconcile)) {
         try {
             & $py $reconcile $ProjectRoot 2>&1 | ForEach-Object { [Console]::Error.WriteLine($_) }
         } catch {
-            [Console]::Error.WriteLine("reconcile-sidecar.py skipped: $_")
+            [Console]::Error.WriteLine("reconcile_sanctum.py skipped: $_")
         }
     }
 }

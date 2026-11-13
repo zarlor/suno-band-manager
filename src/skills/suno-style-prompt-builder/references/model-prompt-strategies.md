@@ -1,24 +1,26 @@
 # Model-Specific Prompt Strategies
 
-Conditional material for the v6 family: read only the section a song calls for (`grep -n '^## '` lists them). The every-build rules are in `references/v6-build-core.md`; sources and the evidence narrative are in `references/research-sources.md`. Every pre-v6 model was retired 2026-09-09 (OFFICIAL); their prompt styles are in `references/retired-model-strategies.md`. Suno changes behavior often, so web-search current documentation when uncertain.
+## How to Load This File
 
-| When the song has | Read |
+Conditional material for the v6 family, too large to read whole. Load only the sections the song calls for: pass each name below to `uv run {skill-root}/scripts/strategy_sections.py --section "<name>"` (repeat `--section` for several). A name is a heading or the start of one; a section comes with its subsections. If the script can't run, search the file for each heading and read that section whole, never the head of the file. The every-build rules are in `references/v6-build-core.md`. Every pre-v6 model was retired 2026-09-09 (OFFICIAL); their prompt styles are in `references/retired-model-strategies.md`. Suno changes behavior often, so web-search current documentation when uncertain.
+
+| When the song has | Load |
 |---|---|
-| A Voice attached | "Voices on v6"; "Voices, Custom Models, and My Taste" → "Voices" |
-| A Persona attached | "Persona Style Prompt Integration"; "Persona and Inspo Playlist Behavior" |
-| A Custom Model | "Voices, Custom Models, and My Taste" → "Custom Models"; "Persona Style Prompt Integration" → "Voices and Custom Models (v5.5)" |
-| A counter-genre lean (accessible inside heavy, slow inside driving, acoustic inside electric) | "Counter-Genre Prompting"; "Slider Guidelines" |
-| Uploaded audio, Extend or Replace Section | "Slider Guidelines" |
-| A reference track or "sounds like X" | "Reference Track Translation Guide" |
-| Distorted guitars masking the vocal | "Mix balance for heavy material" |
-| A real tempo change | "True tempo change" |
-| Brass-band genre words | "Brass-Band Gravity"; "Dynamic Control via Style Prompt" → "Brass-Out-At-Outro Limitation" |
-| A build, fade or quiet-loud-quiet arc | "Dynamic Control via Style Prompt" |
-| An instrument or vocal-behavior question | "Instrument-Specific Guidance"; "Vocal Behavior and Triggers"; "Descriptor Findings From the Retired Models" |
-| An exclude that keeps failing | "Exclude Styles Field" |
-| A set length | "Duration Slider" |
-| Iteration advice | "Iteration Best Practices"; "Cover Feature" |
-| A migrate | "Quick Reference"; "Universal Rules" |
+| A Voice attached | Voices on v6 · Voices (a distinct feature |
+| A Persona attached | Persona Style Prompt Integration · Persona and Inspo Playlist Behavior |
+| A Custom Model | Custom Models · Voices and Custom Models (v5.5) |
+| A counter-genre lean (accessible inside heavy, slow inside driving, acoustic inside electric) | Counter-Genre Prompting · Slider Guidelines |
+| Uploaded audio, Extend or Replace Section | Slider Guidelines |
+| A reference track or "sounds like X" | Reference Track Translation Guide |
+| Distorted guitars masking the vocal | Mix balance for heavy material |
+| A real tempo change | True tempo change |
+| Brass-band genre words | Brass-Band Gravity · Brass-Out-At-Outro Limitation |
+| A build, fade or quiet-loud-quiet arc | Dynamic Control via Style Prompt |
+| An instrument or vocal-behavior question | Instrument-Specific Guidance · Vocal Behavior and Triggers · Descriptor Findings From the Retired Models |
+| An exclude that keeps failing | Exclude Styles Field |
+| A set length | Duration Slider |
+| Iteration advice | Iteration Best Practices · Cover Feature |
+| A migrate | Quick Reference · Universal Rules |
 
 ## Quick Reference
 
@@ -40,7 +42,7 @@ Grades: OFFICIAL (Suno-documented), VENDOR (guide sites' own tests), COMMUNITY (
 
 ### True tempo change
 
-A generation keeps one tempo grid (LOCAL-OBSERVED: lyric tags asking for 65 → 150 → 65 BPM came back on one flat grid; with Variety off, Max on and feel words in both fields the chorus lifted, but the fast verse never went double-time). Other v6 takes *have* switched half-time to double-time (owner report), so a feel switch is possible but unreliable.
+A generation keeps one tempo grid (LOCAL-OBSERVED: lyric tags asking for 65 → 150 → 65 BPM came back on one flat grid; with Variety off, Max on and feel words in both fields the chorus lifted, but the fast verse never went double-time). Other v6 takes *have* switched half-time to double-time (LOCAL-OBSERVED), so a feel switch is possible but unreliable.
 
 For a true tempo change, use one of these (VENDOR, mostly pre-v6):
 
@@ -54,10 +56,10 @@ Studio's BPM-aware tools are Premier-only (OFFICIAL).
 
 - **v6 doubles the lead and adds backing vocals without being asked** (LOCAL-OBSERVED: one Professional Voice, 2 songs; the vocal stem measured 5-7 dB wider in stereo than the same voice on v5.5). Don't spend prompt words on "dual vocals" or harmonies. If the doubling is too much, the next test is "backing vocals" in Exclude Styles (untested).
 - **Grit words roughen a Voice sample** (LOCAL-OBSERVED). "Grit", "gravel" and "rasp" anywhere near the vocal description or the genre head make a clean-leaning Voice sing rougher. Attach grit to instruments ("guitars with a gritty saturated tone") and keep the vocal line clean.
-- **Blend:** on v6 the Voice sat at the old heavy-genre Persona's level against the band. The same voice on v5.5 sat well forward (LOCAL-OBSERVED, one song). Harsh-vocal triggers such as "metal" fired less often with the clean-leaning Voice than they did with the Persona (LOCAL-OBSERVED, owner's read).
+- **Blend:** on v6 the Voice sat at the old heavy-genre Persona's level against the band. The same voice on v5.5 sat well forward (LOCAL-OBSERVED, one song). Harsh-vocal triggers such as "metal" fired less often with the clean-leaning Voice than they did with the Persona (LOCAL-OBSERVED, one listener's read).
 - **Loudness:** both v6 renders came out about 3 LU quieter than the same band's v5-era catalog (LOCAL-OBSERVED, n=2). Check playlist loudness seams when mixing eras.
 - **Official status:** Suno's Voices FAQ (last edited 2026-03-26) still says to select v5.5 and that *"Other models do not support"* Voices, although every pre-v6 model is retired, so official v6 support is undocumented. Voices work on v6 in this module's own testing (above). The Voice profile also has an optional *"Skill level"* field (beginner / intermediate / advanced), which users call "Singer level"; Suno doesn't say what it changes. One user suggests moving it when a Voice misbehaves, and another uploads "as professional level and not beginner", with Audio Influence raised, for a closer likeness (ANECDOTAL each; it matches the v5.5 "Professional, always" finding below).
-- **Voice drift:** a saved voice sample can drift subtly across a song, away from the singer's true voice (LOCAL-OBSERVED, owner's ear). Other users report stronger drift with some Personas and Voices — lost rasp, identity changing mid-line (COMMUNITY). Regenerate, or accept it if the take works.
+- **Voice drift:** a saved voice sample can drift subtly across a song, away from the singer's true voice (LOCAL-OBSERVED, by ear). Other users report stronger drift with some Personas and Voices — lost rasp, identity changing mid-line (COMMUNITY). Regenerate, or accept it if the take works.
 
 ### Mix balance for heavy material (PREVIEW)
 
@@ -69,7 +71,7 @@ A shorter, partial version at the end of the style prompt fits a tight character
 
 ### Known weak spots (COMMUNITY, launch week)
 
-- **Late-song degradation** — the mix muffles, cymbals turn tinny, drums go synthetic in the back half, past ~2-4 minutes. First reported worst in rock/metal; by 2026-10 it is the most-reported defect in every genre (COMMUNITY, about 90 users). Symptoms, counts and repairs (split-Cover-stitch, songs under about 4 minutes, Max Mode split) are in the feedback elicitor's `technical-resolution.md`.
+- **Late-song degradation** — the mix muffles, cymbals turn tinny, drums go synthetic in the back half, past ~2-4 minutes. First reported worst in rock/metal; by 2026-10 it is the most-reported defect in every genre (COMMUNITY, about 90 users). For the symptoms and the repairs (split-Cover-stitch, songs under about 4 minutes, Max Mode split), invoke the `suno-feedback-elicitor` skill.
 - **Narrower genre reach** — metal and high-gain guitar, DnB/EDM, reggae skank, Italo disco, and glam are the most-reported failures; pop, lighter rock, and folk the strongest. High-gain metal users report that any Persona or Voice pulls guitars and drums toward a synthetic timbre.
 - **Take-to-take variance can exceed the effect of a prompt edit** (VENDOR). Judge both takes, and change one control per generation.
 - **v6-wild on covers — contradiction, not a rule** (ANECDOTAL, 2026-10-14): one user's cover recipe (v6-wild, Weirdness 50, Variety 25, My Taste off, plain-language style box) says wild "seems to follow instructions better" than v6, and two or three others prefer wild for covers or first drafts. Suno describes wild as pushing "further from the prompt." One user has since tried the recipe and "got it working in one go" (ANECDOTAL, 2026-10); a reasonable thing to try on a cover that v6 keeps ignoring, not a default.

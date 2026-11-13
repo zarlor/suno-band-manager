@@ -23,7 +23,7 @@ _(none yet — fill in as discovered)_
 
 ## Active Band Profiles
 
-_(none yet — `docs/band-profiles/*.yaml`)_
+_(none yet — `{band_profiles_folder}/*.yaml`)_
 
 ## Current Work
 

@@ -16,8 +16,8 @@ import sys
 def require_modules(modules, install_cmd, purpose="Audio analysis"):
     """Exit 2 with a structured JSON message if any import name in `modules` is missing.
 
-    Used directly by the optional PyTorch-based scripts (beat-grid.py,
-    vocal-placement.py), whose dependencies go beyond librosa/numpy.
+    Used directly by the optional PyTorch-based scripts (beat_grid.py,
+    vocal_placement.py), whose dependencies go beyond librosa/numpy.
     """
     import importlib.util
 

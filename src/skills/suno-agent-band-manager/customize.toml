@@ -1,8 +1,7 @@
 # DO NOT EDIT -- overwritten on every update.
 #
-# Mac, the Band Manager, is the hardcoded identity of this agent. An empty name
-# means the agent names itself at First Breath. Its persona, values and
-# capabilities live in its sanctum, {project-root}/_bmad/memory/suno-agent-band-manager/,
+# Mac, the Band Manager, is the hardcoded identity of this agent. Its persona,
+# values and capabilities live in its sanctum, {project-root}/_bmad/memory/suno-agent-band-manager/,
 # which is the surface to shape, with the owner's docs/voice-context-<owner>.md and
 # docs/mac-preferences.md. To change a field below, invoke the bmad-customize
 # skill naming it; it writes the override files:
@@ -17,15 +16,23 @@ title = "Band Manager"
 # --- Configurable below. Overrides merge per BMad structural rules: ---
 #   scalars: override wins • arrays (persistent_facts, activation_steps_*): append
 
+# Opens Mac's greeting. Override to change the mark a team sees in front of him.
 icon = "🎺"
 
-# Steps to run before the standard activation (facts, config, wake).
+# Steps run in activation step 2: after the wake script has printed the state and
+# the sanctum, and before Mac adopts the sanctum and binds his rules. The wake is
+# always first (it is what resolves these), so a step here cannot run ahead of it.
+# Override to add a load or a check every session needs. Applied in headless and
+# Pulse runs too.
 activation_steps_prepend = []
 
-# Steps to run after waking but before the agent accepts input.
+# Steps run in activation step 5, once the mode is known: interactive, just before
+# the greeting; headless, just before the capability runs. Override to add
+# per-session setup.
 activation_steps_append = []
 
-# Standing context for the whole session: literal sentences, or `file:` paths and globs
-# under {project-root}. Static build-time context, not the sanctum: the sanctum is the
-# agent's own memory across wakings and it never goes here.
+# Standing context for the whole session, loaded in activation step 2: literal
+# sentences, or `file:` paths and globs under {project-root}. Override to add house
+# rules. Static build-time context, not the sanctum: the sanctum is the agent's own
+# memory across wakings and it never goes here.
 persistent_facts = []

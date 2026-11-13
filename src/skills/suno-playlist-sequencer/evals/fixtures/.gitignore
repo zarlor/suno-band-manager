@@ -1,2 +1,14 @@
-# This folder mirrors an eval workspace (a project root): keep what the repo root .gitignore drops.
+# Staged files for ../cases.json (run it with --project-root at the repo root). Each case
+# stages them at this same path, fixtures/docs/..., in its workspace; the _bmad/scripts/*.py
+# entries come from the repo's BMad install. No BMad config is staged (the repo's own
+# _bmad/config.toml would shadow a stand-in), so the skill runs on module defaults.
+#
+# Everything under docs/ is synthetic, under band slugs the real project doesn't have. No
+# audio is staged: each archive under docs/audio-analysis/playlists/ was built with
+# playlist_sequencing_data.py's own build_report from synthetic per-track readings, and each
+# case says the audio lives on another machine. A run of the sequencing script in a case
+# workspace finds no audio folder and exits 1 without writing, so the archives stay
+# byte-identical.
+#
+# Keep what the repo root .gitignore drops.
 !docs/

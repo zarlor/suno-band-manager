@@ -3,8 +3,10 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for tier-features.py"""
+"""Tests for tier_features.py"""
 
+import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -15,7 +17,7 @@ from importlib.util import spec_from_file_location, module_from_spec
 
 spec = spec_from_file_location(
     "tier_features",
-    Path(__file__).parent.parent / "tier-features.py"
+    Path(__file__).parent.parent / "tier_features.py"
 )
 tier_features_mod = module_from_spec(spec)
 spec.loader.exec_module(tier_features_mod)
@@ -253,6 +255,28 @@ class TestTierFeatures(unittest.TestCase):
         free = get_tier_features("free")
         self.assertIsNone(free["max_mode_available"])
         self.assertIsNone(free["variety_available"])
+
+
+class TestCli(unittest.TestCase):
+    """The tier as typed on the command line."""
+
+    def _run(self, *args):
+        script = Path(__file__).parent.parent / "tier_features.py"
+        return subprocess.run([sys.executable, str(script), *args], capture_output=True, text=True)
+
+    def test_mixed_case_tier_is_accepted(self):
+        for typed in ("Pro", "PREMIER", "free"):
+            with self.subTest(tier=typed):
+                proc = self._run(typed)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertEqual(json.loads(proc.stdout)["tier"], typed.lower())
+
+    def test_unknown_tier_exits_1_with_json_reason(self):
+        proc = self._run("ultimate")
+        self.assertEqual(proc.returncode, 1, proc.stderr)
+        result = json.loads(proc.stdout)
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("free, premier, pro", result["error"])
 
 
 if __name__ == "__main__":

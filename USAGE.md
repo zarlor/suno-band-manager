@@ -25,7 +25,7 @@ This guide covers everything you need to know about working with Mac, the Suno B
 The very first time you invoke Mac, he runs through a setup flow to learn how you work. Here is what happens under the hood:
 
 1. Mac checks whether his sanctum, `_bmad/memory/suno-agent-band-manager/`, exists.
-2. If it does not exist, his wake script (`pre-activate.py --scaffold`) creates it from the templates.
+2. If it does not exist, his wake script (`pre_activate.py --scaffold`) creates it from the templates.
 3. Mac asks what to call you — your answer sets your name and the language he talks in — and then walks you through the first song.
 
 If that first session gets cut short, the next one picks up where it stopped: Mac asks only for what he hasn't learned yet.
@@ -630,7 +630,7 @@ Note: FR and WF are mutually exclusive.
 ### Audio Analysis with External Tools
 
 For detailed audio analysis of Suno output, three complementary tools are available:
-- **librosa scripts** (included in the Feedback Elicitor) — programmatic BPM, key detection, loudness (LUFS / loudness range), tempo stability, and energy arc analysis. Optional PyTorch tools add a second opinion on tempo (`beat-grid.py`, Beat This!), vocal placement against the band (`vocal-placement.py`, Demucs), and a section map that lines a render up with its lyrics (`section-map.py`, Demucs + Whisper) to show when each tagged section lands and how it sounds. Turn on **PyTorch audio tools** with `bmad setup suno` and the other scripts take their tempo from Beat This! instead of librosa. Run `analyze-audio.py` on a directory of MP3s for batch analysis, or `audio-deep-analysis.py` on individual tracks for deep dives. Requires Python 3 with librosa and numpy.
+- **librosa scripts** (included in the Feedback Elicitor) — programmatic BPM, key detection, loudness (LUFS / loudness range), tempo stability, and energy arc analysis. Optional PyTorch tools add a second opinion on tempo (`beat_grid.py`, Beat This!), vocal placement against the band (`vocal_placement.py`, Demucs), and a section map that lines a render up with its lyrics (`section_map.py`, Demucs + Whisper) to show when each tagged section lands and how it sounds. Turn on **PyTorch audio tools** with `bmad setup suno` and the other scripts take their tempo from Beat This! instead of librosa. Run `analyze_audio.py` on a directory of MP3s for batch analysis, or `audio_deep_analysis.py` on individual tracks for deep dives. Requires Python 3 with librosa and numpy.
 - **Gemini 3.1 Pro** — upload MP3 to Google AI Studio for AI-powered instrument identification, genre classification, and style prompt accuracy feedback. A two-pass workflow is mandatory for fusion genres.
 - **ChatGPT** — upload MP3 for "blind" analysis (without the style prompt) to get unbiased genre and instrument identification. Useful for catching cases where the style prompt intent diverges from what Suno actually produced.
 
@@ -652,7 +652,7 @@ This replaces gut-feel prompt tweaking with systematic iteration. Mac can sugges
 
 Mac routes playlist/album ordering to the dedicated `suno-playlist-sequencer` skill, which combines data and creative judgment:
 
-- **librosa scripts** — `playlist-sequencing-data.py` generates BPM, key (with Camelot wheel codes), energy levels, loudness, and per-seam readings between adjacent tracks: the key move (`key_compat`: compatible / near / distant, which rates the key relationship only), the BPM change, and the loudness step. Each is read separately; none is the seam's verdict; `batch-full-analysis.py` adds catalog-wide energy/section/spectral analysis. (`chord-progression.py`, for key centers over time within individual tracks, stays in the Feedback Elicitor.)
+- **librosa scripts** — `playlist_sequencing_data.py` generates BPM, key (with Camelot wheel codes), energy levels, loudness, and per-seam readings between adjacent tracks: the key move (`key_compat`: compatible / near / distant, which rates the key relationship only), the BPM change, and the loudness step. Each is read separately; none is the seam's verdict; `batch_full_analysis.py` adds catalog-wide energy/section/spectral analysis. (`chord_progression.py`, for key centers over time within individual tracks, stays in the Feedback Elicitor.)
 - **Camelot wheel harmonic mixing** — key-relationship readings based on DJ harmonic mixing principles (+/-1 number = a compatible key move, relative major/minor = mood shift, beyond +2 = a distant key move, for intentional contrast). They rate the key relationship only; tempo, loudness and energy are separate
 - **Narrative sequencing** — the skill considers thematic arcs, emotional progression, and lyrical connections between songs alongside the sonic data
 
@@ -743,7 +743,7 @@ All skills support headless (non-interactive) operation for scripting, batch pro
 ### Headless Modes for Each Skill
 
 **Style Prompt Builder** (contract: [headless-contract.md](src/skills/suno-style-prompt-builder/references/headless-contract.md)):
-- `--headless` -- build a package. A named band profile supplies the baseline and other inputs override it; without a profile, `genre_mood` is required. The wild card is on by default (`include_wild_card: true`). The older `--headless:from-profile`, `--headless:custom`, and "`--headless` with a profile name" forms are aliases of this one mode
+- `--headless` -- build a package. A named band profile supplies the baseline and other inputs override it; without a profile, `genre_mood` is required. The wild card is on by default (`include_wild_card: true`).
 - `--headless:refine` -- accept an existing prompt + the Feedback Elicitor's adjustment recommendations
 - `--headless:migrate` -- reformat a prompt from one model to another
 

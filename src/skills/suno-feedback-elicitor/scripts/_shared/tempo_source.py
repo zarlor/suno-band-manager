@@ -130,23 +130,23 @@ def run_beat_grid(paths, include_beats=False):
     if not paths:
         return []
     if not BEAT_GRID.is_file():
-        raise BeatThisUnavailable(f"beat-grid.py not found at {BEAT_GRID}")
+        raise BeatThisUnavailable(f"beat_grid.py not found at {BEAT_GRID}")
     env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
     try:
         # Progress lines on beat-grid's stderr pass straight through to ours.
         proc = subprocess.run(_beat_grid_command(paths, include_beats), stdout=subprocess.PIPE,
                               text=True, env=env)
     except OSError as exc:
-        raise BeatThisUnavailable(f"could not start beat-grid.py: {exc}") from exc
+        raise BeatThisUnavailable(f"could not start beat_grid.py: {exc}") from exc
     if proc.returncode == 2:
         raise BeatThisUnavailable("PyTorch / Beat This! not installed (run it via `uv run` to provision)")
     try:
         data = json.loads(proc.stdout)
         tracks = data["metrics"]["tracks"]
     except (ValueError, KeyError, TypeError) as exc:
-        raise BeatThisUnavailable(f"beat-grid.py exited {proc.returncode} without usable output") from exc
+        raise BeatThisUnavailable(f"beat_grid.py exited {proc.returncode} without usable output") from exc
     if len(tracks) != len(paths):
-        raise BeatThisUnavailable(f"beat-grid.py returned {len(tracks)} tracks for {len(paths)} files")
+        raise BeatThisUnavailable(f"beat_grid.py returned {len(tracks)} tracks for {len(paths)} files")
     return tracks
 
 

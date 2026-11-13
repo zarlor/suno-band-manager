@@ -3,11 +3,13 @@
 # requires-python = ">=3.11"
 # dependencies = ["pyyaml>=6"]
 # ///
-"""Tests for validate-prompt.py"""
+"""Tests for validate_prompt.py"""
 
 import builtins
 import importlib.util
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -16,7 +18,7 @@ from pathlib import Path
 from unittest import mock
 
 # Load the script as a module
-SCRIPT_PATH = Path(__file__).parent.parent / "validate-prompt.py"
+SCRIPT_PATH = Path(__file__).parent.parent / "validate_prompt.py"
 spec = importlib.util.spec_from_file_location("validate_prompt", SCRIPT_PATH)
 validate_prompt = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(validate_prompt)
@@ -114,6 +116,33 @@ class TestValidateStylePrompt(unittest.TestCase):
         high = [f for f in findings if f["severity"] == "high"]
         self.assertGreaterEqual(len(high), 1)
         self.assertTrue("metatag" in high[0]["issue"].lower() or "lyric" in high[0]["issue"].lower())
+
+    def test_numbered_and_unlisted_tags_detected(self):
+        """Any bracketed tag is a lyric metatag, not only the six bare section names."""
+        for tag in ("[Verse 1]", "[Final Chorus]", "[Guitar Solo]", "[Mood: dark]"):
+            findings = validate_prompt.validate_style_prompt(f"indie rock, warm vocals {tag} big harmonies")
+            tags = [f for f in findings if "metatag" in f["issue"].lower()]
+            self.assertEqual([(f["severity"], f["data"]["tags"]) for f in tags], [("high", [tag])], tag)
+
+    def test_word_cut_at_the_critical_zone_is_not_a_genre(self):
+        """'popcorn' straddling character 200 must not count as 'pop'."""
+        prompt = "warm and beautiful textures, " + "x" * 167 + " popcorn crackle"
+        self.assertEqual(prompt[:200][-3:], "pop")
+        findings = validate_prompt.validate_style_prompt(prompt)
+        self.assertEqual(len([f for f in findings if "no obvious genre keyword" in f["issue"].lower()]), 1)
+        whole = "warm and beautiful textures, " + "x" * 167 + " pop, bright"
+        self.assertEqual(whole[:200][-3:], "pop")
+        self.assertFalse([f for f in validate_prompt.validate_style_prompt(whole)
+                          if "no obvious genre keyword" in f["issue"].lower()])
+
+    def test_current_models_limit_is_1000_at_the_boundary(self):
+        for model in ("v6", "v6-wild", "v6-mini"):
+            at = validate_prompt.validate_style_prompt("rock " + "x" * 995, model=model)
+            over = validate_prompt.validate_style_prompt("rock " + "x" * 996, model=model)
+            self.assertFalse([f for f in at if f["severity"] == "critical"], model)
+            self.assertEqual([f["data"]["over_by"] for f in over if f["severity"] == "critical"], [1], model)
+            report = validate_prompt.validate_package({"model": model, "style_prompt": "rock"})
+            self.assertEqual(report["metrics"]["style_prompt_limit"], 1000, model)
 
     def test_asterisks_detected(self):
         """Asterisks in style prompts should be flagged."""
@@ -280,6 +309,19 @@ class TestValidateExclusionPrompt(unittest.TestCase):
         high = [f for f in findings if f["severity"] == "high"]
         self.assertGreaterEqual(len(high), 1)
 
+    def test_hard_maximum_is_300_characters(self):
+        at = "steel guitar, " + "x" * 286
+        self.assertEqual(len(at), 300)
+        self.assertFalse([f for f in validate_prompt.validate_exclusion_prompt(at) if f["severity"] == "high"])
+        self.assertEqual([f["data"]["char_count"] for f in validate_prompt.validate_exclusion_prompt(at + "x")
+                          if f["severity"] == "high"], [301])
+
+    def test_newline_and_pipe_separated_items_are_counted(self):
+        for text in ("screaming\nsteel guitar\nautotune\nsynth pads", "screaming | steel guitar | autotune | synth pads"):
+            self.assertEqual(validate_prompt.exclusion_items(text), ["screaming", "steel guitar", "autotune", "synth pads"])
+            findings = validate_prompt.validate_exclusion_prompt(text)
+            self.assertEqual([f["data"]["item_count"] for f in findings if "many" in f["issue"].lower()], [4])
+
     def test_too_many_items_warns(self):
         """More than 3 exclusion items should produce a medium notice."""
         prompt = "no guitar, no piano, no drums, no bass, no synth, no vocals"
@@ -302,7 +344,7 @@ class TestBuildReport(unittest.TestCase):
         """Report should have all required fields."""
         report = validate_prompt.build_report([], [], "test", "", "/test/path")
         self.assertEqual(report["script"], "validate-prompt")
-        self.assertEqual(report["version"], "1.4.0")
+        self.assertEqual(report["version"], "1.5.0")
         self.assertEqual(report["status"], "pass")
         self.assertIn("findings", report)
         self.assertIn("summary", report)
@@ -325,6 +367,8 @@ class TestBuildReport(unittest.TestCase):
         report = validate_prompt.build_report([], [], "hello world", "no guitar")
         self.assertEqual(report["metrics"]["style_prompt_chars"], 11)
         self.assertEqual(report["metrics"]["exclusion_prompt_chars"], 9)
+        self.assertEqual(report["metrics"]["exclusion_recommended_max"], 200)
+        self.assertEqual(report["metrics"]["critical_zone"], 200)
 
 
 class TestCLI(unittest.TestCase):
@@ -385,6 +429,25 @@ class TestNegationDetection(unittest.TestCase):
         self.assertEqual(len(neg), 1)
         self.assertEqual(neg[0]["severity"], "medium")
         self.assertEqual(neg[0]["data"]["phrases"], ["not extra"])
+        self.assertEqual(validate_prompt.find_negations("indie rock, avoiding reverb, avoid synths"),
+                         ["avoiding reverb", "avoid synths"])
+        avoid = [f for f in validate_prompt.validate_style_prompt("indie rock, warm vocal, avoid synths")
+                 if f["category"] == "negation"]
+        self.assertEqual([(f["severity"], f["data"]["phrases"]) for f in avoid], [("medium", ["avoid synths"])])
+
+    def test_curly_apostrophe_and_other_contractions_are_medium(self):
+        for prompt, phrase in (("indie rock, the drums don\u2019t rush", "don't rush"),
+                               ("indie rock, the vocal isn't buried", "isn't buried"),
+                               ("indie rock, guitars that won\u2019t distort", "won't distort")):
+            neg = [f for f in validate_prompt.validate_style_prompt(prompt) if f["category"] == "negation"]
+            self.assertEqual([(f["severity"], f["data"]["phrases"]) for f in neg], [("medium", [phrase])], prompt)
+
+    def test_free_suffix_and_minus_are_medium(self):
+        neg = [f for f in validate_prompt.validate_style_prompt("indie rock, reverb-free vocal, full band minus drums")
+               if f["category"] == "negation"]
+        self.assertEqual([(f["severity"], f["data"]["phrases"]) for f in neg],
+                         [("medium", ["reverb-free", "minus drums"])])
+        self.assertEqual(validate_prompt.find_negations("carefree indie rock, free-form jazz solo"), [])
 
     def test_do_not_counted_once(self):
         self.assertEqual(validate_prompt.find_negations("rock, do not rush"), ["do not rush"])
@@ -488,6 +551,19 @@ class TestControls(unittest.TestCase):
         self.assertEqual(validate_prompt.validate_controls(55, "voice"), [])
         self.assertEqual(validate_prompt.validate_controls(None, ""), [])
 
+    def test_range_edges(self):
+        self.assertEqual(validate_prompt.validate_controls(15, "persona"), [])
+        self.assertEqual([f["category"] for f in validate_prompt.validate_controls(14, "persona")], ["range"])
+        self.assertEqual([f["category"] for f in validate_prompt.validate_controls(26, "persona")], ["range"])
+        self.assertEqual(validate_prompt.validate_controls(35, "voice"), [])
+        self.assertEqual(validate_prompt.validate_controls(95, "voice"), [])
+        self.assertEqual([f["category"] for f in validate_prompt.validate_controls(34, "voice")], ["range"])
+        self.assertEqual([f["category"] for f in validate_prompt.validate_controls(96, "voice")], ["range"])
+
+    def test_non_numeric_audio_influence_is_high(self):
+        findings = validate_prompt.validate_controls("high", "voice")
+        self.assertEqual([(f["category"], f["severity"]) for f in findings], [("range", "high")])
+
     def test_vocal_gender_with_voice_flagged(self):
         findings = validate_prompt.validate_controls(55, "voice", vocal_gender="Male")
         self.assertTrue([f for f in findings if "vocal gender" in f["issue"].lower()])
@@ -584,9 +660,10 @@ class TestPackageValidation(unittest.TestCase):
         package = {
             "model": "v6",
             "style_prompt": "heartland rock, warm male vocal, chimey electric guitar, driving groove",
-            "exclusion_prompt": "steel guitar, autotune",
+            "exclusion_prompt": "steel guitar",
+            "exclusion_rationale": [{"term": "steel guitar", "defends_against": "'heartland rock' can pull pedal steel"}],
             "wild_card": {"style_prompt": "southern rock, warm male vocal, slide guitar lead, swampy groove",
-                          "exclusion_prompt": "steel guitar, autotune",
+                          "exclusion_prompt": "steel guitar",
                           "exclusion_rationale": [{"term": "steel guitar", "defends_against": "'southern rock' can pull pedal steel"}]},
         }
         package.update(overrides)
@@ -607,7 +684,7 @@ class TestPackageValidation(unittest.TestCase):
         self.assertEqual(found[0]["data"]["quoted"], ["string-band"])
 
     def test_rationale_quoting_nothing_is_low(self):
-        package = self._package(exclusion_rationale=[
+        package = self._package(exclusion_prompt="autotune", exclusion_rationale=[
             {"term": "autotune", "defends_against": "v6 tends to polish vocals"}])
         found = [f for f in validate_prompt.validate_package(package)["findings"] if f.get("category") == "exclusion"]
         self.assertEqual([f["severity"] for f in found], ["low"])
@@ -621,7 +698,7 @@ class TestPackageValidation(unittest.TestCase):
         self.assertEqual(found, [])
 
     def test_possessive_apostrophe_is_not_a_quote(self):
-        package = self._package(exclusion_rationale=[
+        package = self._package(exclusion_prompt="autotune", exclusion_rationale=[
             {"term": "autotune", "defends_against": "the band's 'warm male vocal' could read as polished"}])
         found = [f for f in validate_prompt.validate_package(package)["findings"] if f.get("category") == "exclusion"]
         self.assertEqual(found, [])
@@ -750,6 +827,254 @@ def _run_cli(*args, stdin=None):
                           input=stdin, capture_output=True, text=True)
 
 
+class TestEmitCLI(unittest.TestCase):
+    """The --emit branch as the headless builder runs it: what it prints and how it exits."""
+
+    def test_clean_package_prints_the_package_and_exits_0(self):
+        result = _run_cli("--stdin", "--emit", stdin=json.dumps(TestEmit.BASE))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        out = json.loads(result.stdout)
+        self.assertEqual(out["style_prompt"], TestEmit.BASE["style_prompt"])
+        self.assertEqual(out["style_prompt_chars"], len(TestEmit.BASE["style_prompt"]))
+        self.assertEqual(out["validation"]["script"], "validate-prompt")
+        self.assertEqual(out["validation"]["status"], "pass")
+
+    def test_standing_high_finding_is_refused_with_exit_1(self):
+        package = {**TestEmit.BASE, "style_prompt": "death metal, blast beats, dark"}
+        result = _run_cli("--stdin", "--emit", stdin=json.dumps(package))
+        self.assertEqual(result.returncode, 1)
+        out = json.loads(result.stdout)
+        self.assertEqual(out["status"], "emit_refused")
+        self.assertNotIn("style_prompt", out)
+        self.assertTrue(out["findings"])
+
+    def test_non_list_decisions_exits_2_not_a_traceback(self):
+        for extra in ((), ("--emit",)):
+            result = _run_cli("--stdin", *extra, stdin=json.dumps({**TestEmit.BASE, "decisions": 7}))
+            self.assertEqual(result.returncode, 2, extra)
+            self.assertIn("decisions", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_decision_without_call_or_reason_does_not_judge_a_finding(self):
+        bad = [{"term": "steel guitar", "defends_against": "the profile's 'string-band' defaults"}]
+        package = {**TestEmit.BASE, "exclusion_rationale": bad}
+        fid = [f["id"] for f in validate_prompt.validate_package(package)["findings"] if f["severity"] == "medium"][0]
+        for decision in ({"finding": fid}, {"finding": fid, "call": "kept", "reason": "  "},
+                         {"finding": fid, "call": "", "reason": "the user's standing exclude"}):
+            package["decisions"] = [decision]
+            out, code = validate_prompt.emit_package(package, validate_prompt.validate_package(package))
+            self.assertEqual((code, out["status"], out["findings"]), (1, "emit_refused", [fid]), decision)
+
+
+class TestFlagsCLI(unittest.TestCase):
+    def test_passing_package_exits_0(self):
+        result = _run_cli("--style", "heartland rock, warm male vocal", "--model", "v6", "--tier", "pro")
+        self.assertEqual((result.returncode, json.loads(result.stdout)["status"]), (0, "pass"))
+
+    def test_instrumental_flag_makes_the_scream_trigger_informational(self):
+        result = _run_cli("--style", "doom metal, slow riffs", "--instrumental")
+        triggers = [f for f in json.loads(result.stdout)["findings"] if f.get("data", {}).get("triggers")]
+        self.assertEqual([f["severity"] for f in triggers], ["info"])
+
+    def test_audio_flags_are_range_checked(self):
+        result = _run_cli("--style", "indie rock, warm vocal", "--audio-influence", "50", "--audio-source", "persona")
+        ranged = [f for f in json.loads(result.stdout)["findings"] if f["category"] == "range"]
+        self.assertEqual([f["data"]["audio_source"] for f in ranged], ["persona"])
+        self.assertEqual(result.returncode, 1)
+
+    def test_vocal_gender_flag_with_a_voice_is_flagged(self):
+        result = _run_cli("--style", "indie rock, warm vocal", "--audio-influence", "55", "--audio-source", "voice",
+                          "--vocal-gender", "male")
+        self.assertTrue([f for f in json.loads(result.stdout)["findings"] if "vocal gender" in f["issue"].lower()])
+
+    def test_style_or_exclude_beside_a_package_is_refused(self):
+        package = json.dumps({"model": "v6", "style_prompt": "indie rock, warm vocal"})
+        for flags in (("--style", "death metal"), ("--exclude", "autotune")):
+            result = _run_cli("--stdin", *flags, stdin=package)
+            self.assertEqual(result.returncode, 2, flags)
+            self.assertIn("package", result.stderr)
+            self.assertEqual(result.stdout, "")
+
+
+class TestReferenceNames(unittest.TestCase):
+    BASE = {"model": "v6", "tier": "pro",
+            "style_prompt": "heartland rock, warm male vocal, chimey electric guitar, driving groove",
+            "reference_names": ["Tom Petty", "Free Fallin'", "Low"]}
+
+    def _names(self, **overrides):
+        report = validate_prompt.validate_package({**self.BASE, **overrides})
+        return [(f["location"]["field"], f["severity"], f["data"]["name"])
+                for f in report["findings"] if f["category"] == "reference_name"]
+
+    def test_decomposed_prompt_has_no_finding(self):
+        self.assertEqual(self._names(), [])
+
+    def test_name_in_the_style_prompt_is_high(self):
+        found = self._names(style_prompt="heartland rock in the style of tom petty, warm male vocal")
+        self.assertEqual(found, [("style_prompt", "high", "Tom Petty")])
+
+    def test_song_title_with_a_curly_apostrophe_matches(self):
+        found = self._names(style_prompt="heartland rock, warm male vocal, a Free Fallin\u2019 jangle")
+        self.assertEqual(found, [("style_prompt", "high", "Free Fallin'")])
+
+    def test_name_in_the_wild_card_and_in_excludes(self):
+        found = self._names(
+            exclusion_prompt="Tom Petty",
+            exclusion_rationale=[{"term": "Tom Petty", "defends_against": "'heartland rock' pulls his sound"}],
+            wild_card={"style_prompt": "southern rock, warm male vocal, Tom Petty jangle", "exclusion_prompt": "tom petty",
+                       "exclusion_rationale": [{"term": "tom petty", "defends_against": "'southern rock'"}]})
+        self.assertEqual(sorted(found), [("exclusion_prompt", "high", "Tom Petty"),
+                                         ("wild_card_exclusion_prompt", "high", "Tom Petty"),
+                                         ("wild_card_prompt", "high", "Tom Petty")])
+
+    def test_one_word_name_is_medium_and_matches_whole_words_only(self):
+        self.assertEqual(self._names(style_prompt="slowcore rock, low drone, warm male vocal"),
+                         [("style_prompt", "medium", "Low")])
+        self.assertEqual(self._names(style_prompt="slowcore rock, lower register, slow, warm male vocal"), [])
+
+    def test_unlisted_name_is_not_detected(self):
+        self.assertEqual(self._names(reference_names=[], style_prompt="heartland rock like tom petty, warm vocal"), [])
+
+    def test_emit_refuses_a_name_drop(self):
+        package = {**self.BASE, "style_prompt": "heartland rock, Tom Petty jangle, warm male vocal"}
+        out, code = validate_prompt.emit_package(package, validate_prompt.validate_package(package))
+        self.assertEqual((code, out["status"]), (1, "emit_refused"))
+
+    def test_non_list_reference_names_exits_2(self):
+        result = _run_cli("--stdin", stdin=json.dumps({**self.BASE, "reference_names": "Tom Petty"}))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("reference_names", result.stderr)
+
+
+class TestSliderValues(unittest.TestCase):
+    def _range(self, sliders, **extra):
+        report = validate_prompt.validate_package(
+            {"model": "v6", "tier": "pro", "style_prompt": "indie rock, warm vocal", "sliders": sliders, **extra})
+        return [(f["severity"], f.get("data", {}).get("slider")) for f in report["findings"] if f["category"] == "range"]
+
+    def test_values_in_range_pass(self):
+        self.assertEqual(self._range({"weirdness": 0, "style_influence": 100}), [])
+        self.assertEqual(self._range({"weirdness": 55, "style_influence": 75, "audio_influence": None, "audio_source": None}), [])
+
+    def test_out_of_range_is_high(self):
+        self.assertEqual(self._range({"weirdness": 101, "style_influence": -1}),
+                         [("high", "weirdness"), ("high", "style_influence")])
+
+    def test_non_numeric_is_high(self):
+        self.assertEqual(self._range({"weirdness": "high", "style_influence": True}),
+                         [("high", "weirdness"), ("high", "style_influence")])
+
+    def test_audio_influence_without_a_source_is_high(self):
+        found = self._range({"weirdness": 50, "style_influence": 70, "audio_influence": 55})
+        self.assertEqual(found, [("high", None)])
+
+    def test_audio_influence_with_a_slot_is_reported_once(self):
+        self.assertEqual(len(self._range({"audio_influence": 150, "audio_source": "voice"})), 1)
+        self.assertEqual(len(self._range({"audio_influence": "loud", "audio_source": "persona"})), 1)
+
+
+class TestExclusionCoverage(unittest.TestCase):
+    BASE = {"model": "v6", "tier": "pro",
+            "style_prompt": "heartland rock, warm male vocal, chimey electric guitar, driving groove"}
+
+    def _exclusion(self, **overrides):
+        report = validate_prompt.validate_package({**self.BASE, **overrides})
+        return [(f["severity"], f["data"].get("terms")) for f in report["findings"] if f["category"] == "exclusion"]
+
+    def test_exclude_without_an_entry_is_medium(self):
+        found = self._exclusion(
+            exclusion_prompt="steel guitar, autotune",
+            exclusion_rationale=[{"term": "steel guitar", "defends_against": "'heartland rock' can pull pedal steel"}])
+        self.assertEqual(found, [("medium", ["autotune"])])
+
+    def test_excludes_with_no_rationale_at_all_are_medium(self):
+        self.assertEqual(self._exclusion(exclusion_prompt="steel guitar, autotune"),
+                         [("medium", ["steel guitar", "autotune"])])
+        self.assertEqual(self._exclusion(), [])
+
+    def test_one_entry_may_cover_a_whole_family(self):
+        family = "choir, backing vocals, gang vocals, layered vocals, crowd chants"
+        found = self._exclusion(
+            style_prompt="gospel rock, solo lead vocal, one singer only, warm organ",
+            exclusion_prompt=family,
+            exclusion_rationale=[{"term": family, "defends_against": "'gospel rock' pulls a choir"}])
+        self.assertEqual(found, [])
+
+    def test_wild_card_excludes_need_entries_too(self):
+        found = self._exclusion(wild_card={"style_prompt": "southern rock, warm male vocal, slide guitar lead",
+                                           "exclusion_prompt": "banjo"})
+        self.assertEqual(found, [("medium", ["banjo"])])
+
+    def test_non_list_rationale_exits_2(self):
+        result = _run_cli("--stdin", stdin=json.dumps({**self.BASE, "exclusion_prompt": "banjo",
+                                                       "exclusion_rationale": "it drifts"}))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("exclusion_rationale", result.stderr)
+
+
+class TestWildCardGroupVocals(unittest.TestCase):
+    FAMILY = "choir, backing vocals, gang vocals, layered vocals, crowd chants"
+    RATIONALE = [{"term": FAMILY, "defends_against": "'gospel rock' pulls a choir"}]
+
+    def _pulls(self, wild_card):
+        report = validate_prompt.validate_package({
+            "model": "v6", "tier": "pro", "style_prompt": "gospel rock, solo lead vocal, warm organ",
+            "exclusion_prompt": self.FAMILY, "exclusion_rationale": self.RATIONALE, "wild_card": wild_card})
+        return [f["data"]["pulls"] for f in report["findings"] if f.get("data", {}).get("pulls")]
+
+    def test_wild_card_inheriting_the_excludes_is_checked(self):
+        self.assertEqual(self._pulls({"style_prompt": "gospel rock, call-and-response verses, warm organ",
+                                      "exclusion_prompt": None}), [["call-and-response"]])
+
+    def test_wild_card_with_its_own_excludes_is_checked_against_them(self):
+        self.assertEqual(self._pulls({"style_prompt": "gospel rock, gang shouts, warm organ",
+                                      "exclusion_prompt": "choir",
+                                      "exclusion_rationale": [{"term": "choir", "defends_against": "'gospel rock'"}]}),
+                         [["gang"]])
+        self.assertEqual(self._pulls({"style_prompt": "gospel rock, gang shouts, warm organ",
+                                      "exclusion_prompt": "steel guitar",
+                                      "exclusion_rationale": [{"term": "steel guitar", "defends_against": "'gospel rock'"}]}),
+                         [])
+
+
+class TestEnvironment(unittest.TestCase):
+    TEXT = "heartland rock, caf\u00e9 warmth, \u201cclose\u201d male vocal \u2014 slow"
+
+    def test_missing_shared_folder_exits_2_with_a_reason(self):
+        tmp_path = _tmp_path(self)
+        shutil.copy(SCRIPT_PATH, tmp_path / "validate_prompt.py")
+        result = subprocess.run([sys.executable, str(tmp_path / "validate_prompt.py"), "--style", "indie rock"],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertIn("_shared", result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "error")
+
+    def test_stdin_and_stdout_are_utf8_whatever_the_stream_encoding(self):
+        package = {**TestEmit.BASE, "style_prompt": self.TEXT}
+        env = {**os.environ, "PYTHONIOENCODING": "ascii"}
+        result = subprocess.run([sys.executable, str(SCRIPT_PATH), "--stdin", "--emit"],
+                                input=json.dumps(package, ensure_ascii=False).encode("utf-8"),
+                                capture_output=True, env=env)
+        self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", "replace"))
+        out = json.loads(result.stdout.decode("utf-8"))
+        self.assertEqual(out["style_prompt"], self.TEXT)
+        self.assertEqual(out["style_prompt_chars"], len(self.TEXT))
+
+    def test_package_file_and_output_file_are_utf8_in_a_non_utf8_locale(self):
+        tmp_path = _tmp_path(self)
+        source, target = tmp_path / "package.json", tmp_path / "out.json"
+        source.write_text(json.dumps({**TestEmit.BASE, "style_prompt": self.TEXT}, ensure_ascii=False), encoding="utf-8")
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONIOENCODING" and not k.startswith("LC_")}
+        env.update({"LC_ALL": "C", "LANG": "C", "PYTHONCOERCECLOCALE": "0", "PYTHONUTF8": "0"})
+        result = subprocess.run([sys.executable, str(SCRIPT_PATH), "--input-file", str(source), "--emit",
+                                 "--output", str(target)], capture_output=True, env=env)
+        self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", "replace"))
+        out = json.loads(target.read_text(encoding="utf-8"))
+        self.assertEqual(out["style_prompt"], self.TEXT)
+        self.assertEqual(out["style_prompt_chars"], len(self.TEXT))
+
+
 class TestStatusAndExit(unittest.TestCase):
     def test_medium_only_is_review_and_exits_1(self):
         result = _run_cli("--style", "indie rock, warm male vocal, cinematic swells", "--model", "v6")
@@ -852,6 +1177,17 @@ class TestTierRules(unittest.TestCase):
             "exclusion_prompt": None, "sliders": None,
         })
         self.assertFalse(self._tier(report))
+
+    def test_free_with_voice_settings_or_wild_card_excludes_flagged(self):
+        report = validate_prompt.validate_package({
+            "model": "v6-mini", "tier": "free", "style_prompt": "indie rock, warm vocal",
+            "sliders": {"audio_influence": 55, "audio_source": "voice"},
+            "wild_card": {"style_prompt": "indie folk, warm vocal", "exclusion_prompt": "autotune"},
+        })
+        issues = [f["issue"] for f in self._tier(report)]
+        self.assertEqual(len([i for i in issues if "audio_influence" in i]), 1)
+        self.assertEqual(len([i for i in issues if "wild card carries Exclude Styles" in i]), 1)
+        self.assertTrue(all(f["severity"] == "high" for f in self._tier(report)))
 
     def test_pro_tier_unrestricted(self):
         report = validate_prompt.validate_package({

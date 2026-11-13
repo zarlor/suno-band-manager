@@ -1,0 +1,3 @@
+# Note on `cases.json`
+
+Version-neutral cases for the leanness variant (new vs the prior snapshot): every rubric item holds for either layout. The only staged files are BMad's config resolvers and central config, which resolve against the project root first, so they are the repo's own installer-managed _bmad/config.toml (suno_tier pro, no personal data) and _bmad/scripts/*.py; that lets activation step 2 resolve instead of stopping to offer setup. No band profile, no songbook and no sibling skill is staged: the headless cases run with --no-write and never need the builder, and the interactive cases must stop at a narrowing question before any rebuild. If the repo's suno_tier changes from pro, re-read the tier items in technical-artifact-regenerate-first.

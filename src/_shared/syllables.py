@@ -5,6 +5,7 @@ so a line is counted the same way wherever it is judged.
 """
 
 import re
+import unicodedata
 
 # Common words with known syllable counts that the algorithm gets wrong
 SYLLABLE_OVERRIDES = {
@@ -21,15 +22,25 @@ SYLLABLE_OVERRIDES = {
     "she's": 1, "it's": 1, "don't": 1, "won't": 1, "can't": 1,
     "couldn't": 2, "wouldn't": 2, "shouldn't": 2, "didn't": 2,
     "isn't": 2, "wasn't": 2, "aren't": 2, "weren't": 2,
+    # "-ches" is a syllable (watches) except in the ache family, where the e is silent
+    "aches": 1, "headaches": 2, "heartaches": 2, "backaches": 2, "toothaches": 2,
 }
+
+# Curly and modifier apostrophes, so "didn’t" finds the same override as "didn't"
+_APOSTROPHES = str.maketrans({"\u2019": "'", "\u2018": "'", "\u02bc": "'"})
 
 
 def count_syllables(word: str) -> int:
     """Count syllables in a single word using vowel cluster heuristic."""
-    word = word.lower().strip()
+    word = unicodedata.normalize("NFKD", word.lower().strip().translate(_APOSTROPHES))
+
+    # An accented e is always sounded (café, cliché, résumé): mark it "E" so the
+    # silent-e, -ed and -es rules below leave it alone. Other accented letters
+    # fold to their base letter (corazón -> corazon).
+    word = re.sub(r"e[\u0300-\u036f]+", "E", word)
 
     # Remove non-alpha except apostrophes
-    word = re.sub(r"[^a-z']", "", word)
+    word = re.sub(r"[^a-zE']", "", word)
 
     if not word:
         return 0
@@ -39,7 +50,7 @@ def count_syllables(word: str) -> int:
         return SYLLABLE_OVERRIDES[word]
 
     # Vowel cluster counting with adjustments
-    vowels = "aeiouy"
+    vowels = "aeiouyE"
     count = 0
     prev_vowel = False
 
@@ -51,8 +62,8 @@ def count_syllables(word: str) -> int:
 
     # Adjustments
     # Silent e at end
-    if word.endswith('ee'):
-        pass  # 'coffee', 'free': the final vowel sound is real, not a silent e
+    if word.endswith(('ee', 'Ee')):
+        pass  # 'coffee', 'free', 'née': the final vowel sound is real, not a silent e
     elif word.endswith('e') and not word.endswith(('le', 'ce', 'se', 'ge', 'ze', 'ne', 'me', 've', 'te', 'de', 'be', 'fe', 'he', 'ke', 'pe', 'we', 'ye')):
         count -= 1
     elif word.endswith('e') and len(word) > 3 and word[-2] not in vowels:
@@ -69,8 +80,8 @@ def count_syllables(word: str) -> int:
 
     # -es ending
     if word.endswith('es') and len(word) > 3:
-        if word[-3] in ('s', 'z', 'x', 'ch', 'sh'):
-            pass  # -es IS a syllable here
+        if word[-3] in 'szxcg' or word[-4:-2] in ('ch', 'sh'):
+            pass  # -es IS a syllable after a sibilant (boxes, faces, changes, wishes, watches)
         elif word[-3] not in vowels:
             count -= 1
 

@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for validate-lyrics.py"""
+"""Tests for validate_lyrics.py"""
 
 import json
 import subprocess
@@ -11,7 +11,7 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "validate-lyrics.py")
+SCRIPT = str(Path(__file__).parent.parent / "validate_lyrics.py")
 
 
 def run_script(*args):
@@ -42,8 +42,9 @@ class TestValidateLyrics(unittest.TestCase):
             "Come undone, come undone\n"
             "Let the weight fall where it may\n"
         )
-        report, code = run_script("--text", lyrics)
+        report, code = run_script("--text", lyrics + "\n[End]")
         self.assertIsNotNone(report)
+        self.assertEqual((report["status"], code), ("pass", 0))
         self.assertEqual(report["script"], "validate-lyrics")
         self.assertEqual(report["metrics"]["section_count"], 4)
         self.assertIn("Verse 1", report["metrics"]["sections"])
@@ -60,6 +61,8 @@ class TestValidateLyrics(unittest.TestCase):
         lyrics = "[Verse 1]\nThe punchy drums echo through my mind\n"
         report, code = run_script("--text", lyrics)
         self.assertIsNotNone(report)
+        # A high finding with no critical one is `warning`, and a gate short of pass exits 1.
+        self.assertEqual((report["status"], code), ("warning", 1))
         issues = [f["issue"] for f in report["findings"]]
         self.assertTrue(any("style cue" in i.lower() for i in issues))
 
@@ -74,6 +77,7 @@ class TestValidateLyrics(unittest.TestCase):
         report, code = run_script("--text", "")
         self.assertIsNotNone(report)
         self.assertEqual(report["status"], "fail")
+        self.assertEqual(code, 1)
         self.assertTrue(any(f["severity"] == "critical" for f in report["findings"]))
 
     def test_unrecognized_metatag(self):
@@ -220,6 +224,10 @@ class TestValidateLyrics(unittest.TestCase):
             "Build", "Build-Up", "Buildup", "Drop", "Hook", "Refrain",
             "Post-Chorus", "End", "Fade Out", "Fade In", "Break",
             "Instrumental Break", "Reprise", "Coda", "Reprise: quieter",
+            "Synth Solo", "Violin Solo", "Fiddle Solo", "Slide Guitar Solo",
+            # Tags the metatag catalog rates reliable
+            "Instrumental Intro", "Drum Break", "Percussion Break", "Big Finish",
+            "Chorus x2", "Bass Drop", "Strings Rise",
         ]
         for tag in new_tags:
             with self.subTest(tag=tag):
@@ -229,6 +237,32 @@ class TestValidateLyrics(unittest.TestCase):
                 unrecognized = [f for f in report["findings"]
                                if "Unrecognized" in f.get("issue", "") and tag in f.get("issue", "")]
                 self.assertEqual(len(unrecognized), 0, f"[{tag}] was flagged as unrecognized")
+                if tag != "End":  # recognized, but the stop marker is not a section
+                    self.assertIn(tag, report["metrics"]["sections"])
+
+    def test_standalone_and_delivery_tags_recognized_without_opening_a_section(self):
+        """Mood, energy, rhythm, transition and delivery tags pass and stay inside their section."""
+        tags = [
+            "Haunting", "High Energy", "Half-Time", "Four on the Floor",
+            "Whispered", "Spoken Word", "Raspy", "Belted", "Choir", "Whispered, vulnerable",
+            "Unresolved tension", "Silence", "Soft End", "Piano", "Lo-fi",
+            "Atmosphere: Dreamy", "Vocal Arrangement: lead with group responses",
+        ]
+        for tag in tags:
+            with self.subTest(tag=tag):
+                lyrics = f"[Verse 1]\nSome line one\n[{tag}]\nSome line two\n"
+                report, _ = run_script("--text", lyrics)
+                self.assertFalse(issues(report, "Unrecognized"))
+                self.assertEqual(report["metrics"]["sections"], ["Verse 1"])
+
+    def test_tags_the_catalog_rates_unreliable_stay_flagged(self):
+        for tag in ["Heavy", "Loud", "Soft", "Quiet", "Stop", "hard cut", "Duet",
+                    "No AutoTune", "Falsetto", "The Questions"]:
+            with self.subTest(tag=tag):
+                report, _ = run_script("--text", f"[Verse 1]\nSome line one\n\n[{tag}]\nSome line two\n")
+                found = issues(report, f"Unrecognized metatag [{tag}]")
+                self.assertEqual([f["severity"] for f in found], ["low"])
+                self.assertEqual(report["metrics"]["sections"], ["Verse 1"])
 
     def test_vocal_cues_recognized(self):
         """Vocal delivery cues like [Harmonized] should not be flagged as unrecognized."""
@@ -242,6 +276,9 @@ class TestValidateLyrics(unittest.TestCase):
                 unrecognized = [f for f in report["findings"]
                                if "Unrecognized" in f.get("issue", "") and cue in f.get("issue", "")]
                 self.assertEqual(len(unrecognized), 0, f"[{cue}] was flagged as unrecognized")
+                # A cue is not a section: the line after it stays in the verse.
+                self.assertEqual(report["metrics"]["sections"], ["Verse 1"])
+                self.assertFalse(issues(report, "No blank line before"))
 
 
 BODY = "[Verse 1]\nWalking through the morning light\nCounting shadows on the wall\n"
@@ -285,6 +322,12 @@ class TestEndPlacement(unittest.TestCase):
         report, _ = run_script("--text", BODY + "\n[End]")
         self.assertFalse(issues(report, "Empty section [End]"))
 
+    def test_second_end_flags_the_earlier_one(self):
+        report, _ = run_script("--text", BODY + "\n[End]\n\n[Verse 2]\nmore\n\n[End]")
+        found = issues(report, "is not the last line")
+        self.assertEqual([(f["severity"], f["location"]) for f in found], [("medium", {"line": 5})])
+        self.assertFalse(issues(report, "Text follows the final [End]"))
+
 
 class TestNarrativeLabels(unittest.TestCase):
     def test_em_dash_caps_label_flagged(self):
@@ -314,6 +357,106 @@ class TestNarrativeLabels(unittest.TestCase):
         self.assertEqual(report["metrics"]["section_count"], 2)
         self.assertFalse(issues(report, "Unrecognized metatag"))
         self.assertFalse(issues(report, "Narrative section label"))
+
+
+class TestTagFormatting(unittest.TestCase):
+    def test_two_tags_on_one_line_flagged_and_both_read(self):
+        report, _ = run_script("--text", "[Verse 1] [Banana]\nline one\nline two\n\n[End]")
+        found = issues(report, "Several tags on line 1")
+        self.assertEqual([f["severity"] for f in found], ["medium"])
+        self.assertEqual(report["metrics"]["sections"], ["Verse 1"])
+        self.assertEqual(report["metrics"]["lyric_lines"], 2)
+        self.assertTrue(issues(report, "Unrecognized metatag [Banana]"))
+
+    def test_unclosed_tag_is_high(self):
+        report, code = run_script("--text", BODY + "\n[Chorus\nCome undone\n\n[End]")
+        found = issues(report, "Unclosed tag at line 5")
+        self.assertEqual([f["severity"] for f in found], ["high"])
+        self.assertEqual((report["status"], code), ("warning", 1))
+        self.assertEqual(report["metrics"]["sections"], ["Verse 1"])
+
+    def test_lyric_lines_before_the_first_tag_flagged_once(self):
+        report, _ = run_script("--text", "Salt on the Sill\nby someone\n\n" + BODY + "\n[End]")
+        found = issues(report, "before the first section tag")
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["severity"], "medium")
+        self.assertEqual(found[0]["location"], {"line": 1})
+        self.assertIn("2 lyric line(s)", found[0]["issue"])
+
+    def test_no_orphan_finding_when_lyrics_start_under_a_tag(self):
+        report, _ = run_script("--text", "[Mood: dark]\n\n" + BODY + "\n[End]")
+        self.assertFalse(issues(report, "before the first section tag"))
+
+    def test_untagged_text_gets_the_no_sections_finding_only(self):
+        report, _ = run_script("--text", "Just some raw text\nWith no structure at all")
+        self.assertTrue(issues(report, "No section metatags"))
+        self.assertFalse(issues(report, "before the first section tag"))
+
+    def test_blank_line_before_section_tag(self):
+        report, _ = run_script("--text", "[Verse 1]\nline one\n[Chorus]\nline two\n\n[End]")
+        found = issues(report, "No blank line before section tag [Chorus]")
+        self.assertEqual([f["severity"] for f in found], ["medium"])
+        self.assertEqual(found[0]["location"], {"line": 3})
+
+    def test_descriptor_directly_above_a_section_tag_is_fine(self):
+        report, _ = run_script("--text", "[Verse 1]\nline one\n\n[Energy: building]\n[Chorus]\nline two\n\n[End]")
+        self.assertFalse(issues(report, "No blank line before"))
+
+
+class TestLengthFindings(unittest.TestCase):
+    @staticmethod
+    def song(lyric_lines: int) -> str:
+        return "[Verse 1]\n" + "\n".join(f"line {i}" for i in range(lyric_lines)) + "\n\n[End]"
+
+    def test_short_lyrics_boundary(self):
+        seven, _ = run_script("--text", self.song(7))
+        eight, _ = run_script("--text", self.song(8))
+        self.assertEqual([f["severity"] for f in issues(seven, "Very short lyrics (7 lines)")], ["low"])
+        self.assertFalse(issues(eight, "Very short lyrics"))
+
+    def test_long_lyrics_boundary(self):
+        eighty, _ = run_script("--text", self.song(80))
+        eighty_one, _ = run_script("--text", self.song(81))
+        self.assertFalse(issues(eighty, "Very long lyrics"))
+        self.assertEqual([f["severity"] for f in issues(eighty_one, "Very long lyrics (81 lines)")], ["medium"])
+
+    def test_hard_limit_boundary(self):
+        at_limit = "[Verse 1]\n" + "x" * 4990
+        self.assertEqual(len(at_limit), 5000)
+        report, _ = run_script("--text", at_limit)
+        self.assertFalse([f for f in issues(report, "character count") if f["severity"] == "high"])
+        self.assertEqual(report["metrics"]["character_count"], 5000)
+        over, code = run_script("--text", at_limit + "x")
+        found = [f for f in issues(over, "character count") if f["severity"] == "high"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("(5001)", found[0]["issue"])
+        self.assertEqual(code, 1)
+
+    def test_closing_newline_does_not_count_toward_the_limit(self):
+        report, _ = run_script("--text", "[Verse 1]\n" + "x" * 4990 + "\n")
+        self.assertFalse([f for f in issues(report, "character count") if f["severity"] == "high"])
+
+    def test_quality_budget_boundary(self):
+        at_budget, _ = run_script("--text", "[Verse 1]\n" + "x" * 2990)
+        over, _ = run_script("--text", "[Verse 1]\n" + "x" * 2991)
+        self.assertFalse(issues(at_budget, "character count"))
+        self.assertEqual([f["severity"] for f in issues(over, "character count")], ["medium"])
+
+
+class TestExitCodes(unittest.TestCase):
+    def test_missing_file_exits_2(self):
+        report, code = run_script("/nonexistent/lyrics.txt")
+        self.assertIsNone(report)
+        self.assertEqual(code, 2)
+
+    def test_no_input_exits_2(self):
+        result = subprocess.run([sys.executable, SCRIPT], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+
+    def test_medium_and_low_findings_still_pass(self):
+        report, code = run_script("--text", "[Verse 1]\nline one\n[Chorus]\nline two")
+        self.assertTrue(report["summary"]["medium"])
+        self.assertEqual((report["status"], code), ("pass", 0))
 
 
 if __name__ == "__main__":

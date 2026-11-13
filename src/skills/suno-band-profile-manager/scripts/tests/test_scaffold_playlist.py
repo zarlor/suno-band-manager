@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for scaffold-playlist.py"""
+"""Tests for scaffold_playlist.py"""
 
 import json
 import subprocess
@@ -18,7 +18,7 @@ from importlib.util import spec_from_file_location, module_from_spec
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fake_resolver import install_resolver  # noqa: E402
 
-SCRIPT_PATH = Path(__file__).parent.parent / "scaffold-playlist.py"
+SCRIPT_PATH = Path(__file__).parent.parent / "scaffold_playlist.py"
 
 spec = spec_from_file_location(
     "scaffold_playlist",
@@ -255,6 +255,70 @@ class TestMain(TmpPathTestCase):
         self.assertEqual(json.loads(_run("b", "--project-root", str(tmp_path)).stdout)["status"], "exists")
         self.assertEqual(json.loads(_run("b", "--project-root", str(tmp_path), "--force").stdout)["status"],
                          "overwritten")
+
+    def test_invalid_slug_exits_1_and_writes_nothing(self):
+        tmp_path = self.tmp_path
+        root = tmp_path / "project"
+        root.mkdir()
+        for bad in ("../escape", "My Band", "docs/x", "_leading"):
+            with self.subTest(slug=bad):
+                proc = _run(bad, "--project-root", str(root))
+                self.assertEqual(proc.returncode, 1, proc.stdout)
+                payload = json.loads(proc.stdout)
+                self.assertEqual(payload["status"], "error")
+                self.assertIn("Invalid band slug", payload["message"])
+        self.assertEqual(list(tmp_path.rglob("*-playlist.yaml")), [])  # nothing under or beside the root
+
+    def test_force_keeps_a_backup_of_the_playlist_it_replaces(self):
+        tmp_path = self.tmp_path
+        target = tmp_path / "docs" / "b-playlist.yaml"
+        target.parent.mkdir()
+        ordered = 'album: "B"\ntracks:\n  - name: "One"\n    file: "One.mp3"\n'
+        target.write_text(ordered)
+        payload = json.loads(_run("b", "--project-root", str(tmp_path), "--force").stdout)
+        self.assertEqual(payload["status"], "overwritten")
+        self.assertEqual(payload["backup_path"], "docs/b-playlist.yaml.bak")
+        self.assertEqual((tmp_path / "docs" / "b-playlist.yaml.bak").read_text(), ordered)
+        self.assertNotIn("One.mp3", target.read_text())
+        self.assertNotIn("backup_path", json.loads(_run("c", "--project-root", str(tmp_path), "--force").stdout))
+
+    def test_from_songbook_reports_entries_it_could_not_seed(self):
+        import yaml
+        tmp_path = self.tmp_path
+        band = tmp_path / "docs" / "songbook" / "my-band"
+        band.mkdir(parents=True)
+        (band / "a-good.md").write_text('---\ntitle: "Good Song"\nstatus: published\n---\n')
+        (band / "b-untitled.md").write_text("---\nstatus: published\n---\nno title here\n")
+        (band / "c-bom.md").write_bytes(b"\xef\xbb\xbf---\ntitle: BOM Song\nstatus: published\n---\n")
+        (band / "d-latin.md").write_bytes("---\ntitle: Caf\xe9\nstatus: published\n---\n".encode("latin-1"))
+        (band / "e-draft.md").write_text("---\ntitle: Draft Song\nstatus: draft\n---\n")
+        proc = _run("my-band", "--project-root", str(tmp_path), "--from-songbook")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        data = yaml.safe_load((tmp_path / "docs" / "my-band-playlist.yaml").read_text())
+        self.assertEqual([t["name"] for t in data["tracks"]], ["Good Song", "BOM Song"])
+        self.assertEqual(payload["tracks_seeded"], 2)
+        skipped = {s["file"]: s["reason"] for s in payload["skipped"]}
+        self.assertEqual(sorted(skipped), ["b-untitled.md", "d-latin.md"])  # a draft is not a skip
+        self.assertIn("no title", skipped["b-untitled.md"])
+        self.assertIn("unreadable", skipped["d-latin.md"])
+        self.assertIn("2 songbook entries were left out", payload["warnings"][0])
+
+    def test_from_songbook_without_a_band_folder_warns(self):
+        tmp_path = self.tmp_path
+        payload = json.loads(_run("my-band", "--project-root", str(tmp_path), "--from-songbook").stdout)
+        self.assertEqual((payload["status"], payload["tracks_seeded"], payload["skipped"]), ("created", 0, []))
+        self.assertIn("No songbook folder at docs/songbook/my-band", payload["warnings"][0])
+        plain = json.loads(_run("other", "--project-root", str(tmp_path)).stdout)
+        self.assertNotIn("warnings", plain)  # an empty template is the plain call's job
+        self.assertNotIn("skipped", plain)
+
+    def test_non_ascii_album_name_is_written_as_utf8(self):
+        tmp_path = self.tmp_path
+        proc = _run("sigur-ros", "--project-root", str(tmp_path), "--album-name", "Sigur Rós 東京")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        text = (tmp_path / "docs" / "sigur-ros-playlist.yaml").read_bytes().decode("utf-8")
+        self.assertIn('album: "Sigur Rós 東京"', text)
 
     def test_template_documents_optional_sequencer_fields(self):
         out = render_playlist_yaml("My Band", [], from_songbook=False)

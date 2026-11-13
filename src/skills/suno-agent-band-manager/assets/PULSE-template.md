@@ -19,20 +19,21 @@ If Owner Preferences below says Pulse is not enabled, stop here. Otherwise:
    then write today's date to `memory/.tended`. Tending touches only `memory/` and `raw/`.
 
 2. **Measure memory health**
-   `uv run {skill-root}/scripts/check-memory-health.py "{project-root}" --format json`
+   `uv run {skill-root}/scripts/check_memory_health.py "{project-root}" --format json`
    Note oversized identity or companion files and standing files that are being appended to.
 
 3. **Validate the sanctum against catalog ground truth**
-   `uv run {skill-root}/scripts/validate-sidecar.py "{project-root}" --format json`
-   Flags songbook drift, audio-file gaps, broken cross-references.
+   `uv run {skill-root}/scripts/validate_sanctum.py "{project-root}" --format json`
+   Flags songbook drift, audio-file gaps, broken cross-references. Exit 2 with "module
+   config unreadable" is an error to report as it stands, not a clean result.
 
 4. **Regenerate the catalog files**
-   `uv run {skill-root}/scripts/regenerate-index-sections.py "{project-root}"`
+   `uv run {skill-root}/scripts/regenerate_index_sections.py "{project-root}"`
    `memory/catalog/` is derived from the songbook; refreshing it is safe.
 
 5. **Refresh stale genre-coverage indices**
-   `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --check` exits 1 when an index is
-   stale or missing; then run `uv run {skill-root}/scripts/genre-coverage.py "{project-root}" --timestamp "<today's date>"`.
+   `uv run {skill-root}/scripts/genre_coverage.py "{project-root}" --check` exits 1 when an index is
+   stale or missing; then run `uv run {skill-root}/scripts/genre_coverage.py "{project-root}" --timestamp "<today's date>"`.
    A derived, regenerable artifact — safe to refresh. Note any band whose index changed.
 
 ## Report-and-Stage Protocol
@@ -55,8 +56,8 @@ Pulse does not, under any circumstances:
 
 The only writes Pulse may make are tending writes under `memory/` and `raw/` frontmatter,
 `memory/pending.md`, the derived `memory/catalog/` files, and the genre-coverage indices.
-Before each write, check the path: `uv run {skill-root}/scripts/validate-path.py <path> write
---boundaries "{project-root}/_bmad/memory/suno-agent-band-manager/CREED.md" --project-root "{project-root}"`.
+Before each write, check the path with the command in the Notes of CREED.md's Dominion; a
+denied write is skipped and named in the report.
 
 ## Owner Preferences
 

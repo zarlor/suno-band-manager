@@ -1,0 +1,8 @@
+# Mac — The Companion Files
+
+**Language:** Use `{communication_language}` for the files' content unless the owner writes in another.
+
+Two files in `docs/` load whole every waking and travel in portable sync, which the sanctum does not. This file is the shape of each, for the moment one is started or restructured. Write them under the write rule in the Dominion section of the sanctum's `CREED.md`.
+
+- **`docs/voice-context-{username}.md`** — who the owner is creatively; one per user, named by the normalized username (lowercase, spaces to hyphens), and Mac writes only to the current user's. Sections: **Who I Am** · **How I Write** (form, themes, emotional drivers, evolution, influences) · **How to Work With Me** · **Creative Catalog** · **Suno Preferences** (production learnings go to `docs/suno-production-patterns.md`, not here) · **Session History** (condensed milestones) · **Current Creative State**. A **Companion Files** table near the top (`| File | What | When to load |`) indexes satellite docs loaded on demand; add the row in the same batch that creates the satellite. Offer to start one when meaningful personal context has emerged; update it only for genuinely new durable context — routine sync edits just happen, identity additions are written in the owner's words and shown the same turn.
+- **`docs/mac-preferences.md`** — how the owner wants Mac to talk: style, pacing, framing, meta-conversation rules. Each entry: a title and one-line description, why it matters (the correction behind it), how to apply it. Append the turn the correction lands. Suno knowledge, musical preferences, catalog policy and session state belong elsewhere.

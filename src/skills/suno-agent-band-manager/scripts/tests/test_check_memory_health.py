@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # ///
-"""Tests for check-memory-health.py (v7 sanctum)."""
+"""Tests for check_memory_health.py (v7 sanctum)."""
 
 import io
 import json
@@ -19,7 +19,7 @@ from helpers import TempDirMixin  # noqa: E402
 
 spec = spec_from_file_location(
     "check_memory_health",
-    Path(__file__).parent.parent / "check-memory-health.py",
+    Path(__file__).parent.parent / "check_memory_health.py",
 )
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
@@ -33,7 +33,7 @@ def _w(path: Path, text: str) -> Path:
 
 def _run(*argv):
     buf = io.StringIO()
-    with patch.object(sys, "argv", ["check-memory-health.py", *argv]), redirect_stdout(buf):
+    with patch.object(sys, "argv", ["check_memory_health.py", *argv]), redirect_stdout(buf):
         rc = mod.main()
     return rc, buf.getvalue()
 
@@ -199,7 +199,64 @@ class CheckMemoryHealthTests(TempDirMixin, unittest.TestCase):
         self.assertEqual(rc, 1)
         result = json.loads(out)
         self.assertEqual(result["sidecar_format"], "v2")
-        self.assertIn("migrate-sanctum-to-v7.py", result["message"])
+        self.assertIn("migrate_sanctum_to_v7.py", result["message"])
+
+    def test_cli_refuses_a_partial_legacy_store(self):
+        """An old store missing a spine file is not a v7 sanctum: no health report, exit 1,
+        and the result says which files it lacks."""
+        tmp_path = self.tmp_path
+        legacy = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+        for name in mod._seed.V2_SPINE:
+            if name != "BOND.md":
+                _w(legacy / name, "x")
+        rc, out = _run(str(tmp_path))
+        self.assertEqual(rc, 1)
+        result = json.loads(out)
+        self.assertIs(result["error"], True)
+        self.assertEqual(result["sidecar_format"], "damaged")
+        self.assertEqual(result["legacy_store"], str(legacy))
+        self.assertEqual(result["legacy_format"], "damaged")
+        self.assertEqual(result["missing_spine"], ["BOND.md"])
+        self.assertIn("BOND.md", result["message"])
+        self.assertNotIn("identity", result)       # nothing was measured
+        self.assertNotIn("upgrade-sanctum", result["message"])  # no template restore is offered
+
+    def test_cli_refuses_an_unfinished_v7_folder_beside_an_unconverted_store(self):
+        """A stub at the v7 path with a whole v2 store still at the legacy path: the old
+        store is named, and the stub is not measured as if it were the sanctum."""
+        tmp_path = self.tmp_path
+        legacy = tmp_path / "_bmad" / "_memory" / "band-manager-sidecar"
+        for name in mod._seed.V2_SPINE:
+            _w(legacy / name, "x")
+        v7 = tmp_path / "_bmad" / "memory" / "suno-agent-band-manager"
+        _w(v7 / "memory" / "work" / "current.md", "# Current Work\n")
+        rc, out = _run(str(tmp_path))
+        self.assertEqual(rc, 1)
+        result = json.loads(out)
+        self.assertIs(result["error"], True)
+        self.assertEqual((result["sidecar_format"], result["legacy_format"]), ("damaged", "v2"))
+        self.assertEqual(result["legacy_store"], str(legacy))
+        self.assertEqual(result["sanctum_path"], str(v7))
+        self.assertNotIn("identity", result)
+        rc, text = _run(str(tmp_path), "--format", "text")
+        self.assertEqual(rc, 1)
+        self.assertTrue(text.startswith("ERROR: "))
+        self.assertIn(str(legacy), text)
+
+    def test_cli_still_measures_a_damaged_sanctum_with_no_old_store(self):
+        """A born sanctum that lost a file is still measured (and the kept rollback beside it is ignored)."""
+        root, sanctum = self.make_v7_project()
+        _w(sanctum / "memory" / ".born", "2026-06-18\n")
+        (sanctum / "HOW-I-REMEMBER.md").unlink()
+        legacy = root / "_bmad" / "_memory" / "band-manager-sidecar"
+        for name in mod._seed.V2_SPINE:
+            _w(legacy / name, "x")
+        rc, out = _run(str(root))
+        self.assertEqual(rc, 0)
+        result = json.loads(out)
+        self.assertEqual(result["sidecar_format"], "damaged")
+        self.assertEqual(result["identity"]["missing"], ["HOW-I-REMEMBER.md"])
+        self.assertNotIn("legacy_store", result)
 
     def test_cli_absent_sanctum(self):
         tmp_path = self.tmp_path

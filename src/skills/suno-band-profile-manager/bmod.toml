@@ -2,11 +2,13 @@
 bmod = "bmod-suno"
 source = "github:zarlor/suno-band-manager/src/skills"
 
-# Skills this one routes to when they're installed: song requests go to the style
-# prompt builder or lyric transformer, writer-voice work onward to the lyric
-# transformer, playlist reordering to the playlist sequencer, and customization
-# overrides to bmad-customize.
+# Skills this one routes to when they're installed: a whole-song request goes to
+# the Band Manager (the orchestrator of the song pipeline), the onward offer after
+# a saved profile to the style prompt builder or lyric transformer, playlist
+# reordering to the playlist sequencer, and customization overrides to
+# bmad-customize.
 recommended_skills = [
+  "suno-agent-band-manager",
   "suno-style-prompt-builder",
   "suno-lyric-transformer",
   "suno-playlist-sequencer",

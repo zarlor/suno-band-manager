@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
@@ -16,13 +16,16 @@ agree on:
   - config resolution (BMad v7 `modules.suno` answers; the owner from BOND.md)
   - the menu roster (assets/menu.csv) that drives Mac's menu and CAPABILITIES.md
   - the Dominion (access boundaries) rendered into CREED.md
-  - the disciplines and incidents sliced from `references/creed.md`
+  - the disciplines and incidents sliced from the authored creed
+    (`CREED_SOURCE_REL`, the one place its path is defined: assets/creed.md,
+    seed source beside the templates)
 
-Imported by pre-activate.py, init-sanctum.py, migrate-sidecar-to-v2.py and
-upgrade-sanctum.py. As a CLI it is the recovery path: re-seed a missing
+Imported by pre_activate.py, init_sanctum.py, migrate_sidecar_to_v2.py and
+upgrade_sanctum.py. As a CLI it is the recovery path: re-seed a missing
 discipline or incident file into an existing sanctum. It writes only
 files that are missing unless `--force` is given, so shards that have grown new
-learnings are never overwritten by accident.
+learnings are never overwritten by accident. Exit 0 seeded, 2 bad input (the
+target dir or the creed source is missing).
 
 Usage:
     _sanctum_seed.py --out DIR [--skill-path DIR] [--force]
@@ -39,7 +42,7 @@ import re
 import subprocess
 import sys
 import warnings
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 # ---------------------------------------------------------------------------
 # The sanctum and its classification
@@ -124,18 +127,46 @@ def classify_sanctum(sanctum: Path) -> dict:
 def locate_sanctum(project_root: Path, override: str | None = None) -> tuple[Path, dict]:
     """The sanctum to wake from and its classification.
 
-    The v7 path wins. Only when nothing lives there does a store at the legacy
-    path count: it is reported (v1/v2) so the waking routes to its conversion.
+    A complete v7 sanctum wins and the legacy path is not looked at. Otherwise
+    anything at the legacy path is reported, so old memory is never born over
+    or left unmentioned; the state then also carries `legacy_store` (its path)
+    and `legacy_format` (v1 / v2 / damaged):
+
+    - nothing at the v7 path, a v1/v2 store at the legacy one: that store,
+      so the waking routes to its conversion
+    - nothing at the v7 path, a partial or unrecognised legacy store: that
+      store as damaged, `missing_spine` naming the v2 files it lacks
+    - a damaged v7 path that was never a finished sanctum (no `memory/.born`)
+      beside any legacy store: the v7 path as damaged, with the legacy store
+      named, because that store was never converted. A damaged sanctum that
+      has `memory/.born` was whole once (born or converted); the legacy store
+      beside it is the rollback the owner kept, and is not reported.
     """
     sanctum = sanctum_dir(project_root, override)
     state = classify_sanctum(sanctum)
-    if override or state["sidecar_format"] != "absent":
+    if override or state["sidecar_format"] == "v7":
         return sanctum, state
     legacy = legacy_sanctum_dir(project_root)
     legacy_state = classify_sanctum(legacy)
-    if legacy_state["sidecar_format"] in ("v1", "v2"):
-        return legacy, legacy_state
-    return sanctum, state
+    legacy_format = legacy_state["sidecar_format"]
+    if legacy_format == "absent":
+        return sanctum, state
+    if legacy_format not in ("v1", "v2"):
+        names = set(os.listdir(legacy)) if legacy.is_dir() else set()
+        legacy_format = "damaged"
+        legacy_state = {"sidecar_format": "damaged", "needs_migration": False,
+                        "missing_spine": [n for n in V2_SPINE if n not in names]}
+    found = {"legacy_store": str(legacy), "legacy_format": legacy_format}
+    if state["sidecar_format"] == "absent":
+        return legacy, {**legacy_state, **found}
+    if (sanctum / "memory" / ".born").is_file():
+        return sanctum, state
+    return sanctum, {**state, **found}
+
+
+def is_legacy_path(sanctum: Path) -> bool:
+    """True when `sanctum` is a store at the legacy (v1/v2) location."""
+    return Path(sanctum).parts[-len(LEGACY_SANCTUM_REL):] == LEGACY_SANCTUM_REL
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +219,7 @@ def undistilled_raw(sanctum: Path) -> list[str]:
 def tending_state(sanctum: Path) -> dict:
     """When memory was last tended and the session notes written since."""
     stamp = sanctum / "memory" / ".tended"
-    tended = stamp.read_text(encoding="utf-8").strip()[:10] if stamp.is_file() else ""
+    tended = stamp.read_text(encoding="utf-8", errors="replace").strip()[:10] if stamp.is_file() else ""
     sessions = sanctum / "memory" / "sessions"
     notes = [p.name for p in sessions.iterdir() if p.is_file() and DATED_RE.match(p.name)] if sessions.is_dir() else []
     since = [n for n in notes if DATED_RE.match(n).group(1) > tended] if tended else notes
@@ -216,7 +247,7 @@ def memory_map(sanctum: Path) -> str:
 def pending_text(sanctum: Path) -> str | None:
     pending = sanctum / "memory" / "pending.md"
     if pending.is_file():
-        text = pending.read_text(encoding="utf-8").strip()
+        text = pending.read_text(encoding="utf-8", errors="replace").strip()
         return text or None
     return None
 
@@ -228,7 +259,9 @@ def pending_text(sanctum: Path) -> str | None:
 # BMad v7 config holds no owner keys: `bmad setup suno` asks only the module's
 # questions (read as modules.suno.<key>) and core keeps output_folder. Who the
 # owner is and which language they speak live in the sanctum's BOND.md, written
-# at First Breath; before then, a lone voice file names them.
+# at First Breath. Before the owner has said their name (no BOND.md, or one
+# still carrying OWNER_UNSET), a lone voice file only suggests it: the name is
+# reported as `owner_candidate` for Mac to confirm, never used as `user_name`.
 CORE_KEYS = ("output_folder",)
 OWNER_KEYS = ("user_name", "communication_language", "document_output_language")
 SUNO_KEYS = (
@@ -297,7 +330,7 @@ def owner_from_bond(sanctum: Path) -> dict:
     if not bond.is_file():
         return found
     labels = {"name": "user_name", "language": "communication_language"}
-    for line in bond.read_text(encoding="utf-8").splitlines():
+    for line in bond.read_text(encoding="utf-8", errors="replace").splitlines():
         match = re.match(r"^\s*-\s*\*\*(Name|Language):\*\*\s*(.+?)\s*$", line)
         if match:
             value = match.group(2)
@@ -308,10 +341,11 @@ def owner_from_bond(sanctum: Path) -> dict:
 
 
 def owner_from_voice_file(project_root: Path) -> str | None:
-    """The owner's name from the voice file, when exactly one exists.
+    """A name the voice file suggests, when exactly one exists.
 
     The file name holds the slug (`voice-context-mary-jane.md`); its title-cased
-    form ("Mary Jane") slugs back to the same file.
+    form ("Mary Jane") slugs back to the same file. It is derived from a file
+    name, so resolve_config treats it as a candidate until the owner has been met.
     """
     docs = project_root / "docs"
     files = sorted(docs.glob(VOICE_GLOB)) if docs.is_dir() else []
@@ -321,13 +355,36 @@ def owner_from_voice_file(project_root: Path) -> str | None:
     return slug.replace("-", " ").title() or None
 
 
+def owner_not_met(project_root: Path, sanctum: Path) -> bool:
+    """True until the owner has said what to call them.
+
+    A BOND.md that still carries OWNER_UNSET or an unfilled template token has
+    not met them. With no BOND.md at all, the owner was met only if memory
+    says so: the sanctum was born (`memory/.born`, a sanctum that lost its
+    bond) or an old store sits at the legacy path (it is converted, not born).
+    """
+    sanctum = Path(sanctum)
+    bond = sanctum / "BOND.md"
+    if bond.is_file():
+        text = bond.read_text(encoding="utf-8", errors="replace")
+        return OWNER_UNSET in text or "{user_name}" in text
+    if (sanctum / "memory" / ".born").is_file():
+        return False
+    legacy = legacy_sanctum_dir(project_root)
+    return not (legacy.is_dir() and any(legacy.iterdir()))
+
+
 def resolve_config(project_root: Path, sanctum: Path | None = None) -> dict:
     """Resolve Mac's config. Never raises; missing pieces fall back to defaults.
 
     Module answers and output_folder come from BMad's resolve_config.py; the
-    owner's name and language from the sanctum's BOND.md, then a lone voice
-    file, then defaults (greet generically, English). Config values hold
-    `{project-root}`; the model fills it in.
+    owner's name and language from the sanctum's BOND.md, then defaults (greet
+    generically, English). A lone voice file names the owner only for a
+    memory that has already met its owner but holds no readable name line (an
+    older or hand-edited bond, a born sanctum that lost BOND.md, an old store
+    being converted); while the owner has not been met (owner_not_met) its
+    name is returned as `owner_candidate` and `user_name` stays unset. Config
+    values hold `{project-root}`; the model fills it in.
     """
     project_root = Path(project_root)
     sanctum = sanctum or sanctum_dir(project_root)
@@ -348,19 +405,29 @@ def resolve_config(project_root: Path, sanctum: Path | None = None) -> dict:
 
     fill(owner_from_bond(sanctum), OWNER_KEYS, "BOND.md")
     voice_name = owner_from_voice_file(project_root)
-    if voice_name:
-        fill({"user_name": voice_name}, ("user_name",), "voice file")
+    candidate = None
+    if voice_name and not values.get("user_name"):
+        if owner_not_met(project_root, sanctum):
+            candidate = voice_name
+        else:
+            fill({"user_name": voice_name}, ("user_name",), "voice file")
     if values.get("communication_language"):
         values.setdefault("document_output_language", values["communication_language"])
 
     for key, default in CONFIG_DEFAULTS.items():
         if values.get(key) in (None, ""):
             values[key] = default
-    if not values.get("user_name"):
+    if candidate:
+        warnings_out.append(
+            f"user_name not known yet: the one voice file suggests \"{candidate}\". "
+            "Ask the owner whether that is them before using the name or loading the file."
+        )
+    elif not values.get("user_name"):
         warnings_out.append(
             "user_name not known yet (BOND.md has no name, no single voice file): ask what to call the owner."
         )
-    return {"values": values, "sources": sources or ["defaults"], "warnings": warnings_out}
+    return {"values": values, "sources": sources or ["defaults"], "warnings": warnings_out,
+            "owner_candidate": candidate}
 
 
 def normalize_username(name: str) -> str:
@@ -368,19 +435,53 @@ def normalize_username(name: str) -> str:
     return name.strip().lower().replace(" ", "-")
 
 
+def folder_entry(value: str | None, default: str, project_root: Path) -> str:
+    """A config folder answer as the sanctum templates write it.
+
+    `{project-root}` is filled in and a relative value resolves from the root,
+    as `_shared/bmad_config.module_path` reads the same answers for the scripts.
+    A folder inside the project is written project-relative (`docs/songbook`,
+    the form the Dominion has always used); one outside it stays absolute. No
+    trailing slash: the template adds it.
+    """
+    root = Path(project_root)
+    text = (value or default).replace("{project-root}", str(root)).replace("{project_root}", str(root))
+    path = Path(text)
+    if not path.is_absolute():
+        path = root / path
+    path = Path(os.path.normpath(path))
+    try:
+        return path.relative_to(Path(os.path.normpath(root))).as_posix() or "."
+    except ValueError:
+        return path.as_posix()
+
+
 def template_variables(project_root: Path, config: dict | None = None, birth_date: str | None = None) -> dict:
-    """The substitution map for sanctum templates. Owner facts not yet known stay OWNER_UNSET."""
+    """The substitution map for sanctum templates. Owner facts not yet known stay OWNER_UNSET.
+
+    `songbook_folder` and `band_profiles_folder` are the module's answers
+    (`modules.suno.*`, through BMad's resolver), so the Dominion and the
+    memory layout name the folders the other skills and scripts use.
+    """
     from datetime import date
 
     values = (config or resolve_config(project_root))["values"]
     user = values.get("user_name")
     known_language = user is not None and values.get("communication_language")
     root = str(project_root)
+    profiles = folder_entry(
+        values.get("band_profiles_folder"), CONFIG_DEFAULTS["band_profiles_folder"], Path(project_root))
     return {
         "user_name": user or OWNER_UNSET,
         "user_slug": normalize_username(user) if user else "<owner>",
         "communication_language": known_language or OWNER_UNSET,
         "birth_date": birth_date or date.today().isoformat(),
+        "songbook_folder": folder_entry(
+            values.get("songbook_folder"), CONFIG_DEFAULTS["songbook_folder"], Path(project_root)),
+        "band_profiles_folder": profiles,
+        # Band playlist YAMLs sit beside the band-profiles folder (the scripts'
+        # `playlists_dir`), so the Dominion must follow that folder when it moves.
+        "playlists_folder": PurePosixPath(profiles).parent.as_posix(),
         "project_root": root,
         "project-root": root,
     }
@@ -399,14 +500,17 @@ def substitute_vars(content: str, variables: dict) -> str:
 AGENT_SKILL_NAME = "suno-agent-band-manager"
 # BMad v7 has no module help CSV; Mac's menu rows ship in his own skill, so the
 # menu, the routing table and CAPABILITIES.md share one source. Columns:
-# code, name, description (the menu line) and skill, action (the route).
+# code, name, description (the menu line), action (the capability's name: what a
+# headless caller asks for and what a routed skill is told to open on), and
+# exactly one of skill (an installed skill to invoke) or prompt (a skill-root
+# path Mac loads). A row with both or neither has no route and is left out.
 MENU_CSV_REL = ("assets", "menu.csv")
 
-# Rows the menu file keeps for standalone use but Mac's own menu leaves out.
-# Feedback Loop (FL) is folded into Refine Song (RS): Mac's refine flow calls
-# the suno-feedback-elicitor skill inside it.
-MAC_MENU_EXCLUDE = {("suno-feedback-elicitor", "elicit-feedback")}
-# Codes a user may still type at Mac; they route to the target code.
+# Codes a user may still type at Mac; they route to the target code. This is
+# the one place an alias is defined: the menu file carries no row for it, and
+# the routing table and CAPABILITIES.md are built from here. Feedback Loop (FL)
+# is folded into Refine Song (RS), which runs the suno-feedback-elicitor skill
+# inside it.
 MENU_ALIASES = {"FL": "RS"}
 
 
@@ -416,24 +520,57 @@ def find_menu_csv(skill_dir: Path) -> Path | None:
     return candidate if candidate.is_file() else None
 
 
-def menu_rows(csv_path: Path) -> list[dict]:
-    """Rows for Mac's menu, in menu order, minus the folded-in FL."""
+def _menu_scan(csv_path: Path) -> tuple[list[dict], list[str]]:
+    """(routable rows in menu order, a line for each row left out)."""
     rows: list[dict] = []
-    with open(csv_path, encoding="utf-8") as handle:
-        for row in csv.DictReader(handle):
-            row = {k: (v or "").strip() for k, v in row.items() if k}
-            if (row.get("skill", ""), row.get("action", "")) in MAC_MENU_EXCLUDE:
-                continue
-            rows.append(row)
-    return rows
+    problems: list[str] = []
+    seen: set[str] = set()
+    with open(csv_path, encoding="utf-8", newline="") as handle:
+        for number, raw in enumerate(csv.DictReader(handle), 2):
+            row = {k: (v or "").strip() for k, v in raw.items() if k}
+            code = row.get("code", "")
+            label = f"assets/menu.csv line {number} [{code or '?'}]"
+            if not code or not row.get("name"):
+                problems.append(f"{label} has no code or name, left off the menu.")
+            elif code in MENU_ALIASES:
+                problems.append(f"{label} uses a code that is an alias for [{MENU_ALIASES[code]}], left off the menu.")
+            elif code in seen:
+                problems.append(f"{label} repeats a code, left off the menu.")
+            elif bool(row.get("skill")) == bool(row.get("prompt")):
+                problems.append(f"{label} must name exactly one of skill or prompt, left off the menu.")
+            else:
+                seen.add(code)
+                rows.append(row)
+    return rows, problems
+
+
+def menu_rows(csv_path: Path) -> list[dict]:
+    """Rows for Mac's menu, in menu order: the ones that carry exactly one route."""
+    return _menu_scan(csv_path)[0]
+
+
+def menu_problems(csv_path: Path) -> list[str]:
+    """One line per row of the menu file that was left out, and why."""
+    return _menu_scan(csv_path)[1]
 
 
 def route_for(row: dict) -> dict:
-    """Routing entry for a menu row: `name`, `type` and `target` (no `./` prefix)."""
-    skill, action = row.get("skill", ""), row.get("action", "")
-    if skill == AGENT_SKILL_NAME:
-        return {"name": action, "type": "prompt", "target": f"references/{action}.md"}
-    return {"name": action, "type": "skill", "target": skill}
+    """Routing entry for a menu row: `name`, `type` and `target` (no `./` prefix).
+
+    A prompt row's target is its skill-root path; a skill row's is the skill
+    name. `name` is the row's action, or the prompt file's stem without one.
+    """
+    prompt = row.get("prompt", "")
+    if prompt:
+        return {"name": row.get("action") or Path(prompt).stem, "type": "prompt", "target": prompt}
+    return {"name": row.get("action", ""), "type": "skill", "target": row.get("skill", "")}
+
+
+def alias_sentence(rows: list[dict]) -> str:
+    """How each alias in MENU_ALIASES routes, for CAPABILITIES.md ("" when none applies)."""
+    names = {r.get("code", ""): r.get("name", "") for r in rows}
+    parts = [f"{alias} routes to [{code}] {names[code]}" for alias, code in MENU_ALIASES.items() if code in names]
+    return "; ".join(parts) + "." if parts else ""
 
 
 def generate_capabilities_md(rows: list[dict]) -> str:
@@ -443,15 +580,16 @@ def generate_capabilities_md(rows: list[dict]) -> str:
     """
     lines = ["# Capabilities", "", "## Built-in", ""]
     if rows:
+        aliases = alias_sentence(rows)
         lines.append(
-            "The menu the wake prints is my built-in roster (from my skill's `assets/menu.csv`); "
-            "FL or \"feedback loop\" routes to [RS] Refine Song."
+            "The menu the wake prints is my built-in roster (from my skill's `assets/menu.csv`)"
+            + (f"; {aliases}" if aliases else ".")
         )
     else:
         lines.append(
             "_assets/menu.csv was not found, so there is no built-in menu. "
             "Reinstall the suno-agent-band-manager skill, then refresh this section with "
-            "`uv run {skill-root}/scripts/upgrade-sanctum.py`._"
+            "`uv run {skill-root}/scripts/upgrade_sanctum.py`._"
         )
     lines += [
         "",
@@ -506,6 +644,18 @@ def write_access_boundaries(out_dir: Path, assets_dir: Path, variables: dict) ->
 # Creed sharding
 # ---------------------------------------------------------------------------
 
+# The authored creed the disciplines and incidents are sliced from, relative to
+# the skill folder. This is the one place its path is defined: every script
+# reaches it through creed_source(), and messages name it with CREED_SOURCE_LABEL.
+CREED_SOURCE_REL = ("assets", "creed.md")
+CREED_SOURCE_LABEL = "/".join(CREED_SOURCE_REL)
+
+
+def creed_source(skill_path: Path) -> Path:
+    """The authored creed inside the skill folder."""
+    return Path(skill_path).joinpath(*CREED_SOURCE_REL)
+
+
 SECTION_SPLIT_RE = re.compile(r"(?m)^(?=##\s)")
 # Within a creed section, the rule sits above this heading and its story below it.
 INCIDENT_MARKER_RE = re.compile(r"(?m)^### Why — the incident\s*$")
@@ -519,12 +669,12 @@ SHARD_ROUTING = {
         "Catalog Verification Discipline",
         "Document State Marker Discipline",
         "Hedge Preservation Discipline",
-        "Pre-Presentation Review",
         "Milestone Auto-Save",
     ],
     "creed-package-assembly.md": ["Package Assembly Rule"],
 }
-# Headings the CREED core template already carries; they are not sharded.
+# Headings the CREED core template carries. The shipped creed source no longer
+# has them; one that still does (an older bundle) is not sharded and not warned about.
 CORE_HEADINGS = ("Mission", "Principles")
 
 
@@ -553,11 +703,11 @@ def shard_creed(creed_text: str) -> dict[str, str]:
     Returns {shard_filename: content}, plus a `creed-incident-log.md` that
     gathers the sections carrying a `### Why — the incident` story. A heading that no shard
     takes (and that the core does not carry) raises a UserWarning, so a new
-    discipline added to creed.md cannot silently miss a freshly born sanctum.
+    discipline added to the creed cannot silently miss a freshly born sanctum.
     """
     for heading in unrouted_headings(creed_text):
         warnings.warn(
-            f"creed.md heading not routed to any shard: '{heading}'. "
+            f"{CREED_SOURCE_LABEL} heading not routed to any shard: '{heading}'. "
             "Add it to SHARD_ROUTING in _sanctum_seed.py.",
             UserWarning,
             stacklevel=2,
@@ -607,13 +757,13 @@ def shard_creed(creed_text: str) -> dict[str, str]:
     return out
 
 
-def write_creed_shards(out_dir: Path, references_dir: Path, only_missing: bool = False) -> list[str]:
-    """Seed the creed shards + incident log from references/creed.md.
+def write_creed_shards(out_dir: Path, skill_path: Path, only_missing: bool = False) -> list[str]:
+    """Seed the creed shards + incident log from the skill's authored creed.
 
     Returns the names written. With `only_missing`, existing shards are left
     alone (they may hold learnings the source creed does not).
     """
-    creed_src = references_dir / "creed.md"
+    creed_src = creed_source(skill_path)
     if not creed_src.exists():
         return []
     written: list[str] = []
@@ -711,7 +861,7 @@ def discipline_files(creed_text: str) -> dict[str, str]:
     """
     for heading in unrouted_headings(creed_text):
         warnings.warn(
-            f"creed.md heading not routed to any shard: '{heading}'. "
+            f"{CREED_SOURCE_LABEL} heading not routed to any shard: '{heading}'. "
             "Add it to SHARD_ROUTING in _sanctum_seed.py.",
             UserWarning,
             stacklevel=2,
@@ -733,13 +883,13 @@ def discipline_files(creed_text: str) -> dict[str, str]:
     return out
 
 
-def write_disciplines(sanctum: Path, references_dir: Path, only_missing: bool = False) -> list[str]:
-    """Seed memory/disciplines/ and memory/incidents/ from references/creed.md.
+def write_disciplines(sanctum: Path, skill_path: Path, only_missing: bool = False) -> list[str]:
+    """Seed memory/disciplines/ and memory/incidents/ from the skill's authored creed.
 
     With `only_missing`, existing files are left alone: they may hold learnings
     the source creed does not.
     """
-    creed_src = references_dir / "creed.md"
+    creed_src = creed_source(skill_path)
     if not creed_src.exists():
         return []
     written: list[str] = []
@@ -766,7 +916,7 @@ def render_dominion(assets_dir: Path, variables: dict) -> str:
 # Template base: the shipped text each sanctum file last took
 # ---------------------------------------------------------------------------
 
-# upgrade-sanctum.py compares three texts, not two: the live file, the text the
+# upgrade_sanctum.py compares three texts, not two: the live file, the text the
 # skill ships now, and the shipped text the sanctum last took (its base). Live
 # equal to its base means nobody changed it, so a newer template replaces it
 # safely; live different from its base is the owner's (or Mac's) own text and
@@ -866,7 +1016,7 @@ def main() -> int:
     parser.add_argument(
         "--skill-path",
         default=None,
-        help="Skill dir (references/). Default: this script's parent dir.",
+        help="Skill dir (holds the creed source). Default: this script's parent dir.",
     )
     parser.add_argument(
         "--force",
@@ -881,14 +1031,20 @@ def main() -> int:
         print(f"ERROR: --out dir not found: {out_dir}", file=sys.stderr)
         return 2
     skill_path = Path(args.skill_path).resolve() if args.skill_path else Path(__file__).resolve().parent.parent
-    references_dir = skill_path / "references"
+    creed_src = creed_source(skill_path)
+    if not creed_src.is_file():
+        print(f"ERROR: creed source not found: {creed_src}", file=sys.stderr)
+        return 2
+    try:
+        creed_text = creed_src.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        print(f"ERROR: creed source unreadable: {creed_src}: {exc}", file=sys.stderr)
+        return 2
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        planned = list(discipline_files((references_dir / "creed.md").read_text(encoding="utf-8"))) if (
-            references_dir / "creed.md"
-        ).exists() else []
-        written = write_disciplines(out_dir, references_dir, only_missing=not args.force)
+        planned = list(discipline_files(creed_text))
+        written = write_disciplines(out_dir, skill_path, only_missing=not args.force)
     skipped = [n for n in planned if n not in written]
 
     result = {

@@ -1,3 +1,12 @@
-# This folder mirrors an eval workspace (a project root): keep what the repo root .gitignore drops.
+# Staged files for the eval cases. This folder is the project root of a run of
+# ../cases.json (its `files` entries are spelled fixtures/..., which is where the runner
+# stages them, and each case says so); before/ is the same for ../cases-before.json, over
+# a sanctum seeded from the pre-leanness skill (git 8ba57cf) for the before side of a
+# comparison. Everything here is synthetic: a v7 sanctum seeded by init_sanctum.py from
+# the shipped templates (owner Robin, memory/.born written, tier Pro on record), a band
+# profile and a WIP. No BMad config is staged, so Mac and the siblings run on module
+# defaults. The sibling skills are staged from the repo's live .claude/skills/<sibling>/.
+#
+# Keep what the repo root .gitignore drops:
 !_bmad/
 !docs/

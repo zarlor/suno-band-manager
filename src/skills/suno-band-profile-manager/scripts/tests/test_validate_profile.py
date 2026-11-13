@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["pyyaml>=6.0"]
 # ///
-"""Tests for validate-profile.py"""
+"""Tests for validate_profile.py"""
 
 import json
 import sys
@@ -22,7 +22,7 @@ from fake_resolver import install_resolver  # noqa: E402
 # Import the module
 spec = spec_from_file_location(
     "validate_profile",
-    Path(__file__).parent.parent / "validate-profile.py"
+    Path(__file__).parent.parent / "validate_profile.py"
 )
 validate_profile_mod = module_from_spec(spec)
 spec.loader.exec_module(validate_profile_mod)
@@ -36,6 +36,15 @@ def write_profile(tmp_path, data, filename="test-band.yaml"):
     with open(profile_path, "w") as f:
         yaml.dump(data, f)
     return profile_path
+
+
+def _severities(result, field):
+    """Severities of the findings located at `field`."""
+    return [f["severity"] for f in result["findings"] if f.get("location", {}).get("field") == field]
+
+
+def _issues(result, field):
+    return [f["issue"] for f in result["findings"] if f.get("location", {}).get("field") == field]
 
 
 VALID_PROFILE = {
@@ -110,6 +119,10 @@ class TestValidateProfile(TmpPathTestCase):
         result = validate_profile(path)
         self.assertTrue(any(f.get("location", {}).get("field") == "model_preference"
                             for f in result["findings"]))
+        # An unknown model blocks the profile: headless create returns `blocked` on `fail`.
+        invalid = [f for f in result["findings"] if f["issue"].startswith("Invalid model_preference")]
+        self.assertEqual([f["severity"] for f in invalid], ["high"])
+        self.assertEqual(result["status"], "fail")
 
     def test_invalid_tier(self):
         tmp_path = self.tmp_path
@@ -117,6 +130,14 @@ class TestValidateProfile(TmpPathTestCase):
         path = write_profile(tmp_path, data)
         result = validate_profile(path)
         self.assertTrue(any("tier" in str(f) for f in result["findings"]))
+        self.assertEqual(_severities(result, "tier"), ["high"])
+        self.assertEqual(result["status"], "fail")
+
+    def test_invalid_tier_exits_1(self):
+        path = write_profile(self.tmp_path, {**VALID_PROFILE, "tier": "ultimate"})
+        proc = _run_cli(path)
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        self.assertEqual(json.loads(proc.stdout)["status"], "fail")
 
     def test_style_baseline_too_long(self):
         tmp_path = self.tmp_path
@@ -124,6 +145,143 @@ class TestValidateProfile(TmpPathTestCase):
         path = write_profile(tmp_path, data)
         result = validate_profile(path)
         self.assertTrue(any("style_baseline" in str(f) for f in result["findings"]))
+        self.assertEqual(_severities(result, "style_baseline"), ["high"])
+        self.assertEqual(result["status"], "fail")
+
+    def test_style_baseline_at_the_limit_passes(self):
+        result = validate_profile(write_profile(self.tmp_path, {**VALID_PROFILE, "style_baseline": "x" * 1000}))
+        self.assertEqual(_severities(result, "style_baseline"), [])
+        self.assertEqual(result["status"], "pass")
+
+    # --- each required field on its own (F316) ---
+    def test_each_required_field_is_critical_when_missing(self):
+        for field in ("name", "genre", "mood", "model_preference", "tier", "style_baseline"):
+            with self.subTest(field=field):
+                data = {k: v for k, v in VALID_PROFILE.items() if k != field}
+                result = validate_profile(write_profile(self.tmp_path, data))
+                self.assertEqual(_severities(result, field), ["critical"], field)
+                self.assertEqual(result["status"], "fail")
+
+    # --- schema caps at their boundaries (F317) ---
+    def test_generation_history_cap_is_ten(self):
+        entries = [{"date": f"2026-03-{i:02d}"} for i in range(1, 12)]
+        at_cap = validate_profile(write_profile(self.tmp_path, {**VALID_PROFILE, "generation_history": entries[:10]}))
+        over = validate_profile(write_profile(self.tmp_path, {**VALID_PROFILE, "generation_history": entries}))
+        self.assertEqual(_severities(at_cap, "generation_history"), [])
+        self.assertEqual(_severities(over, "generation_history"), ["low"])
+
+    def test_exclusion_cap_is_five(self):
+        items = [f"no thing {i}" for i in range(6)]
+        at_cap = validate_profile(write_profile(self.tmp_path, {**VALID_PROFILE, "exclusion_defaults": items[:5]}))
+        over = validate_profile(write_profile(self.tmp_path, {**VALID_PROFILE, "exclusion_defaults": items}))
+        self.assertEqual(_severities(at_cap, "exclusion_defaults"), [])
+        self.assertEqual(_severities(over, "exclusion_defaults"), ["low"])
+
+    def test_slider_range_is_0_to_100_inclusive(self):
+        base = {**VALID_PROFILE, "tier": "pro", "model_preference": "v6"}
+        for value, flagged in ((-1, True), (0, False), (100, False), (101, True)):
+            with self.subTest(value=value):
+                result = validate_profile(write_profile(self.tmp_path, {**base, "sliders": {"weirdness": value}}))
+                found = [f for f in result["findings"] if "out of range" in f.get("issue", "")]
+                self.assertEqual(bool(found), flagged, result["findings"])
+
+    # --- input the validator cannot read (F210) ---
+    def test_non_utf8_file_is_a_finding_not_a_traceback(self):
+        path = self.tmp_path / "latin.yaml"
+        path.write_bytes("name: Sigur R\xf3s\n".encode("latin-1"))
+        result = validate_profile(path)
+        self.assertEqual((result["status"], result["summary"]["critical"]), ("fail", 1))
+        self.assertIn("cannot be read", result["findings"][0]["issue"])
+
+    def test_directory_is_a_finding_and_cli_exits_1_with_json(self):
+        folder = self.tmp_path / "folder.yaml"
+        folder.mkdir()
+        proc = _run_cli(folder)
+        self.assertEqual(proc.returncode, 1, proc.stderr)
+        result = json.loads(proc.stdout)
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("cannot be read", result["findings"][0]["issue"])
+
+    def test_utf8_profile_reads_the_same_under_a_c_locale(self):
+        import os
+        import subprocess
+        path = self.tmp_path / "test-band.yaml"
+        path.write_text(yaml.dump({**VALID_PROFILE, "mood": "mélancolie, 夜"}, allow_unicode=True), encoding="utf-8")
+        script = Path(__file__).parent.parent / "validate_profile.py"
+        proc = subprocess.run([sys.executable, "-X", "utf8=0", str(script), str(path)], capture_output=True,
+                              text=True, env={**os.environ, "LC_ALL": "C", "LANG": "C", "PYTHONUTF8": "0",
+                                              "PYTHONCOERCECLOCALE": "0"})
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(json.loads(proc.stdout)["status"], "pass")
+
+    # --- wrong types where the schema fixes one (F211, F213) ---
+    def test_list_or_mapping_enum_values_are_findings_not_tracebacks(self):
+        cases = (("model_preference", ["v6"]), ("model_preference", {"a": 1}),
+                 ("tier", ["pro"]), ("tier", {"a": 1}))
+        for field, value in cases:
+            with self.subTest(field=field, value=value):
+                result = validate_profile(write_profile(self.tmp_path, {**VALID_PROFILE, field: value}))
+                self.assertIn("high", _severities(result, field))
+                self.assertEqual(result["status"], "fail")
+        for vocal_gender in (["male"], {"a": 1}):
+            with self.subTest(vocal_gender=vocal_gender):
+                data = {**VALID_PROFILE, "vocal": {**VALID_PROFILE["vocal"], "gender": vocal_gender}}
+                result = validate_profile(write_profile(self.tmp_path, data))
+                self.assertIn("medium", _severities(result, "vocal.gender"))
+                data["instrumental"] = True
+                result = validate_profile(write_profile(self.tmp_path, data))
+                self.assertEqual(_severities(result, "vocal.gender"), ["medium"])
+
+    def test_string_where_a_list_is_required(self):
+        for field in ("exclusion_defaults", "reference_tracks", "known_working_patterns",
+                      "known_limitations", "generation_learnings"):
+            with self.subTest(field=field):
+                result = validate_profile(write_profile(self.tmp_path, {**VALID_PROFILE, field: "one, two"}))
+                self.assertEqual(_severities(result, field), ["medium"])
+                self.assertIn("must be a list", _issues(result, field)[0])
+                self.assertEqual(result["status"], "warning")
+        data = {**VALID_PROFILE, "writer_voice": {"vocabulary": "plain", "sample_quotes": "a quote"}}
+        result = validate_profile(write_profile(self.tmp_path, data))
+        self.assertEqual(_severities(result, "writer_voice.sample_quotes"), ["medium"])
+        clean = {**VALID_PROFILE, "exclusion_defaults": ["no autotune"], "reference_tracks": [],
+                 "writer_voice": {"sample_quotes": ["a quote"]}}
+        self.assertEqual(validate_profile(write_profile(self.tmp_path, clean))["findings"], [])
+
+    # --- Free tier carrying Pro/Premier fields (F212) ---
+    def test_free_tier_gated_fields_are_flagged(self):
+        vocal = VALID_PROFILE["vocal"]
+        cases = {
+            "vocal.voice_id": {"vocal": {**vocal, "gender": "", "voice_id": "v-1"}},
+            "vocal.persona_reference": {"vocal": {**vocal, "persona_reference": "Porch Take"}},
+            "voices": {"voices": [{"voice_id": "v-1", "use_case": "ballads"}]},
+            "sliders": {"sliders": {"audio_influence": 20}},
+        }
+        for field, extra in cases.items():
+            with self.subTest(field=field):
+                result = validate_profile(write_profile(self.tmp_path, {**VALID_PROFILE, **extra}))
+                self.assertEqual(_severities(result, field), ["medium"], result["findings"])
+                self.assertIn("free tier", _issues(result, field)[0])
+                self.assertEqual(result["status"], "warning")
+                paid = validate_profile(write_profile(
+                    self.tmp_path, {**VALID_PROFILE, **extra, "tier": "pro", "model_preference": "v6"}))
+                self.assertEqual(_severities(paid, field), [])
+
+    # --- a `#` inside a value is not a comment (F214) ---
+    def test_hash_inside_a_quoted_or_plain_value_is_not_a_comment(self):
+        vocal = "vocal:\n  tone: close, conversational\n  delivery: storytelling\n  energy: low\n  voice_id: v-1\n"
+        head = ("name: Test Band\ngenre: folk\nmood: calm\nmodel_preference: v6\ntier: premier\n"
+                "style_baseline: fingerpicked guitar\n" + vocal)
+        path = self.tmp_path / "test-band.yaml"
+        for line in ('  key: "C# minor, deep bass"', "  key: 'the #1 husky take'", "  key: C# minor, deep bass"):
+            with self.subTest(line=line):
+                path.write_text(head + "studio_preferences:\n" + line + "\n", encoding="utf-8")
+                result = validate_profile(path)
+                self.assertEqual(_severities(result, "comments"), [], result["findings"])
+        path.write_text(head + 'studio_preferences:\n  key: "C# minor"  # the deep husky take\n', encoding="utf-8")
+        found = [f for f in validate_profile(path)["findings"] if f["location"].get("field") == "comments"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("deep", found[0]["issue"])
+        self.assertIn("husky", found[0]["issue"])
 
     def test_style_baseline_v4_pro_200_limit(self):
         tmp_path = self.tmp_path
@@ -545,7 +703,7 @@ class TestDocsDirAndModels(TmpPathTestCase):
         (tmp_path / "_bmad" / "config.toml").write_text(
             "[modules.suno]\nsongbook_folder = 'music/songbook'\n")
         install_resolver(tmp_path)
-        script = Path(__file__).parent.parent / "validate-profile.py"
+        script = Path(__file__).parent.parent / "validate_profile.py"
         proc = subprocess.run([sys.executable, str(script), str(profile_path),
                                "--project-root", str(tmp_path)], capture_output=True, text=True)
         self.assertTrue(_has_missing_playlist_finding(json.loads(proc.stdout)))
@@ -553,7 +711,7 @@ class TestDocsDirAndModels(TmpPathTestCase):
 
 def _run_cli(*args):
     import subprocess
-    script = Path(__file__).parent.parent / "validate-profile.py"
+    script = Path(__file__).parent.parent / "validate_profile.py"
     return subprocess.run([sys.executable, str(script), *map(str, args)],
                           capture_output=True, text=True)
 
@@ -636,6 +794,21 @@ class TestStagedDrafts(TmpPathTestCase):
         self.assertEqual(out["slug"], "ember-hollow-redux")
         self.assertEqual(out["filename"], "ember-hollow-redux.yaml")
 
+    def test_derive_filename_folds_accents(self):
+        proc = _run_cli("--derive-filename", "Sigur Rós")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(json.loads(proc.stdout)["slug"], "sigur-ros")
+
+    def test_derive_filename_without_a_slug_exits_1_with_the_reason(self):
+        for name in ("東京事変", "!!!"):
+            with self.subTest(name=name):
+                proc = _run_cli("--derive-filename", name)
+                self.assertEqual(proc.returncode, 1, proc.stdout)
+                out = json.loads(proc.stdout)
+                self.assertEqual((out["status"], out["slug"]), ("fail", ""))
+                self.assertNotIn("filename", out)  # never ".yaml"
+                self.assertIn("No slug can be derived", out["error"])
+
 
 class TestSchemaRules16To19(TmpPathTestCase):
     def _field_findings(self, data, field, filename="test-band.yaml"):
@@ -685,10 +858,6 @@ class TestSchemaRules16To19(TmpPathTestCase):
                                               "custom_model_id"), [])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestDeprecatedPlaylistBlock(TmpPathTestCase):
     def test_playlist_block_flagged_as_mapping_or_list(self):
         for block in ({"tracks": ["a", "b"]}, ["a", "b"]):
@@ -697,3 +866,9 @@ class TestDeprecatedPlaylistBlock(TmpPathTestCase):
                 result = validate_profile(path)
                 deprecations = [f for f in result["findings"] if f["category"] == "deprecation"]
                 self.assertTrue(deprecations, result["findings"])
+                self.assertEqual([f["severity"] for f in deprecations], ["medium"])
+                self.assertEqual(result["status"], "warning")  # surfaced on Load, not a blocker
+
+
+if __name__ == "__main__":
+    unittest.main()

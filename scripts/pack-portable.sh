@@ -21,7 +21,7 @@ set -euo pipefail
 PROJECT_ROOT="${1:-.}"
 ARCHIVE="$PROJECT_ROOT/docs/portable-sync.tar.gz"
 MANIFEST="$PROJECT_ROOT/portable-manifest.yaml"
-VALIDATOR="$PROJECT_ROOT/.claude/skills/suno-agent-band-manager/scripts/validate-sidecar.py"
+VALIDATOR="$PROJECT_ROOT/.claude/skills/suno-agent-band-manager/scripts/validate_sanctum.py"
 
 # Pre-sync validation gate. Stops stale catalog state from propagating to
 # other machines. The validator reads songbook + band profiles + the sanctum

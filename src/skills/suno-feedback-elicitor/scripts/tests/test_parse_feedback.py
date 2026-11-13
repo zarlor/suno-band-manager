@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for parse-feedback.py"""
+"""Tests for parse_feedback.py"""
 
 import json
 import subprocess
@@ -12,11 +12,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "parse-feedback.py")
+SCRIPT = str(Path(__file__).parent.parent / "parse_feedback.py")
 
 
 def run_script(input_data: dict | str | None = None, extra_args: list[str] | None = None) -> tuple[int, dict]:
-    """Run parse-feedback.py with stdin input and return (exit_code, parsed_json)."""
+    """Run parse_feedback.py with stdin input and return (exit_code, parsed_json)."""
     cmd = [sys.executable, SCRIPT, "--stdin"]
     if extra_args:
         cmd.extend(extra_args)
@@ -31,7 +31,7 @@ def run_script(input_data: dict | str | None = None, extra_args: list[str] | Non
 
 
 def run_flags(args: list[str]) -> tuple[int, dict]:
-    """Run parse-feedback.py with the skill's headless flags (no stdin)."""
+    """Run parse_feedback.py with the skill's headless flags (no stdin)."""
     result = subprocess.run([sys.executable, SCRIPT, *args], capture_output=True, text=True)
     try:
         return result.returncode, json.loads(result.stdout)
@@ -209,6 +209,7 @@ class ParseFeedbackFlagsTest(unittest.TestCase):
         self.assertEqual(ctx["original_lyrics"], "[Verse]\nline one\n")
         self.assertEqual(ctx["band_profile"], "test-band")
         self.assertEqual(ctx["iteration_log_path"], str(log))
+        self.assertIs(ctx["iteration_log_exists"], True)
         self.assertEqual(ctx["title"], "My Song")
         self.assertIs(out["parsed"]["write"], False)
         self.assertTrue("pre_categorized" not in out["parsed"] or out["parsed"]["pre_categorized"] == {})
@@ -237,6 +238,43 @@ class ParseFeedbackFlagsTest(unittest.TestCase):
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 2)
         self.assertIn("needs --feedback", result.stderr)
+
+    def test_first_round_iteration_log_that_does_not_exist_yet_passes_through(self):
+        log = self.tmp_path / "history" / "band" / "new-song.md"
+        code, out = run_flags(["--feedback", "too loud", "--iteration-log", str(log)])
+        self.assertEqual((code, out["status"]), (0, "pass"), out)
+        ctx = out["parsed"]["context"]
+        self.assertEqual(ctx["iteration_log_path"], str(log))
+        self.assertIs(ctx["iteration_log_exists"], False)
+
+    def test_model_that_is_not_a_string_is_a_finding_not_a_traceback(self):
+        for model in (["v6"], {"name": "v6"}, 6):
+            code, out = run_script({"feedback_text": "too loud", "model": model})
+            self.assertEqual((code, out.get("status")), (0, "warning"), out)
+            self.assertEqual([f["location"]["field"] for f in out["findings"]], ["model"])
+            self.assertNotIn("model", out["parsed"]["context"])
+
+    def test_input_that_is_a_directory_fails_with_json(self):
+        code, out = run_flags(["--input", str(self.tmp_path)])
+        self.assertEqual((code, out.get("status")), (1, "fail"), out)
+        self.assertIn("Cannot read", out["findings"][0]["issue"])
+
+    def test_input_that_is_not_utf8_fails_with_json(self):
+        bad = self.tmp_path / "latin1.json"
+        bad.write_bytes(b'{"feedback_text": "caf\xe9"}')
+        code, out = run_flags(["--input", str(bad)])
+        self.assertEqual((code, out.get("status")), (1, "fail"), out)
+        self.assertIn("UTF-8", out["findings"][0]["issue"])
+
+    def test_missing_input_replaces_a_stale_output_file(self):
+        target = self.tmp_path / "parsed.json"
+        target.write_text('{"status": "pass", "stale": true}', encoding="utf-8")
+        result = subprocess.run([sys.executable, SCRIPT, "--input", str(self.tmp_path / "nope.json"),
+                                 "-o", str(target)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        written = json.loads(target.read_text(encoding="utf-8"))
+        self.assertEqual(written["status"], "fail")
+        self.assertNotIn("stale", written)
 
 
 if __name__ == "__main__":

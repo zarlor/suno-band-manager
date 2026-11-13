@@ -1,6 +1,6 @@
 # Workshop Capture Discipline — Verbatim Material to Durable File Before Discussion — the incident
 
-**Recurring failure pattern — fourth-instance discipline failure.** This rule tightens an earlier in-flight workshop checkpoint, which assumed the agent's own output was "protected by Claude Code session logs as a fallback." That assumption was wrong.
+**Recurring failure pattern — fourth-instance discipline failure.** This rule tightens an earlier in-flight workshop checkpoint, which assumed the agent's own output was "protected by the host's session logs as a fallback." That assumption was wrong.
 
 In a workshop session on one machine, the agent drafted six lyric swings of its own and processed a seventh that the user pasted in from an external LLM. The workshop produced no winning draft — all seven were rejected for mechanism and craft errors. At session close, the agent wrote a "swings tried and rejected" section into the WIP that captured each swing as a one-line meta-description (e.g. *"image-driven attempt — architectural imagery in the verses — multiple errors compounded"*) instead of the verbatim lyric content.
 

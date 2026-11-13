@@ -82,7 +82,7 @@ def update_companion(
         parts.append(new_content.rstrip() + "\n")
         parts.append(MARKER_END + "\n")
         body = "".join(parts)
-        with open(companion_path, "w") as f:
+        with open(companion_path, "w", encoding="utf-8") as f:
             f.write(body)
         return {
             "status": "created",
@@ -90,13 +90,15 @@ def update_companion(
             "bytes_written": len(body),
         }
 
-    with open(companion_path, "r") as f:
+    with open(companion_path, "r", encoding="utf-8") as f:
         existing = f.read()
 
-    if marker_start in existing and MARKER_END in existing:
+    # This script's block ends at the first END marker after its own START marker;
+    # an END marker above it belongs to another script's block.
+    before, found, rest = existing.partition(marker_start)
+    if found and MARKER_END in rest:
         # Replace content between markers
-        before = existing.split(marker_start)[0]
-        after = existing.split(MARKER_END, 1)[1]
+        after = rest.split(MARKER_END, 1)[1]
         body = (
             before
             + marker_start + "\n"
@@ -104,7 +106,7 @@ def update_companion(
             + MARKER_END
             + after
         )
-        with open(companion_path, "w") as f:
+        with open(companion_path, "w", encoding="utf-8") as f:
             f.write(body)
         return {
             "status": "refreshed",
@@ -122,7 +124,7 @@ def update_companion(
     parts.append("\n<!-- Previous content preserved below — edit to split out hand-curated sections -->\n\n")
     parts.append(existing)
     body = "".join(parts)
-    with open(companion_path, "w") as f:
+    with open(companion_path, "w", encoding="utf-8") as f:
         f.write(body)
     return {
         "status": "wrapped",
@@ -163,6 +165,7 @@ def resolve_companion_path(
     script_name: str,
     arg_value: Optional[str],
     album: Optional[str] = None,
+    project_root: Optional[str] = None,
 ) -> Optional[str]:
     """Resolve --companion arg value into an actual path.
 
@@ -171,6 +174,11 @@ def resolve_companion_path(
         arg_value: The --companion argument value (None=skip, ""=canonical, "<path>"=explicit).
         album: Album/band name. Required when the canonical path for the script
             is per-album (e.g., playlist-sequencing-data). Ignored otherwise.
+        project_root: Where the canonical path starts. None or "." keeps it
+            relative to the working directory ("docs/..."); pass
+            json_archiver.find_project_root(<audio path>) so a run from another
+            directory still writes under the project. An explicit --companion
+            path is never changed.
 
     `arg_value` semantics:
         None       -> companion mode not requested
@@ -197,6 +205,8 @@ def resolve_companion_path(
                     file=sys.stderr,
                 )
                 sys.exit(1)
-            return canonical(album)
-        return canonical
+            canonical = canonical(album)
+        if project_root in (None, "", "."):
+            return canonical
+        return os.path.join(project_root, canonical)
     return arg_value

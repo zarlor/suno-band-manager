@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for validate-options.py"""
+"""Tests for validate_options.py"""
 
 import importlib.util
 import json
@@ -12,7 +12,7 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "validate-options.py")
+SCRIPT = str(Path(__file__).parent.parent / "validate_options.py")
 
 # The expected code -> name table (option_codes.py holds the live one).
 CANONICAL_CODE_DESCRIPTIONS = {
@@ -28,7 +28,7 @@ CANONICAL_CODE_DESCRIPTIONS = {
 
 
 def _load_module():
-    """Import validate-options.py as a module despite the hyphenated filename."""
+    """Import validate_options.py as a module despite the hyphenated filename."""
     spec = importlib.util.spec_from_file_location("validate_options", SCRIPT)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -66,6 +66,20 @@ class TestValidateOptions(unittest.TestCase):
         self.assertEqual(report["status"], "error")
         issues = [f["issue"] for f in report["findings"]]
         self.assertTrue(any("mutually exclusive" in i.lower() for i in issues))
+
+    def test_cc_wf_mutual_exclusion(self):
+        # Chorus Creation writes new lines; Word Fidelity keeps the writer's exact words.
+        report, code = run_script("ST,CC,WF")
+        self.assertEqual((report["status"], code), ("error", 1))
+        found = [f for f in report["findings"] if f["category"] == "exclusion"]
+        self.assertEqual([f["severity"] for f in found], ["high"])
+        self.assertIn("CC", found[0]["issue"])
+        self.assertIn("WF", found[0]["issue"])
+
+    def test_wf_with_structure_and_extraction_is_usable(self):
+        report, code = run_script("ST,CE,RA,RE,CD,WF")
+        self.assertEqual((report["status"], code), ("pass", 0))
+        self.assertEqual(report["validated_codes"], ["ST", "CE", "RA", "RE", "CD", "WF"])
 
     def test_fr_auto_removes_ce(self):
         report, code = run_script("FR,CE,RA")
@@ -139,7 +153,7 @@ class TestValidateOptions(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual({o["code"]: o["name"] for o in report["options"]}, CANONICAL_CODE_DESCRIPTIONS)
         self.assertTrue(all(o["effect"] for o in report["options"]))
-        self.assertEqual(len(report["rules"]), 3)
+        self.assertEqual(len(report["rules"]), 4)
 
     def test_exit_codes(self):
         _, code = run_script("ST,RA")

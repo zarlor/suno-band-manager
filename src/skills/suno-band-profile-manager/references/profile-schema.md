@@ -1,6 +1,6 @@
 # Band Profile Schema
 
-A profile is `{band_profiles_folder}/{slug}.yaml`, the slug being the kebab-case form of `name`. Each field's facts live in its comment below; `scripts/validate-profile.py` enforces the structure (required fields, enums, caps, tier and Voice consistency, filename = slug, the band's playlist YAML) and every finding carries its fix, so judge what it cannot: whether each field is specific enough for its reader.
+A profile is `{band_profiles_folder}/{slug}.yaml`, the slug being the kebab-case form of `name` (accented letters fold to their ASCII base; a name with no ASCII letters or digits takes a slug the user chooses). Each field's facts live in its comment below; `{skill-root}/scripts/validate_profile.py` enforces the structure (required fields, enums, list types, caps, tier and Voice consistency, filename = slug, the band's playlist YAML) and every finding carries its fix, so judge what it cannot: whether each field is specific enough for its reader.
 
 ```yaml
 # Band Profile — {band_name}
@@ -91,7 +91,7 @@ generation_history: []             # per-generation snapshots, max 10 (appends t
 
 ## Tier gates
 
-The plan decides which fields a profile may carry. Feature facts (credits, downloads, stems, Studio) come from `scripts/tier-features.py <tier>`; this table is only their field consequences.
+The plan decides which fields a profile may carry. Feature facts (credits, downloads, stems, Studio) come from `uv run {skill-root}/scripts/tier_features.py <tier>`; this table is only their field consequences.
 
 | Tier | `model_preference` | Fields that apply |
 |---|---|---|

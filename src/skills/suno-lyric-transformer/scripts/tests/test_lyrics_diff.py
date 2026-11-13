@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for lyrics-diff.py"""
+"""Tests for lyrics_diff.py"""
 
 import json
 import subprocess
@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "lyrics-diff.py")
+SCRIPT = str(Path(__file__).parent.parent / "lyrics_diff.py")
 
 
 def run_script(*args):
@@ -73,7 +73,27 @@ class TestLyricsDiff(unittest.TestCase):
         transformed = "[Verse 1]\nNew verse line\n\n[Chorus]\nNew chorus line"
         report, code = run_script("--original-text", original, "--transformed-text", transformed)
         self.assertIsNotNone(report)
-        self.assertGreaterEqual(len(report["summary"]["sections_affected"]), 1)
+        self.assertEqual(report["summary"]["sections_affected"], ["Chorus", "Verse 1"])
+
+    def test_cued_section_tag_opens_its_section(self):
+        original = "[Verse 1]\nverse line\n\n[Chorus: anthemic]\nOld chorus line"
+        transformed = "[Verse 1]\nverse line\n\n[Chorus: anthemic]\nNew chorus line"
+        report, _ = run_script("--original-text", original, "--transformed-text", transformed)
+        self.assertEqual([c["section"] for c in report["changes"]], ["Chorus: anthemic"])
+
+    def test_cue_and_descriptor_tags_open_no_section(self):
+        for tag in ("Harmonized", "Mood: dark", "End"):
+            with self.subTest(tag=tag):
+                original = f"[Verse 1]\nverse line\n[{tag}]\nold line"
+                transformed = f"[Verse 1]\nverse line\n[{tag}]\nnew line"
+                report, _ = run_script("--original-text", original, "--transformed-text", transformed)
+                self.assertEqual([c["section"] for c in report["changes"]], ["Verse 1"])
+
+    def test_empty_original_text_is_compared(self):
+        report, code = run_script("--original-text", "", "--transformed-text", "[Verse 1]\na line")
+        self.assertEqual(code, 0)
+        self.assertEqual(report["status"], "info")
+        self.assertGreaterEqual(report["summary"]["lines_added"], 1)
 
     def test_unified_diff_output(self):
         original = "[Verse 1]\nHello"

@@ -3,9 +3,9 @@
 # requires-python = ">=3.11"
 # dependencies = ["pyyaml>=6.0"]
 # ///
-"""Tests for verify-audio-files.py.
+"""Tests for verify_audio_files.py.
 
-verify-audio-files.py is the receiving-machine half of the multi-machine
+verify_audio_files.py is the receiving-machine half of the multi-machine
 audio-drift pair: it compares local audio files against a canonical
 audio-files-manifest.yaml and classifies each as matched / missing /
 size_mismatch / extra. These tests round-trip with the manifest generator and
@@ -21,8 +21,8 @@ import unittest
 from pathlib import Path
 
 SCRIPTS = Path(__file__).parent.parent
-MANIFEST_SCRIPT = str(SCRIPTS / "audio-files-manifest.py")
-VERIFY_SCRIPT = str(SCRIPTS / "verify-audio-files.py")
+MANIFEST_SCRIPT = str(SCRIPTS / "audio_files_manifest.py")
+VERIFY_SCRIPT = str(SCRIPTS / "verify_audio_files.py")
 
 
 def run(script: str, args: list[str]) -> tuple[int, dict]:
@@ -150,6 +150,78 @@ class VerifyAudioFilesTest(unittest.TestCase):
         code, out = run(VERIFY_SCRIPT, [str(root)])
         self.assertEqual(code, 0, out)
         self.assertEqual(out["summary"]["matched"], 2)
+
+    def test_verify_malformed_manifest_exits_2_with_a_reason(self):
+        """Exit 1 means mismatches, so a manifest that can't be read must not exit 1 via a traceback."""
+        root = self.make_project({"Song.mp3": 1000})
+        manifest = root / "docs" / "audio-files-manifest.yaml"
+        for body in ("", "- just\n- a list\n", "files: [unclosed\n", "files:\n- size_bytes: 1000\n",
+                     "files:\n- Song.mp3\n", "files: Song.mp3\n"):
+            manifest.write_text(body, encoding="utf-8")
+            code, out = run(VERIFY_SCRIPT, [str(root)])
+            self.assertEqual((code, out.get("status"), out.get("error")), (2, "error", "manifest-malformed"), body)
+
+    def test_verify_exact_name_is_not_claimed_by_a_sibling_entry(self):
+        """Manifest lists Foo.mp3 and Foo-v2.mp3; only Foo-v2.mp3 is here. Foo is the missing one."""
+        root = self.make_project({"Foo-v2.mp3": 150000})
+        manifest = root / "docs" / "audio-files-manifest.yaml"
+        entries = {"Foo.mp3": 100000, "Foo-v2.mp3": 150000}
+        for order in (["Foo.mp3", "Foo-v2.mp3"], ["Foo-v2.mp3", "Foo.mp3"]):  # whichever entry is read first
+            manifest.write_text("files:\n" + "".join(
+                f"- name: {name}\n  size_bytes: {entries[name]}\n" for name in order), encoding="utf-8")
+            code, out = run(VERIFY_SCRIPT, [str(root)])
+            self.assertEqual(code, 1, order)
+            self.assertEqual([m["name"] for m in out["missing"]], ["Foo.mp3"], order)
+            self.assertEqual(out["size_mismatch"], [], order)
+            self.assertEqual(out["summary"]["matched"], 1, order)
+
+    def test_verify_exact_name_in_a_band_folder_is_kept_for_its_flat_manifest_entry(self):
+        """Legacy flat manifest, per-band local layout: the sibling entry still can't take the file."""
+        root = self.make_project({"band-a/Foo-v2.mp3": 150000})
+        manifest = root / "docs" / "audio-files-manifest.yaml"
+        manifest.write_text("files:\n- name: Foo.mp3\n  size_bytes: 100000\n"
+                            "- name: Foo-v2.mp3\n  size_bytes: 150000\n", encoding="utf-8")
+        code, out = run(VERIFY_SCRIPT, [str(root)])
+        self.assertEqual(code, 1)
+        self.assertEqual([m["name"] for m in out["missing"]], ["Foo.mp3"])
+        self.assertEqual(out["summary"]["matched"], 1)
+
+    def test_verify_playlist_context_keeps_each_bands_position(self):
+        """Two bands list the same filename: a mismatch carries its own band's playlist position."""
+        root = self.make_project({"band-a/Night Shift.mp3": 100000, "band-b/Night Shift.mp3": 200000})
+        run(MANIFEST_SCRIPT, [str(root)])
+        docs = root / "docs"
+        (docs / "band-a-playlist.yaml").write_text(
+            'album: "Band A"\naudio_dir: "docs/audio/band-a"\ntracks:\n'
+            '  - {name: "Opener", file: "Other.mp3"}\n  - {name: "Night Shift", file: "Night Shift.mp3"}\n',
+            encoding="utf-8")
+        (docs / "band-b-playlist.yaml").write_text(
+            'album: "Band B"\ntracks:\n  - {name: "Night Shift", file: "Night Shift.mp3"}\n', encoding="utf-8")
+        for band in ("band-a", "band-b"):
+            (docs / "audio" / band / "Night Shift.mp3").unlink()
+        code, out = run(VERIFY_SCRIPT, [str(root), "--playlist-context"])
+        self.assertEqual(code, 1)
+        ctx = {m["name"]: m["playlist_context"] for m in out["missing"]}
+        self.assertEqual((ctx["band-a/Night Shift.mp3"]["band"], ctx["band-a/Night Shift.mp3"]["position"]),
+                         ("Band A", 2))
+        self.assertEqual((ctx["band-b/Night Shift.mp3"]["band"], ctx["band-b/Night Shift.mp3"]["position"]),
+                         ("Band B", 1))
+
+    def test_verify_playlist_context_for_a_flat_name_only_when_one_band_lists_it(self):
+        root = self.make_project({"Solo.mp3": 100000, "Shared.mp3": 100000})
+        run(MANIFEST_SCRIPT, [str(root)])
+        docs = root / "docs"
+        (docs / "band-a-playlist.yaml").write_text(
+            'album: "Band A"\ntracks:\n  - {name: "Solo", file: "Solo.mp3"}\n'
+            '  - {name: "Shared", file: "Shared.mp3"}\n', encoding="utf-8")
+        (docs / "band-b-playlist.yaml").write_text(
+            'album: "Band B"\ntracks:\n  - {name: "Shared", file: "Shared.mp3"}\n', encoding="utf-8")
+        for name in ("Solo.mp3", "Shared.mp3"):
+            (docs / "audio" / name).unlink()
+        code, out = run(VERIFY_SCRIPT, [str(root), "--playlist-context"])
+        missing = {m["name"]: m for m in out["missing"]}
+        self.assertEqual(missing["Solo.mp3"]["playlist_context"]["band"], "Band A")
+        self.assertNotIn("playlist_context", missing["Shared.mp3"])
 
 
 if __name__ == "__main__":

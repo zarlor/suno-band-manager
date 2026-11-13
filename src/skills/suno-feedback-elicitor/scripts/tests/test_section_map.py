@@ -3,23 +3,28 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for section-map.py (Demucs + Whisper section alignment).
+"""Tests for section_map.py (Demucs + Whisper section alignment).
 
 Demucs and Whisper need PyTorch and model downloads, too heavy for the suite, so
 these pin the pure logic: lyric extraction and section parsing, tokenizing, the
 transcript-to-lyrics alignment, section placement (including inferred
-instrumentals and unheard lines), vocal-activity blocks, and the exit-code
-contract (the path and lyric guards run before the dependency check).
+instrumentals and unheard lines), vocal-activity blocks, the per-section
+measurements (on constructed stems, with a stand-in loudness meter), and the
+exit-code contract (the path and lyric guards run before the dependency check).
 """
 
 import importlib.util
+import json
+import math
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).parent.parent / "section-map.py"
+import numpy as np
+
+SCRIPT = Path(__file__).parent.parent / "section_map.py"
 spec = importlib.util.spec_from_file_location("section_map", SCRIPT)
 sm = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sm)
@@ -85,6 +90,39 @@ class ParsingTest(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             sm.extract_lyrics(PACKAGE, block=3)
         self.assertIn("1 tagged block", str(ctx.exception))
+
+    def test_extract_lyrics_block_zero_is_out_of_range_not_ignored(self):
+        with self.assertRaises(ValueError) as ctx:
+            sm.extract_lyrics(PACKAGE, block=0)
+        self.assertIn("--lyrics-block 0", str(ctx.exception))
+        self.assertIn("[Verse 1", sm.extract_lyrics(PACKAGE, block=1))
+        with self.assertRaises(ValueError) as ctx:
+            sm.extract_lyrics("[Verse]\nplain text", block=1)
+        self.assertIn("0 tagged block", str(ctx.exception))
+
+    def test_unfenced_markdown_lyrics_leave_the_markdown_lines_out(self):
+        doc = ("# Porch Light\n\n**Style:** dreamy indie folk\n> a note to self\n| BPM | 72 |\n\n"
+               "[Verse 1]\nThe porch light hums\n  ## Notes\n[Chorus]\nStay a while\n")
+        sections, _ = sm.parse_sections(sm.extract_lyrics(doc))
+        self.assertEqual([(s["name"], s["lines"]) for s in sections],
+                         [("Verse 1", ["The porch light hums"]), ("Chorus", ["Stay a while"])])
+
+    def test_lyrics_in_a_non_latin_script_are_unalignable(self):
+        cyrillic, _ = sm.parse_sections("[Verse]\nНочь темна\n[Chorus]\nОгни горят")
+        self.assertTrue(sm.unalignable(cyrillic))
+        mixed, _ = sm.parse_sections("[Verse]\nНочь темна\n[Chorus]\nRock in the storm")
+        self.assertFalse(sm.unalignable(mixed))
+        instrumental, _ = sm.parse_sections("[Intro]\n[Guitar Solo]")
+        self.assertFalse(sm.unalignable(instrumental))  # no lyric lines is an instrumental, not a failure
+
+    def test_section_names_the_lyric_vocabulary_uses_open_a_section(self):
+        # The lyric transformer writes these as section tags; read as modifiers they
+        # would fold into the section before and shift every later section's timing.
+        tags = ["Drum Break", "Percussion Break", "Big Finish", "Reprise", "Bass Drop",
+                "Strings Rise", "Instrumental Intro", "Instrumental Outro"]
+        text = "\n".join(f"[{tag}]\nla la la" for tag in tags)
+        sections, _ = sm.parse_sections(text)
+        self.assertEqual([s["tag"] for s in sections], tags)
 
     def test_parse_sections_modifiers_cues_and_end(self):
         sections, song_mods = sm.parse_sections(sm.extract_lyrics(PACKAGE))
@@ -214,7 +252,7 @@ class AddedWordsTest(unittest.TestCase):
     def test_whole_line_repeat_is_listed_not_flagged(self):
         e = added("one more spin one more spin gettin lost for a while gettin lost for a while")
         self.assertEqual(e["added_words"], [])
-        self.assertIn([a["repeat_of"] for a in e["repeats"]], ([], ["gettin lost for a while"]))
+        self.assertEqual([a["repeat_of"] for a in e["repeats"]], ["gettin lost for a while"])
 
     def test_fillers_are_ignored(self):
         e = added("one more spin one more spin oh yeah gettin lost for a while")
@@ -404,6 +442,83 @@ class FormatTextTest(unittest.TestCase):
         self.assertNotIn("oh yeah  (low", text)
 
 
+class FakeMeter:
+    """Stand-in for pyloudnorm.Meter: loudness from mean power, with BS.1770's -0.691 offset."""
+
+    @staticmethod
+    def integrated_loudness(x):
+        power = float((np.asarray(x, dtype=float) ** 2).mean())
+        return -0.691 + 10 * math.log10(power) if power > 0 else float("-inf")
+
+
+class MeasureSectionsTest(unittest.TestCase):
+    """Per-section loudness, step, vocal placement, tempo feel and key, on stems built to known levels."""
+
+    SR = 1000
+
+    def setUp(self):
+        sr = self.SR
+
+        def level(*amps):  # one constant level per 10 s span, stereo
+            return np.tile(np.repeat(np.array(amps, dtype=float), 10 * sr), (2, 1))
+
+        self.y = level(0.1, 0.4, 0.4)
+        self.stems = {
+            "vocals": level(0.05, 0.0, 0.02),     # -6 dB to the band, then silent, then -20 dB
+            "drums": level(0.05, 0.1, 0.1),
+            "bass": level(0.05, 0.1, 0.1),
+        }
+        beats = np.concatenate([np.arange(0, 10, 0.5), np.arange(10, 20, 1.0), np.arange(20, 30, 0.5)])
+        frames = int(30 * 22050 / 512) + 1
+        column = np.full(12, 0.05)
+        for note in ("A", "C", "E"):
+            column[sm.PITCH_CLASSES.index(note)] = 1.0
+        self.chroma = np.tile(column[:, None], (1, frames))
+        self.entries = [
+            {"name": "Verse", "start_s": 0.0, "end_s": 10.0},
+            {"name": "Solo", "start_s": 10.0, "end_s": 20.0},
+            {"name": "Chorus", "start_s": 20.0, "end_s": 30.0},
+            {"name": "Blip", "start_s": 29.5, "end_s": 30.0},
+            {"name": "Lost", "start_s": None, "end_s": None},
+        ]
+        sm.measure_sections(self.entries, self.y, self.stems, sr, FakeMeter(), self.chroma, beats, 120.0)
+        self.by_name = {e["name"]: e for e in self.entries}
+
+    def test_loudness_and_the_step_from_the_section_before(self):
+        verse, solo, chorus = (self.by_name[n] for n in ("Verse", "Solo", "Chorus"))
+        self.assertEqual(verse["mix_lufs"], -20.69)   # -0.691 + 20*log10(0.1)
+        self.assertEqual(solo["mix_lufs"], -8.65)     # -0.691 + 20*log10(0.4)
+        self.assertIsNone(verse["step_lu"])           # nothing before the first section
+        self.assertEqual(solo["step_lu"], round(solo["mix_lufs"] - verse["mix_lufs"], 1))
+        self.assertGreater(solo["step_lu"], 0)        # louder than the section before is a positive step
+        self.assertEqual(chorus["step_lu"], 0.0)
+
+    def test_vocal_minus_band_and_the_absent_vocal_threshold(self):
+        verse, solo, chorus = (self.by_name[n] for n in ("Verse", "Solo", "Chorus"))
+        self.assertEqual(verse["vocal_minus_band_lu"], -6.0)   # 0.05 against a band of 0.1
+        self.assertIs(verse["vocal_present"], True)
+        self.assertIsNone(solo["vocal_minus_band_lu"])         # a silent stem has no loudness
+        self.assertIs(solo["vocal_present"], False)
+        self.assertEqual(chorus["vocal_minus_band_lu"], -20.0)  # 0.02 against 0.2: bleed, below -15 LU
+        self.assertIs(chorus["vocal_present"], False)
+
+    def test_tempo_and_feel_against_the_tracks_tempo(self):
+        verse, solo = self.by_name["Verse"], self.by_name["Solo"]
+        self.assertEqual((verse["bpm"], verse["feel"]), (120.0, None))
+        self.assertEqual((solo["bpm"], solo["feel"]), (60.0, "half-time"))
+
+    def test_key_is_read_per_section(self):
+        self.assertEqual(self.by_name["Verse"]["key"], "A minor")
+        self.assertEqual(self.by_name["Solo"]["key"], "A minor")
+        self.assertGreater(self.by_name["Verse"]["key_confidence"], 0.5)
+
+    def test_a_section_under_a_second_or_unplaced_keeps_every_field_empty(self):
+        fields = ("mix_lufs", "step_lu", "vocal_minus_band_lu", "vocal_present", "bpm", "feel", "key",
+                  "key_confidence")
+        for name in ("Blip", "Lost"):
+            self.assertEqual([self.by_name[name][k] for k in fields], [None] * len(fields), name)
+
+
 class ExitCodeTest(unittest.TestCase):
     def setUp(self):
         td = tempfile.TemporaryDirectory()
@@ -427,6 +542,35 @@ class ExitCodeTest(unittest.TestCase):
         proc = run([str(audio), "--lyrics", str(lyr)])
         self.assertEqual(proc.returncode, 1)
         self.assertIn("No section tags", proc.stderr)
+        self.assertEqual(json.loads(proc.stdout)["status"], "fail")
+
+    def test_non_latin_lyrics_exit_1_with_a_reason(self):
+        audio, lyr = self.tmp_path / "a.mp3", self.tmp_path / "l.txt"
+        audio.write_bytes(b"")
+        lyr.write_text("[Verse]\nНочь темна\n[Chorus]\nОгни горят\n", encoding="utf-8")
+        proc = run([str(audio), "--lyrics", str(lyr)])
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("no Latin-script words", proc.stderr)
+
+    def test_lyrics_block_zero_exits_1_with_a_reason(self):
+        audio, lyr = self.tmp_path / "a.mp3", self.tmp_path / "pkg.md"
+        audio.write_bytes(b"")
+        lyr.write_text(PACKAGE, encoding="utf-8")
+        proc = run([str(audio), "--lyrics", str(lyr), "--lyrics-block", "0"])
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("--lyrics-block 0", proc.stderr)
+
+    def test_usage_errors_exit_1_not_the_missing_dependency_code(self):
+        audio, lyr = self.tmp_path / "a.mp3", self.tmp_path / "l.txt"
+        audio.write_bytes(b"")
+        lyr.write_text("[Verse]\nx", encoding="utf-8")
+        for argv in (["--shifts", "0"], ["--format", "yaml"], ["--bogus"]):
+            proc = run([str(audio), "--lyrics", str(lyr), *argv])
+            self.assertEqual(proc.returncode, 1, argv)  # 2 is read as "audio dependencies missing"
+            self.assertIn("usage:", json.loads(proc.stdout)["error"], argv)
+        proc = run([str(audio)])  # --lyrics left out
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("--lyrics", proc.stderr)
 
 
 if __name__ == "__main__":

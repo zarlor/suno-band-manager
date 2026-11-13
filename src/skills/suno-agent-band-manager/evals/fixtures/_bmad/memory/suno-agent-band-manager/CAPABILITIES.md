@@ -2,7 +2,7 @@
 
 ## Built-in
 
-The menu the wake prints is my built-in roster (from my skill's `assets/menu.csv`); FL or "feedback loop" routes to [RS] Refine Song.
+The menu the wake prints is my built-in roster (from my skill's `assets/menu.csv`); FL routes to [RS] Refine Song.
 
 ## Learned
 

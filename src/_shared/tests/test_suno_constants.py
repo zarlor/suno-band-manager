@@ -18,6 +18,7 @@ from suno_constants import (
     SUNO_LYRICS_HARD_LIMIT, SUNO_LYRICS_QUALITY_BUDGET,
     HEAVY_VOCAL_TRIGGERS, VOCAL_SAFE_PAIRINGS, KEYBOARD_PULL_WORDS,
     SHOUT_TRIGGER_CHAR, GENRE_SIGNALS,
+    PERSONA_AUDIO_INFLUENCE_RANGE, VOICE_AUDIO_INFLUENCE_RANGE,
 )
 
 
@@ -81,6 +82,57 @@ class TestSunoConstants(unittest.TestCase):
     def test_free_tier_and_default_models_are_current(self):
         self.assertIn(FREE_TIER_MODEL, CURRENT_MODELS)
         self.assertIn(DEFAULT_MODEL, CURRENT_MODELS)
+
+
+class TestPlatformLimitValues(unittest.TestCase):
+    """The limits by value. The validators read these numbers, the skills quote them to
+    the owner, and Suno truncates silently past them, so a changed figure must fail here."""
+
+    def test_style_prompt_limit_per_model(self):
+        self.assertEqual(STYLE_PROMPT_LIMITS, {
+            "v6": 1000,
+            "v6-wild": 1000,
+            "v6-mini": 1000,
+            "v4 Pro": 200,
+            "v4.5-all": 1000,
+            "v4.5 Pro": 1000,
+            "v4.5+ Pro": 1000,
+            "v5 Pro": 1000,
+            "v5.5 Pro": 1000,
+        })
+
+    def test_current_models_take_a_1000_character_style_prompt(self):
+        for model in ("v6", "v6-wild", "v6-mini"):
+            with self.subTest(model=model):
+                self.assertEqual(STYLE_PROMPT_LIMITS[model], 1000)
+        self.assertEqual(STYLE_PROMPT_LIMITS[DEFAULT_MODEL], 1000)
+        self.assertEqual(STYLE_PROMPT_LIMITS[FREE_TIER_MODEL], 1000)
+
+    def test_style_prompt_default_max_and_critical_zone(self):
+        self.assertEqual(STYLE_PROMPT_DEFAULT_MAX, 1000)
+        self.assertEqual(CRITICAL_ZONE, 200)
+
+    def test_exclusion_limits(self):
+        self.assertEqual(EXCLUSION_RECOMMENDED_MAX, 200)
+        self.assertEqual(EXCLUSION_HARD_MAX, 300)
+
+    def test_lyrics_limits(self):
+        self.assertEqual(SUNO_LYRICS_HARD_LIMIT, 5000)
+        self.assertEqual(SUNO_LYRICS_QUALITY_BUDGET, 3000)
+
+    def test_audio_influence_ranges(self):
+        self.assertEqual(PERSONA_AUDIO_INFLUENCE_RANGE, (15, 25))
+        self.assertEqual(VOICE_AUDIO_INFLUENCE_RANGE, (35, 95))
+
+    def test_audio_influence_ranges_do_not_overlap(self):
+        """A value from one slot's range is a range error in the other, so the two never share a value."""
+        self.assertLess(PERSONA_AUDIO_INFLUENCE_RANGE[1], VOICE_AUDIO_INFLUENCE_RANGE[0])
+
+    def test_model_and_tier_names(self):
+        self.assertEqual(DEFAULT_MODEL, "v6")
+        self.assertEqual(FREE_TIER_MODEL, "v6-mini")
+        self.assertEqual(VALID_TIERS, frozenset({"free", "pro", "premier"}))
+        self.assertEqual(PAID_TIERS, frozenset({"pro", "premier"}))
 
 
 class TestStylePromptTriggers(unittest.TestCase):

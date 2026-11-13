@@ -4,7 +4,7 @@ Metatags are keywords in square brackets placed in the Lyrics field to guide Sun
 
 ## How to Load This File
 
-This file is too large to read whole on every run. Load only the sections the job needs: pass each name below to `uv run {skill-root}/scripts/metatag-sections.py --section "<name>"` (repeat `--section` for several). A name is a heading or the start of one; a section comes with its subsections.
+This file is too large to read whole on every run. Load only the sections the job needs: pass each name below to `uv run {skill-root}/scripts/metatag_sections.py --section "<name>"` (repeat `--section` for several). A name is a heading or the start of one; a section comes with its subsections.
 
 Grades used throughout: HIGH (several sources agree), MEDIUM or Experimental (one or two sources, inconsistent), unmarked (established). LOCAL-CONFIRMED and LOCAL-OBSERVED are this module's own production tests; COMMUNITY, VENDOR and ANECDOTAL name the outside source class.
 
@@ -51,7 +51,7 @@ Core tags that define song structure. Suno uses these to organize musical sectio
 
 **Use recognized tags only.** Suno doesn't know invented tags like `[The Questions]` or `[Reflection]`: at best it ignores them, at worst it sings the tag text as a lyric. Map each section to a recognized tag and shape its feel with parameterized syntax or descriptor tags.
 
-**Intensity words aren't section tags.** `[Heavy]`, `[Loud]`, `[Soft]` or `[Quiet]` as a section header breaks Suno's structural parse: in production testing `[Heavy]` as a header made Suno skip the `[Intro]` and start on that section, on more than a few gens. Carry the intensity on a recognized section instead (`[Verse]` + `[Energy: dense, engulfing, peak]` + `[Vocal Style: full power]`), or use `[Bridge]` when the section must be harmonically new. When `validate-lyrics.py` flags a section tag as unrecognized, map it to a recognized one, even if an old songbook entry used it.
+**Intensity words aren't section tags.** `[Heavy]`, `[Loud]`, `[Soft]` or `[Quiet]` as a section header breaks Suno's structural parse: in production testing `[Heavy]` as a header made Suno skip the `[Intro]` and start on that section, on more than a few gens. Carry the intensity on a recognized section instead (`[Verse]` + `[Energy: dense, engulfing, peak]` + `[Vocal Style: full power]`), or use `[Bridge]` when the section must be harmonically new. When `validate_lyrics.py` flags a section tag as unrecognized, map it to a recognized one, even if an old songbook entry used it.
 
 **Fill a section tag with direction, not a narrative label.** Suno can act on tempo, dynamics, vocal style, mood and energy inside the brackets; it has no signal for a human-readable label, which at best is ignored, at worst gets sung, and either way burns character budget.
 
@@ -185,7 +185,7 @@ Control how Suno's vocal engine performs specific sections. Place right before t
 | Tag | Effect |
 |-----|--------|
 | `[Whispered]` / `[Whisper]` | Soft, breathy, intimate delivery |
-| `[Soft]` / `[Gentle]` / `[Quiet]` | Subdued, low-volume singing |
+| `[Gentle]` | Subdued, low-volume singing. `[Soft]` and `[Quiet]` do the same in principle, but as a header they break Suno's structural parse (see Section Structure Tags), so `validate_lyrics.py` flags them: write `[Vocal Style: soft]` instead |
 | `[Spoken]` / `[Spoken Word]` | Spoken rather than sung |
 | `[Powerful]` / `[Intense]` | Full-force, emotional delivery |
 | `[Belted]` / `[Belting]` | Powerful, full-voice, high-energy singing |
@@ -247,14 +247,14 @@ Control how Suno's vocal engine performs specific sections. Place right before t
 | `[Male Vocal]` / `[Male Vocalist]` / `[Man]` | Male voice |
 | `[Female Vocal]` / `[Female Vocalist]` / `[Woman]` | Female voice |
 | `[Boy]` / `[Girl]` | Younger-sounding voice |
-| `[Duet]` | Two distinct voices alternating |
+| `[Duet]` | Two distinct voices alternating. Unreliable alone (see Dual Vocals), so `validate_lyrics.py` flags it: use `[Male]` / `[Female]` at the switch points |
 
 ### Vocal Effects
 | Tag | Effect |
 |-----|--------|
 | `[Reverb]` | Reverberant vocal treatment |
 | `[Delay]` | Echo/delay on vocals |
-| `[AutoTune]` / `[No AutoTune]` | Add or prevent pitch correction |
+| `[AutoTune]` | Add pitch correction. `[No AutoTune]` is a bracket negation, which invites the thing it names (see Negation Inside Standalone Brackets Backfires), so `validate_lyrics.py` flags it |
 | `[Distorted Vocals]` | Distortion effect on voice |
 | `[Filtered Vocals]` | Filtered/muffled vocal sound |
 | `[Vocoder]` | Robotic/synthesized vocal effect |
@@ -330,7 +330,7 @@ For songs that need to build UP and come back DOWN, place descent tags at the **
 
 ### Section-Tag Wording Can Itself Invite Choir Effects (ANECDOTAL, 2026-08)
 
-An extension to the anti-choir stack (style prompt + Exclude Styles + section tags — the full stack lives in Mac's `docs/suno-production-patterns.md`): **the wording inside a section tag can invite the very group vocals you are excluding**, when the label implies group participation. A bare `[Chorus]` in a genre whose choruses are conventionally stacked is already a nudge toward extra voices.
+An extension to the anti-choir stack (style prompt + Exclude Styles + section tags): **the wording inside a section tag can invite the very group vocals you are excluding**, when the label implies group participation. A bare `[Chorus]` in a genre whose choruses are conventionally stacked is already a nudge toward extra voices.
 
 - **Refined positive wording** (source's phrasing): "Solo lead vocal performance by one singer only… Chorus energy comes from instruments and arrangement, not extra voices."
 - **Section-tag form:** `[Chorus - Solo Lead Vocal, Instrumental Lift Only]` — states where the lift comes from instead of only forbidding voices.
@@ -431,6 +431,7 @@ Whichever you pick:
 
 - `[End]` goes on the absolute last line with nothing below it, not even a blank line, which is reported to weaken it (COMMUNITY).
 - `[Fade Out]` doesn't produce a fade. Guides call it a modifier beside `[Outro]` + `[End]`; primary-source users report it working in no configuration; `[Fade Out]` + `[End]` still left 14 seconds of tail on a thrash track. At high Weirdness the pair is still worth tagging, but a real fade is applied in the editor.
+- Suno adds solos nobody scripted: three of four analyzed tracks had a solo that was not in the lyrics (LOCAL). Plan for one, or close on `[End]` so it cannot run on after the last vocal. For a resolved ending, a worded outro stacked with the stop (`[Outro] long instrumental outro, soft keys, slow fade`, then `[End]`) did better than either signal alone.
 - These fail: `[Stop]` and `[hard cut]` get sung as words; `[Dramatic End]` still trails on thrash and metal; a doubled `[End]` acts as one; `[Outro: fading, sparse]` signals conclusion mode and can add instrumental.
 
 **Repairing a bad ending** (ANECDOTAL; matches how we triage): trailing material → Crop; an abrupt final second → Fade Out in the editor; mid-song repeats → Replace Section; a missing ending → Extend. Replace Section on just the tail, retried, can also land a shorter ending. Don't regenerate a whole song over its ending. The Duration slider itself is a style-side setting, the `suno-style-prompt-builder` skill's.
@@ -517,7 +518,7 @@ Tags that control rhythmic feel and timing within sections. These are distinct f
 
 ## Standalone Instrument Tags (HIGH)
 
-These work as bare bracket tags in the lyrics field — not just via `[Instrument: ...]` colon syntax. Place before a section to feature that instrument, or use as section tags for solos/features.
+These work as bare bracket tags in the lyrics field — not just via `[Instrument: ...]` colon syntax. Place before a section to feature that instrument. For a solo or feature section of its own, use the `[<Instrument> Solo]` form (Instrumental & Solo Section Tags): the scripts count that as a section and a bare instrument tag as a cue inside one.
 
 ### Keys
 `[Piano]`, `[Electric Piano]`, `[Rhodes]`, `[Wurlitzer]`, `[Organ]`, `[Hammond Organ]`, `[Harpsichord]`, `[Clavinet]`, `[Mellotron]`
@@ -624,7 +625,7 @@ Section tags support inline arrangement instructions via colon (`:`) or pipe (`|
 
 **Compound pipe tags (COMMUNITY, 2026-08).** Users chain several instructions through one section tag, e.g. `[Break | Instrumental Only | No Vocals | Do Not Use Lyrics as FX]`, and the same syntax turns up independently in unrelated users' lyric sheets — which is what raises it above one person's habit. Note the tension with the "no X" finding below: negation inside a *standalone* bracket backfires, but the author of the ghost-vocal work reports explicit negatives working **inside compound pipe tags.** That reconciliation — pipe-tag context versus standalone bracket — is plausible but unresolved. Use compound pipe tags for positive direction with confidence; treat the embedded negatives as unproven.
 
-Both syntaxes are confirmed working on v5. On v6, a dash form — `[Verse 1 - riff continues under vocal, drums drive]` — and pipe cues like `[Verse | whispered]` are reported read at render time (VENDOR); see "Suno v6 (PREVIEW)". The colon syntax is more flexible (accepts comma-separated arrangement descriptions), while the pipe syntax is cleaner for single modifiers. These can be combined with separate descriptor tags on subsequent lines for maximum control, but the inline approach is often sufficient and saves character budget.
+Both syntaxes are confirmed working on v5. On v6, a dash form — `[Verse 1 - riff continues under vocal, drums drive]` — and pipe cues like `[Verse | whispered]` are reported read at render time (VENDOR); see "Suno v6". The colon syntax is more flexible (accepts comma-separated arrangement descriptions), while the pipe syntax is cleaner for single modifiers. These can be combined with separate descriptor tags on subsequent lines for maximum control, but the inline approach is often sufficient and saves character budget.
 
 **Relationship to BPM tags:** Note that `[Verse 1: 65 BPM]` style BPM parameterization remains ineffective (see Experimental Section Tags below). The parameterized syntax works for arrangement/feel instructions, not for tempo numbers.
 
@@ -664,7 +665,7 @@ These are partially supported and may not work consistently across all models.
 
 | Tag Syntax | Purpose | Notes |
 |-----------|---------|-------|
-| `[Verse 1: 7/8]` / `[Chorus: 4/4]` | Time signature hint per section | **Aspirational — expect 4/4.** Module production testing (2026-07) found meter signals move feel and tempo, not subdivision; see "Structural Metaphor via Time Signature Changes" above. The Studio time-signature picker was documented as "not yet sent to generative models" for Studio **1.2**; that article is now archived and the claim is **unverified for Studio 2.0**, so in-lyric tags remain the only lever we can reason about |
+| `[Verse 1: 7/8]` / `[Chorus: 4/4]` | Time signature hint per section | **Aspirational — expect 4/4.** Module production testing (2026-07) found meter signals move feel and tempo, not subdivision; see Structural Metaphor in `references/section-jobs.md`. The Studio time-signature picker was documented as "not yet sent to generative models" for Studio **1.2**; that article is now archived and the claim is **unverified for Studio 2.0**, so in-lyric tags remain the only lever we can reason about |
 | `[Callback: ...]` | During Extend/Replace, references a prior section's feel | HIGH reliability for Extend/Replace workflows — 'Callback phrasing is respected reliably across Extend chains' (community-validated). Experimental for standard generation. e.g., `[Callback: Verse 1 energy]` — useful for maintaining continuity across generations |
 
 ### BPM Tags — Confirmed Ineffective
@@ -811,6 +812,8 @@ The door (slamming! slamming!)
 ...
 ```
 
+`validate_lyrics.py` reports the free-text line under `[Intro]` as an unrecognized tag (low). That finding is expected here: keep the line.
+
 Suno hears the pattern first, commits to it as part of the song's sonic identity, then applies it consistently through V1+.
 
 **What doesn't work alone** (observed across multiple gens on a rockabilly-primary / psychedelic-blues-wild-card song, April 2026):
@@ -898,7 +901,7 @@ This is the **PRIMARY mechanism** for controlling perceived tempo in Suno-genera
 
 **Key insight:** Word density is the main control for perceived tempo. BPM tags have zero effect (confirmed by librosa — see Experimental Section Tags above). Energy metatags alone (`[Energy: high]`) don't reliably drive actual BPM shifts — they signal intensity but not tempo. Suno picks a single steady BPM for the entire song regardless of tags; what changes is *perceived* tempo through delivery density and arrangement.
 
-**Foundational principle: Suno does not actually shift tempo within a song.** When a style prompt requests "tempo shifts" / "tempo changes" / "dynamic pacing," and when section metatags request `[Heavy: halftime]` / `[Double Time]`, Suno produces **arrangement-density variation** — instrumentation pullback to create a halftime *feel*, compression to create a double-time *feel* — but the underlying BPM stays absolutely constant across the song. Production-confirmed across multiple catalog tracks whose prompts explicitly requested tempo changes: librosa-measured BPM is steady end-to-end; the listener's experience of "slower in lucid sections, faster in manic" is entirely arrangement-driven. **Practical implication:** stop treating "tempo changes" as a tempo control; treat it as an **arrangement-density / delivery-density** control. Plan for one underlying tempo per song and use the techniques below to vary perceived feel within that fixed tempo grid. Felt-tempo readings (taken from the densest section where the pulse is most countable) should be the basis for sequencing decisions, not librosa raw — see `audio-analysis-reference.md` Felt BPM Corrections table for catalog examples.
+**Foundational principle: Suno does not actually shift tempo within a song.** When a style prompt requests "tempo shifts" / "tempo changes" / "dynamic pacing," and when section metatags request `[Heavy: halftime]` / `[Double Time]`, Suno produces **arrangement-density variation** — instrumentation pullback to create a halftime *feel*, compression to create a double-time *feel* — but the underlying BPM stays absolutely constant across the song. Production-confirmed across multiple catalog tracks whose prompts explicitly requested tempo changes: librosa-measured BPM is steady end-to-end; the listener's experience of "slower in lucid sections, faster in manic" is entirely arrangement-driven. **Practical implication:** stop treating "tempo changes" as a tempo control; treat it as an **arrangement-density / delivery-density** control. Plan for one underlying tempo per song and use the techniques below to vary perceived feel within that fixed tempo grid. Felt-tempo readings (taken from the densest section where the pulse is most countable) should be the basis for sequencing decisions, not librosa raw.
 
 **Why it works:** Librosa analysis confirms that BPM does not actually change between sections, even when sections *feel* dramatically different in speed. A "hustle bustle" section with packed syllables feels like acceleration, but the underlying tempo is identical. The perception of speed comes from how much vocal content Suno must deliver per beat — and from how dense the arrangement is (sparse passages feel slower than dense ones at the same BPM).
 

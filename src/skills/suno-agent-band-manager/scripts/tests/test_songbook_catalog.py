@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["pyyaml>=6.0"]
 # ///
-"""Tests for songbook-catalog.py (fixtures are invented, de-identified)."""
+"""Tests for songbook_catalog.py (fixtures are invented, de-identified)."""
 
 import io
 import json
@@ -16,7 +16,7 @@ from unittest.mock import patch
 
 SCRIPTS_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
-spec = spec_from_file_location("songbook_catalog", SCRIPTS_DIR / "songbook-catalog.py")
+spec = spec_from_file_location("songbook_catalog", SCRIPTS_DIR / "songbook_catalog.py")
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -100,15 +100,49 @@ class SongbookCatalogTests(TempDirMixin, unittest.TestCase):
     def test_cli_json_and_text(self):
         root = _project(self.tmp_path)
         out = io.StringIO()
-        with patch.object(sys, "argv", ["songbook-catalog.py", str(root), "--band", "iron-band"]), \
+        with patch.object(sys, "argv", ["songbook_catalog.py", str(root), "--band", "iron-band"]), \
                 redirect_stdout(out):
             self.assertEqual(mod.main(), 0)
         self.assertEqual(json.loads(out.getvalue())["song_count"], 1)
         out = io.StringIO()
-        with patch.object(sys, "argv", ["songbook-catalog.py", str(root), "--format", "text"]), \
+        with patch.object(sys, "argv", ["songbook_catalog.py", str(root), "--format", "text"]), \
                 redirect_stdout(out):
             self.assertEqual(mod.main(), 0)
         self.assertIn("Harbor Lights", out.getvalue())
+
+    # --- entries that used to break the catalog or vanish from it ---
+
+    def test_empty_band_profile_sorts_and_tallies_under_no_band(self):
+        root = _project(self.tmp_path)
+        (root / "docs/songbook/loose.md").write_text(
+            '---\ntitle: "Loose Leaf"\nband_profile:\nstatus: wip\ndate: 2026-03-01\n---\n\nbody\n', encoding="utf-8")
+        report = mod.build_catalog(root)
+        self.assertEqual(report["song_count"], 4)
+        self.assertEqual(report["songs"][0]["title"], "Loose Leaf")  # "" sorts first; no TypeError against None
+        self.assertEqual(report["songs"][0]["band"], "")
+        self.assertEqual(report["bands"][""]["songs"], 1)
+        out = io.StringIO()
+        with patch.object(sys, "argv", ["songbook_catalog.py", str(root), "--format", "text"]), redirect_stdout(out):
+            self.assertEqual(mod.main(), 0)
+        self.assertIn("(no band)", out.getvalue())
+
+    def test_unparseable_entry_is_listed_in_parse_errors(self):
+        root = _project(self.tmp_path)
+        (root / "docs/songbook/paper-lanterns/broken.md").write_text(
+            '---\ntitle: "x\nstatus: [unterminated\n---\n\nbody\n', encoding="utf-8")
+        report = mod.build_catalog(root)
+        self.assertEqual(report["song_count"], 3)
+        self.assertEqual(len(report["parse_errors"]), 1)
+        self.assertTrue(report["parse_errors"][0]["path"].endswith("broken.md"))
+        self.assertEqual(report["parse_errors"][0]["category"], "songbook_drift")
+
+    def test_entry_with_a_bom_keeps_its_frontmatter_fields(self):
+        root = _project(self.tmp_path)
+        bom_song = "\ufeff" + OTHER_BAND.replace("status: published\n", "status: published\nmodel: v5\n").replace(
+            "## Settings\n- Model: v6\n\n", "")
+        (root / "docs/songbook/iron-band/iron-gate.md").write_text(bom_song, encoding="utf-8")
+        gate = mod.build_catalog(root, band="iron-band")["songs"][0]
+        self.assertEqual((gate["title"], gate["status"], gate["model"]), ("Iron Gate", "published", "v5"))
 
 
 if __name__ == "__main__":

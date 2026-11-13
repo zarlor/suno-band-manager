@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # ///
-"""Tests for find-stale-refs.py (fixtures are invented, de-identified)."""
+"""Tests for find_stale_refs.py (fixtures are invented, de-identified)."""
 
 import io
 import json
@@ -14,12 +14,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 SCRIPTS_DIR = Path(__file__).parent.parent
-spec = spec_from_file_location("find_stale_refs", SCRIPTS_DIR / "find-stale-refs.py")
+spec = spec_from_file_location("find_stale_refs", SCRIPTS_DIR / "find_stale_refs.py")
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from helpers import TempDirMixin  # noqa: E402
+from fake_resolver import install_resolver  # noqa: E402
 
 
 def run_main(argv):
@@ -106,7 +107,7 @@ class FindStaleRefsTests(TempDirMixin, unittest.TestCase):
     def test_cli_include_sessions_is_an_alias_for_include_raw(self):
         root = _project(self.tmp_path)
         for flag in ("--include-raw", "--include-sessions"):
-            code, stdout = run_main(["find-stale-refs.py", str(root), "--old", "Harbor Lights", flag])
+            code, stdout = run_main(["find_stale_refs.py", str(root), "--old", "Harbor Lights", flag])
             self.assertEqual(code, 0)
             out = json.loads(stdout)
             self.assertTrue(any("/raw/" in h["file"] for h in out["hits"]))
@@ -115,7 +116,7 @@ class FindStaleRefsTests(TempDirMixin, unittest.TestCase):
         root = _project(self.tmp_path)
         _w(root, "staging/memory/work/current.md", "Harbor Lights staged\n")
         code, stdout = run_main([
-            "find-stale-refs.py", str(root), "--old", "Harbor Lights", "--sanctum-dir", str(root / "staging")])
+            "find_stale_refs.py", str(root), "--old", "Harbor Lights", "--sanctum-dir", str(root / "staging")])
         self.assertEqual(code, 0)
         files = {h["file"] for h in json.loads(stdout)["hits"]}
         self.assertIn("staging/memory/work/current.md", files)
@@ -137,17 +138,83 @@ class FindStaleRefsTests(TempDirMixin, unittest.TestCase):
         self.assertEqual(mod.scan(root, "Harbor Lights"), mod.scan(root, "Harbor Lights"))
 
     def test_cli_requires_old_or_paths_only(self):
-        code, stdout = run_main(["find-stale-refs.py", str(self.tmp_path)])
+        code, stdout = run_main(["find_stale_refs.py", str(self.tmp_path)])
         self.assertEqual(code, 2)
         self.assertEqual(json.loads(stdout)["status"], "error")
 
     def test_cli_json(self):
         root = _project(self.tmp_path)
-        code, stdout = run_main(["find-stale-refs.py", str(root), "--old", "Harbor Lights"])
+        code, stdout = run_main(["find_stale_refs.py", str(root), "--old", "Harbor Lights"])
         self.assertEqual(code, 0)
         out = json.loads(stdout)
         self.assertEqual(out["status"], "ok")
         self.assertGreaterEqual(out["hit_count"], 4)
+
+    # --- names a content search cannot see (band slug rename) ---
+
+    def test_files_and_folders_named_by_the_old_slug_are_listed(self):
+        root = _project(self.tmp_path)
+        _w(root, "docs/band-profiles/paper-lanterns.yaml", "name: Paper Lanterns\n")
+        _w(root, "docs/paper-lanterns-genre-coverage.md", "index\n")
+        _w(root, "docs/audio-analysis/paper-lanterns/harbor.json", "{}\n")
+        _w(root, f"{SANCTUM}/memory/bands/paper-lanterns.md", "# band notes\n")
+        _w(root, "docs/band-profiles/iron-band.yaml", "name: Iron Band\n")
+        report = mod.scan(root, "paper-lanterns", "lantern-club")
+        named = {n["path"]: n["kind"] for n in report["named_by_old"]}
+        self.assertEqual(named, {
+            "docs/songbook/paper-lanterns": "folder",
+            "docs/audio-analysis/paper-lanterns": "folder",
+            "docs/band-profiles/paper-lanterns.yaml": "file",
+            "docs/paper-lanterns-playlist.yaml": "file",
+            "docs/paper-lanterns-genre-coverage.md": "file",
+            f"{SANCTUM}/memory/bands/paper-lanterns.md": "file",
+        })
+        # None of these is a content hit: nothing in the fixtures writes the slug.
+        self.assertEqual(report["hit_count"], 0)
+
+    def test_a_renamed_title_finds_its_slugged_file_name(self):
+        root = _project(self.tmp_path)
+        named = [n["path"] for n in mod.scan(root, "Harbor Lights", "Harbour Lights")["named_by_old"]]
+        self.assertEqual(named, ["docs/songbook/paper-lanterns/harbor-lights.md"])
+
+    def test_paths_only_and_text_output(self):
+        root = _project(self.tmp_path)
+        self.assertEqual(mod.scan(root, None)["named_by_old"], [])
+        code, out = run_main(["find_stale_refs.py", str(root), "--old", "paper-lanterns", "--format", "text"])
+        self.assertEqual(code, 0)
+        self.assertIn("[folder] docs/songbook/paper-lanterns", out)
+        self.assertIn("[file] docs/paper-lanterns-playlist.yaml", out)
+
+    # --- songbook_folder / band_profiles_folder from the module config ---
+
+    def test_configured_folders_are_searched_and_walked_for_names(self):
+        root = self.tmp_path
+        _w(root, "music/songs/paper-lanterns/harbor-lights.md", '---\ntitle: "Harbor Lights"\n---\n')
+        _w(root, "music/bands/paper-lanterns.yaml", "name: Paper Lanterns\ncatalog:\n  - title: Harbor Lights\n")
+        _w(root, "music/paper-lanterns-playlist.yaml", 'tracks:\n  - name: "Harbor Lights"\n')
+        _w(root, "docs/songbook/stray/old.md", "Harbor Lights at the old default place\n")
+        install_resolver(root)
+        (root / "_bmad" / "config.toml").write_text(
+            '[modules.suno]\nsongbook_folder = "{project-root}/music/songs"\n'
+            'band_profiles_folder = "{project-root}/music/bands"\n', encoding="utf-8")
+        report = mod.scan(root, "Harbor Lights")
+        self.assertEqual(sorted({h["file"] for h in report["hits"]}), [
+            "music/bands/paper-lanterns.yaml", "music/paper-lanterns-playlist.yaml",
+            "music/songs/paper-lanterns/harbor-lights.md"])
+        named = {n["path"] for n in mod.scan(root, "paper-lanterns")["named_by_old"]}
+        self.assertEqual(named, {"music/songs/paper-lanterns", "music/bands/paper-lanterns.yaml",
+                                 "music/paper-lanterns-playlist.yaml"})
+
+    def test_unreadable_config_exits_2_with_json(self):
+        root = _project(self.tmp_path)
+        install_resolver(root)
+        (root / "_bmad" / "config.toml").write_text("[modules.suno\nbroken", encoding="utf-8")
+        out = io.StringIO()
+        with patch.object(sys, "argv", ["find_stale_refs.py", str(root), "--old", "x"]), redirect_stdout(out):
+            with self.assertRaises(SystemExit) as exc:
+                mod.main()
+        self.assertEqual(exc.exception.code, 2)
+        self.assertEqual(json.loads(out.getvalue())["status"], "error")
 
 
 if __name__ == "__main__":

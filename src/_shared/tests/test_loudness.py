@@ -12,6 +12,7 @@ pyloudnorm`, so it skips when uv is unavailable.
 """
 
 import importlib.util
+import json
 import shutil
 import subprocess
 import sys
@@ -59,24 +60,25 @@ class TestLoudness(unittest.TestCase):
     @unittest.skipIf(UV is None, "uv not available to provision numpy/pyloudnorm")
     def test_bs1770_reference_sine_and_build(self):
         code = f"""
-import sys, numpy as np
+import json, sys, numpy as np
 sys.path.insert(0, {str(SHARED)!r})
 import loudness
 sr = 48000
 t = np.arange(sr * 12) / sr
 sine = 0.1 * np.sin(2 * np.pi * 997 * t)
 s = loudness.summarize(sine, sr)
-assert abs(s["integrated_lufs"] - (-23.0)) < 0.2, s
-assert s["lra_lu"] is not None and s["lra_lu"] < 0.5, s
 ramp = sine * np.repeat([0.5, 1.0, 2.0], sr * 4)
 b = loudness.summarize(ramp, sr)["build_lu"]
-assert abs(b - 12.04) < 0.3, b  # x4 amplitude from first third to last = +12 dB
-print("ok")
+print(json.dumps({{"integrated_lufs": s["integrated_lufs"], "lra_lu": s["lra_lu"], "build_lu": b}}))
 """
         proc = subprocess.run([UV, "run", "--quiet", "--no-project", "--with", "numpy", "--with", "pyloudnorm",
                                "python", "-c", code], capture_output=True, text=True, timeout=600)
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual(proc.stdout.strip(), "ok")
+        measured = json.loads(proc.stdout)
+        self.assertAlmostEqual(measured["integrated_lufs"], -23.0, delta=0.2)
+        self.assertIsNotNone(measured["lra_lu"])
+        self.assertLess(measured["lra_lu"], 0.5)
+        self.assertAlmostEqual(measured["build_lu"], 12.04, delta=0.3)  # x4 amplitude, first third to last = +12 dB
 
     def test_seam_step_prefers_entry_exit_over_thirds(self):
         prev = {"thirds_lufs": [-16.0, -13.0, -10.0], "exit_lufs": -22.0}
@@ -88,7 +90,7 @@ print("ok")
     @unittest.skipIf(UV is None, "uv not available to provision numpy/pyloudnorm")
     def test_entry_exit_trim_silence_and_measure_edges(self):
         code = f"""
-import sys, numpy as np
+import json, sys, numpy as np
 sys.path.insert(0, {str(SHARED)!r})
 import loudness
 sr = 48000
@@ -97,14 +99,14 @@ sig = 0.1 * np.sin(2 * np.pi * 997 * t)
 sig[: sr * 20] *= 0.25                      # quiet first half (-12 dB), loud second half
 song = np.concatenate([np.zeros(sr * 3), sig, np.zeros(sr * 5)])   # silence both ends
 s = loudness.summarize(song, sr)
-assert abs(s["entry_lufs"] - (-35.0)) < 0.4, s   # silence trimmed; quiet opening measured
-assert abs(s["exit_lufs"] - (-23.0)) < 0.4, s    # loud ending measured
-print("ok")
+print(json.dumps({{"entry_lufs": s["entry_lufs"], "exit_lufs": s["exit_lufs"]}}))
 """
         proc = subprocess.run([UV, "run", "--quiet", "--no-project", "--with", "numpy", "--with", "pyloudnorm",
                                "python", "-c", code], capture_output=True, text=True, timeout=600)
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual(proc.stdout.strip(), "ok")
+        measured = json.loads(proc.stdout)
+        self.assertAlmostEqual(measured["entry_lufs"], -35.0, delta=0.4)  # silence trimmed; quiet opening measured
+        self.assertAlmostEqual(measured["exit_lufs"], -23.0, delta=0.4)   # loud ending measured
 
 
 if __name__ == "__main__":

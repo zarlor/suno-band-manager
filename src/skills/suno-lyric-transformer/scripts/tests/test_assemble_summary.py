@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for assemble-summary.py"""
+"""Tests for assemble_summary.py"""
 
 import importlib.util
 import json
@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "assemble-summary.py")
+SCRIPT = str(Path(__file__).parent.parent / "assemble_summary.py")
 
 CANONICAL_CODE_DESCRIPTIONS = {
     "ST": "Structure Tagging",
@@ -28,7 +28,7 @@ CANONICAL_CODE_DESCRIPTIONS = {
 
 
 def _load_module():
-    """Import assemble-summary.py as a module despite the hyphenated filename."""
+    """Import assemble_summary.py as a module despite the hyphenated filename."""
     spec = importlib.util.spec_from_file_location("assemble_summary", SCRIPT)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -243,6 +243,81 @@ class TestAssembleSummary(unittest.TestCase):
         result = run_full("--help")
         self.assertEqual(result.returncode, 0)
         self.assertIn("assemble", result.stdout.lower())
+
+
+class TestFromRealProducerOutput(unittest.TestCase):
+    """The three producers' real JSON must satisfy the metrics assemble-summary requires."""
+
+    LYRICS = (
+        "[Verse 1]\n"
+        "Walking through the morning light\n"
+        "Counting shadows on the wall\n"
+        "My broken heart will never give up\n"
+        "\n"
+        "[Chorus: full band]\n"
+        "Come undone, come undone\n"
+        "Let the weight fall where it may\n"
+        "\n"
+        "[Guitar Solo]\n"
+        "\n"
+        "[Chorus: full band]\n"
+        "Come undone, come undone\n"
+        "Let the weight fall where it may\n"
+        "\n"
+        "[End]"
+    )
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        scripts = Path(SCRIPT).parent
+        self.paths = {}
+        for name in ("validate-lyrics", "syllable-counter", "cliche-detector"):
+            out = self.tmp / f"{name}.json"
+            result = subprocess.run([sys.executable, str(scripts / f"{name.replace('-', '_')}.py"), "--text", self.LYRICS,
+                                     "-o", str(out)], capture_output=True, text=True)
+            self.assertIn(result.returncode, (0, 1), result.stderr)
+            self.paths[name] = str(out)
+
+    def test_summary_assembles_from_the_three_reports(self):
+        result = run_full("--validation", self.paths["validate-lyrics"],
+                          "--syllables", self.paths["syllable-counter"],
+                          "--cliches", self.paths["cliche-detector"], "--transformations", "ST,CD")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(result.stdout)
+        summary = report["transformation_summary"]
+        self.assertEqual(summary["character_count"], len(self.LYRICS))
+        self.assertEqual(summary["sections"],
+                         ["Verse 1", "Chorus: full band", "Guitar Solo", "Chorus: full band"])
+        self.assertEqual(summary["section_count"], 4)
+        self.assertEqual(summary["transformations_applied"], ["ST", "CD"])
+        self.assertEqual(summary["lyric_character_count"] + summary["metatag_character_count"],
+                         summary["character_count"])
+        self.assertRegex(summary["syllable_range"], r"^[1-9]\d*-\d+$")
+        self.assertRegex(summary["estimated_duration"], r"^\d+:\d\d-\d+:\d\d$")
+        self.assertEqual(report["metrics"]["lyric_lines"], 7)
+        self.assertEqual(report["metrics"]["total_cliches"], 2)
+        self.assertEqual(report["metrics"]["cliche_categories"], {"emotional": 1, "strength": 1})
+        self.assertEqual(report["metrics"]["unique_section_types"], ["Chorus", "Guitar Solo", "Verse"])
+        self.assertEqual(report["metrics"]["validation_status"], "pass")
+
+    def test_each_required_metric_is_in_its_producers_output(self):
+        module = _load_module()
+        for name, keys in module.REQUIRED.items():
+            metrics = json.loads(Path(self.paths[name]).read_text(encoding="utf-8"))["metrics"]
+            for key in keys:
+                with self.subTest(script=name, metric=key):
+                    self.assertIn(key, metrics)
+
+    def test_skipped_lines_are_reported_in_the_markdown(self):
+        out = self.tmp / "syl-skipped.json"
+        scripts = Path(SCRIPT).parent
+        subprocess.run([sys.executable, str(scripts / "syllable_counter.py"), "--text",
+                        self.LYRICS.replace("[End]", "1999\n[End]"), "-o", str(out)], capture_output=True)
+        result = run_full("--validation", self.paths["validate-lyrics"], "--syllables", str(out), "--markdown")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("**Syllables:** 1 line(s) not counted", result.stdout)
 
 
 if __name__ == "__main__":

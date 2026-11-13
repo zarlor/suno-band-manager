@@ -179,11 +179,11 @@ To override them without touching that file, put a `[modules.suno]` table in `_b
 
 ## Pipeline Guard (Recommended)
 
-The module ships a Stop hook script (`.claude/skills/suno-agent-band-manager/scripts/pipeline-guard.py`) that enforces Mac's mandatory production pipeline. It blocks a response that presents a Suno package unless `suno-style-prompt-builder` (for the style sections) and `suno-lyric-transformer` (for the lyrics) actually ran in that turn, or the package is unchanged from what they returned earlier in the session. It checks the transcript for evidence that the skill ran, not for words in a prompt.
+The module ships a Stop hook script (`.claude/skills/suno-agent-band-manager/scripts/pipeline_guard.py`) that enforces Mac's mandatory production pipeline. It blocks a response that presents a Suno package unless `suno-style-prompt-builder` (for the style sections) and `suno-lyric-transformer` (for the lyrics) actually ran in that turn, or the package is unchanged from what they returned earlier in the session. It checks the transcript for evidence that the skill ran, not for words in a prompt.
 
-**Why:** Without this guard, the agent may hand-build packages from conversation memory instead of running them through the skills. The skills contain critical guardrails (artist name detection, production descriptor checks, character budget validation, section tag validation) that cannot be replicated from memory.
+**Why:** Without this guard, the agent may hand-build packages from conversation memory instead of running them through the skills. The skills contain critical guardrails (turning named artists into sonic descriptors and flagging a name the request gave when it is left in a field, production descriptor checks, character budget validation, section tag validation) that cannot be replicated from memory.
 
-**Auto-configuration:** Ask Mac to "set up the pipeline guard". He runs `configure-guard.py` (in `suno-agent-band-manager/scripts/`), which appends the standing order to `AGENTS.md` and, when the project has a `.claude/` folder, merges the Stop hook into `.claude/settings.local.json`. He also offers the optional Dominion guard: a pre-write hook that, while Mac is awake, checks writes outside his sanctum against the access boundaries in his CREED.md and asks you before any write they don't allow. All steps are safe to repeat. The manual steps below are for reference or if you prefer to set it up yourself.
+**Auto-configuration:** Ask Mac to "set up the pipeline guard". He runs `configure_guard.py` (in `suno-agent-band-manager/scripts/`), which appends the standing order to `AGENTS.md` and, when the project has a `.claude/` folder, merges the Stop hook into `.claude/settings.local.json`. He also offers the optional Dominion guard: a pre-write hook that, while Mac is awake, checks writes outside his sanctum against the access boundaries in his CREED.md and asks you before any write they don't allow. All steps are safe to repeat. The manual steps below are for reference or if you prefer to set it up yourself.
 
 ### Claude Code Setup
 
@@ -197,7 +197,7 @@ Add to your `.claude/settings.local.json` (create if it doesn't exist):
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/skills/suno-agent-band-manager/scripts/pipeline-guard.py",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/skills/suno-agent-band-manager/scripts/pipeline_guard.py",
             "timeout": 10
           }
         ]
@@ -209,7 +209,7 @@ Add to your `.claude/settings.local.json` (create if it doesn't exist):
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/skills/suno-agent-band-manager/scripts/pipeline-guard.py --dominion",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/skills/suno-agent-band-manager/scripts/pipeline_guard.py --dominion",
             "timeout": 10
           }
         ]
@@ -332,7 +332,7 @@ Module 4.0.0 drops BMad v6 support and the `suno-setup` skill.
 1. Install BMad's `bmad` skill: `npx skills add bmad-code-org/BMAD-METHOD --skill bmad`.
 2. `git pull`, then rerun `./link-skills.sh` (or `./link-skills.ps1`). It removes the dangling `suno-setup` links and links `bmod-suno`.
 3. Ask `bmad setup suno`. It doesn't read the old `_bmad/config.yaml`, so answer the setup questions again (see [Configuration](#configuration)). It offers to delete the retired `suno-setup` skill and to remove other v6 leftovers (it backs up `_bmad/` first).
-4. If you used the pipeline guard, nothing changes: the hook still runs `suno-agent-band-manager/scripts/pipeline-guard.py`.
+4. If you used the pipeline guard, nothing changes: the hook still runs `suno-agent-band-manager/scripts/pipeline_guard.py`.
 
 Band profiles, songbook and voice files are not touched. Mac's memory moves: 4.0.0 keeps it at `_bmad/memory/suno-agent-band-manager/` in the BMad v7 layout. The first time Mac wakes after the upgrade he finds the old store at `_bmad/_memory/band-manager-sidecar/`, backs it up to `_bmad/backups/`, shows you the conversion plan, and converts it on your yes. The old folder stays as the rollback until you tell him to remove it.
 
@@ -384,7 +384,7 @@ For objective audio measurements (BPM, key, energy, chord progressions, playlist
 pip install librosa numpy pyloudnorm
 ```
 
-Three opt-in scripts in the Feedback Elicitor need PyTorch: `beat-grid.py` (Beat This! beat tracking), `vocal-placement.py` (Demucs vocal placement), and `section-map.py` (Demucs plus faster-whisper: maps a render's sections against its lyrics). Through `uv run`, the first run provisions PyTorch (1–3 GB) and downloads the model weights; nothing else in the module pulls them in. **GPU:** on Linux and WSL, PyPI's current PyTorch build targets CUDA 13, which needs NVIDIA driver 580 or newer; with an older driver (or no NVIDIA GPU) the tools fall back to CPU automatically. Native Windows gets PyPI's CPU-only PyTorch build (use WSL for the GPU), and Apple Silicon Macs run on CPU. **Intel Macs are not supported** for these tools: PyTorch's last Intel-Mac build predates numpy 2, which librosa 1.0 requires. On CPU, Beat This! takes a few seconds per track; Demucs takes minutes. Demucs's first run may print an "unauthenticated requests to the HF Hub" warning — harmless. `section-map.py` also downloads a Whisper model on first run (medium, about 1.5 GB). Whisper runs on CPU, because its GPU build needs CUDA 12 libraries that PyTorch's CUDA 13 build doesn't ship; expect about a minute per song.
+Three opt-in scripts in the Feedback Elicitor need PyTorch: `beat_grid.py` (Beat This! beat tracking), `vocal_placement.py` (Demucs vocal placement), and `section_map.py` (Demucs plus faster-whisper: maps a render's sections against its lyrics). Through `uv run`, the first run provisions PyTorch (1–3 GB) and downloads the model weights; nothing else in the module pulls them in. **GPU:** on Linux and WSL, PyPI's current PyTorch build targets CUDA 13, which needs NVIDIA driver 580 or newer; with an older driver (or no NVIDIA GPU) the tools fall back to CPU automatically. Native Windows gets PyPI's CPU-only PyTorch build (use WSL for the GPU), and Apple Silicon Macs run on CPU. **Intel Macs are not supported** for these tools: PyTorch's last Intel-Mac build predates numpy 2, which librosa 1.0 requires. On CPU, Beat This! takes a few seconds per track; Demucs takes minutes. Demucs's first run may print an "unauthenticated requests to the HF Hub" warning — harmless. `section_map.py` also downloads a Whisper model on first run (medium, about 1.5 GB). Whisper runs on CPU, because its GPU build needs CUDA 12 libraries that PyTorch's CUDA 13 build doesn't ship; expect about a minute per song.
 
 **Using Beat This! for tempo everywhere:** turn on **PyTorch audio tools** with `bmad setup suno` (config key `pytorch_audio_tools`). The audio scripts then take tempo and beats from Beat This! instead of librosa. With it off, they keep using librosa and never download PyTorch. Any of them also accepts `--tempo-source librosa|beat-this` for a single run.
 
@@ -398,7 +398,7 @@ Without `uv` and without these deps, the audio scripts return JSON with install 
 
 **Permission denied on link-skills.sh:** Run `chmod +x link-skills.sh` first.
 
-**Python scripts fail:** The module's scripts run via `uv run`, which reads each script's PEP 723 inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`). If `uv` is missing, install it (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`). Most scripts are dependency-free and also run under plain Python 3.11+ (`python3 scripts/<name>.py`); scripts that need `pyyaml` require either `uv` or a manual `pip install pyyaml`. The one exception is the `pipeline-guard.py` Stop-hook command, which is invoked directly with `python3` (a hot path — kept off `uv` to avoid per-call startup latency).
+**Python scripts fail:** The module's scripts run via `uv run`, which reads each script's PEP 723 inline metadata and auto-provisions dependencies (`pyyaml`, and optionally `librosa`/`numpy`). If `uv` is missing, install it (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`). Most scripts are dependency-free and also run under plain Python 3.11+ (`python3 scripts/<name>.py`); scripts that need `pyyaml` require either `uv` or a manual `pip install pyyaml`. The one exception is the `pipeline_guard.py` Stop-hook command, which is invoked directly with `python3` (a hot path — kept off `uv` to avoid per-call startup latency).
 
 **Mac says the module has no answers yet:** `bmad setup suno` hasn't been run in this project. Run it, or ignore the note: every skill uses the defaults.
 

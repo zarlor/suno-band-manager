@@ -10,31 +10,38 @@
 #   scalars: override wins • arrays (persistent_facts, activation_steps_*): append
 #   arrays-of-tables with `code`/`id`: replace matching items, append new ones.
 
-# Steps to run before the standard activation (config load, greet).
+# Steps run in activation step 1, right after customization resolves and
+# before config loads. Override to add a check or a load that must come first.
 # Overrides append. Applied in headless runs too.
 
 activation_steps_prepend = []
 
-# Steps to run after greet (headless: after config load) but before Step 1.
-# Overrides append. Applied in headless runs too.
+# Steps run just before Step 1 (Gather Inputs): interactive, after the
+# greeting and before the session file is read; headless, after the headless
+# contract is read. Override to add per-run setup. Overrides append.
 
 activation_steps_append = []
 
-# Persistent facts the workflow keeps in mind for the whole run.
-# Each entry is a literal sentence, or `file:` plus a path (globs allowed).
-# Overrides append.
+# Persistent facts, loaded in activation step 1 and kept in mind for the
+# whole run. Each entry is a literal sentence, or `file:` plus a path (globs
+# allowed). Override to add standing house rules. Overrides append.
 
 persistent_facts = []
 
-# An instruction run when the package is accepted (interactive) or emitted
-# (headless), e.g. "append the package to the songbook draft". Override wins.
+# An instruction run once the package is done: interactive, when the user
+# accepts it, ends the session or hands off; headless, after the final --emit
+# succeeds and before the JSON reply (the reply stays the last thing sent).
+# E.g. "append the package to the songbook draft". Override wins.
 # Empty = nothing.
 
 on_complete = ""
 
 # Where the interactive refine loop keeps its version ledger (one line per
-# presented version, so the end-of-session summary survives compaction).
-# {song-slug} is filled per song. Override to keep ledgers out of the project
-# root, e.g. "{project-root}/_bmad-output/ledgers/style-prompt-{song-slug}.md".
+# presented version, so the end-of-session summary survives compaction). Read
+# each time a version is presented. {output_folder} and {active_initiative}
+# come from the BMad config ({active_initiative} is dropped when none is set);
+# {song-slug} is filled per song. Override to keep ledgers somewhere else, e.g.
+# beside the song's workshop file. A ledger left at the earlier default,
+# {project-root}/.style-prompt-ledger-{song-slug}.md, is still continued there.
 
-ledger_output_path = "{project-root}/.style-prompt-ledger-{song-slug}.md"
+ledger_output_path = "{output_folder}/{active_initiative}/style-prompt-ledger-{song-slug}/style-prompt-ledger-{song-slug}.md"

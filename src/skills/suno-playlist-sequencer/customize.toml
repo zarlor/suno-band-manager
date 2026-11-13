@@ -10,32 +10,42 @@
 #   scalars: override wins • arrays (persistent_facts, activation_steps_*): append
 #   arrays-of-tables with `code`/`id`: replace matching items, append new ones.
 
-# Steps to run before the standard activation (config load, greet).
+# Steps run in activation step 1, right after customization resolves and
+# before config loads. Override to add a check or a load that must come first.
 # Overrides append. Applied in headless runs too.
 
 activation_steps_prepend = []
 
-# Steps to run after greet (headless: after config load) but before intake.
-# Overrides append. Applied in headless runs too.
+# Steps run just before the work starts: interactive, after the greeting and
+# before the session file is read and intake begins; headless, after the
+# headless contract and the methodology are read. Override to add per-run
+# setup. Overrides append.
 
 activation_steps_append = []
 
-# Persistent facts the workflow keeps in mind for the whole run, e.g.
-# "Every playlist opens on a track in a major key."
-# Each entry is a literal sentence, or `file:` plus a path (globs allowed).
-# Overrides append.
+# Persistent facts, loaded in activation step 1 and kept in mind for the whole
+# run, e.g. "Every playlist opens on a track in a major key." or "A song's
+# entry in docs/my-song-digest.md counts as its songbook entry for the thematic
+# read." Each entry is a literal sentence, or `file:` plus a path (globs
+# allowed). Override to add standing house rules. Overrides append.
 
 persistent_facts = []
 
-# An instruction run when the accepted order is written and the sequencing data
-# re-run (interactive) or the success JSON is emitted (headless), e.g. "post the
-# new order to the band's ordering doc". Override wins. Empty = nothing.
+# An instruction run once the sequence is done: interactive, at the end of
+# sign-off, after the accepted order is written and the sequencing data re-run;
+# headless, after the final order check passes and before the JSON reply (the
+# reply stays the last thing sent). E.g. "post the new order to the band's
+# ordering doc". Override wins. Empty = nothing.
 
 on_complete = ""
 
-# The per-band sequencing workspace: the memlog, theme summaries and the
-# accepted order. {docs} (the folder holding the band profiles) and {band-slug}
-# are filled per run. Override to keep it elsewhere, e.g.
-# "{project-root}/_bmad-output/sequencing/{band-slug}".
+# The per-band sequencing workspace an interactive session keeps: the memlog,
+# theme summaries and the accepted-order file. Working files, so they sit in
+# the BMad output folder; the playlist, its archive and its companion stay in
+# the docs folder. {output_folder} and {active_initiative} come from the BMad
+# config ({active_initiative} is dropped when none is set); {band-slug} is
+# filled per run. Override to keep it elsewhere. A workspace already at the
+# earlier default, <docs folder>/{band-slug}-playlist-sequencing, is continued
+# where it is.
 
-workspace_output_path = "{docs}/{band-slug}-playlist-sequencing"
+workspace_output_path = "{output_folder}/{active_initiative}/playlist-sequencing-{band-slug}"

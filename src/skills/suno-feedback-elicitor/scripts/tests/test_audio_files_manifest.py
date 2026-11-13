@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["pyyaml>=6.0"]
 # ///
-"""Tests for audio-files-manifest.py.
+"""Tests for audio_files_manifest.py.
 
 The manifest script captures size_bytes (+ mtime) per audio file on the
 canonical machine so the small, machine-readable manifest can travel in the
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import yaml
 
-SCRIPT = str(Path(__file__).parent.parent / "audio-files-manifest.py")
+SCRIPT = str(Path(__file__).parent.parent / "audio_files_manifest.py")
 
 
 def run(args: list[str]) -> tuple[int, dict]:
@@ -82,6 +82,31 @@ class AudioFilesManifestTest(unittest.TestCase):
         self.assertEqual(code, 0)
         manifest = yaml.safe_load((root / "docs" / "audio-files-manifest.yaml").read_text())
         self.assertEqual([f["name"] for f in manifest["files"]], ["Loose.mp3", "band-a/Song.mp3", "band-b/Song.mp3"])
+
+    def test_empty_audio_dir_never_replaces_the_canonical_manifest(self):
+        root = self.make_project({})
+        manifest = root / "docs" / "audio-files-manifest.yaml"
+        manifest.write_text("files:\n- name: Song.mp3\n  size_bytes: 1000\n", encoding="utf-8")
+        before = manifest.read_text(encoding="utf-8")
+        code, out = run([str(root)])
+        self.assertEqual((code, out["status"], out["error"]), (1, "error", "no-audio-files"))
+        self.assertEqual(manifest.read_text(encoding="utf-8"), before)
+
+    def test_empty_audio_dir_still_prints_with_stdout(self):
+        root = self.make_project({})
+        result = subprocess.run([sys.executable, SCRIPT, str(root), "--stdout"], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(yaml.safe_load(result.stdout)["file_count"], 0)
+
+    def test_output_outside_the_project_root_reports_its_absolute_path(self):
+        root = self.make_project({"Song.mp3": 1000})
+        td = tempfile.TemporaryDirectory()
+        self.addCleanup(td.cleanup)
+        outside = Path(td.name).resolve() / "saved" / "manifest.yaml"
+        code, out = run([str(root), "--output", str(outside)])
+        self.assertEqual((code, out["status"]), (0, "ok"), out)
+        self.assertEqual(out["manifest_path"], str(outside))
+        self.assertEqual(yaml.safe_load(outside.read_text(encoding="utf-8"))["file_count"], 1)
 
 
 if __name__ == "__main__":

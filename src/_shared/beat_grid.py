@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.12"
+# requires-python = ">=3.12"  # librosa>=1.0 requires Python 3.12
 # dependencies = ["beat-this>=1.1", "torch>=2.1", "librosa>=1.0", "numpy>=2.1"]
 # ///
 """Neural beat and downbeat tracking (Beat This!, CPJKU) — a second opinion on tempo.
@@ -33,19 +33,19 @@ checkpoint, downloaded on first use. Uses a CUDA GPU when present; CPU works
 at a few seconds per track.
 
 Usage:
-    uv run beat-grid.py [audio-file-or-directory ...] [options]
+    uv run beat_grid.py [audio-file-or-directory ...] [options]
 
     # Every track under docs/audio (recursive)
-    uv run beat-grid.py
+    uv run beat_grid.py
 
     # One band, as a table
-    uv run beat-grid.py docs/audio/my-band --format text
+    uv run beat_grid.py docs/audio/my-band --format text
 
     # One song, with beat and downbeat timestamps
-    uv run beat-grid.py "docs/audio/my-band/Song.mp3" --include-beats
+    uv run beat_grid.py "docs/audio/my-band/Song.mp3" --include-beats
 
     # Several files, in the order given
-    uv run beat-grid.py one.mp3 two.mp3 --format text
+    uv run beat_grid.py one.mp3 two.mp3 --format text
 
 Exit codes:
   0 = success
@@ -64,7 +64,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the other shared helpers sit beside it
 from audio_deps import require_modules
-from json_archiver import input_archive_identifier, resolve_archive_arg, write_archive
+from json_archiver import (
+    catalog_identifier,
+    find_project_root,
+    input_archive_identifier,
+    resolve_archive_arg,
+    write_archive,
+)
 from tempo_source import librosa_tempo_pair, tempo_relation
 
 SCRIPT_NAME = "beat-grid"
@@ -226,6 +232,17 @@ def format_json(results, device):
     }
 
 
+def fail(message):
+    """Exit 1 with the JSON failure object on stdout and the reason on stderr.
+
+    Usage errors come here too: exit 2 is kept for missing dependencies, which is
+    how the skills' prompts and tempo_source.run_beat_grid read it.
+    """
+    print(json.dumps({"script": SCRIPT_NAME, "status": "fail", "error": message}))
+    print(message, file=sys.stderr)
+    sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Beat This! neural beat/downbeat tracking — a second opinion on tempo and bar grouping.",
@@ -243,22 +260,25 @@ def main():
                         help="Output format (default: json)")
     parser.add_argument("-o", "--output", default=None, help="Output file path (default: stdout)")
     parser.add_argument("--archive", nargs="?", const="", default="",
-                        help=("Persist the JSON to the analysis archive. With no path: a directory run writes "
-                              "docs/audio-analysis/catalog/<YYYY-MM-DD>-beat-grid.json (so does a run over "
-                              "several inputs), a single file "
-                              "docs/audio-analysis/songs/[{band-slug}/]{song}-beat-grid.json. Default: ON."))
+                        help=("Persist the JSON to the analysis archive, under the project the audio sits in "
+                              "(the nearest folder above it holding _bmad/; the working directory when there "
+                              "is none). With no path: a directory run writes "
+                              "docs/audio-analysis/catalog/<YYYY-MM-DD>-beat-grid.json for the audio/ catalog "
+                              "root (so does a run over several inputs) and "
+                              "<YYYY-MM-DD>-beat-grid-<folder-slug>.json for a band folder; a single file "
+                              "docs/audio-analysis/songs/[{band-slug}/]{song}-beat-grid.json. A run where "
+                              "every track fails archives nothing. Default: ON."))
     parser.add_argument("--no-archive", dest="archive", action="store_const", const=None,
                         help="Skip writing the JSON archive.")
+    parser.error = lambda message: fail(f"usage: {message}")
     args = parser.parse_args()
 
     missing = [p for p in args.input if not os.path.exists(p)]
     if missing:
-        print(json.dumps({"script": SCRIPT_NAME, "status": "fail", "error": f"Not found: {', '.join(missing)}"}), file=sys.stderr)
-        sys.exit(1)
+        fail(f"Not found: {', '.join(missing)}")
     labeled = [(f, rel_label(f, inp)) for inp in args.input for f in collect_inputs(inp)]
     if not labeled:
-        print(json.dumps({"script": SCRIPT_NAME, "status": "fail", "error": f"No audio files in {', '.join(args.input)}"}), file=sys.stderr)
-        sys.exit(1)
+        fail(f"No audio files in {', '.join(args.input)}")
 
     require_modules(["torch", "beat_this", "librosa", "numpy"], INSTALL_CMD, "Beat This! beat tracking")
     from beat_this.inference import Audio2Beats
@@ -267,9 +287,7 @@ def main():
     try:
         a2b = Audio2Beats(checkpoint_path=CHECKPOINT, device=device, dbn=False)
     except Exception as exc:
-        print(json.dumps({"script": SCRIPT_NAME, "status": "fail",
-                          "error": f"Could not load the Beat This! model on {device}: {exc}"}), file=sys.stderr)
-        sys.exit(1)
+        fail(f"Could not load the Beat This! model on {device}: {exc}")
 
     results = []
     for i, (path, label) in enumerate(labeled, 1):
@@ -283,18 +301,27 @@ def main():
     json_data = format_json(results, device)
     output = format_text(results) if args.output_format == "text" else json.dumps(json_data, indent=2)
     if args.output:
-        Path(args.output).write_text(output + "\n")
+        Path(args.output).write_text(output + "\n", encoding="utf-8")
     else:
         print(output)
 
-    # One input archives by what it is (file or directory); several archive like a directory run.
-    category, identifier = input_archive_identifier(args.input[0] if len(args.input) == 1 else ".", SCRIPT_NAME)
-    target = resolve_archive_arg(category, identifier, args.archive)
+    # Every track failed: report it and archive nothing, so a failed re-run
+    # never overwrites a good archive.
+    if json_data["status"] == "fail":
+        print(f"  FAILED: none of {len(labeled)} file(s) could be analyzed; nothing archived", file=sys.stderr)
+        sys.exit(1)
+
+    # One input archives by what it is (file or directory); several archive like a catalog-root run.
+    if len(args.input) == 1:
+        category, identifier = input_archive_identifier(args.input[0], SCRIPT_NAME)
+    else:
+        category, identifier = "catalog", catalog_identifier(SCRIPT_NAME)
+    target = resolve_archive_arg(category, identifier, args.archive, find_project_root(args.input[0]))
     if target is not None:
         res = write_archive(target, json_data)
         print(f"  ARCHIVED: {res['path']} ({res['bytes_written']} bytes)", file=sys.stderr)
 
-    sys.exit(0 if json_data["status"] != "fail" else 1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Playlist Sequencing Methodology
 
-How to judge a playlist and recommend an order: the variables, the seam-by-seam transition discipline, the rules that bind any placement (spacing, cause and effect, locked arcs), the review gates and the thematic read. The whole-album shape is in `references/album-craft.md`, for full sequences. `{docs}` is the folder holding `{band_profiles_folder}` (default `{project-root}/docs`); the playlist is `{docs}/{band-slug}-playlist.yaml`. The script JSON these sections read is documented in `uv run {skill-root}/scripts/playlist-sequencing-data.py --help`; it is the input to these decisions and never makes them. One song's deeper audio read (sections, vocal placement, beat grid) belongs to the `suno-feedback-elicitor` skill: invoke it.
+How to judge a playlist and recommend an order: the variables, the seam-by-seam transition discipline, the rules that bind any placement (spacing, cause and effect, locked arcs), the review gates and the thematic read. The whole-album shape is in `references/album-craft.md`, for full sequences. `{docs}` is the folder holding `{band_profiles_folder}` (default `{project-root}/docs`); the playlist is `{docs}/{band-slug}-playlist.yaml`. The script JSON these sections read is documented in `uv run {skill-root}/scripts/playlist_sequencing_data.py --help`; it is the input to these decisions and never makes them. One song's deeper audio read (sections, vocal placement, beat grid) belongs to the `suno-feedback-elicitor` skill: invoke it.
 
 **Contents:** Scaling the Job · Variables · Transition Discipline · Similar Songs Need Distance · Cause and Effect at the Seam · Locked Arcs · Process for Reviewing a Playlist · Thematic Verification
 
@@ -37,7 +37,7 @@ So describe the **listening experience** (smooth / fluid / abrupt / jarring) as 
 
 *Example of the failure:* a 152 BPM power-pop track had a slot open where three seams in a row were key-compatible, next to two heavy tracks felt at about 78. The writer rejected it by ear as abrupt. A slot with rougher keys but neighbors closer in tempo and energy sounded less jarring and won. What it shows: the "Camelot trade-off" framing was wrong. The reason was that the song sounded less abrupt there, and the proposal should say so.
 
-**Tempo.** Under 3% change is smooth, 3-6% noticeable, over 6% needs intentional contrast. Verify felt BPM before claiming tempo continuity: three tracks at "136 measured" may include one felt at 68. A seam the script marks `pulse_pair` (about 2:1) shares a pulse grid and can mix coherently, but treat it as a deliberate breath in or out, not a smooth handoff.
+**Tempo.** Under 3% change is smooth, 3-6% noticeable, over 6% needs intentional contrast. A `bpm_quality` of `unknown` means one side's tempo read 0 (a beatless or silent edge), so the seam's tempo is unmeasured: say so, and judge it by ear. Verify felt BPM before claiming tempo continuity: three tracks at "136 measured" may include one felt at 68. A seam the script marks `pulse_pair` (about 2:1) shares a pulse grid and can mix coherently, but treat it as a deliberate breath in or out, not a smooth handoff.
 
 **Energy and loudness.** A 70% outro into a 15% intro is a dramatic drop: right at an act break, jarring mid-act. Intro and outro % are relative to each track's own peak, so two tracks can both "end at 70%" and still land 8 LU apart; `loudness_step_lu` (next entry minus this exit, over the first and last 15 s) measures that: under 3 LU smooth, 3-6 noticeable, 6 or more a big jump (a reference catalog's median seam is about 2.5 LU). Weigh a big step with the arc, as you would an energy drop. A large jump up into a loud opener is the one listeners most often hear as "the next song is too loud."
 
@@ -57,19 +57,19 @@ When one song is the cause of another (an overload and the shutdown it causes, a
 
 A locked arc is a run of two or more tracks the writer positioned to read as a unit: a love → loss → grief → healing run, a three-act story, a musical movement that depends on adjacency. The block may move as a unit; the songs inside it keep their order and stay together. Surface the arcs before proposing any reorder. If a reorder needs to break one, stop and ask, because the arc's emotional logic is the writer's call, not yours (headless: decline the break and log it).
 
-Arcs come from the playlist YAML's optional `locked_arcs:`, from the user, or in headless runs from `--locked`. `uv run {skill-root}/scripts/validate-sequence.py {docs}/{band-slug}-playlist.yaml` reports each one as intact, split, or out of order; pass `--locked "A > B"` for arcs the user names that aren't in the YAML yet.
+Arcs come from the playlist YAML's optional `locked_arcs:`, from the user, or in headless runs from `--locked`. `uv run {skill-root}/scripts/validate_sequence.py {docs}/{band-slug}-playlist.yaml` reports each one as intact, split, or out of order; pass `--locked "A > B"` for arcs the user names that aren't in the YAML yet.
 
 ## Process for Reviewing a Playlist
 
 Three gates run in order. The checks between them are independent.
 
-1. **Surface locked arcs**: run `validate-sequence.py` on the current order (with `--locked` for any arc the user named that isn't in the YAML) and state the arcs up front.
+1. **Surface locked arcs**: run `uv run {skill-root}/scripts/validate_sequence.py {docs}/{band-slug}-playlist.yaml` on the current order (with `--locked` for any arc the user named that isn't in the YAML) and state the arcs up front.
 2. **Settle felt BPM and read the theme, before drafting any option.**
    - Felt BPM: for each track with `felt_bpm_check`, ask the user when uncertain, and record the answer as `felt_bpm:`.
    - Thematic read: for every song involved (the one being placed and every neighbor in play), read its entry before any thematic claim, per "Thematic Verification" below. Scale the read to the job:
      - A one- or two-track placement: read the handful of entries directly.
      - A catalog-scale pass: delegate the read to a subagent that returns only a compact per-song summary (one or two lines each: the actual theme, any surface-vs-actual inversion, a load-bearing quote in context). Entries read into the parent context compact out before the recommendation forms.
-     - No subagents available: use `{docs}/song-thematic-dossier.md` entries where they exist (compact, and cross-band). Otherwise read the entries in batches and write the per-song summary to `theme-summary.md` in the sequencing workspace as you go, so it survives compaction. The read happens either way.
+     - No subagents available: read the entries in batches and write the per-song summary to `theme-summary.md` in the sequencing workspace as you go, so it survives compaction. A digest the user keeps (see "Thematic Verification") stands in for the entries it covers. The read happens either way.
 3. **Recommend, then surface trade-offs.** Propose specific moves, naming what each variable says. Every move trades something; call it "trades A-jarring for B-jarring", not "cleaner".
 
 Checks between gates 2 and 3, in any order:
@@ -84,7 +84,7 @@ The output is an opinionated proposal grounded in the variables, saying what's l
 
 The trigger is the act of recommending a placement, however the question arrived. Placement math (Camelot distance, BPM delta) never substitutes for the thematic read, and running the math first is no license to treat the theme as color commentary added afterward: a song once got paired with a neighbor on a title-chain association instead of the neighbor's documented theme. Read the theme before drafting any option.
 
-**Before making any thematic claim about a song, read its songbook entry at `{songbook_folder}/{band-slug}/{song-slug}.md`**, or its entry in `{docs}/song-thematic-dossier.md`, which distills the songbook plus the writer's direct quotes across every band. Either will do; read one. A title, its surface imagery or a fragment out of context is not the theme: songs whose surface suggests one register often turn out to be the opposite when read in full.
+**Before making any thematic claim about a song, read its songbook entry at `{songbook_folder}/{band-slug}/{song-slug}.md`.** Some users also keep a digest that distills the songbook with the writer's own words about each song; this skill doesn't create one, so it counts only when the user names the file, in the conversation or through `{workflow.persistent_facts}`, and then a song's entry there serves as well as its songbook entry. Either will do; read one. A title, its surface imagery or a fragment out of context is not the theme: songs whose surface suggests one register often turn out to be the opposite when read in full.
 
 **Documented examples where surface inference produced inverted reads:**
 
@@ -104,3 +104,4 @@ The trigger is the act of recommending a placement, however the question arrived
 - For the song being placed, the same: even after many turns of workshopping it, check that the songbook captures the final theme before saying what the song does.
 - When a line is evidence for a thematic claim, quote enough around it that its function in the song is clear; a line alone almost always misleads.
 - With no time to read the entries properly, there is no time for a placement recommendation: ask for the time, or give the sonic placement only and say the thematic read is pending.
+- A song with no entry in either source has no documented theme, and its title is no substitute: ask the user what the song is about and log the answer, or place it on sonic grounds and say its theme is unread (headless: make no thematic claim about it and log that).

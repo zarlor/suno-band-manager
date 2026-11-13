@@ -1,12 +1,12 @@
 # Safety Tables
 
-The one home for the style-prompt gotchas: artist names, the vocal and arrangement triggers, prompt-wide rules, the exclude rule and the per-song slider rule. `scripts/validate-prompt.py` flags the enumerable words (its lists match this file); the substitution and every judgment call come from here.
+The one home for the style-prompt gotchas: artist names, the vocal and arrangement triggers, prompt-wide rules, the exclude rule and the per-song slider rule. `scripts/validate_prompt.py` flags the enumerable words (its lists match this file); the substitution and every judgment call come from here.
 
-When the validator can't run, check by hand: the model's character limit (1,000; 200 on the retired v4 Pro), genre, mood and vocal essentials in the first 200 characters, no section tags or asterisks, no artist names, and every word in the trigger lists below.
+When the validator can't run, check by hand: the model's character limit (1,000; 200 on the retired v4 Pro), genre, mood and vocal essentials in the first 200 characters, no bracketed tags or asterisks, no artist names, and every word in the trigger lists below.
 
 ## Artist and Song Names
 
-Suno strips artist names from prompts by policy (OFFICIAL) and redirects them to generic characteristics, so a name, an album or a song title spends budget and steers nothing. Decompose the reference into concrete sonic descriptors: genre, era and production, vocal character, signature instruments, energy, emotional tone. Decompose only an artist you confidently know; otherwise web-search their sound first, or, with no search, ask the user what they like about it. A wrong decomposition produces a prompt that sounds nothing like the intent, and the user can't tell why. A decomposition can carry a trigger of its own ("thrash", "doom", "anthemic"), so check its words against the lists below.
+Suno strips artist names from prompts by policy (OFFICIAL) and redirects them to generic characteristics, so a name, an album or a song title spends budget and steers nothing. Decompose the reference into concrete sonic descriptors: genre, era and production, vocal character, signature instruments, energy, emotional tone. Decompose only an artist you confidently know; otherwise web-search their sound first, or, with no search, ask the user what they like about it. A wrong decomposition produces a prompt that sounds nothing like the intent, and the user can't tell why. A decomposition can carry a trigger of its own ("thrash", "doom", "anthemic"), so check its words against the lists below. The validator holds no artist catalog: it flags only the names the package lists in `reference_names`, so list every artist, band, album and song name the request gave, and keep any other name out yourself.
 
 ## Vocal Triggers
 
@@ -41,7 +41,7 @@ The lyric side of this stack — section-tag wording that invites choirs, and th
 
 ### No Inline Negatives
 
-Suno keeps the noun and drops the negation, so "no screaming" or "without reverb" asks for screaming and reverb. Write what you want instead ("raw melodic singing", "dry, close-mic'd") and put the negative in Exclude Styles. The validator flags "no X" and "without X" as high, and "not X", "avoid X" and "don't X" as medium. Persistence phrasing ("the riff continues under the verse, never stops") is direction, not a negative.
+Suno keeps the noun and drops the negation, so "no screaming" or "without reverb" asks for screaming and reverb. Write what you want instead ("raw melodic singing", "dry, close-mic'd") and put the negative in Exclude Styles. The validator flags "no X" and "without X" as high, and "not X", "avoid X", any "-n't X" contraction, "X-free" and "minus X" as medium. Persistence phrasing ("the riff continues under the verse, never stops") is direction, not a negative.
 
 ### One Tempo Per Song
 
@@ -85,7 +85,7 @@ What Suno generates for common genre keywords, from production testing.
 | `hard rock` + `NOLA second line groove` + `brass band accents` | NOLA parade groove with rock weight | The combination pulls toward parade-style rhythms |
 | `slow heavy swamp metal` + `pounding heartbeat kick drum` | Heavy, deliberate, single-tempo weight | Stacking slow/heavy modifiers locks Suno into a plodding pace |
 | `prog rock` + `slow build then fade` | Atmospheric with proper decrescendo | One of the few reliable ways to get Suno to actually come back down |
-| `Acoustic, intimate, solo voice with gentle guitar, bluesy, swampy, sparse and warm, quiet reflection, raw clean vocals, stripped down, empty room atmosphere` | Acoustic track that retains band identity | `bluesy, swampy` keeps NOLA identity; `empty room atmosphere` = reverb/space; explicitly exclude `heavy guitars, drums` in Exclude Styles |
+| `Acoustic, intimate, solo voice with gentle guitar, bluesy, swampy, sparse and warm, quiet reflection, raw clean vocals, stripped down, empty room atmosphere` | Acoustic track that retains band identity | `bluesy, swampy` stand for the band's own texture words, which keep its identity; `empty room atmosphere` = reverb/space; explicitly exclude `heavy guitars, drums` in Exclude Styles |
 | `heartland rock` | Accessible mid-tempo rock with Petty/Mellencamp/Springsteen character — chimey or mid-gain driven electric guitars, rock-forward without metal weight | **Safe rock term for Voice tracks** — no harsh vocal trigger. Good starting point when a clean-voice Voice clone needs rock energy without metal pull |
 | `southern rock` | Rootsy rock with Allman/Skynyrd character — can pull slide/steel guitar as a byproduct of the genre association | Safe vocal-wise (no harsh-vocal triggers). Exclude `steel guitar` if you want to avoid the slide side. Pairs well with `heartland` to anchor toward the accessible end rather than jam-band end |
 | `heartland southern rock` | Combined — intersection of accessible singer-songwriter rock with rootsy grit and drive | **Validated on Voice tracks** — clean folk-tagged Voice with "overdriven rhythm guitar with crunch" + "driving mid-tempo rock groove" as reinforcement produces rock presence without metal pull. Good for confessional rock songs that need both weight and accessibility |
@@ -106,7 +106,7 @@ Suno is stateless: a Create knows only what is submitted with it — the style p
 
 ### Weirdness and Style Influence by Song Type
 
-Choose Weirdness and Style Influence fresh for every song, from this table, the song's type and its counter-genre needs, reasoning from what each slider does. Never start from a band profile's stored `sliders:` values or "what similar songs used", not even for a quick demo: the sliders are the deliberate per-song differentiator that gives songs with similar prompts distinct feels, and the owner's standing direction is to use them. The failure this prevents: Weirdness 55, reasoned as "above the profile's 45", for a dissonant counter-genre song that wanted ~75.
+Choose Weirdness and Style Influence fresh for every song, from this table, the song's type and its counter-genre needs, reasoning from what each slider does. Never start from a band profile's stored `sliders:` values or "what similar songs used", not even for a quick demo: the sliders are the deliberate per-song differentiator that gives songs with similar prompts distinct feels. The failure this prevents: Weirdness 55, reasoned as "above the profile's 45", for a dissonant counter-genre song that wanted ~75.
 
 Starting-point ranges from production testing:
 
@@ -121,6 +121,6 @@ Starting-point ranges from production testing:
 | Prog | 65-75 | 65 | Higher Weirdness encourages unexpected transitions |
 | Circular / agitated | 75 | 65 | High Weirdness for unsettling, looping energy |
 
-**Counter-genre builds** (a song pushed against its band's gravity: acoustic from a metal band, slow from a driving one) start Weirdness at 60–70, because default 50–55 quietly normalizes the song back toward the band's sound (model-prompt-strategies → "Default Weirdness Normalizes Counter-Genre Prompts"; v5.5 finding, a starting hypothesis on v6). The rows above are for songs inside their band's own lane. Exclude integrity is not a reason to start lower: lower Weirdness only after an exclude has actually failed on this song.
+**Counter-genre builds** (a song pushed against its band's gravity: acoustic from a metal band, slow from a driving one) start Weirdness at 60–70, because default 50–55 quietly normalizes the song back toward the band's sound (a v5.5 finding, a starting hypothesis on v6). The rows above are for songs inside their band's own lane. Exclude integrity is not a reason to start lower: lower Weirdness only after an exclude has actually failed on this song.
 
 **General principle:** Weirdness adds unpredictability and non-obvious choices. Style Influence controls how tightly Suno follows the prompt versus doing its own thing. For conventional songs, keep SI high. For experimental work, back SI off and let Weirdness drive.

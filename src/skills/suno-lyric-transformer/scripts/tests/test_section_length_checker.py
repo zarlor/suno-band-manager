@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for section-length-checker.py"""
+"""Tests for section_length_checker.py"""
 
 import json
 import subprocess
@@ -11,7 +11,10 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "section-length-checker.py")
+SCRIPT = str(Path(__file__).parent.parent / "section_length_checker.py")
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import tag_vocab  # noqa: E402
 
 
 def run_script(*args):
@@ -93,12 +96,39 @@ class TestSectionLengthChecker(unittest.TestCase):
         self.assertEqual(len(verse), 1)
         self.assertEqual(verse[0]["base_name"], "verse")
 
-    def test_unknown_section_type(self):
-        lyrics = "[Spoken Word]\nSome content\nMore content\n"
-        report, code = run_script("--text", lyrics)
-        self.assertIsNotNone(report)
-        unknown = [s for s in report["sections"] if s["status"] == "unknown"]
-        self.assertGreaterEqual(len(unknown), 1)
+    def test_tags_that_open_no_section_leave_lines_in_the_current_one(self):
+        # A delivery cue, a standalone mood, a descriptor, an unrecognized tag and [End]
+        # all sit inside the verse: its four lines are counted, not split off.
+        for tag in ("Spoken Word", "Harmonized", "Haunting", "Energy: low", "Banana", "End"):
+            with self.subTest(tag=tag):
+                report, _ = run_script("--text", f"[Verse 1]\none\ntwo\n[{tag}]\nthree\nfour\n")
+                self.assertEqual([(s["tag"], s["line_count"], s["status"]) for s in report["sections"]],
+                                 [("Verse 1", 4, "pass")])
+
+    def test_no_section_tags_is_not_a_pass(self):
+        for lyrics in ("Just some raw text\nWith no tags", "[Spoken Word]\nSome content\n", ""):
+            with self.subTest(lyrics=lyrics):
+                report, code = run_script("--text", lyrics)
+                self.assertEqual((report["status"], code), ("warning", 0))
+                self.assertEqual(report["metrics"]["total_sections"], 0)
+                self.assertEqual([(f["severity"], f["issue"]) for f in report["findings"]],
+                                 [("high", "No section tags found, so no section length was checked.")])
+
+    def test_every_section_name_has_a_range(self):
+        # The vocabulary and the range table must not drift apart: a tag the
+        # validator accepts as a section can't come back here as "unknown".
+        for name in sorted(tag_vocab.SECTION_NAMES):
+            with self.subTest(section=name):
+                report, _ = run_script("--text", f"[{name.title()}]\n")
+                self.assertEqual(len(report["sections"]), 1)
+                self.assertNotEqual(report["sections"][0]["status"], "unknown")
+                self.assertIsNotNone(report["sections"][0]["expected_range"])
+
+    def test_buildup_and_added_solos_have_ranges(self):
+        report, _ = run_script("--text", "[Buildup]\na\nb\n\n[Build-Up]\na\nb\n\n[Violin Solo]\n\n[Synth Solo]\n")
+        self.assertEqual([(s["base_name"], s["expected_range"], s["status"]) for s in report["sections"]],
+                         [("buildup", [2, 4], "pass"), ("build-up", [2, 4], "pass"),
+                          ("violin solo", [0, 2], "pass"), ("synth solo", [0, 2], "pass")])
 
     def test_return_and_ending_sections_have_ranges(self):
         lyrics = "[Verse 1]\na\nb\nc\nd\n\n[Instrumental Break]\n\n[Reprise]\nx\ny\n\n[Coda]\nz\n[End]\n"
@@ -177,6 +207,19 @@ class TestSectionLengthChecker(unittest.TestCase):
         self.assertIsNotNone(report_prog)
         verse_prog = [s for s in report_prog["sections"] if s["base_name"] == "verse"]
         self.assertEqual(verse_prog[0]["status"], "pass")
+
+    def test_multi_word_genre_relaxes_limits(self):
+        lyrics = "[Verse 1]\n" + "\n".join(f"Line {i}" for i in range(1, 13)) + "\n"
+        for genre in ("prog metal", "Progressive Rock", "experimental/ambient", "death-metal", "METAL"):
+            with self.subTest(genre=genre):
+                report, _ = run_script("--text", lyrics, "--genre", genre)
+                self.assertEqual(report["sections"][0]["expected_range"], [4, 16])
+                self.assertEqual(report["sections"][0]["status"], "pass")
+        for genre in ("folk", "indie pop", "programmatic"):
+            with self.subTest(genre=genre):
+                report, _ = run_script("--text", lyrics, "--genre", genre)
+                self.assertEqual(report["sections"][0]["expected_range"], [4, 8])
+                self.assertEqual(report["sections"][0]["status"], "long")
 
     def test_interlude_is_known_section(self):
         """Interlude should now be a known section type with defined range."""

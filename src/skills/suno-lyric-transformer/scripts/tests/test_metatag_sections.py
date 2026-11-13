@@ -3,17 +3,17 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for metatag-sections.py"""
+"""Tests for metatag_sections.py"""
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "metatag-sections.py")
-REAL = Path(__file__).parent.parent.parent / "references" / "metatag-reference.md"
+SCRIPT = str(Path(__file__).parent.parent / "metatag_sections.py")
 
 CATALOG = """# Catalog
 
@@ -91,17 +91,39 @@ class TestMetatagSections(unittest.TestCase):
     def test_mode_required(self):
         self.assertEqual(run("--file", str(self.file)).returncode, 2)
 
-    def test_every_routing_name_resolves_in_the_real_catalog(self):
-        # The catalog's routing table hands its Load names to --section; each must match.
-        result = run("--section", "How to Load This File", "--file", str(REAL))
-        self.assertEqual(result.returncode, 0)
-        rows = [line for line in result.stdout.splitlines()
-                if line.startswith("| ") and not line.startswith(("| When", "|---"))]
-        names = [n.strip() for row in rows for n in row.split("|")[2].split("·")]
-        self.assertGreater(len(names), 20)
-        for name in names:
+    def test_empty_name_matches_nothing(self):
+        for name in ("", "   ", "#", "## "):
             with self.subTest(name=name):
-                self.assertEqual(run("--section", name, "--file", str(REAL)).returncode, 0)
+                result = run("--section", name, "--file", str(self.file))
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(result.stdout, "")
+                self.assertIn("no heading matches", result.stderr)
+
+    def test_names_from_a_routing_table_resolve(self):
+        # A catalog's routing table hands its Load names to --section: a full
+        # heading, a heading prefix, any case, with or without the leading #s.
+        for name, body in (("Alpha Tags", "alpha body"), ("ending control", "recipe body"),
+                           ("## Beta Tags", "beta body"), ("Ending Control — Practice", "practice body")):
+            with self.subTest(name=name):
+                result = run("--section", name, "--file", str(self.file))
+                self.assertEqual(result.returncode, 0)
+                self.assertIn(body, result.stdout)
+
+    def test_non_ascii_section_prints_under_an_ascii_locale(self):
+        self.file.write_text(CATALOG + "\n## Gamma — Tags\n\ngamma → body ⚠\n", encoding="utf-8")
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("LC_", "LANG", "PYTHON"))}
+        env.update(LC_ALL="C", PYTHONUTF8="0", PYTHONCOERCECLOCALE="0")
+        result = subprocess.run([sys.executable, SCRIPT, "--section", "Gamma", "--file", str(self.file)],
+                                capture_output=True, env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("gamma → body ⚠", result.stdout.decode("utf-8"))
+
+    def test_default_file_is_the_skills_catalog(self):
+        result = run("--list")
+        self.assertEqual(result.returncode, 0)
+        report = json.loads(result.stdout)
+        self.assertTrue(report["file"].endswith("references/metatag-reference.md"))
+        self.assertTrue(report["headings"])
 
 
 if __name__ == "__main__":

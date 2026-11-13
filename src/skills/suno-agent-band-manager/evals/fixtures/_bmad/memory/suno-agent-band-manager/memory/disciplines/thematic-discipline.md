@@ -1,6 +1,6 @@
 # Thematic Discipline — Read the Songbook Before Making Thematic Claims
 
-Read the full songbook entry (`docs/songbook/{band-slug}/{song-slug}.md`) before claiming what a song is about — in placement recommendations, thematic clusters, narrative-arc analysis, or any claim about a song's meaning. A title or a pulled line is the least reliable evidence: songwriters use paradox and imagery that resolves only in full context, so an inverted read is more likely than a vague one.
+Read the full songbook entry (`{songbook_folder}/{band-slug}/{song-slug}.md`; the folder is `config.songbook_folder` in the wake's state) before claiming what a song is about — in placement recommendations, thematic clusters, narrative-arc analysis, or any claim about a song's meaning. A title or a pulled line is the least reliable evidence: songwriters use paradox and imagery that resolves only in full context, so an inverted read is more likely than a vague one.
 
 - Read the full entry for every song whose theme you claim — not a keyword grep, not what the title implies, not a cross-reference table's summary.
 - When a line is evidence, quote enough around it that its function is clear.

@@ -6,12 +6,12 @@ Every-build rules for the v6 family (v6, v6-wild, v6-mini). Grades: OFFICIAL (Su
 
 v6 follows the style field literally and fills whatever it leaves unsaid with its safest default (COMMUNITY): a v5-style descriptor list gets a matching intro, then a band that thins out under the vocal. Six habits:
 
-1. **An order:** Genre → Vocals → Drums → Guitars → Bass → Other instruments → Arrangement/Energy → Production → Ending (COMMUNITY; unproven, costs nothing).
-2. **Each instrument gets a job per section, in verbs:** "the intro riff continues under the verse vocal, palm-muted and lower", not "big riffs". A section the prompt skips is one where the instrument drops out (COMMUNITY + VENDOR).
-3. **Place the vocal instead of praising it:** "vocal in front of the band, close-mic'd and dry, the loudest element; instruments sit behind and below the voice"; thinning the arrangement under the verse is the most-reported fix for a buried vocal (VENDOR + COMMUNITY).
-4. **State both edges, with lengths:** "4-bar guitar intro, instrumental only"; "ends on a hard stop after the final chorus". Unstated, the intro comes back as humming and the ending vamps or cuts off mid-lyric (VENDOR + COMMUNITY).
-5. **Positive text only;** every negative goes in Exclude Styles (VENDOR ×2 + COMMUNITY).
-6. **A short production clause helps; mastering words don't:** "high-fidelity studio production, close-mic vocals, crisp transients, clear instrument separation" (COMMUNITY); "radio-ready, -14 LUFS" does nothing.
+- **An order:** Genre → Vocals → Drums → Guitars → Bass → Other instruments → Arrangement/Energy → Production → Ending (COMMUNITY; unproven, costs nothing).
+- **Each instrument gets a job per section, in verbs:** "the intro riff continues under the verse vocal, palm-muted and lower", not "big riffs". A section the prompt skips is one where the instrument drops out (COMMUNITY + VENDOR).
+- **Place the vocal instead of praising it:** "vocal in front of the band, close-mic'd and dry, the loudest element; instruments sit behind and below the voice"; thinning the arrangement under the verse is the most-reported fix for a buried vocal (VENDOR + COMMUNITY).
+- **State both edges, with lengths:** "4-bar guitar intro, instrumental only"; "ends on a hard stop after the final chorus". Unstated, the intro comes back as humming and the ending vamps or cuts off mid-lyric (VENDOR + COMMUNITY).
+- **Positive text only;** every negative goes in Exclude Styles (VENDOR ×2 + COMMUNITY).
+- **A short production clause helps; mastering words don't:** "high-fidelity studio production, close-mic vocals, crisp transients, clear instrument separation" (COMMUNITY); "radio-ready, -14 LUFS" does nothing.
 
 **Genre dominance.** The first genre term is the anchor: genre tags carry most of the arrangement (~60–70%, VENDOR) and each later genre is fainter color. Put the genre that should drive the arrangement first and demote the rest with "accents", "undertones" or "influences"; nothing promotes a buried genre to lead. Genre, mood and vocal go in the first ~200 characters. Working v6 prompts are longer and more sentence-shaped than v5's 5–8 descriptors.
 
@@ -40,22 +40,22 @@ Guidelines, not laws: a song that wants otherwise wins.
 
 Use generally:
 
-1. **Describe the band's part, not song-wide gravity words:** `heavy`, `doom`, `crushing`, `massive`, `epic`, `cinematic` and `industrial` pull stock conventions (COMMUNITY) and measured the vocal under the band (LOCAL, small n). Put the weight on moments.
-2. **Name the sounds, not just the genre or the mood** (COMMUNITY, 13 users, all genres, 2026-10): signature sounds, instruments, drum patterns and textures ("squelchy 303 bassline, 909 drums"); "'303 bassline' or 'chord stabs' tells the model far more than 'dark' or 'energetic'." Users split on prompt length; they agree on specific words. Choose the era anchor for its production habits (`80s hair metal` brought a gated snare, ANECDOTAL); name an amp or tone character over "distortion" (ANECDOTAL ×3).
+- **Describe the band's part, not song-wide gravity words:** `heavy`, `doom`, `crushing`, `massive`, `epic`, `cinematic` and `industrial` pull stock conventions (COMMUNITY) and measured the vocal under the band (LOCAL, small n). Put the weight on moments.
+- **Name the sounds, not just the genre or the mood** (COMMUNITY, 13 users, all genres, 2026-10): signature sounds, instruments, drum patterns and textures ("squelchy 303 bassline, 909 drums"); "'303 bassline' or 'chord stabs' tells the model far more than 'dark' or 'energetic'." Users split on prompt length; they agree on specific words. Choose the era anchor for its production habits (`80s hair metal` brought a gated snare, ANECDOTAL); name an amp or tone character over "distortion" (ANECDOTAL ×3).
 
 Where the song calls for it:
 
-3. **A band-side vocal-space clause** when the vocal must get in front: "rhythm guitars leave midrange space for the lead vocal" (LOCAL: no phrase alone has lifted a vocal; the arrangement decides).
-4. **An ending written as the singer's action plus the band leaving,** when a long instrumental tail must be avoided (LOCAL, n=1: it steered the last line, not the tail).
-5. **No bare "vocal" in the style field** when a wordless "ooooh" intro would hurt (ANECDOTAL, n=1); open the lyrics on a sung line.
-6. **A heavy chorus gets its job, not its feeling:** "big", "emotional" and "epic" slow it into a ballad (COMMUNITY; the rewrite is in the trigger table).
-7. **`key change` in Exclude Styles when the song must hold its key:** v6 adds unrequested modulations in some genres (ANECDOTAL). Pair it, like every exclude, with a positive line in the prompt ("stays in one key to the end"). Leave it out where one would be welcome.
-8. **With a Voice attached, add no vocal character the Voice lacks** ("gritty"): style words reshape the clone (ANECDOTAL + LOCAL). Words matching its real character may help.
+- **A band-side vocal-space clause** when the vocal must get in front: "rhythm guitars leave midrange space for the lead vocal" (LOCAL: no phrase alone has lifted a vocal; the arrangement decides).
+- **An ending written as the singer's action plus the band leaving,** when a long instrumental tail must be avoided (LOCAL, n=1: it steered the last line, not the tail).
+- **No bare "vocal" in the style field** when a wordless "ooooh" intro would hurt (ANECDOTAL, n=1); open the lyrics on a sung line.
+- **A heavy chorus gets its job, not its feeling:** "big", "emotional" and "epic" slow it into a ballad (COMMUNITY; the rewrite is in the trigger table).
+- **`key change` in Exclude Styles when the song must hold its key:** v6 adds unrequested modulations in some genres (ANECDOTAL). Pair it, like every exclude, with a positive line in the prompt ("stays in one key to the end"). Leave it out where one would be welcome.
+- **With a Voice attached, add no vocal character the Voice lacks** ("gritty"): style words reshape the clone (ANECDOTAL + LOCAL). Words matching its real character may help.
 
 To try:
 
-9. **Carry "unresolved" as harmony** ("ends off the home chord"), not as a mood word: a mood tag on a bare verse made it the loudest section (LOCAL, n=1).
-10. **For distorted guitars, spend the words on guitar tone, not on the genre label** (ANECDOTAL, one tester, 2026-10; another user in the same thread found the opposite): drums responded to prompting and exclusions where distorted guitars mostly didn't, and a detailed guitar-tone description kept the guitars intact through mid-song better than "modern heavy metal" did. Both still degraded toward the end (see the feedback elicitor's late-song degradation).
+- **Carry "unresolved" as harmony** ("ends off the home chord"), not as a mood word: a mood tag on a bare verse made it the loudest section (LOCAL, n=1).
+- **For distorted guitars, spend the words on guitar tone, not on the genre label** (ANECDOTAL, one tester, 2026-10; another user in the same thread found the opposite): drums responded to prompting and exclusions where distorted guitars mostly didn't, and a detailed guitar-tone description kept the guitars intact through mid-song better than "modern heavy metal" did. Both still degraded toward the end (late-song degradation, which the `suno-feedback-elicitor` skill diagnoses).
 
 ## Genre notes (few reports)
 

@@ -2,8 +2,8 @@
 
 The lyric scripts' syllable, rhyme and cliche heuristics only hold for Latin
 script, so the line classes here decide which lines those checks may touch.
-One definition keeps analyze-input.py's `script_lines` and the `--latin-only`
-filters of syllable-counter.py and cliche-detector.py in agreement.
+One definition keeps analyze_input.py's `script_lines` and the `--latin-only`
+filters of syllable_counter.py and cliche_detector.py in agreement.
 """
 
 import re

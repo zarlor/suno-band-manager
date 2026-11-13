@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for map-adjustments.py"""
+"""Tests for map_adjustments.py"""
 
 import json
 import subprocess
@@ -11,11 +11,11 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "map-adjustments.py")
+SCRIPT = str(Path(__file__).parent.parent / "map_adjustments.py")
 
 
 def run_script(input_data: dict | str | None = None, extra_args: list[str] | None = None) -> tuple[int, dict]:
-    """Run map-adjustments.py with stdin input and return (exit_code, parsed_json)."""
+    """Run map_adjustments.py with stdin input and return (exit_code, parsed_json)."""
     cmd = [sys.executable, SCRIPT, "--stdin"]
     if extra_args:
         cmd.extend(extra_args)
@@ -48,7 +48,71 @@ class MapAdjustmentsTest(unittest.TestCase):
         flat = {"original_style_prompt": "indie rock, " * 120, "model": "v6",
                 "dimensions": [{"dimension": "vocals", "direction": "too_quiet"}]}
         _, expected = run_script(flat)
-        self.assertEqual(output["findings"], expected["findings"])
+        self.assertEqual(output["adjustments"], expected["adjustments"])
+        self.assertIn("style_prompt_overflow", [w["type"] for w in output["adjustments"]["consistency_warnings"]])
+
+    def test_nested_context_supplies_tier(self):
+        data = {"context": {"tier": "pro"}, "dimensions": [{"dimension": "vibe", "direction": "too_generic"}]}
+        code, output = run_script(data)
+        self.assertEqual(code, 0)
+        sliders = output["adjustments"]["sliders"]
+        self.assertNotIn("note", sliders)
+        self.assertIn("weirdness", sliders)
+
+    def test_no_tier_gives_tier_conditional_sliders_not_free_wording(self):
+        dims = [{"dimension": "vibe", "direction": "too_generic"}]
+        _, unknown = run_script({"dimensions": dims})
+        sliders = unknown["adjustments"]["sliders"]
+        self.assertEqual(sliders["tier"], "unknown")
+        self.assertIn("weirdness", sliders["recommended"])
+        self.assertNotIn("recommended_if_upgraded", sliders)
+        _, free = run_script({"dimensions": dims, "tier": "free"})
+        self.assertIn("weirdness", free["adjustments"]["sliders"]["recommended_if_upgraded"])
+        self.assertNotIn("tier", free["adjustments"]["sliders"])
+
+    def test_opposite_slider_moves_are_a_consistency_warning(self):
+        data = {"tier": "pro", "dimensions": [{"dimension": "production", "direction": "too_polished"},
+                                              {"dimension": "vibe", "direction": "too_weird"}]}
+        code, output = run_script(data)
+        self.assertEqual(code, 0)
+        conflicts = [w for w in output["adjustments"]["consistency_warnings"] if w["type"] == "slider_conflict"]
+        self.assertEqual([c["slider"] for c in conflicts], ["weirdness"])
+        self.assertIn("production/too_polished", conflicts[0]["detail"])
+        self.assertIn("vibe/too_weird", conflicts[0]["detail"])
+
+    def test_same_slider_move_twice_is_not_a_conflict(self):
+        data = {"tier": "pro", "dimensions": [{"dimension": "production", "direction": "too_polished"},
+                                              {"dimension": "production", "direction": "too_polished"}]}
+        _, output = run_script(data)
+        warnings = output["adjustments"].get("consistency_warnings", [])
+        self.assertEqual([w for w in warnings if w["type"] == "slider_conflict"], [])
+
+    def test_no_change_slider_never_overrides_a_move(self):
+        data = {"tier": "pro", "dimensions": [{"dimension": "production", "direction": "too_polished"},
+                                              {"dimension": "energy", "direction": "too_high"}]}
+        _, output = run_script(data)
+        self.assertEqual(output["adjustments"]["sliders"]["weirdness"], "+15-20 from current")
+        warnings = output["adjustments"].get("consistency_warnings", [])
+        self.assertEqual([w for w in warnings if w["type"] == "slider_conflict"], [])
+
+    def test_dimension_that_is_not_a_string_is_unmapped_not_a_traceback(self):
+        data = {"dimensions": [{"dimension": ["vocals"], "direction": {"too": "quiet"}},
+                               {"dimension": "vocals", "direction": "too_quiet"}], "tier": 3, "model": ["v6"]}
+        code, output = run_script(data)
+        self.assertEqual((code, output.get("status")), (0, "warning"), output)
+        self.assertEqual([u["reason"] for u in output["adjustments"]["unmapped"]], ["not a string"])
+        self.assertEqual(output["adjustments"]["mapped"], 1)
+
+    def test_unreadable_input_file_fails_with_json(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            bad = Path(td) / "latin1.json"
+            bad.write_bytes(b'{"dimensions": [], "note": "caf\xe9"}')
+            for target in (td, str(bad), str(Path(td) / "missing.json")):
+                result = subprocess.run([sys.executable, SCRIPT, "--input", target], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 1, target)
+                self.assertEqual(json.loads(result.stdout)["status"], "fail", target)
+                self.assertNotIn("Traceback", result.stderr)
 
     def test_list_prints_the_vocabulary(self):
         result = subprocess.run([sys.executable, SCRIPT, "--list"], capture_output=True, text=True)

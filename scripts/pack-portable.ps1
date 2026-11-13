@@ -22,7 +22,7 @@ $ErrorActionPreference = 'Stop'
 
 $Archive = Join-Path $ProjectRoot 'docs/portable-sync.tar.gz'
 $Manifest = Join-Path $ProjectRoot 'portable-manifest.yaml'
-$Validator = Join-Path $ProjectRoot '.claude/skills/suno-agent-band-manager/scripts/validate-sidecar.py'
+$Validator = Join-Path $ProjectRoot '.claude/skills/suno-agent-band-manager/scripts/validate_sanctum.py'
 
 # Pre-sync validation gate. Stops stale catalog state from propagating to
 # other machines. The validator reads songbook + band profiles + the sanctum

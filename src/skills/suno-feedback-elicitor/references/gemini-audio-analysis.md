@@ -45,7 +45,7 @@ Provide your analysis in this exact format:
 
 ## Sonic Profile
 - **Intro (first 15 seconds):** [exactly what instruments enter, in what order, what they're doing]
-- **Overall Genre Feel:** [describe the blend of genre influences you hear — this band fuses multiple styles, so name all the ingredients, not just the dominant one]
+- **Overall Genre Feel:** [the genre you actually hear: one sub-genre if that is what it is, every ingredient if it is a blend]
 - **Guitar:** [tone, style, notable techniques — clean/distorted, riff-driven/atmospheric, any solos and where]
 - **Bass:** [how prominent, tone, role — following guitar or independent, any standout moments]
 - **Drums:** [style, energy, notable fills or pattern changes, cymbal work]

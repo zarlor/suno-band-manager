@@ -3,15 +3,16 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for spacing-check.py: the writer's spacing must come through verbatim."""
+"""Tests for spacing_check.py: the writer's spacing must come through verbatim."""
 
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "spacing-check.py")
+SCRIPT = str(Path(__file__).parent.parent / "spacing_check.py")
 
 WRITER = "Day   by   Day\n    the porch light hums\n\n\nand I wait"
 
@@ -101,6 +102,20 @@ class TestSpacingCheck(unittest.TestCase):
         self.assertEqual(len(edits), 1)
         self.assertEqual(report["metrics"]["line_edits"], 1)
 
+    def test_edit_location_gives_lines_on_each_side(self):
+        # The tag pushes the edit down a line in the transformed text: the two
+        # sides must be numbered separately, since changes[].lines cites transformed_lines.
+        report, _ = run("one\nthe cold rain falls", "[Verse]\none\nthe cold rain pours")
+        edits = [f for f in report["findings"] if f["category"] == "edit"]
+        self.assertEqual(len(edits), 1)
+        self.assertEqual(edits[0]["location"], {"original_lines": [2], "transformed_lines": [3]})
+        self.assertEqual(report["added_tag_lines"], [{"line": 1, "tag": "[Verse]"}])
+
+    def test_removed_line_has_no_transformed_lines(self):
+        report, _ = run("Title Line\none\ntwo", "[Verse]\none\ntwo")
+        edits = [f for f in report["findings"] if f["category"] == "edit"]
+        self.assertEqual([e["location"] for e in edits], [{"original_lines": [1], "transformed_lines": []}])
+
     def test_word_fidelity_flags_word_change(self):
         report, _ = run("the cold rain falls", "the cold rain pours", "--word-fidelity")
         self.assertEqual(report["status"], "fail")
@@ -124,6 +139,49 @@ class TestSpacingCheck(unittest.TestCase):
     def test_missing_input_exits_2(self):
         result = subprocess.run([sys.executable, SCRIPT], capture_output=True, text=True)
         self.assertEqual(result.returncode, 2)
+
+
+class TestFileInput(unittest.TestCase):
+    """--original PATH --transformed PATH is the form the workflow runs."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+
+    def run_files(self, original, transformed, *flags):
+        (self.tmp / "source.txt").write_text(original, encoding="utf-8")
+        (self.tmp / "draft.txt").write_text(transformed, encoding="utf-8")
+        result = subprocess.run(
+            [sys.executable, SCRIPT, "--original", str(self.tmp / "source.txt"),
+             "--transformed", str(self.tmp / "draft.txt"), *flags],
+            capture_output=True, text=True)
+        return json.loads(result.stdout), result.returncode
+
+    def test_flattened_draft_fails_with_exit_1(self):
+        flattened = "[Verse 1]\nDay by Day\nthe porch light hums\n\nand I wait\n"
+        report, code = self.run_files(WRITER + "\n", flattened)
+        self.assertEqual((report["status"], code), ("fail", 1))
+        self.assertEqual(report["metrics"]["blank_lines_removed"], 1)
+        self.assertEqual(report["metrics"]["whitespace_changes"], 2)
+
+    def test_faithful_draft_passes_with_exit_0(self):
+        report, code = self.run_files(WRITER + "\n", "[Verse 1]\n" + WRITER + "\n\n[End]\n")
+        self.assertEqual((report["status"], code), ("pass", 0))
+
+    def test_newline_escapes_in_a_file_are_literal_text(self):
+        # Only the --*-text arguments turn a backslash-n into a newline.
+        report, code = self.run_files("one\\ntwo", "one\\ntwo")
+        self.assertEqual((report["metrics"]["writer_lines"], code), (1, 0))
+
+    def test_missing_file_exits_2(self):
+        (self.tmp / "source.txt").write_text(WRITER, encoding="utf-8")
+        result = subprocess.run(
+            [sys.executable, SCRIPT, "--original", str(self.tmp / "source.txt"),
+             "--transformed", str(self.tmp / "absent.txt")], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("absent.txt", result.stderr)
+        self.assertEqual(result.stdout, "")
 
 
 if __name__ == "__main__":

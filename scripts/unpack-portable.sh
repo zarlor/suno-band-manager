@@ -33,7 +33,7 @@ echo "Unpacked $FILE_COUNT files from $ARCHIVE" >&2
 # Post-unpack reconciliation — warn if the sanctum's memory may be stale
 # relative to the unpacked files. Never blocks: reconciliation is the agent's
 # job, not the script's. Bypass with BMAD_SKIP_RECONCILE=1.
-RECONCILE="$PROJECT_ROOT/.claude/skills/suno-agent-band-manager/scripts/reconcile-sidecar.py"
+RECONCILE="$PROJECT_ROOT/.claude/skills/suno-agent-band-manager/scripts/reconcile_sanctum.py"
 if [ "${BMAD_SKIP_RECONCILE:-}" != "1" ] && [ -f "$RECONCILE" ] && command -v python3 >/dev/null 2>&1; then
     echo "" >&2
     echo "--- Post-unpack reconciliation check ---" >&2

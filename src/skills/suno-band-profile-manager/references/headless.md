@@ -2,9 +2,9 @@
 
 `--headless` or `-H`: scripted profile management with no conversation. Skip the greeting and routing, but still load config and apply customization (activation steps, persistent facts, `on_complete`).
 
-All scripts run as `uv run {skill-root}/scripts/<name>.py … --project-root {project-root}`. They read `band_profiles_folder` and `songbook_folder` from module config themselves. `apply-profile.py` owns every profile write: it keeps YAML comments, key order and quoting, and never replaces a list without being told to.
+All scripts run as `uv run {skill-root}/scripts/<name>.py … --project-root {project-root}`. They read `band_profiles_folder` and `songbook_folder` from module config themselves. `{skill-root}/scripts/apply_profile.py` owns every profile write: it keeps YAML comments, key order and quoting, and never replaces a list without being told to.
 
-**Names.** A `<name>` argument may be a slug or a band name. Resolve it with `list-profiles.py --check "<name>"` and use the returned `slug`; `ambiguous` (with its `matches`) or not found (with any `suggestions`) → `blocked`, and the reason carries those lists.
+**Names.** A `<name>` argument may be a slug or a band name. Resolve it with `uv run {skill-root}/scripts/list_profiles.py --check "<name>" --project-root {project-root}` and use the returned `slug`; `ambiguous` (with its `matches`) or not found (with any `suggestions` and `message`) → `blocked`, and the reason carries those lists.
 
 **Inputs.** `create` reads the full profile YAML on stdin. `edit` reads a YAML mapping of field overrides on stdin, with nested keys merged by path. `append` reads one list entry (JSON or YAML) on stdin. Every other subcommand takes positional arguments only.
 
@@ -16,12 +16,42 @@ All scripts run as `uv run {skill-root}/scripts/<name>.py … --project-root {pr
 
 | Subcommand | Action | Returns |
 |---|---|---|
-| `--headless:create` | Stage the YAML exactly as given with `apply-profile.py --save --stage {band_profiles_folder}/drafts/{slug}.yaml`, the YAML on stdin through a quoted heredoc (`<<'YAML'`, never retyped into a file by hand; slug from `validate-profile.py --derive-filename "<name>"`; `profile_exists` true → `blocked`) and validate it with `validate-profile.py {slug} --staged <draft>`, so the validator sees every conflict before you fix anything. Fix the auto-resolvable issues it reports and log each: a style baseline over the model's limit is trimmed (`apply-profile.py --set` on the draft), free-tier sliders and studio preferences are dropped (`apply-profile.py --drop sliders,studio_preferences --in <draft>`, never a hand edit). Re-validate the draft after any fix. Add no comments of your own to the profile: reasons go in the decision log (a dropped key is logged with the values it held, the only place they survive), and each auto-fix is also listed in the return's `warnings`. Then `apply-profile.py --save --in <draft> --archive-existing-log` (an earlier band's log for the slug is moved aside rather than appended to; name it in `warnings`), `scaffold-playlist.py {slug}`, write a fresh decision log — it names the moved-aside file by path only, never its contents — and only then delete the draft (and an emptied `drafts/` folder). Unresolvable issues (missing `genre`/`mood`/`style_baseline`, invalid `tier`/`model`, profile already exists) → `blocked`, nothing saved, no log. | `{"status":"complete","profile_path","playlist_path","decision_log","validation":{"warnings":[...]}}` |
-| `--headless:edit <name> [--append\|--replace]` | `apply-profile.py <name> --set` with the overrides on stdin, then validate. A list value that meets an existing non-empty list is refused unless the caller passes `--append` (add to it) or `--replace` (overwrite it); these map to `--lists append\|replace`. The refusal → `blocked` with the script's error as `reason`. | `{"status","profile_path","fields_changed":[...],"decision_log","validation":{...}}` |
-| `--headless:append <name> <field>` | `apply-profile.py <name> --append <field> --append-json '<entry>'`. Adds one entry and trims the oldest to the schema cap (`generation_history`: 10; `--max N` overrides). A wrong entry shape → `blocked`. | the script's JSON (`field`, `appended`, `trimmed`, `length`) plus `decision_log` |
-| `--headless:duplicate <source> <new_name>` | `apply-profile.py <source> --duplicate "<new_name>"` (sets the copy's `name`, keeps comments), validate, write a fresh decision log for the new slug. | `{"status","profile_path","source","decision_log"}` |
-| `--headless:validate <name>` | `validate-profile.py {slug} --project-root {project-root}` | the validator's JSON |
-| `--headless:load <name>` | `apply-profile.py <name> --load` | the script's JSON, verbatim |
-| `--headless:delete <name> [--purge]` | `apply-profile.py <name> --delete --confirm`. Calling this subcommand is the confirmation. It archives the profile, decision log, draft and playlist YAML to `{band_profiles_folder}/archive/{slug}-{stamp}/`, so the data can be recovered and a new band that reuses the slug does not inherit the old log. Pass `--purge` to delete them instead; only use it when the caller explicitly asks for it. Songbook entries are never touched. | `{"status","removed":[...],"archive_dir","left_in_place":[...]}` |
-| `--headless:scaffold-playlist <name> [--from-songbook]` | `scaffold-playlist.py {slug} [--from-songbook]`. An existing playlist YAML is left untouched (`exists`). | the script's JSON (`status`, `path`, `album`, `tracks_seeded`) |
-| `--headless` (bare) | `list-profiles.py --project-root {project-root}`. Files it could not read come back under `skipped` with a reason. | the script's JSON |
+| `--headless:create` | Follow "Create" below. | `{"status":"complete","profile_path","playlist_path","decision_log","validation":{"warnings":[...]}}` |
+| `--headless:edit <name> [--append\|--replace]` | Follow "Edit" below. | `{"status","profile_path","fields_changed":[...],"decision_log","validation":{...}}` |
+| `--headless:append <name> <field>` | `uv run {skill-root}/scripts/apply_profile.py {slug} --append <field> --append-json '<entry>' --project-root {project-root}`. Adds one entry and trims the oldest to the schema cap (`generation_history`: 10; `--max N` overrides, N at least 1). A wrong entry shape or an unknown field → `blocked`. | the script's JSON (`field`, `appended`, `trimmed`, `length`) plus `decision_log` |
+| `--headless:duplicate <source> <new_name>` | `uv run {skill-root}/scripts/apply_profile.py {slug} --duplicate "<new_name>" --project-root {project-root}` (sets the copy's `name`, keeps comments), validate, write a fresh decision log for the new slug. | `{"status","profile_path","source","decision_log"}` |
+| `--headless:validate <name>` | `uv run {skill-root}/scripts/validate_profile.py {slug} --project-root {project-root}` | the validator's JSON |
+| `--headless:load <name>` | `uv run {skill-root}/scripts/apply_profile.py {slug} --load --project-root {project-root}` | the script's JSON, verbatim |
+| `--headless:delete <name> [--purge]` | `uv run {skill-root}/scripts/apply_profile.py {slug} --delete --confirm --project-root {project-root}`. Calling this subcommand is the confirmation. It archives the profile, decision log, draft, `.bak` backup and playlist YAML to `{band_profiles_folder}/archive/{slug}-{stamp}/`, so the data can be recovered and a new band that reuses the slug does not inherit the old log. Pass `--purge` to delete them instead; only use it when the caller explicitly asks for it. Songbook entries are never touched. A result that lists `failed` stopped partway → `blocked`, the script's `error` as `reason`, with its `removed` and `failed` lists. | `{"status","removed":[...],"archive_dir","left_in_place":[...]}` |
+| `--headless:scaffold-playlist <name> [--from-songbook]` | `uv run {skill-root}/scripts/scaffold_playlist.py {slug} [--from-songbook] --project-root {project-root}`. An existing playlist YAML is left untouched (`exists`). | the script's JSON (`status`, `path`, `album`, `tracks_seeded`, and after `--from-songbook` its `skipped` and `warnings`) |
+| `--headless` (bare) | `uv run {skill-root}/scripts/list_profiles.py --project-root {project-root}`. Files it could not read come back under `skipped` with a reason. | the script's JSON |
+| any other `--headless:<subcommand>` | Run nothing. | `{"status":"blocked","reason"}`, the reason listing the subcommands above |
+
+## Create
+
+`<draft>` is `{band_profiles_folder}/drafts/{slug}.yaml`. Each step feeds the next:
+
+1. **Slug.** Take the `slug` from `uv run {skill-root}/scripts/validate_profile.py --derive-filename "<name>"`, the name being the YAML's `name`.
+2. **Stage the YAML exactly as given:** `uv run {skill-root}/scripts/apply_profile.py {slug} --save --stage <draft> --project-root {project-root}`, the YAML on stdin through a quoted heredoc (`<<'YAML'`, never retyped into a file by hand).
+3. **Validate the draft** with `uv run {skill-root}/scripts/validate_profile.py {slug} --staged <draft> --project-root {project-root}`, so the validator sees every conflict before you fix anything.
+4. **Fix the auto-resolvable issues it reports,** then re-validate the draft after any fix:
+   - A style baseline over the model's limit is trimmed with `uv run {skill-root}/scripts/apply_profile.py {slug} --set --profiles-dir {band_profiles_folder}/drafts --project-root {project-root}` (the new `style_baseline` on stdin). `--profiles-dir` points the edit at the draft, because the profile is not saved yet.
+   - Free-tier sliders and studio preferences are dropped with `uv run {skill-root}/scripts/apply_profile.py --drop sliders,studio_preferences --in <draft>`, never a hand edit.
+5. **Save:** `uv run {skill-root}/scripts/apply_profile.py {slug} --save --in <draft> --archive-existing-log --project-root {project-root}`. An earlier band's log for the slug is moved aside rather than appended to; name it in `warnings`.
+6. **Playlist:** `uv run {skill-root}/scripts/scaffold_playlist.py {slug} --project-root {project-root}`.
+7. **Write a fresh decision log.** It names the moved-aside file by path only, never its contents.
+8. **Only then delete the draft,** and the `drafts/` folder if that empties it.
+
+Rules that hold across the steps:
+
+- **Every auto-fix is logged and listed.** Each goes in the decision log and in the return's `warnings`. A dropped key is logged with the values it held, the only place they survive.
+- **Add no comments of your own to the profile.** Reasons go in the decision log.
+- **Unresolvable issues → `blocked`, nothing saved, no log:** a missing `name` or one with no derivable slug (step 1 exits 1), `profile_exists` true at step 2, a missing `genre`, `mood` or `style_baseline`, an invalid `tier` or `model`.
+
+## Edit
+
+`<draft>` is `{band_profiles_folder}/drafts/{slug}.yaml`. The change is staged and validated before it touches the profile, so a failing edit is never saved:
+
+1. **Stage:** `uv run {skill-root}/scripts/apply_profile.py {slug} --set --stage <draft> --project-root {project-root}` with the overrides on stdin. A list value that meets an existing non-empty list is refused unless the caller passes `--append` (add to it) or `--replace` (overwrite it); these map to `--lists append|replace`. The refusal → `blocked` with the script's error as `reason`.
+2. **Validate the draft:** `uv run {skill-root}/scripts/validate_profile.py {slug} --staged <draft> --project-root {project-root}`. On `fail`, delete the draft and return `blocked` with the failing findings as `reason`; the profile is untouched.
+3. **Apply:** the same `--set` call without `--stage`, then delete the draft.

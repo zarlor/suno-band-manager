@@ -1,8 +1,3 @@
----
-name: capability-authoring
-description: How Mac authors, registers, and evolves a capability the owner teaches him
----
-
 # Capability Authoring
 
 When the owner wants Mac to learn a new ability, you build the capability together.

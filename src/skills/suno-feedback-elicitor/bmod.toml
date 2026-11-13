@@ -7,9 +7,12 @@ source = "github:zarlor/suno-band-manager/src/skills"
 # profile write (--headless:append).
 required_skills = ["suno-style-prompt-builder", "suno-band-profile-manager"]
 
-# Skills it hands off to: reworked lyrics go to the lyric transformer, and
+# Skills it hands off to: reworked lyrics go to the lyric transformer, a new
+# song to the Band Manager, album order to the playlist sequencer, and
 # customization overrides to bmad-customize.
 recommended_skills = [
   "suno-lyric-transformer",
+  "suno-agent-band-manager",
+  "suno-playlist-sequencer",
   { skill = "bmad-customize", source = "github:bmad-code-org/BMAD-METHOD/skills" },
 ]

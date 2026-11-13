@@ -8,9 +8,9 @@ Invoke the `suno-style-prompt-builder` skill with `--headless:refine`, passing i
 {"prompt": "<current style prompt>", "model": "<model>", "style_prompt": {"add": [], "remove": [], "reorder_notes": ""}, "exclusions": {"add": [], "remove": []}, "sliders": {"weirdness": "", "style_influence": ""}, "model_suggestion": ""}
 ```
 
-It returns the refined prompt, Exclude Styles and sliders with its validator's report, so artist-name, character-budget and exclusion checks have all run. Then run `uv run {skill-root}/scripts/map-adjustments.py --check-final --style-prompt <refined> --exclude <refined excludes>` and fix any descriptor an exclusion cancels. A `blocked` return means the prompt wasn't rebuilt: present the adjustments as recommendations and say so. Whether the sliders contradict the prompt, and whether a change risks a liked element, stays your judgment.
+It returns the refined prompt, Exclude Styles and sliders with its validator's report, so artist-name, character-budget and exclusion checks have all run. Then run `uv run {skill-root}/scripts/map_adjustments.py --check-final --style-prompt <refined> --exclude <refined excludes>` and fix any descriptor an exclusion cancels. A `blocked` return means the prompt wasn't rebuilt: present the adjustments as recommendations and say so. With no verbatim original prompt (the user gave only a description), there is nothing to refine: invoke the builder with `--headless` instead, giving the description and this round's adjustments as its `genre_mood` (plus the band profile when there is one), then run the `--check-final` on what it returns. Whether the sliders contradict the prompt, and whether a change risks a liked element, stays your judgment.
 
-Build "What Changed and Why" from `uv run {skill-root}/scripts/map-adjustments.py --diff --style-prompt <before> --new-style-prompt <after>` (add `--exclude` / `--new-exclude` when the exclusions changed), giving each item its one-line why.
+Build "What Changed and Why" from `uv run {skill-root}/scripts/map_adjustments.py --diff --style-prompt <before> --new-style-prompt <after>` (add `--exclude` / `--new-exclude` when the exclusions changed), giving each item its one-line why. After a fresh build there is no before to diff: skip `--diff`, present every descriptor as new with its why, and leave the **Current** lines out.
 
 ## Template
 

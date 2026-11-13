@@ -9,6 +9,10 @@
   {"query": "what were the style prompts that worked best on my jazz songs last month?", "should_trigger": true},
   {"query": "surprise me with a Suno song, any genre", "should_trigger": true},
   {"query": "save what we did today to memory so we can pick it up next time, Mac", "should_trigger": true},
+  {"query": "save memory", "should_trigger": true},
+  {"query": "can you set up the pipeline guard so a package never goes out without the skills running?", "should_trigger": true},
+  {"query": "I downloaded the keeper for Low Tide Ledger, it's the second take", "should_trigger": true},
+  {"query": "I want to teach Mac to write liner notes for every finished song", "should_trigger": true},
   {"query": "build a style prompt for a dark synthwave track on v6", "should_trigger": false},
   {"query": "transform these lyrics into Suno format with section tags", "should_trigger": false},
   {"query": "create a band profile for my new shoegaze project", "should_trigger": false},
@@ -18,5 +22,7 @@
   {"query": "what's the character limit for the Exclude Styles field on Suno?", "should_trigger": false},
   {"query": "write me a song about my dog for my daughter's birthday card, just the words", "should_trigger": false},
   {"query": "measure the tempo and key of this mp3", "should_trigger": false},
-  {"query": "list my bands", "should_trigger": false}
+  {"query": "list my bands", "should_trigger": false},
+  {"query": "set up a git pre-commit hook that runs my unit tests", "should_trigger": false},
+  {"query": "teach me how Suno's Weirdness slider actually works", "should_trigger": false}
 ]

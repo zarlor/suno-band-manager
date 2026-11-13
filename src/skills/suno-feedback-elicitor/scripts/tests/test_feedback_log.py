@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Tests for feedback-log.py"""
+"""Tests for feedback_log.py"""
 
 import json
 import subprocess
@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = str(Path(__file__).parent.parent / "feedback-log.py")
+SCRIPT = str(Path(__file__).parent.parent / "feedback_log.py")
 
 
 def run(args: list[str]) -> tuple[int, dict | str]:
@@ -90,6 +90,49 @@ class FeedbackLogLocateTest(unittest.TestCase):
         self.assertIn("YYYYMMDD-HHMM", err)
 
 
+class FeedbackLogPathTest(unittest.TestCase):
+    def setUp(self):
+        td = tempfile.TemporaryDirectory()
+        self.addCleanup(td.cleanup)
+        self.tmp_path = Path(td.name)
+        self.history = ["--history-dir", str(self.tmp_path)]
+
+    def test_non_latin_title_gets_a_stable_slug_a_later_session_finds(self):
+        _, first = run(["--band", "Test Band", "--title", "Ночь", "--stamp", "20261015-1000", *self.history])
+        _, later = run(["--band", "Test Band", "--title", "Ночь", "--stamp", "20261101-0900", *self.history])
+        _, other = run(["--band", "Test Band", "--title", "夜", "--stamp", "20261015-1000", *self.history])
+        self.assertTrue(first["song_slug"].startswith("t-"), first)
+        self.assertEqual(first["path"], later["path"])
+        self.assertNotEqual(first["path"], other["path"])
+        self.assertNotIn("20261015-1000", first["path"])
+
+    def test_untitled_song_still_uses_the_stamp(self):
+        _, out = run(["--band", "Test Band", "--stamp", "20261015-1000", *self.history])
+        self.assertEqual(out["song_slug"], "20261015-1000")
+
+    def test_log_path_replaces_the_derived_path_for_locate_and_append(self):
+        given = self.tmp_path / "elsewhere" / "handed-over.md"
+        code, out = run_append(["--band", "Test Band", "--title", "My Song", "--log-path", str(given),
+                                "--text", "round one", *self.history])
+        self.assertEqual((code, out["path"], out["round"]), (0, str(given), 1))
+        self.assertFalse((self.tmp_path / "test-band" / "my-song.md").exists())
+        _, loc = run(["--band", "Test Band", "--title", "My Song", "--log-path", str(given), *self.history])
+        self.assertEqual((loc["path"], loc["exists"], loc["last_round"], loc["next_round"]),
+                         (str(given), True, 1, 2))
+
+    def test_log_that_is_not_utf8_is_an_error_object_and_left_alone(self):
+        log = self.tmp_path / "test-band" / "my-song.md"
+        log.parent.mkdir(parents=True)
+        log.write_bytes(b"# My Song\n\n## Round 1\ncaf\xe9\n")
+        before = log.read_bytes()
+        base = ["--band", "Test Band", "--title", "My Song", *self.history]
+        code, out = run(base)
+        self.assertEqual((code, out["status"]), (2, "error"), out)
+        code, out = run_append([*base, "--text", "round two"])
+        self.assertEqual((code, out["status"]), (2, "error"), out)
+        self.assertEqual(log.read_bytes(), before)
+
+
 def run_append(args: list[str], stdin: str | None = None) -> tuple[int, dict | str]:
     result = subprocess.run([sys.executable, SCRIPT, "append", *args], capture_output=True, text=True, input=stdin)
     try:
@@ -164,6 +207,28 @@ class FeedbackLogAppendTest(unittest.TestCase):
         self.assertEqual(out["status"], "error")
         code, out = run_append([*self.base, "--snapshot", "{not json"])
         self.assertEqual(code, 1)
+        self.assertFalse(self.log.exists())
+
+    def test_pasted_round_heading_in_the_entry_is_not_counted_as_a_round(self):
+        pasted = "They pasted the old log:\n## Round 7 — 2026-01-01\nand said it still drags."
+        code, out = run_append([*self.base, "--text", pasted])
+        self.assertEqual((code, out["round"]), (0, 1))
+        self.assertIn("> ## Round 7 — 2026-01-01", self.log.read_text(encoding="utf-8"))
+        code, out = run_append([*self.base, "--text", "next"])
+        self.assertEqual(out["round"], 2)
+        _, loc = run(self.base)
+        self.assertEqual((loc["last_round"], loc["next_round"]), (2, 3))
+        code, out = run_append([*self.base, "--round", "last", "--text", "anchor"])
+        self.assertEqual((out["round"], out["new_round"]), (2, False))
+
+    def test_two_sources_for_one_entry_are_rejected(self):
+        payload = json.dumps({"text": "from stdin", "snapshot": {}})
+        for extra in (["--text", "from flag"], ["--stdin"], ["--snapshot", "{}"]):
+            code, err = run_append([*self.base, "--stdin-json", *extra], stdin=payload)
+            self.assertEqual(code, 2, extra)
+            self.assertIn("--stdin-json", err)
+        code, err = run_append([*self.base, "--stdin", "--text", "from flag"], stdin="from stdin")
+        self.assertEqual(code, 2)
         self.assertFalse(self.log.exists())
 
     def test_nothing_to_append_rejected(self):

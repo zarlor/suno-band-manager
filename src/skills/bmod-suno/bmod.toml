@@ -17,7 +17,7 @@ Multi-machine workflow? With a full repo checkout (the top-level `scripts/` fold
 # `scope = "user"` makes an answer personal and uncommitted; leave it out for a team answer.
 [[bmod.config_questions]]
 key = "suno_tier"
-prompt = "What Suno plan are you on: free (v6-mini, 50 credits/day), pro (v6 and v6-wild, 2,500 credits/month) or premier (v6, v6-wild and Studio, 10,000 credits/month)? It decides which models and features Mac recommends."
+prompt = "What Suno plan are you on: free, pro or premier? It decides which models and features Mac recommends."
 default = "free"
 
 [[bmod.config_questions]]

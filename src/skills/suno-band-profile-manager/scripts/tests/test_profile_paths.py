@@ -54,6 +54,12 @@ class TestDeriveSlug(unittest.TestCase):
             "already-kebab": "already-kebab",
             "Rider's Hymn!": "riders-hymn",
             "!!!": "",
+            # Accented letters fold to their base letter instead of vanishing ("sigur-rs").
+            "Sigur Rós": "sigur-ros",
+            "Motörhead": "motorhead",
+            "Beyoncé & Café Tacvba": "beyonce-cafe-tacvba",
+            # No ASCII letters or digits: no slug, and callers must not write ".yaml".
+            "東京事変": "",
         }
         for name, slug in cases.items():
             self.assertEqual(derive_slug(name), slug, name)

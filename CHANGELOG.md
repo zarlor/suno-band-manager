@@ -4,9 +4,16 @@ All notable changes to the Suno Band Manager module are documented here.
 
 ---
 
-## [Unreleased]
+## [4.1.0] - 2026-11-14
 
-A standards pass. The module was reviewed against the current BMad v7 skill standards and every finding was fixed: 325 findings plus a restructuring of the prompt files. Version files are not bumped yet.
+A minor release with two parts: a standards pass, and a fresh round of Suno v6 research.
+
+- **Standards pass.** The module was reviewed against the current BMad v7 skill standards and every finding was fixed: 325 findings plus a restructuring of the prompt files. It renames every script (see Breaking below), so read the upgrade steps at the end of this entry.
+- **Research.** Suno's two new features, MIDI upload in Create and the Suno MCP beta, are now documented; the reference docs carry this window's community findings; and the prompt validator gains two checks.
+
+It still runs on the early BMad v7 build 4.0.0 targets. The next major release waits for BMad v7 to go stable.
+
+### Standards pass
 
 **Breaking: every script is renamed to snake_case.** `pre-activate.py` is now `pre_activate.py`, `validate-lyrics.py` is `validate_lyrics.py`, and so on for all 53 scripts, so each script's test is `scripts/tests/test_<name>.py` as the BMad scanner expects. `validate-sidecar.py` and `reconcile-sidecar.py` become `validate_sanctum.py` and `reconcile_sanctum.py`. Each report's `script` label, the AUTOGEN markers and the archive file names keep their hyphenated form, so existing archives and companion docs still match.
 
@@ -38,7 +45,9 @@ A standards pass. The module was reviewed against the current BMad v7 skill stan
 - Transient working files (the style-prompt ledger, the sequencing workspace) default to the BMad output folder; an existing file at the old location is continued. Songbook, profiles, feedback history and audio analysis stay under `docs/`.
 - `assets/menu.csv` columns are now `code,name,description,action,skill,prompt`. Mac's creed source moved to `assets/creed.md`. The Studio 1.x archive and both `research-sources.md` files moved out of the installed skills into `dev-docs/`.
 
-**Reference updates from the 2026-11-13 research sweep** (Suno's own pages, plus 372 r/SunoAI discussion threads read in full; community findings carry their user counts and stay guidelines, with both sides kept where users disagree)
+### Suno v6 research, 2026-10-28 to 11-13
+
+**Reference updates** (Suno's own pages, plus 372 r/SunoAI discussion threads read in full; community findings carry their user counts and stay guidelines, with both sides kept where users disagree)
 
 - **Two new Suno features are documented.** `SUNO-REFERENCE.md` gains "Platform Changes — 2026-11-13", "MIDI and Audio Guides" and "Suno MCP (beta)".
   - *MIDI upload in Create* (2026-11-04) is Simple mode and v6-wild only at launch, on Pro and Premier, desktop web. Users report no sliders and original files often flagged; rendering the part to audio and Covering it is the route more of them report working.
@@ -47,9 +56,18 @@ A standards pass. The module was reviewed against the current BMad v7 skill stan
 - **Late-song degradation:** this window's counts (68 users report it, 9 don't hear it) sit beside October's, with each reported fix shown with the users for and against it. No fix is settled.
 - **Controls, style prompt and lyrics field:** updated counts for Variety, My Taste, Audio Influence, Exclude Styles, Max Mode and Style Influence; prompt length is now stated as a disagreement (short against long) instead of one recommendation; parenthesised text being sung, the voice descriptor repeated in each section tag, and inline chord brackets are added as things to try, the last on thin evidence.
 - **Validator, from the same sweep:** `validate_prompt.py` now flags `arena` with the other crowd-noise words, and notes an Exclude Styles item written as a negative ("no organ", "-sax"): the field takes the bare term, and users report the negative form can bring the sound back. The note is low severity and never blocks a package.
+- **Audio analysis:** the script reference notes which tool to trust when a song changes tempo for a few bars: on one synthetic test file, `tempo_detail.py` on librosa windows showed a four-bar slow section that Beat This! smoothed over.
 - **Also updated:** Voices and Custom Models (sharing is Premier-only, up to 10 people), Covers and editing, intros and endings, genre notes (metal still the weakest area; no community reports on Baroque), lyric and upload false flags with the workarounds users report, and the 2026-10-29 Studio items.
 
 **Tests.** 1,848 tests, up from 1,210, all on `unittest`; the BMad manifest, path and script scanners report no findings.
+
+### Upgrade at a glance (existing installs)
+
+1. **Update the module:** `git pull` (rerun `./link-skills.sh` only if you link by hand), or `npx skills update`.
+2. **Wake Mac and take the template upgrade he offers** (about 18 safe changes and one to integrate). His creed, Pulse and memory guide name the scripts, and the old names no longer run.
+3. **If you installed the pipeline guard, set it up again:** ask Mac to "set up the pipeline guard". The old hook names `pipeline-guard.py`, which no longer exists.
+4. **Anything you run by hand** (scripts, aliases, notes) needs the snake_case names: `validate-lyrics.py` is now `validate_lyrics.py`, and so on.
+5. Nothing else. No new settings. Suno's MCP isn't used by Mac yet, so there is nothing to connect.
 
 ---
 
